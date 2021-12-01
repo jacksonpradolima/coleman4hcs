@@ -42,8 +42,8 @@ For more information about **WTS** and **VTS** read **Ref2** in [References](#re
 - [Using the tool](#using-the-tool)
 	- [Running for a system non HCS](#running-for-a-system-non-hcs)
 	- [Running for an HCS system](#running-for-an-hcs-system)
-			- [Whole Test Set Strategy](#whole-test-set-strategy)
-			- [Variant Test Set Strategy](#variant-test-set-strategy)
+	  - [Whole Test Set Strategy](#whole-test-set-strategy)
+	  - [Variant Test Set Strategy](#variant-test-set-strategy)
 - [References](#references)
 - [Contributors](#Contributors)
 ----------------------------------
