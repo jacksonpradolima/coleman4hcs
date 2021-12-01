@@ -37,20 +37,15 @@ For more information about **WTS** and **VTS** read **Ref2** in [References](#re
 
 - [Citation](#citation)
 - [Installing required dependencies](#installing-required-dependencies)
-- [Datasets](#datasets)
-	- [HCS Dataset](#hcs-dataset)
-	- [Traditional Systems](#traditional-systems)
-		- [Deeplearning4j](#deeplearning4j)
-		- [Druid](#druid)
-- [About the files input](#about-the-files-input)
-	- [Industrial Representation](#industrial-representation)
+- [Datasets](#datasets)	
+- [About the files input](#about-the-files-input)	
 - [Using the tool](#using-the-tool)
-	- [Running for a traditional system](#running-for-a-traditional-system)
-	- [Running for a HCS system](#running-for-a-hcs-system)
+	- [Running for a system non HCS](#running-for-a-system-non-hcs)
+	- [Running for an HCS system](#running-for-an-hcs-system)
 			- [Whole Test Set Strategy](#whole-test-set-strategy)
 			- [Variant Test Set Strategy](#variant-test-set-strategy)
 - [References](#references)
-- [contributors](#Contributors)
+- [Contributors](#Contributors)
 ----------------------------------
 
 
