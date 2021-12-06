@@ -2,6 +2,7 @@
 
 [![forthebadge made-with-python](http://ForTheBadge.com/images/badges/made-with-python.svg)](https://www.python.org/)
 
+[![YouTube Badge](https://img.shields.io/badge/Presentations-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white)](https://github.com/jacksonpradolima/coleman4hcs#references)
 
 # Coleman4HCS
 
@@ -9,7 +10,7 @@
 ### Solving the Test Case Prioritization using Multi-Armed Bandit Algorithms
 
 **COLEMAN** (_**C**ombinatorial V**O**lati**LE** **M**ulti-Armed B**AN**dit_) is a Multi-Armed Bandit (MAB) based approach designed 
-to address the Test Case Prioritization in Continuous Integration (TCPCI) Environments in a cost-effective way.
+to address the Test Case Prioritization in Continuous Integration (TCPCI) Environments in a cost-effective way. 
 
 We designed **COLEMAN** to be generic regarding the programming language in the system under test, 
 and adaptive to different contexts and testers' guidelines.
@@ -31,7 +32,6 @@ Furthermore, this repository contains the adaptation to deal with Highly-Configu
 For more information about **WTS** and **VTS** read **Ref2** in [References](#references).
 
 ![](https://img.shields.io/badge/python-3.6+-blue.svg)
-
 
 # Getting started
 
@@ -176,7 +176,13 @@ In this command, we run each variant as single system.
 # References
 
 - 📖 [**Ref1**] [A Multi-Armed Bandit Approach for Test Case Prioritization in Continuous Integration Environments](https://doi.org/10.1109/TSE.2020.2992428) published at **IEEE Transactions on Software Engineering (TSE)**
+
+[![ESEC/FSE](https://img.youtube.com/vi/w8Lf0VEWkQk/0.jpg)](https://www.youtube.com/watch?v=w8Lf0VEWkQk)
+
 - 📖 [**Ref2**] [Learning-based prioritization of test cases in continuous integration of highly-configurable software](https://doi.org/10.1145/3382025.3414967) published at **Proceedings of the 24th ACM Conference on Systems and Software Product Line (SPLC'20)**
+
+
+[![SPLC](https://img.youtube.com/vi/tT8Ygt8jCKg/0.jpg)](https://www.youtube.com/watch?v=tT8Ygt8jCKg)
 
 # Contributors
 
