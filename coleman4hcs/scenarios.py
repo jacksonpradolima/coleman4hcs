@@ -112,7 +112,7 @@ class IndustrialDatasetScenarioProvider():
         self.scenario = VirtualScenario(testcases=seltc,
                                         available_time=total_time,
                                         build_id=self.build,
-                                        total_build_duration=self.total_build_duratio)
+                                        total_build_duration=self.total_build_duration)
 
         return self.scenario
 
