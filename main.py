@@ -40,13 +40,13 @@ def run_experiments_with_threads(repo_path, dataset, policies, window_sizes=DEFA
                     agents.append(RewardSlidingWindowAgent(policy, rew_fun, w))
             elif type(policy) == UCBPolicy:
                 # Based on tunning settings
-                if (type(rew_fun) == RRankReward or type(rew_fun) == TimeRankReward) and policy.c == 0.5:
+                if (type(rew_fun) == TimeRankReward) and policy.c == 0.5:
                     agents.append(RewardAgent(policy, rew_fun))
                 elif type(rew_fun) == RNFailReward and policy.c == 0.3:
                     agents.append(RewardAgent(policy, rew_fun))
             elif type(policy) == EpsilonGreedyPolicy:
                 # Based on tunning settings
-                if (type(rew_fun) == RRankReward or type(rew_fun) == TimeRankReward) and policy.epsilon == 0.5:
+                if (type(rew_fun) == TimeRankReward) and policy.epsilon == 0.5:
                     agents.append(RewardAgent(policy, rew_fun))
                 elif type(rew_fun) == RNFailReward and policy.epsilon == 0.3:
                     agents.append(RewardAgent(policy, rew_fun))
