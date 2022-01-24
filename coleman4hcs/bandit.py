@@ -125,6 +125,6 @@ class EvaluationMetricBandit(DynamicBandit):
         # Sort tc by Prio ASC (for backwards scheduling)
         self.arms = self.arms.sort_values(by=['CalcPrio'])
 
-        self.evaluation_metric.evaluate(self.arms.to_dict(orient='record'))
+        self.evaluation_metric.evaluate(self.arms.to_dict('records'))
 
         return self.evaluation_metric

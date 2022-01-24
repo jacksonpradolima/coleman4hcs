@@ -103,7 +103,7 @@ class IndustrialDatasetScenarioProvider():
         builddf = self.tcdf.loc[self.tcdf.BuildId == self.build]
 
         # Convert the solutions to a list of dict
-        seltc = builddf[self.tc_fieldnames].to_dict(orient='record')
+        seltc = builddf[self.tc_fieldnames].to_dict('records')
 
         self.total_build_duration = builddf['Duration'].sum()
         total_time = self.total_build_duration * self.avail_time_ratio
