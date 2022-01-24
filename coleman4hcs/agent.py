@@ -1,7 +1,9 @@
-import numpy as np
-import pandas as pd
+import logging
 import random
 from typing import List
+
+import numpy as np
+import pandas as pd
 
 from coleman4hcs.bandit import Bandit
 from coleman4hcs.evaluation import EvaluationMetric
@@ -61,6 +63,8 @@ class Agent(object):
         self.actions = self.actions.append(pd.DataFrame([[action, 0, 0, 0]], columns=self.col_names), ignore_index=True)
 
     def update_actions(self, actions):
+        logging.debug("Update Arms")
+
         # Preserve the actual actions and remove the unnecessaries
         self.actions = self.actions[self.actions.Name.isin(actions)]
 
@@ -79,6 +83,8 @@ class Agent(object):
 
         self.actions = self.actions.append(df, ignore_index=True)
 
+        logging.debug(self.actions)
+
     def update_bandit(self, bandit):
         self.bandit = bandit
         self.update_actions(self.bandit.get_arms())
@@ -89,6 +95,8 @@ class Agent(object):
         An action is the Priorized Test Suite
         :return: List of Test Cases in ascendent order of priority
         """
+        logging.debug("Choose")
+
         self.last_prioritization = []
 
         # If is the first time that the agent is been used, we don't have a "history" (rewards).
@@ -102,7 +110,9 @@ class Agent(object):
             self.actions['Q'] = self.actions['Q'].fillna(value=0)
             self.last_prioritization = self.policy.choose_all(self)
 
-        # Return the Priorized Test Suite
+        logging.debug(self.last_prioritization)
+
+        # Return the Prioritized Test Suite
         return self.last_prioritization
 
     def update_action_attempts(self):
@@ -165,6 +175,8 @@ class RewardAgent(Agent):
 
         :param reward: The reward (result) obtained by the evaluation metric
         """
+        logging.debug("Observe")
+
         self.update_action_attempts()
 
         # Get rewards for each test case
@@ -178,6 +190,8 @@ class RewardAgent(Agent):
 
         # Apply credit assignment
         self.policy.credit_assignment(self)
+
+        logging.debug(self.actions)
 
     def reset(self):
         super().reset()
