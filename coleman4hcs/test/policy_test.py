@@ -1,7 +1,12 @@
+import logging
 import os
+import random
 import time
 import unittest
+import warnings
 from pathlib import Path
+
+import numpy as np
 
 from coleman4hcs import scenarios
 from coleman4hcs.agent import RewardSlidingWindowAgent, RewardAgent
@@ -11,18 +16,30 @@ from coleman4hcs.policy import FRRMABPolicy, UCBPolicy
 from coleman4hcs.reward import RNFailReward
 from coleman4hcs.reward import TimeRankReward
 
-import warnings
 warnings.filterwarnings("ignore")
+np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
+
+# Keep the same result
+random.seed(10)
+
+if not os.path.exists("../../logs"):
+    os.makedirs("../../logs")
+
+logging.basicConfig(
+    filename="../../logs/data_filtering.log",
+    level=logging.DEBUG,
+    format="%(asctime)s:%(levelname)s:%(message)s"
+)
+
 
 class RunningPolicy(unittest.TestCase):
     def setUp(self):
         # Shared settings
         self.reward_functions = [RNFailReward(), TimeRankReward()]
-        self.reward_functions = [RNFailReward(), TimeRankReward()]
 
         # HCS
         self.output_hcs_dir = '../../results/experiments_hcs_test/'
-        self.dataset_hcs_dir = "../../data/libssh@libssh-mirror"
+        self.dataset_hcs_dir = "../../example/libssh@libssh-mirror"
         self.dataset_hcs = 'libssh@total'
 
         Path(self.output_hcs_dir).mkdir(parents=True, exist_ok=True)
@@ -34,8 +51,8 @@ class RunningPolicy(unittest.TestCase):
 
         # NON HCS
         self.output_dir = '../../results/experiments_test/'
-        self.dataset_dir = "../../data"
-        self.dataset = 'fastjson'
+        self.dataset_dir = "../../example"
+        self.dataset = 'fakedata'
 
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
 
