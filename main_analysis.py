@@ -8,7 +8,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import pandas as pd
 from tabulate import tabulate
 from pathlib import Path
-from analysis_EMSE import Analisys
+from coleman4hcs.statistics.analysis import Analisys 
 
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
@@ -133,8 +133,9 @@ if __name__ == '__main__':
         'FRRMAB (C=0.3, D=1, SW=100)': 'FRRMAB',
         'mlpclassifier': 'ANN'
     }
-    columns_metrics = ['FRRMAB', 'ANN']
+    #columns_metrics = ['FRRMAB', 'ANN']
     #columns_metrics = ['Random', 'FRRMAB', 'ANN']
+    columns_metrics = ['Random', 'FRRMAB']
     #columns_metrics = ['Random', 'Deterministic', 'FRRMAB', 'ANN']
 
     print_dataset(args.datasets[0])
