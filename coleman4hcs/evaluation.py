@@ -157,7 +157,7 @@ class NAPFDVerdictMetric(EvaluationMetric):
 
     def evaluate(self, test_suite):
         super().reset()
-        costs, total_failure_count, total_failed_tests = self.process_test_suite(test_suite, 'Verdict')
+        costs, total_failure_count, _ = self.process_test_suite(test_suite, 'Verdict')
 
         assert self.undetected_failures + self.detected_failures == total_failure_count
 
