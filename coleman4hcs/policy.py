@@ -359,7 +359,7 @@ class LinUCBPolicy(Policy):
             q = theta_a.T.dot(x_i) + self.alpha * np.sqrt(x_i.T.dot(A_inv).dot(x_i))
 
             if len(q) > 1:
-                Exception("[LinUCB] q is more than 1: {q}")
+                raise Exception("[LinUCB] q is more than 1: {q}")
 
             records.append([a, q[0]])
 
@@ -437,7 +437,7 @@ class SWLinUCBPolicy(LinUCBPolicy):
             q = (1 - occ / agent.window_size) * q
 
             if len(q) > 1:
-                Exception("[LinUCB] q is more than 1: {q}")
+                raise Exception("[LinUCB] q is more than 1: {q}")
 
             records.append([a, q[0]])
 
