@@ -7,6 +7,7 @@ class VirtualScenario(object):
     """
     Virtual Scenario, used to manipulate the data for each commit
     """
+
     def __init__(self, available_time, testcases, build_id, total_build_duration):
         self.available_time = available_time
         self.testcases = testcases
@@ -33,6 +34,7 @@ class VirtualHCSScenario(VirtualScenario):
     """
    Virtual Scenario HCS, used to manipulate the data for each commit in the HCS context.
    """
+
     def __init__(self, available_time, testcases, build_id, total_build_duration, variants):
         super().__init__(available_time, testcases, build_id, total_build_duration)
 
@@ -42,7 +44,7 @@ class VirtualHCSScenario(VirtualScenario):
         return self.variants
 
 
-class IndustrialDatasetScenarioProvider():
+class IndustrialDatasetScenarioProvider:
     """
     Scenario provider to process CSV files for experimental evaluation.
     Required columns are `self.tc_fieldnames`
@@ -78,7 +80,6 @@ class IndustrialDatasetScenarioProvider():
         self.tcdf["Duration"] = self.tcdf["Duration"].apply(
             lambda x: float(x.replace(',', '')) if type(x) == str else x)
 
-
     def __str__(self):
         return self.name
 
@@ -107,7 +108,7 @@ class IndustrialDatasetScenarioProvider():
         # Convert the solutions to a list of dict
         seltc = builddf[self.tc_fieldnames].to_dict('records')
 
-        self.total_build_duration = builddf['Duration'].sum()        
+        self.total_build_duration = builddf['Duration'].sum()
         total_time = self.total_build_duration * self.avail_time_ratio
 
         # This test set is a "scenario" that must be evaluated.
@@ -141,7 +142,7 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
         # Read the variants (additional file)
         self.variants = pd.read_csv(
             variantsfile, sep=';', parse_dates=['LastRun'])
-        
+
         # We remove weird characters
         self.variants['Variant'] = self.variants['Variant'].apply(
             lambda x: x.translate({ord(c): "_" for c in "!#$%^&*()[]{};:,.<>?|`~=+"}))
@@ -162,13 +163,13 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
 
         if not base_scenario:
             return None
-        
+
         variants = self.variants.loc[self.variants.BuildId == self.build]
-                
+
         self.scenario = VirtualHCSScenario(testcases=base_scenario.get_testcases(),
                                            available_time=base_scenario.get_available_time(),
                                            build_id=self.build,
                                            total_build_duration=self.total_build_duration,
                                            variants=variants)
-        
+
         return self.scenario
