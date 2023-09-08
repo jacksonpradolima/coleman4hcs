@@ -137,7 +137,9 @@ class Environment(object):
                                      str(agent.get_reward_function()),
                                      reward,
                                      self.scenario_provider.total_build_duration,
-                                     (end - start) + bandit_duration, np.mean(agent.last_reward), action)
+                                     (end - start) + bandit_duration, 
+                                     np.mean(agent.last_reward), 
+                                     action)
 
                 # If we are working with HCS scenario and there are variants
                 if type(vsc) == VirtualHCSScenario and len(vsc.get_variants()) > 0:
