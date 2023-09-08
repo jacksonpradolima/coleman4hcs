@@ -59,7 +59,7 @@ class Bandit:
 
     def pull(self, action):
         """
-        Simulate pulling an arm. To be implemented by subclasses.
+        Simulate pulling an arm. To be implemented by subclasses.        
         """
 
         return NotImplementedError('You must to implemented this function')

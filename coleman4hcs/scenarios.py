@@ -101,7 +101,7 @@ class IndustrialDatasetScenarioProvider:
         # We use ';' separated values to avoid issues with thousands
         self.tcdf = pd.read_csv(tcfile, sep=';', parse_dates=['LastRun'])
         self.tcdf["Duration"] = self.tcdf["Duration"].apply(
-            lambda x: float(x.replace(',', '')) if type(x) == str else x)
+            lambda x: float(x.replace(',', '')) if isinstance(x, str) else x)
 
     def __str__(self):
         return self.name
