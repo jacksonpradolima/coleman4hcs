@@ -4,14 +4,15 @@ import pandas as pd
 from coleman4hcs.evaluation import EvaluationMetric
 
 
-class Bandit(object):
+class Bandit:
     """
-    A Bandit
+    Represents a multi-armed bandit model.
     """
 
     def __init__(self, arms: List[Dict]):
         """
-        Init a Bandit with the its arms
+        Initialize a Bandit with its arms.
+        
         :param arms: The arms of the bandit (Test Cases record). Required columns are `self.tc_fieldnames`
         """
         # ColName | Description
@@ -39,50 +40,48 @@ class Bandit(object):
         self.arms = self.arms.infer_objects()
 
     def reset(self):
+        """
+        Reset the arms.
+        """
+
         self.arms = pd.DataFrame(columns=self.tc_fieldnames)
 
     def get_arms(self):
         return self.arms['Name'].tolist()
 
-    def add_arm(self, arm: Dict):
-        """
-        Add an arm in the bandit
-        :param arm:
-        :return:
-        """
-        self.arms = self.arms.append(pd.DataFrame([arm], columns=self.tc_fieldnames), ignore_index=True)
-
     def add_arms(self, arms: List[Dict]):
         """
-        Add an arm in the bandit
-        :param arms:
-        :return:
+        Add one or multiple arms to the bandit.
+        
+        :param arms: List of arms.        
         """
         self.arms = pd.concat([self.arms, pd.DataFrame(arms, columns=self.tc_fieldnames)], ignore_index=True)
 
     def pull(self, action):
+        """
+        Simulate pulling an arm. To be implemented by subclasses.
+        """
+
         return NotImplementedError('You must to implemented this function')
 
     def update_priority(self, action):
         """
-        We update the Priority column with the priorities
-        :param action: List of test cases in order of prioritization
-        :return:
+        Update the Priority column with the priorities
+        :param action: List of test cases in order of prioritization        
         """
         self.arms['CalcPrio'] = self.arms['Name'].apply(lambda x: action.index(x) + 1)
 
 
 class DynamicBandit(Bandit):
     """
-    Dynamic bandit is a kind of Bandit that allows us to manage its arms
+    A Bandit that allows dynamic management of its arms.
     """
-    def __init__(self, arms: List[Dict]):
-        """
-        :param arms: The arms of the bandit (Test Cases record)
-        """
-        super().__init__(arms)
 
     def update_arms(self, arms: List[Dict]):
+        """
+        Update the arms of the bandit.
+        """
+
         # I can replace all arms because the bandit don't need to maintain a "history"
         # The agent needs to maintain the "history"
         self.reset()
@@ -93,15 +92,12 @@ class DynamicBandit(Bandit):
         # Convert columns
         self.arms = self.arms.infer_objects()
 
-    def update_priority(self, action):
-        super().update_priority(action)
-
 
 class EvaluationMetricBandit(DynamicBandit):
+    """ 
+     A Dynamic Bandit that provides feedback based on an evaluation metric.
     """
-     Evaluation Metric Bandit is a kind of Dynamic Bandit that provide
-     feedback for a pull (action) based on an evaluation metric, such as RNFail and TimeRank
-    """
+
     def __init__(self, arms: List[Dict], evaluation_metric: EvaluationMetric):
         """
         :param arms: The arms of the bandit (Test Cases record)
@@ -115,13 +111,14 @@ class EvaluationMetricBandit(DynamicBandit):
 
     def pull(self, action):
         """
-        Submit prioritized test set for evaluation step the environment and get new measurements
+        Submit prioritized test set for evaluation and get new measurements.
+        
         :param action: The Prioritized Test Suite List
         :return: The result ("state") of an evaluation by Evaluation Metric
         """
         super().update_priority(action)
 
-        # After, we must to order the test cases based on the priorities
+        # After, we need to order the test cases based on the priorities
         # Sort tc by Prio ASC (for backwards scheduling)
         self.arms = self.arms.sort_values(by=['CalcPrio'])
 
