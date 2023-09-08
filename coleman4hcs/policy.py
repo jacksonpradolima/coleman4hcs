@@ -3,6 +3,7 @@ import pandas as pd
 import random
 
 from coleman4hcs.agent import Agent, RewardSlidingWindowAgent, ContextualAgent, SlidingWindowContextualAgent
+from coleman4hcs.exceptions import QException
 
 
 class Policy(object):
@@ -233,7 +234,7 @@ class SlMABPolicy(Policy):
     def __str__(self):
         # return f"SLMAB ("
         # leave with out ")" to agent put the window size
-        return f"SlMAB ("
+        return "SlMAB ("
 
     def choose_all(self, agent: Agent):
         # New test cases
@@ -354,12 +355,12 @@ class LinUCBPolicy(Policy):
         for a, x in zip(actions, features):
             x_i = np.reshape(x, (-1, 1))
 
-            A_inv = self.context['A_inv'][a]
-            theta_a = A_inv.dot(self.context['b'][a])
-            q = theta_a.T.dot(x_i) + self.alpha * np.sqrt(x_i.T.dot(A_inv).dot(x_i))
+            a_inv = self.context['A_inv'][a]
+            theta_a = a_inv.dot(self.context['b'][a])
+            q = theta_a.T.dot(x_i) + self.alpha * np.sqrt(x_i.T.dot(a_inv).dot(x_i))
 
             if len(q) > 1:
-                raise Exception("[LinUCB] q is more than 1: {q}")
+                raise QException("[LinUCB] q is more than 1: {q}")
 
             records.append([a, q[0]])
 
@@ -424,9 +425,9 @@ class SWLinUCBPolicy(LinUCBPolicy):
         for a, x in zip(actions, features):
             x_i = np.reshape(x, (-1, 1))
 
-            A_inv = self.context['A_inv'][a]
-            theta_a = A_inv.dot(self.context['b'][a])
-            q = theta_a.T.dot(x_i) + self.alpha * np.sqrt(x_i.T.dot(A_inv).dot(x_i))
+            a_inv = self.context['A_inv'][a]
+            theta_a = a_inv.dot(self.context['b'][a])
+            q = theta_a.T.dot(x_i) + self.alpha * np.sqrt(x_i.T.dot(a_inv).dot(x_i))
 
             # This part is applied only when the iteration reachs the sliding window size
             # and if the test case is on the sliding window     
@@ -437,7 +438,7 @@ class SWLinUCBPolicy(LinUCBPolicy):
             q = (1 - occ / agent.window_size) * q
 
             if len(q) > 1:
-                raise Exception("[LinUCB] q is more than 1: {q}")
+                raise QException("[LinUCB] q is more than 1: {q}")
 
             records.append([a, q[0]])
 
