@@ -1,0 +1,50 @@
+name: Pylint
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+jobs:
+  pylint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # To retrieve the preceding commit (deeply).
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: python -m pip install pylint
+
+      - name: Create Pylintrc file
+        run: |
+          echo "[MASTER]" > .pylintrc
+          echo "init-hook=\"from pylint.config import find_pylintrc; import os, sys; sys.path.append(os.path.dirname(find_pylintrc())+ '/web')\"" >> .pylintrc
+          echo "max-line-length=120" >> .pylintrc
+          echo "disable=" >> .pylintrc
+          echo "    C0103, # uppercase naming style" >> .pylintrc
+          echo "    logging-format-interpolation, # use %s for logging" >> .pylintrc          
+          echo "    broad-except, # we want to catch all exceptions" >> .pylintrc
+          echo "    too-many-locals, # we don't care" >> .pylintrc          
+          echo "    too-few-public-methods, # enum classes don't normally have methods" >> .pylintrc
+
+      - name: Get Python changed files
+        id: changed-py-files
+        uses: tj-actions/changed-files@v35
+        with:
+          files: |
+            *.py
+            **/*.py
+
+      - name: Run pylint step if python files changed
+        if: steps.changed-py-files.outputs.any_changed == 'true'
+        run: |
+          echo "One or more py files not in the doc folder has changed."
+          echo "List all the files that have changed: ${{ steps.changed-py-files.outputs.all_changed_files }}"
+          pylint --rcfile .pylintrc ${{ steps.changed-py-files.outputs.all_changed_files }}
