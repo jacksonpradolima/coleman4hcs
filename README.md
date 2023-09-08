@@ -1,7 +1,5 @@
 [<img align="right" src="https://cdn.buymeacoffee.com/buttons/default-orange.png" width="217px" height="51x">](https://www.buymeacoffee.com/pradolima)
 
-[![forthebadge made-with-python](http://ForTheBadge.com/images/badges/made-with-python.svg)](https://www.python.org/)
-
 [![YouTube Badge](https://img.shields.io/badge/Presentations-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white)](https://github.com/jacksonpradolima/coleman4hcs#references)
 
 # Coleman4HCS
@@ -31,15 +29,16 @@ Furthermore, this repository contains the adaptation to deal with Highly-Configu
 
 For more information about **WTS** and **VTS** read **Ref2** in [References](#references).
 
-![](https://img.shields.io/badge/python-3.6+-blue.svg)
+![](https://img.shields.io/badge/python-3.11.4+-blue.svg)
 
 # Getting started
 
 - [Citation](#citation)
-- [Installing required dependencies](#installing-required-dependencies)
+- [Installation](#installing-required-dependencies)
 - [Datasets](#datasets)	
 - [About the files input](#about-the-files-input)	
 - [Using the tool](#using-the-tool)
+    - [MAB Policies Available](#mab-policies-available)
 	- [Running for a system non HCS](#running-for-a-system-non-hcs)
 	- [Running for an HCS system](#running-for-an-hcs-system)
 	  - [Whole Test Set Strategy](#whole-test-set-strategy)
@@ -72,13 +71,48 @@ If this tool contributes to a project which leads to a scientific publication, I
 
 ```
 
-# Installing required dependencies
+# Installation
 
-The following command allows to install the required dependencies:
 
+To use this tool, follow these steps:
+
+1. Clone the repository: `git clone git@github.com:jacksonpradolima/coleman4hcs.git`
+2. Install pyenv for managing Python versions. Refer to the [pyenv documentation](https://github.com/pyenv/pyenv#installation) for installation instructions specific to your operating system.
+3. Install the required Python version for your project using pyenv. Run the following command in the project's root directory:
+
+```shell
+pyenv install 3.11.4
 ```
- $ pip install -r requirements.txt
- ```
+
+4. Create a virtual environment for the project using pyenv. Run the following command:
+
+```shell
+pyenv virtualenv 3.11.4 <env-name>
+```
+
+Replace <env-name> with a name for your virtual environment.
+
+5. Activate the virtual environment:
+
+```shell
+pyenv activate <env-name>
+```
+
+6. Install the required dependencies using pip:
+
+```shell
+pip install -r requirements.txt
+```
+
+7. Copy the .env.example file to .env:
+
+```shell
+cp .env.example .env
+```
+
+8. Edit the .env file and provide values for the following environment variables:
+
+-   `CONFIG_FILE`: The path to your configuration file (e.g., ./config.toml).
 
 # Datasets 
 
@@ -109,69 +143,146 @@ During the **COLEMAN**'s execution, we use **data-variants** to identify the var
 
 #  Using the tool
 
-## Running for a system non HCS
+To use COLEMAN, you need to provide the necessary configurations. This includes setting up environment variables and configuration files.
 
-To run COLEMAN, do:
+Configure the utility by editing the `config.toml` file located in the project's root directory. 
+The file contains various sections for configuring Execution, Experiment, and Algorithms. 
+Modify the values as per your project's requirements. Here's an example of the config.toml file:
 
-```
-python main.py --project_dir 'data'  --policies 'Random' 'FRR' --output_dir 'results/experiments' --datasets 'alibaba@druid' 
+```toml
+[execution]
+# Execution Configutation
+parallel_pool_size = 10
+independent_executions = 30
+
+[experiment]
+# Experiment Configuration
+scheduled_time_ratio = [0.1, 0.5, 0.8]
+datasets_dir = "example"
+datasets = ["fakedata"]
+
+# WTS Example
+#datasets_dir = "examples/core@dune-common"
+#datasets = ["dune@total"]
+
+# VTS Example
+#datasets_dir = "examples/core@dune-common"
+#datasets = ["dune@debian_10 clang-7-libcpp-17", "dune@debian_11 gcc-10-20", "dune@ubuntu_20_04 clang-10-20"]
+
+experiment_dir = "results/experiments/"
+rewards = ["RNFail", "TimeRank"]
+policies = ['Random', 'Greedy', 'EpsilonGreedy', 'UCB', 'FRRMAB']
+
+[algorithm.frrmab]
+# Algorithm Configuration for FRRMAB
+window_sizes = [100]
+timerank = { c = 0.5 }
+rnfail = { c = 0.3 }
+
+[algorithm.ucb]
+# Algorithm Configuration for UCB
+timerank = { c = 0.5 }
+rnfail = { c = 0.3 }
+
+[algorithm.epsilongreedy]
+# Algorithm Configuration for Epsilon-Greedy
+timerank = { epsilon = 0.5 }
+rnfail = { epsilon = 0.3 }
+
+[hcs_configuration]
+# HCS Configuration
+wts_strategy = false
 ```
 
 **where:** 
-- `--project_dir` is the directory that contains your system. For instance, we desire to run the algorithm for the systems that are inside the directory **data**. Please, you must to inform the complete path.
-- `--datasets` is an array that represents the datasets to analyse. It's the folder name inside `--project_dir` which contains the required file inputs.
-- `--output_dir` is the directory where we will save the results.
+- Execution Configuration:
+  - `parallel_pool_size` is the number of threads to run **COLEMAN** in parallel.
+  - `independent_executions` is the number of independent experiments we desire to run.
+- Experiment Configuration:
+  - `scheduled_time_ratio` represents the Schedule Time Ratio, that is, time constraints that represents the time available to run the tests. **Default**: 0.1 (10%), 0.5 (50%), and 0.8 (80%) of the time available.
+  - `datasets_dir` is the directory that contains your system. For instance, we desire to run the algorithm for the systems that are inside the directory **data**.
+  - `datasets` is an array that represents the datasets to analyse. It's the folder name inside `datasets_dir` which contains the required file inputs.
+  - `experiment_dir` is the directory where we will save the results.
+  - `rewards` defines the reward functions to be used, available RNFailReward and TimeRankReward (See **Ref1** in [References](#references)).
+  - `policies` selects the Policies available on **COLEMAN**, such as Random, Greedy, EpsilonGreedy, UCB, and FRRMAB.
+- Algorithm Configuration: each algorithm has its own individual configuration. Next, we present some of them:
+  - FRRAB: 
+    - `window_sizes` is an array that contains the sliding window sizes
+    - `c` is the scaling factor. It's defined for each reward function used.
+  - UCB:  
+    - `c` is the scaling factor. It's defined for each reward function used.
+  - Epsilon-Greedy:
+    - `epsilon` is the epsilon value. It's defined for each reward function used.
+- HCS Configuration:
+  - `wts_strategy` represents the usage of Whole Test Set (WTS) Strategy for a system HCS (See [Whole Test Set Strategy](#whole-test-set-strategy)).
 
-The another parameters available are:
-- `--sched_time_ratio` that represents the Schedule Time Ratio, that is, time constraints that represents the time available to run the tests. **Default**: 0.1 (10%), 0.5 (50%), and 0.8 (80%) of the time available.
-- `--rewards` defines the reward functions to be used, available RNFailReward and TimeRankReward (See **Ref1** in [References](#references)). 
-- `--parallel_pool_size` is the number of threads to run **COLEMAN** in parallel.
-- `--scaling_factor_frr` is an array that contains the scaling factors to be used by the FRRMAB policy
-- `--scaling_factor_ucb` is an array that contains the scaling factors to be used by the UCB policy
-- `--epsilon` is an array that contains the epsilon values to be used by the Epsilon policy
-- `--window_sizes` is an array that contains the sliding window sizes to be used with FRRMAB policy
+##  MAB Policies Available
 
+The following MAB Policies are available on **COLEMAN**:
+
+| **Policy**        | **Description**                                                                                                                                                                                                                         | **Use Case**                                                                                                                    |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| **Random**        | Selects actions purely based on random choice without any preference.                                                                                                                                                                   | Used as a baseline to compare with other more sophisticated policies. Doesn't use prior knowledge.                               |
+| **Greedy**        | Always selects the action with the highest estimated reward. Exploits current knowledge without exploring other options.                                                                                                                | Effective in environments where reward probabilities are static and unchanging.                                                  |
+| **EpsilonGreedy** | This is a variation of the Greedy policy. With probability \( \epsilon \), a random action is selected (exploration), and with probability \( 1 - \epsilon \), the action with the highest estimated reward is selected (exploitation). | Useful in environments with uncertainty about the optimal action or when the environment changes over time.                       |
+| **UCB**           | Selects actions based on both their estimated rewards and the uncertainty around these rewards. Balances exploration and exploitation.                                                                                                  | Effective when trials are limited and there's a need to explore and exploit simultaneously.                                       |
+| **FRRMAB**        | A more sophisticated MAB policy that considers feedback from previous actions using a sliding window to adjust estimated rewards for future decisions.                                                                                  | Beneficial in dynamic environments where actions' reward probabilities change and feedback from previous actions is valuable.     |
+
+## Running for Non-HCS System
+
+To execute **COLEMAN** for a non-HCS system, first update the variables in the provided **TOML** file:
+
+- `datasets_dir = "examples"`
+- `datasets = ["fakedata]"` 
+
+Subsequently, you can run the program with the following command:
+
+```
+python main.py 
+```
 
 ## Running for an HCS system
 
-In this option, we apply two strategies to find optimal solutions for the variants: **WTS** and **VTS**.
-For more information read **Ref2** in [References](#references).
+For HCS systems, we provide two distinct strategies to determine optimal solutions for variants:
+**WTS** (Whole Test Set Strategy) and **VTS** (Variant Test Set Strategy). 
+You can learn more about these in **Ref2** under the [References](#references) section.
+
+When employing the **WTS** and **VTS** strategies, regard `datasets_dir` as the directory housing your system. 
+For the **WTS** approach, variants of a system are discerned from subfolders within the `datasets_dir` directory. 
+Essentially, `datasets_dir` symbolizes the project name. 
+This differentiation in execution methodology between HCS and non-HCS systems is crucial, 
+alongside the `wts_strategy` variable. For clarity, please inspect our example directory.
 
 ### Whole Test Set Strategy
 
-**WTS** prioritizes the test set composed by the union of the test cases of all variants. To run this strategy, do: 
+The **WTS** strategy prioritizes the test set composed by the union of the test cases of all variants.
+To employ this strategy, modify the **TOML** file as follows:
 
-```
-python main.py --project_dir 'data/libssh@libssh-mirror' --considers_variants 'true' --datasets 'libssh@total' --output_dir 'results/optimal_deterministic'
-```
+- `wts_strategy = True`;
 
-**where:** 
-- `--project_dir` is the directory that contains your system. To run the variants of the **libssh**, we created subfolders inside the **libssh@libssh-mirror** directory. In this way, **libssh@libssh-mirror** represents the *project name*. Please, you need to inform the complete path.
-- `--datasets` is an array that represents the datasets to analyse. It's the folder name inside `--project_dir` which contains the required file inputs. 
-- `--considers_variants` is a flag to consider prioritizing the variants of the systems based on the **WTS** strategy. 
-- `--output_dir` is the directory where we will save the results.
-
-The another parameters available are:
-- `--sched_time_ratio` that represents the Schedule Time Ratio, that is, time constraints that represents the time available to run the tests. **Default**: 0.1 (10%), 0.5 (50%), and 0.8 (80%) of the time available.
-- `--rewards` defines the reward functions to be used, available RNFailReward and TimeRankReward (See **Ref1** in [References](#references)). 
-- `--parallel_pool_size` is the number of threads to run **COLEMAN** in parallel.
-- `--scaling_factor_frr` is an array that contains the scaling factors to be used by the FRRMAB policy
-- `--scaling_factor_ucb` is an array that contains the scaling factors to be used by the UCB policy
-- `--epsilon` is an array that contains the epsilon values to be used by the Epsilon policy
-- `--window_sizes` is an array that contains the sliding window sizes to be used with FRRMAB policy
+For a practical demonstration, set `datasets = ["dune@total"]`
+(a dataset amalgamating test cases from all variants) 
+and `datasets_dir = "examples/core@dune-common"`.
+This provides a concise example using the Dune dataset. 
+More details on the dataset are available under [Datasets](#datasets).
 
 ### Variant Test Set Strategy 
 
-**VTS** prioritizes each variant as a system, that is, treating each variant independently. 
-To run this strategy is similar to **WTS**, do: 
+Contrastingly, the **VTS** approach evaluates each variant as an isolated system.
+To harness this strategy, adjust the **TOML** file accordingly:
 
-```
-python main.py --project_dir "data/libssh@libssh-mirror" --datasets 'libssh@CentOS7-openssl' 'libssh@CentOS7-openssl 1.0.x-x86-64' 
-```
+- `wts_strategy = False`;
 
-**where:** each dataset represents a variant.
+As example, use `datasets = ["dune@debian_10 clang-7-libcpp-17", "dune@debian_11 gcc-10-20", 
+"dune@ubuntu_20_04 clang-10-20"]` and `datasets_dir = "examples/core@dune-common"`
+to run one small example using Dune dataset (See [Datasets](#datasets)). 
+Now, we consider each variant as single system.
 
-In this command, we run each variant as single system. 
+As a hands-on example, set `datasets = 
+["dune@debian_10 clang-7-libcpp-17", "dune@debian_11 gcc-10-20", "dune@ubuntu_20_04 clang-10-20"]`
+and `datasets_dir = "examples/core@dune-common"`. 
+This offers a succinct example using the Dune dataset, treating each variant as a unique system. 
+Further insights into the dataset are available in the [Datasets](#datasets) section.
 
 # References
 

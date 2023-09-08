@@ -61,7 +61,7 @@ class MonitorCollector(object):
 
     def collect_from_temp(self):
         # Pass the temp dataframe to the original dataframe
-        self.df = self.df.append(self.temp_df)
+        self.df = pd.concat([self.df, self.temp_df])
         # Empty the temp dataframe
         self.temp_df = pd.DataFrame(columns=self.col_names)
         # This can boost our performance by around 10 times
