@@ -35,10 +35,10 @@ class RunningEvaluation(unittest.TestCase):
         napfd.evaluate(records)
         print("NAPFD:", napfd.fitness, "- APFDc:", napfd.cost)
 
-        napfdV = NAPFDVerdictMetric()
-        napfdV.update_available_time(available_time * 0.5)  # 50%
-        napfdV.evaluate(records)
-        print("NAPFD-Verdict:", napfdV.fitness, "- APFDc:", napfd.cost)
+        napfd_v = NAPFDVerdictMetric()
+        napfd_v.update_available_time(available_time * 0.5)  # 50%
+        napfd_v.evaluate(records)
+        print("NAPFD-Verdict:", napfd_v.fitness, "- APFDc:", napfd.cost)
 
 
 if __name__ == '__main__':

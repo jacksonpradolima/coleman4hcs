@@ -1,10 +1,11 @@
+from abc import ABC, abstractmethod
 from typing import Dict, List
 
 import pandas as pd
 from coleman4hcs.evaluation import EvaluationMetric
 
 
-class Bandit:
+class Bandit(ABC):
     """
     Represents a multi-armed bandit model.
     """
@@ -57,6 +58,7 @@ class Bandit:
         """
         self.arms = pd.concat([self.arms, pd.DataFrame(arms, columns=self.tc_fieldnames)], ignore_index=True)
 
+    @abstractmethod
     def pull(self, action):
         """
         Simulate pulling an arm. To be implemented by subclasses.        

@@ -194,8 +194,7 @@ class FRRMABPolicy(Policy):
         ranking = np.array(list(range(1, len(reward_arm) + 1)))
 
         # Compute decay values
-        decay_values = np.power(self.decayed_factor, ranking) * reward_arm
-        # decay_values = np.power(self.decayed_factor, ranking * reward_arm)
+        decay_values = np.power(self.decayed_factor, ranking) * reward_arm        
 
         # Compute FRR
         frr = decay_values / sum(decay_values)
@@ -211,8 +210,6 @@ class FRRMABPolicy(Policy):
         # T column contains the count of usage for each "arm"
         selected_times = np.array(self.history['T'].values.tolist())
         exploration = np.sqrt((2 * np.log(sum(selected_times))) / selected_times)
-        # selected_times = np.array(self.history['ActionAttempts'].values.tolist())
-        # exploration = np.sqrt((2 * np.log(reward_arm)) / selected_times)
         exploration[np.isnan(exploration)] = 0
         self.history['Q'] = frr + self.c * exploration
 
