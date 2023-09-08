@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import List
 
 import numpy as np
@@ -5,7 +6,7 @@ import numpy as np
 from coleman4hcs.evaluation import EvaluationMetric
 
 
-class Reward(object):
+class Reward(ABC):
     """
     A reward function is used by the agent in the observe method
     """
@@ -13,6 +14,7 @@ class Reward(object):
     def get_name(self):
         return NotImplementedError
 
+    @abstractmethod
     def evaluate(self, reward: EvaluationMetric, last_prioritization: List[str]):
         """
         The reward function evaluate a bandit result and return a reward        

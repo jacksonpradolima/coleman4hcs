@@ -116,7 +116,7 @@ class Environment(object):
                                                                        vsc)
 
                 # If we are working with HCS scenario and there are variants
-                if type(vsc) == VirtualHCSScenario and len(vsc.get_variants()) > 0:
+                if self.has_variants(vsc):
                     self.run_prioritization_hcs(agent,
                                                 action,
                                                 avail_time_ratio,
@@ -127,12 +127,23 @@ class Environment(object):
                                                 start,
                                                 t,
                                                 vsc)
-
-            # Save experiment each 50000 builds
-            if restore and t % 50000 == 0:
-                self.save_experiment(experiment, t, bandit)
+            
+            self.save_periodically(restore, t, experiment, bandit)
 
     def run_prioritization(self, agent, bandit, bandit_duration, experiment, print_log, t, vsc):
+        """
+        Run the prioritization process for a given agent and scenario.
+    
+        :param agent: The agent that is being used for the prioritization.
+        :param bandit: The bandit mechanism used for choosing actions.
+        :param bandit_duration: Time taken by the bandit process.
+        :param experiment: The current experiment number.
+        :param print_log: Flag to indicate if logs should be printed.
+        :param t: The current step or iteration of the simulation.
+        :param vsc: The virtual scenario being considered.
+        :return: tuple containing the chosen action by the agent, the ending time of the process, 
+                 the name of the experiment, and the starting time of the process.
+        """
         # MAB or CMAB                
         if type(agent) in [ContextualAgent, SlidingWindowContextualAgent]:
             # For a Contextual agent, we first update the current context information
@@ -195,6 +206,21 @@ class Environment(object):
                                t,
                                vsc):
 
+        """
+        Run the prioritization process for a given agent and HCS scen'ario.
+
+        :param agent: The agent that is being used for the prioritization.
+        :param action: The chosen action by the agent.
+        :param avail_time_ratio: The available time ratio for the experiment.
+        :param bandit_duration: Time taken by the bandit process.
+        :param end: The ending time of the process.
+        :param exp_name: The name of the experiment.
+        :param experiment: The current experiment number.
+        :param start: The starting time of the process.
+        :param t: The current step or iteration of the simulation.
+        :param vsc: The virtual HCS scenario being considered.
+        """
+    
         # Get the variants that exist in the current commit
         variants = vsc.get_variants()
 
@@ -228,6 +254,28 @@ class Environment(object):
                                                     (end - start) + bandit_duration,
                                                     0,
                                                     df['Name'].tolist())
+    
+    def has_variants(self, vsc):
+        """
+        Check if the given scenario has variants.
+
+        :param vsc: The virtual scenario to check for variants.
+        :returns: True if the scenario has variants, False otherwise.
+        """
+        return isinstance(vsc, VirtualHCSScenario) and len(vsc.get_variants()) > 0
+
+    def save_periodically(self, restore, t, experiment, bandit):
+        """
+       Save the experiment periodically based on a predefined interval.
+
+       :param restore: Flag to indicate if the experiment should be restored.
+       :param  t: The current step or iteration of the simulation.
+       :param  experiment: The current experiment number.
+       :param  bandit: The current bandit being used in the simulation.
+       """
+        # Save experiment each 50000 builds
+        if restore and t % 50000 == 0:
+            self.save_experiment(experiment, t, bandit)
 
     def run(self, experiments=1, trials=100, print_log=False, bandit_type: DynamicBandit = EvaluationMetricBandit,
             restore=True):

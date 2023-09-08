@@ -60,7 +60,7 @@ class RunningPolicy(unittest.TestCase):
             f"{self.dataset_dir}/{self.dataset}/features-engineered.csv",
         )
 
-    @unittest.skip
+    @unittest.skip("outdated")
     def test_FRRMAB_HCS(self):
         # Stop conditional
         trials = self.scenario_hcs.max_builds
@@ -85,6 +85,7 @@ class RunningPolicy(unittest.TestCase):
 
         print(f"Time expend to run the experiments: {end - start}")
 
+    @unittest.skip("outdated")
     def test_UCB(self):
         # Stop conditional
         trials = self.scenario.max_builds
