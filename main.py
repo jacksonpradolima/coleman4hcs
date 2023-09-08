@@ -8,11 +8,20 @@ from dotenv import load_dotenv
 
 import coleman4hcs.policy
 import coleman4hcs.reward
-from coleman4hcs.agent import RewardAgent, RewardSlidingWindowAgent
+from coleman4hcs.agent import (
+    RewardAgent, 
+    RewardSlidingWindowAgent, 
+    ContextualAgent, 
+    SlidingWindowContextualAgent
+)
 from coleman4hcs.environment import Environment
 from coleman4hcs.evaluation import NAPFDVerdictMetric
-from coleman4hcs.policy import FRRMABPolicy
-from coleman4hcs.scenarios import IndustrialDatasetHCSScenarioProvider, IndustrialDatasetScenarioProvider
+from coleman4hcs.policy import FRRMABPolicy, SWLinUCBPolicy, LinUCBPolicy
+from coleman4hcs.scenarios import (
+    IndustrialDatasetHCSScenarioProvider, 
+    IndustrialDatasetScenarioProvider,
+    IndustrialDatasetContextScenarioProvider
+)
 from config.config import get_config
 
 warnings.filterwarnings("ignore")
@@ -65,7 +74,8 @@ def create_agents_for_policy(policy, rew_fun, window_sizes):
     Parameters:
     - policy (Policy): The policy instance.
     - rew_fun (RewardFunction): The reward function instance.
-    - window_sizes (list): List of window sizes (only relevant for policies that use Sliding Window such as FRRMABPolicy).
+    - window_sizes (list): List of window sizes (only relevant for policies 
+    that use Sliding Window such as FRRMABPolicy).
 
     Returns:
     - list: A list of agent instances.
@@ -73,10 +83,14 @@ def create_agents_for_policy(policy, rew_fun, window_sizes):
 
     if isinstance(policy, FRRMABPolicy):
         return [RewardSlidingWindowAgent(policy, rew_fun, w) for w in window_sizes]
+    elif isinstance(policy, SWLinUCBPolicy):
+        return [SlidingWindowContextualAgent(policy, rew_fun, w) for w in window_sizes]
+    elif isinstance(policy, LinUCBPolicy):
+        return [ContextualAgent(policy, rew_fun)]
     return [RewardAgent(policy, rew_fun)]
 
 
-def get_scenario(datasets_dir, dataset, sched_time_ratio, use_hcs):
+def get_scenario(datasets_dir, dataset, sched_time_ratio, use_hcs, use_context, context_config, feature_groups):
     """
     Return the appropriate scenario provider based on the given configuration.
 
@@ -97,9 +111,18 @@ def get_scenario(datasets_dir, dataset, sched_time_ratio, use_hcs):
       An instance of the scenario provider based on the given configuration.
     """
     base_args = [f"{datasets_dir}/{dataset}/features-engineered.csv", sched_time_ratio]
-    if use_hcs:
+    
+    if use_hcs and not use_context:
         scenario_cls = IndustrialDatasetHCSScenarioProvider
         base_args.insert(1, f"{datasets_dir}/{dataset}/data-variants.csv")
+    elif not use_hcs and use_context:
+        scenario_cls = IndustrialDatasetContextScenarioProvider
+        base_args[0] = f"{datasets_dir}/{dataset}/features-engineered-contextual.csv"
+        base_args.insert(1, feature_groups['feature_group_name'])
+        base_args.insert(2, feature_groups['feature_group_values'])
+        base_args.insert(3, context_config['previous_build'])    
+    elif use_hcs and use_context:
+        raise NotImplementedError
     else:
         scenario_cls = IndustrialDatasetScenarioProvider
 
@@ -142,6 +165,15 @@ if __name__ == '__main__':
     # HCS Configuration
     use_hcs = config.get('hcs_configuration', False).get('wts_strategy', False)
 
+    # Contextual Information                                    
+    (
+        context_config,
+        feature_groups
+    ) = map(config['contextual_information'].get, [
+        'config',
+        'feature_group'
+    ])
+
     # Load policy objects along with the target reward functions
     policies = {
         policy_name: {
@@ -164,6 +196,12 @@ if __name__ == '__main__':
             algorithm_configs.get(policy_name.lower(), {}).get('window_sizes', [])
         )
     ]
+    
+    # Check if there's an agent of type SlidingWindowContextualAgent or ContextualAgent
+    has_sliding_window_contextual_agent = any(isinstance(agent, SlidingWindowContextualAgent) for agent in agents)
+    has_contextual_agent = any(isinstance(agent, ContextualAgent) for agent in agents)
+
+    use_context = has_contextual_agent or has_sliding_window_contextual_agent
 
     evaluation_metric = NAPFDVerdictMetric()
 
@@ -173,7 +211,7 @@ if __name__ == '__main__':
         Path(experiment_directory).mkdir(parents=True, exist_ok=True)
 
         for dataset in datasets:
-            scenario = get_scenario(datasets_dir, dataset, tr, use_hcs)
+            scenario = get_scenario(datasets_dir, dataset, tr, use_hcs, use_context, context_config, feature_groups)
 
             # Stop conditional
             trials = scenario.max_builds

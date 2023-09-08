@@ -166,6 +166,55 @@ class RewardAgent(Agent):
         super().reset()
 
 
+class ContextualAgent(RewardAgent):
+    """
+    The Reward Window Agent learns using a reward function and contextual information that the user can choose
+    """
+
+    def __init__(self, policy, reward_function):
+        super().__init__(policy, reward_function)
+
+        # List of features
+        self.context_features = None
+
+    def __str__(self):
+        return f'{str(self.policy)}'
+
+    def update_actions(self, actions):
+        # Preserve the actual actions and remove the unnecessary
+        self.actions = self.actions[self.actions.Name.isin(actions)]
+
+        # Find the new actions (they are not in the actions that already exists)
+        new_actions = [action for action in actions if action not in self.actions['Name'].tolist()]
+
+        # Update the information about the arms in the policy
+        self.policy.update_actions(self, new_actions)
+
+        new_actions_df = pd.DataFrame(new_actions, columns=['Name'])
+        new_actions_df[['ValueEstimates', 'ActionAttempts', 'Q']] = 0
+
+        self.actions = pd.concat([self.actions, new_actions_df], ignore_index=True)
+
+    def update_bandit(self, bandit):
+        self.bandit = bandit
+        self.update_actions(self.bandit.get_arms())
+
+    def update_context(self, context_features):
+        self.context_features = context_features
+
+    def update_features(self, features):
+        self.features = features
+
+    def choose(self) -> List[str]:
+        """
+        The policy choose an action.
+        An action is the Priorized Test Suite
+        :return: List of Test Cases in ascendent order of priority
+        """
+        self.last_prioritization = self.policy.choose_all(self)
+        return self.last_prioritization
+
+
 class RewardSlidingWindowAgent(RewardAgent):
     """
     An agent that learns using a sliding window and a reward function.
@@ -190,7 +239,7 @@ class RewardSlidingWindowAgent(RewardAgent):
         """
 
         :param reward: The reward (result) obtained by the evaluation metric
-        """        
+        """
         self.update_action_attempts()
 
         # Get rewards for each test case
@@ -203,7 +252,100 @@ class RewardSlidingWindowAgent(RewardAgent):
         self.update_history()
         self.policy.credit_assignment(self)
 
-    def update_history(self):        
+    def update_history(self):
+        temp_hist = self.actions.copy()
+        temp_hist['T'] = self.t
+
+        self.history = pd.concat([self.history, temp_hist])
+        self.history = self.history.infer_objects()
+
+        # Truncate
+        unique_t = self.history['T'].unique()
+
+        if len(unique_t) > self.window_size:
+            # Remove older
+            min_t = max(unique_t) - self.window_size
+            self.history = self.history[self.history['T'] > min_t]
+
+
+class SlidingWindowContextualAgent(RewardAgent):
+    """
+    The Reward Window Agent learns using a reward function and contextual information that the user can choose
+    Additionally, it uses a sliding window
+    """
+
+    def __init__(self, policy, reward_function, window_size):
+        super().__init__(policy, reward_function)
+
+        self.window_size = window_size
+
+        # List of features
+        self.context_features = None
+
+        # Name | Action name
+        # ActionAttempts | Number of times action was chosen
+        # ValueEstimates | Reward values of an action
+        # T | Time of usage
+        self.hist_col_names = ['Name', 'ActionAttempts', 'ValueEstimates', 'Q', 'T']
+
+        self.history = pd.DataFrame(columns=self.hist_col_names)
+
+    def __str__(self):
+        return f'{str(self.policy)}, SW={self.window_size})'
+
+    def choose(self) -> List[str]:
+        """
+        The policy choose an action.
+        An action is the Priorized Test Suite
+        :return: List of Test Cases in ascendent order of priority
+        """
+        self.last_prioritization = self.policy.choose_all(self)
+        return self.last_prioritization
+
+    def update_actions(self, actions):
+        # Preserve the actual actions and remove the unnecessary
+        self.actions = self.actions[self.actions.Name.isin(actions)]
+
+        # Find the new actions (they are not in the actions that already exists)
+        new_actions = [action for action in actions if action not in self.actions['Name'].tolist()]
+
+        # Update the information about the arms in the policy
+        self.policy.update_actions(self, new_actions)
+
+        new_actions_df = pd.DataFrame(new_actions, columns=['Name'])
+        new_actions_df[['ValueEstimates', 'ActionAttempts', 'Q']] = 0
+
+        self.actions = pd.concat([self.actions, new_actions_df], ignore_index=True)
+
+    def update_bandit(self, bandit):
+        self.bandit = bandit
+        self.update_actions(self.bandit.get_arms())
+
+    def update_context(self, context_features):
+        self.context_features = context_features
+
+    def update_features(self, features):
+        self.features = features
+
+    def observe(self, reward: EvaluationMetric):
+        """
+
+        :param reward: The reward (result) obtained by the evaluation metric
+        """
+        self.update_action_attempts()
+
+        # Get rewards for each test case
+        self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
+
+        # Update value estimates
+        self.actions['ValueEstimates'] = self.actions['Name'].apply(
+            lambda x: self.last_reward[self.last_prioritization.index(x)])
+
+        self.t += 1
+        self.update_history()
+        self.policy.credit_assignment(self)
+
+    def update_history(self):
         temp_hist = self.actions.copy()
         temp_hist['T'] = self.t
 

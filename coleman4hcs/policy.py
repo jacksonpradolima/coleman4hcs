@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import random
 
-from coleman4hcs.agent import Agent
+from coleman4hcs.agent import Agent, RewardSlidingWindowAgent, ContextualAgent, SlidingWindowContextualAgent
 
 
 class Policy(object):
@@ -163,7 +163,7 @@ class FRRMABPolicy(Policy):
         # leave with out ")" to agent put the window size
         return f"FRRMAB (C={self.c}, D={self.decayed_factor}"
 
-    def choose_all(self, agent: Agent):
+    def choose_all(self, agent: RewardSlidingWindowAgent):
         # New test cases
         new_tcs = agent.actions[~agent.actions.Name.isin(self.history['Name'].tolist())]
         new_tcs = new_tcs['Name'].tolist()
@@ -214,3 +214,233 @@ class FRRMABPolicy(Policy):
         # exploration = np.sqrt((2 * np.log(reward_arm)) / selected_times)
         exploration[np.isnan(exploration)] = 0
         self.history['Q'] = frr + self.c * exploration
+
+
+class SlMABPolicy(Policy):
+    """
+    The Sliding Multi-Armed Bandit.
+    """
+
+    def __init__(self):
+        # Name | Action name
+        # ActionAttempts | Number of times action was chosen
+        # ValueEstimates | Reward values of an action
+        # T | Time of usage
+        self.hist_col_names = ['Name', 'ActionAttempts', 'ValueEstimates', 'T']
+
+        self.history = pd.DataFrame(columns=self.hist_col_names)
+
+    def __str__(self):
+        # return f"SLMAB ("
+        # leave with out ")" to agent put the window size
+        return f"SlMAB ("
+
+    def choose_all(self, agent: Agent):
+        # New test cases
+        new_tcs = agent.actions[~agent.actions.Name.isin(self.history['Name'].tolist())]
+        new_tcs = new_tcs['Name'].tolist()
+
+        if len(new_tcs) > 0:
+            for tc in new_tcs:
+                self.history = self.history.append(
+                    pd.DataFrame([[tc, 0, 0, 0, 0, 0]], columns=self.history.columns), ignore_index=True)
+
+        actions = self.history.sort_values(by='Q', ascending=False)
+        return actions['Name'].tolist()
+
+    def credit_assignment(self, agent):
+        """
+        Credit assignment for SlMAB
+        :return: FRR, Selected Times, and Sum Applications for all arms
+        """
+        # Compute the average of rewards (and save in Q column)
+        super().credit_assignment(agent)
+
+        self.history = agent.history.groupby(['Name'], as_index=False).agg({'T': ['count', np.max]})
+        self.history.columns = ['Name', 'T', 'Ti']
+
+        self.history['Q'] = agent.actions['Q']
+        self.history['R'] = agent.actions['R']
+
+        # Check, at the time point t, the number of time points elapsed since
+        # the previous time point ti in which the ith arm has been applied
+        self.history['DiffSelection'] = self.history['Ti'].apply(lambda x: agent.t - x)
+
+        # T column contains the count of usage for each "arm"
+        self.history['T'] = self.history.apply(
+            lambda x: x['T'] * ((agent.window_size / (agent.window_size + x['DiffSelection'])) + (1 / (x['T'] + 1))),
+            axis=1)
+
+        # Compute Q
+        self.history['Q'] = self.history.apply(
+            lambda x: x['Q'] * (
+                    (agent.window_size / (agent.window_size + x['DiffSelection'])) + x['R'] * (1 / (x['T'] + 1))),
+            axis=1)
+
+
+class LinUCBPolicy(Policy):
+    """
+    LinUCB with Disjoint Linear Models
+
+    References
+    ----------
+    [1]  Lihong Li, et al. "A Contextual-Bandit Approach to Personalized
+         News Article Recommendation." In Proceedings of the 19th
+         International Conference on World Wide Web (WWW), 2010.
+    """
+
+    def __init__(self, alpha=0.5):
+        """
+        Initialize LinUCBPolicy.
+
+        :param alpha: The constant determines the width of the upper confidence bound.
+        """
+        self.alpha = alpha
+
+        # Initialize LinUCB Model Parameters
+        self.context = {
+            # dictionary - For any action a in actions,
+            # A[a] = (DaT*Da + I) the ridge reg solution
+            'A': {},
+            # Inverse
+            'A_inv': {},
+            # dictionary - The cumulative return of action a, given the
+            # context xt.
+            'b': {},
+        }
+
+        # The context is given by the agent (see choose_all function)
+        self.context_features = self.features = None
+        self.garbage_actions = []
+
+    def __str__(self):
+        return f"LinUCB (Alpha={self.alpha})"
+
+    def add_action(self, action_id):
+        """
+        Add an action to the policy's context.
+        """
+        context_dimension = len(self.features)
+
+        A = np.identity(context_dimension)
+        self.context['A'][action_id] = A
+        self.context['A_inv'][action_id] = np.linalg.inv(A)
+        self.context['b'][action_id] = np.zeros((context_dimension, 1))
+
+    def update_actions(self, agent: ContextualAgent, new_actions):
+        """
+        Update actions based on the agent's context.
+        """
+        # Update the current context given by the agent
+        self.context_features = agent.context_features
+        self.context_features.sort_values(by=['Name'], inplace=True)
+
+        self.features = agent.features
+
+        # Add new actions        
+        for a in new_actions:
+            self.add_action(a)
+
+    def choose_all(self, agent: Agent):
+        """
+        Choose all actions based on the policy.
+        """
+        records = []
+
+        features = [row for row in self.context_features[self.features].values]
+        actions = self.context_features.Name.tolist()
+
+        # Get the specific features from te current test case (action)
+        for a, x in zip(actions, features):
+            x_i = np.reshape(x, (-1, 1))
+
+            A_inv = self.context['A_inv'][a]
+            theta_a = A_inv.dot(self.context['b'][a])
+            q = theta_a.T.dot(x_i) + self.alpha * np.sqrt(x_i.T.dot(A_inv).dot(x_i))
+
+            if len(q) > 1:
+                Exception("[LinUCB] q is more than 1: {q}")
+
+            records.append([a, q[0]])
+
+        arms = pd.DataFrame(records, columns=['Name', 'Q'])
+        arms.sort_values(by='Q', ascending=False, inplace=True)
+        return arms['Name'].tolist()
+
+    def credit_assignment(self, agent):
+        """
+       Assign credit based on the agent's actions and rewards.
+       """
+        # We always have the same test case set
+        assert len(set(agent.actions.Name.to_list()) - set(self.context_features.Name.to_list())) == 0
+
+        actions = agent.actions.copy()
+        actions.sort_values(by=['Name'], inplace=True)
+
+        features = [row for row in self.context_features[self.features].values]
+        actions = [row for row in actions[['Name', 'ValueEstimates']].values]
+        for a, x in zip(actions, features):
+            x_i = np.reshape(x, (-1, 1))
+            act = a[0]
+            reward = a[1]  # ValueEstimates
+
+            self.context['A'][act] += x_i.dot(x_i.T)
+            self.context['A_inv'][act] = np.linalg.inv(self.context['A'][act])
+            self.context['b'][act] += reward * x_i
+
+
+class SWLinUCBPolicy(LinUCBPolicy):
+    """
+    LinUCB with Disjoint Linear Models and Sliding Window
+
+    References
+    ----------
+    [1]  Nicolas Gutowski, Tassadit Amghar, Olivier Camp, and Fabien Chhel. 2019.
+         "Global Versus Individual Accuracy in Contextual Multi-Armed Bandit."
+         In Proceedings of the 34th ACM/SIGAPP Symposium on Applied Computing (SAC ’19),
+         April 8–12, 2019, Limassol, Cyprus. ACM, Limassol, Cyprus, 8 pages.
+         https://doi. org/10.1145/3297280.3297440
+    """
+
+    def __str__(self):
+        # return f"SWLinUCB (Alpha={self.alpha}"
+        # leave with out ")" to agent put the window size
+        return f"SWLinUCB (Alpha={self.alpha}"
+
+    def choose_all(self, agent: SlidingWindowContextualAgent):
+        """
+        Choose all actions based on the sliding window policy.
+        """
+        records = []
+
+        features = [row for row in self.context_features[self.features].values]
+        actions = self.context_features.Name.tolist()
+
+        # Sliding Window
+        history_names = agent.history['Name'].unique()
+        occs = agent.history.groupby('Name', as_index=False)['T'].count().reset_index().rename(columns={"T": "counts"})
+
+        # Get the specific features from te current test case (action)
+        for a, x in zip(actions, features):
+            x_i = np.reshape(x, (-1, 1))
+
+            A_inv = self.context['A_inv'][a]
+            theta_a = A_inv.dot(self.context['b'][a])
+            q = theta_a.T.dot(x_i) + self.alpha * np.sqrt(x_i.T.dot(A_inv).dot(x_i))
+
+            # This part is applied only when the iteration reachs the sliding window size
+            # and if the test case is on the sliding window     
+            occ = 0
+            if agent.t > agent.window_size and a in history_names:
+                occ = occs.loc[occs.Name == a, 'counts'].values[0]
+
+            q = (1 - occ / agent.window_size) * q
+
+            if len(q) > 1:
+                Exception("[LinUCB] q is more than 1: {q}")
+
+            records.append([a, q[0]])
+
+        arms = pd.DataFrame(records, columns=['Name', 'Q'])
+        arms.sort_values(by='Q', ascending=False, inplace=True)
+        return arms['Name'].tolist()

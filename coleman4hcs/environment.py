@@ -7,6 +7,7 @@ from pathlib import Path
 from coleman4hcs.bandit import DynamicBandit, EvaluationMetricBandit
 from coleman4hcs.scenarios import VirtualHCSScenario, IndustrialDatasetHCSScenarioProvider
 from coleman4hcs.utils.monitor import MonitorCollector
+from coleman4hcs.agent import ContextualAgent, SlidingWindowContextualAgent
 
 Path("backup").mkdir(parents=True, exist_ok=True)
 
@@ -102,6 +103,16 @@ class Environment(object):
                 # each variant has its own test budget size, that is, different from the whole system
                 self.evaluation_metric.update_available_time(available_time)
 
+                # MAB or CMAB                
+                if type(agent) in [ContextualAgent, SlidingWindowContextualAgent]:
+                    # For a Contextual agent, we first update the current context information
+                    agent.update_context(vsc.get_context_features())
+                    agent.update_features(vsc.get_features())
+
+                    exp_name = f"{str(agent)}_{vsc.get_feature_group()}"
+                else:
+                    exp_name = str(agent)
+                
                 # Update the bandit inside the agent.
                 # This loop also update the actions available for policy choose
                 agent.update_bandit(bandit)
@@ -114,10 +125,10 @@ class Environment(object):
 
                 # Pick up reward from bandit for chosen action
                 # Submit prioritized test cases for evaluation step the environment and get new measurements
-                reward = agent.bandit.pull(action)
+                metric = agent.bandit.pull(action)
 
                 # Update Q action-value estimates (Reward Functions)
-                agent.observe(reward)
+                agent.observe(metric)
 
                 # Compute end time
                 end = time.time()
@@ -125,17 +136,17 @@ class Environment(object):
                 # if we want to see the performance during the experiments
                 if print_log:
                     print(
-                        f"Exp {experiment} - Ep {t} - Policy {str(agent)} " +
-                        f"- {str(agent.get_reward_function())} - NAPFD/APFDc: {reward.fitness:.4f}/{reward.cost:.4f}")
+                        f"Exp: {experiment} - Ep: {t} - Name: {exp_name} ({str(agent.get_reward_function())}) - " +
+                        f"NAPFD/APFDc: {metric.fitness:.4f}/{metric.cost:.4f}")
 
                 # Collect the data during the experiment
                 self.monitor.collect(self.scenario_provider,
                                      vsc.get_available_time(),
                                      experiment,
                                      t,
-                                     str(agent),
+                                     exp_name,
                                      str(agent.get_reward_function()),
-                                     reward,
+                                     metric,
                                      self.scenario_provider.total_build_duration,
                                      (end - start) + bandit_duration, 
                                      np.mean(agent.last_reward), 
@@ -169,7 +180,7 @@ class Environment(object):
                                                                 total_time,
                                                                 experiment,
                                                                 t,
-                                                                str(agent),
+                                                                exp_name,
                                                                 str(agent.get_reward_function()),
                                                                 self.evaluation_metric,
                                                                 total_build_duration,

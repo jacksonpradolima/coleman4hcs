@@ -6,21 +6,21 @@ independent_executions = 1
 [experiment]
 # Experiment Configuration
 scheduled_time_ratio = [0.1, 0.5, 0.8]
-#datasets_dir = "examples"
+datasets_dir = "examples"
 #datasets = ["fakedata"]
+datasets = ["square@retrofit"]
 
 # WTS
 #datasets_dir = "examples/core@dune-common"
 #datasets = ["dune@total"]
 
 # VTS
-datasets_dir = "examples/core@dune-common"
-datasets = ["dune@debian_10 clang-7-libcpp-17", "dune@debian_11 gcc-10-20", "dune@ubuntu_20_04 clang-10-20"]
+#datasets_dir = "examples/core@dune-common"
+#datasets = ["dune@debian_10 clang-7-libcpp-17", "dune@debian_11 gcc-10-20", "dune@ubuntu_20_04 clang-10-20"]
 
 experiment_dir = "results/experiments/"
 rewards = ["RNFail", "TimeRank"]
-#policies = ['Random', 'Greedy', 'EpsilonGreedy', 'UCB', 'FRRMAB']
-policies = ['Random']
+policies = ['Random', 'Greedy', 'EpsilonGreedy', 'UCB', 'FRRMAB', 'LinUCB', 'SWLinUCB']
 
 [algorithm.frrmab]
 # Algorithm Configuration for FRRMAB
@@ -38,6 +38,26 @@ rnfail = { c = 0.3 }
 timerank = { epsilon = 0.5 }
 rnfail = { epsilon = 0.3 }
 
+[algorithm.linucb]
+# Algorithm Configuration for LinUCB
+is_contextual_mab = true
+timerank = { alpha = 0.5 }
+rnfail = { alpha = 0.5 }
+
+[algorithm.swlinucb]
+# Algorithm Configuration for SWLinUCB
+is_contextual_mab = true
+window_sizes = [100]
+timerank = { alpha = 0.5 }
+rnfail = { alpha = 0.5 }
+
 [hcs_configuration]
 # HCS Configuration
 wts_strategy = false
+
+[contextual_information.config]
+previous_build = ['Duration', 'NumRan', 'NumErrors']
+
+[contextual_information.feature_group]
+feature_group_name = "time_execution"
+feature_group_values = ['Duration', 'NumErrors']
