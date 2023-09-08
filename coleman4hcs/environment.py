@@ -4,8 +4,7 @@ import pickle
 import time
 from pathlib import Path
 
-from coleman4hcs.bandit import DynamicBandit
-from coleman4hcs.bandit import EvaluationMetricBandit
+from coleman4hcs.bandit import DynamicBandit, EvaluationMetricBandit
 from coleman4hcs.scenarios import VirtualHCSScenario, IndustrialDatasetHCSScenarioProvider
 from coleman4hcs.utils.monitor import MonitorCollector
 
@@ -13,8 +12,8 @@ Path("backup").mkdir(parents=True, exist_ok=True)
 
 
 class Environment(object):
-    """
-    The environment class run the simulation.
+    """    
+    The environment class that simulates the agent's interactions and collects results.
     """
 
     def __init__(self, agents, scenario_provider, evaluation_metric):
@@ -25,7 +24,7 @@ class Environment(object):
 
     def reset(self):
         """
-        Reset all variables (for a new simulation)
+        Reset the environment for a new simulation.
         """
         self.reset_agents_memory()
         # Monitor saves the feedback during the process
@@ -33,10 +32,10 @@ class Environment(object):
 
         self.variant_montitors = {}
 
-        if isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider):
-            if self.scenario_provider.get_total_variants() > 0:
-                for variant in self.scenario_provider.get_all_variants():
-                    self.variant_montitors[variant] = MonitorCollector()
+        if isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider) and \
+            self.scenario_provider.get_total_variants() > 0:
+            for variant in self.scenario_provider.get_all_variants():
+                self.variant_montitors[variant] = MonitorCollector()
 
     def reset_agents_memory(self):
         """
@@ -48,14 +47,14 @@ class Environment(object):
     def run_single(self, experiment, trials=100, print_log=False, bandit_type: DynamicBandit = EvaluationMetricBandit,
                    restore=True):
         """
-        Execute a simulation
+        Execute a single simulation experiment
         :param experiment: Current Experiment
         :param trials: The max number of scenarios that will be analyzed
         :param print_log:
         :param bandit_type:
         :param restore: restore the experiment if fail (i.e., energy down)
         """
-        # The agent must to learn from the beginning for each experiment
+        # The agent need to learn from the beginning for each experiment
         self.reset_agents_memory()
 
         # create a bandit (initially is None to know that is the first bandit
@@ -75,7 +74,7 @@ class Environment(object):
         avail_time_ratio = self.scenario_provider.get_avail_time_ratio()
 
         # For each "virtual scenario (vsc)" I must analyse it and evaluate it
-        for (t, vsc) in enumerate(self.scenario_provider, start=r_t):
+        for t, vsc in enumerate(self.scenario_provider, start=r_t):
             # The max number of scenarios that will be analyzed
             if t > trials:
                 break
@@ -97,7 +96,7 @@ class Environment(object):
 
             bandit_duration = end_bandit - start_bandit
 
-            # I can analyse the same "moment/scenario t" for "i agents"
+            # we can analyse the same "moment/scenario t" for "i agents"
             for i, agent in enumerate(self.agents):
                 # Update again because the variants
                 # each variant has its own test budget size, that is, different from the whole system
