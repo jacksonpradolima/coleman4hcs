@@ -58,7 +58,7 @@ class Bandit(object):
         :param arms:
         :return:
         """
-        self.arms = self.arms.append(pd.DataFrame(arms, columns=self.tc_fieldnames), ignore_index=True)
+        self.arms = pd.concat([self.arms, pd.DataFrame(arms, columns=self.tc_fieldnames)], ignore_index=True)
 
     def pull(self, action):
         return NotImplementedError('You must to implemented this function')

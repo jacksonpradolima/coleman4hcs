@@ -161,7 +161,7 @@ class Environment(object):
                         self.evaluation_metric.update_available_time(total_time)
 
                         # Submit prioritized test cases for evaluation step and get new measurements
-                        self.evaluation_metric.evaluate(df.to_dict(orient='record'))
+                        self.evaluation_metric.evaluate(df.to_dict(orient='records'))
 
                         # Save the information (collect the data)
                         self.variant_montitors[variant].collect(self.scenario_provider,

@@ -81,7 +81,7 @@ class Agent(object):
         df['ActionAttempts'] = 0
         df['Q'] = 0
 
-        self.actions = self.actions.append(df, ignore_index=True)
+        self.actions = pd.concat([self.actions, df], ignore_index=True)
 
         logging.debug(self.actions)
 
