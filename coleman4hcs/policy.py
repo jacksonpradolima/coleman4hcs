@@ -15,9 +15,7 @@ class Policy(object):
 
     def choose_all(self, agent: Agent):
         """
-        By default a policy return untreat
-        :param agent:
-        :return:
+        By default, a policy returns untreated actions.        
         """
         return agent.actions['Name'].tolist()
 
@@ -42,29 +40,17 @@ class EpsilonGreedyPolicy(Policy):
 
     def __str__(self):
         return f'\u03B5-greedy (\u03B5={self.epsilon})'
-        # return f'e-greedy (e={self.epsilon})'
-
-    def credit_assignment(self, agent):
-        super().credit_assignment(agent)
 
     def choose_all(self, agent: Agent):
-        # Copy the actions (we gonna remove the actions for policy choose them)
-
-        temp_actions = agent.actions.copy()
-
-        # Order by best values (Quality estimate)
-        temp_actions = temp_actions.sort_values(by='Q', ascending=False)
+        # Copy the actions (we will remove the actions for policy choose them)        
+        # and order by best values (Quality estimate)
+        temp_actions = agent.actions.copy().sort_values(by='Q', ascending=False)
 
         # How much are been selected by "best" value
         qnt_actions = sum([1 for _ in range(len(temp_actions)) if np.random.random() > self.epsilon])
 
-        actions = []
-        # Get from top the "n" best values
-        if qnt_actions > 0:
-            actions = temp_actions.head(qnt_actions)['Name'].tolist()
-            temp_actions = temp_actions[~temp_actions.Name.isin(actions)]
-
-        t_actions = temp_actions['Name'].tolist()
+        actions = temp_actions.head(qnt_actions)['Name'].tolist() if qnt_actions > 0 else []
+        t_actions = temp_actions[~temp_actions.Name.isin(actions)]['Name'].tolist()
         random.shuffle(t_actions)
         actions.extend(t_actions)
 
@@ -84,9 +70,6 @@ class GreedyPolicy(EpsilonGreedyPolicy):
     def __str__(self):
         return 'Greedy'
 
-    def credit_assignment(self, agent):
-        super().credit_assignment(agent)
-
 
 class RandomPolicy(EpsilonGreedyPolicy):
     """
@@ -101,26 +84,28 @@ class RandomPolicy(EpsilonGreedyPolicy):
     def __str__(self):
         return 'Random'
 
-    def credit_assignment(self, agent):
-        super().credit_assignment(agent)
+
+class UCBPolicyBase(Policy):
+    """
+    Base class for Upper Confidence Bound (UCB) policies.
+    """
+
+    def __init__(self, c: float):
+        self.c = c
+
+    def choose_all(self, agent: Agent) -> list:
+        return agent.actions.sort_values(by='Q', ascending=False)['Name'].tolist()
 
 
-class UCB1Policy(Policy):
+class UCB1Policy(UCBPolicyBase):
     """
     The Upper Confidence Bound algorithm (UCB1). It applies an exploration
     factor to the expected value of each arm which can influence a greedy
     selection strategy to more intelligently explore less confident options.
     """
 
-    def __init__(self, c):
-        self.c = c
-
     def __str__(self):
-        return 'UCB (C={})'.format(self.c)
-
-    def choose_all(self, agent: Agent):
-        actions = agent.actions.sort_values(by='Q', ascending=False)
-        return actions['Name'].tolist()
+        return 'UCB1 (C={})'.format(self.c)
 
     def credit_assignment(self, agent: Agent):
         # Compute the average of rewards
@@ -136,20 +121,13 @@ class UCB1Policy(Policy):
         agent.actions['Q'] = quality_estimates + exploration
 
 
-class UCBPolicy(Policy):
+class UCBPolicy(UCBPolicyBase):
     """
     The Upper Confidence Bound algorithm (UCB) with scaling factor.
     """
 
-    def __init__(self, c):
-        self.c = c
-
     def __str__(self):
         return 'UCB (C={})'.format(self.c)
-
-    def choose_all(self, agent: Agent):
-        actions = agent.actions.sort_values(by='Q', ascending=False)
-        return actions['Name'].tolist()
 
     def credit_assignment(self, agent: Agent):
         # Compute the average of rewards
@@ -165,7 +143,7 @@ class UCBPolicy(Policy):
 
 class FRRMABPolicy(Policy):
     """
-    The Fitness-Rate-Rank based Multi-Armed Bandit.
+    The Fitness-Rate-Rank based Multi-Armed Bandit (FRRMAB).
     """
 
     def __init__(self, c, decayed_factor=1):
@@ -193,8 +171,9 @@ class FRRMABPolicy(Policy):
         if len(new_tcs) > 0:
             # random.shuffle(new_tcs)
             for tc in new_tcs:
-                self.history = self.history.append(
-                    pd.DataFrame([[tc, 0, 0, 0, 0]], columns=self.history.columns), ignore_index=True)
+                self.history = pd.concat([self.history, pd.DataFrame([[tc, 0, 0, 0, 0]],
+                                                                     columns=self.history.columns)],
+                                         ignore_index=True)
 
         actions = self.history.sort_values(by='Q', ascending=False)
         return actions['Name'].tolist()
@@ -223,7 +202,7 @@ class FRRMABPolicy(Policy):
         # End of Credit Assignment
         ################################################
 
-        # Now, I gonna use the values to compute Q.
+        # Now, we will use the values to compute Q.
         # This is done once I can "remove" the test cases selected (multiple choose calls)
         # So, I compute Q once and pass to choose function select many times
 

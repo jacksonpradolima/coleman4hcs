@@ -207,7 +207,7 @@ class RewardSlidingWindowAgent(RewardAgent):
         temp_hist = self.actions.copy()
         temp_hist['T'] = self.t
 
-        self.history = self.history.append(temp_hist)
+        self.history = pd.concat([self.history, temp_hist])
         self.history = self.history.infer_objects()
 
         # Truncate
