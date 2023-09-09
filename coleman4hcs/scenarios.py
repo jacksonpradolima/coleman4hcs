@@ -1,9 +1,25 @@
+"""
+`coleman4hcs.scenarios` - Scenario Management for the Coleman4HCS Framework
+
+This module provides utilities for managing and processing different scenarios in the context of the
+Coleman4HCS framework. This includes virtual scenarios for commits, scenarios specific to HCS context,
+and scenarios that consider context information for each commit. The module also provides utilities to process CSV
+files for experimental evaluations.
+
+Classes:
+    - VirtualScenario: Basic virtual scenario to manipulate data for each commit.
+    - VirtualHCSScenario: Extends VirtualScenario to handle HCS context.
+    - VirtualContextScenario: Extends VirtualScenario to handle context information.
+    - IndustrialDatasetScenarioProvider: Provider to process CSV files for experiments.
+    - IndustrialDatasetHCSScenarioProvider: Extends IndustrialDatasetScenarioProvider to handle HCS scenarios.
+    - IndustrialDatasetContextScenarioProvider: Extends IndustrialDatasetScenarioProvider to handle context scenarios.
+"""
 import os
 
 import pandas as pd
 
 
-class VirtualScenario(object):
+class VirtualScenario:
     """
     Virtual Scenario, used to manipulate the data for each commit
     """
@@ -16,18 +32,18 @@ class VirtualScenario(object):
         self.reset()
 
     def reset(self):
+        """Resets the priorities for all test cases in the scenario."""
         # Reset the priorities
         for row in self.get_testcases():
             row['CalcPrio'] = 0
 
     def get_available_time(self):
+        """Returns the available time to execute the tests."""
         return self.available_time
 
     def get_testcases(self):
+        """Returns the test cases for the scenario."""
         return self.testcases
-
-    def get_testcases_names(self):
-        return [row['Name'] for row in self.get_testcases()]
 
 
 class VirtualHCSScenario(VirtualScenario):
@@ -41,12 +57,13 @@ class VirtualHCSScenario(VirtualScenario):
         self.variants = variants
 
     def get_variants(self):
+        """Returns the variants associated with the system."""
         return self.variants
 
 
 class VirtualContextScenario(VirtualScenario):
     """
-    Virtual Context Scenario, used to manipulate the data for each commit 
+    Virtual Context Scenario, used to manipulate the data for each commit
     considering context information from each commit
     """
 
@@ -58,12 +75,15 @@ class VirtualContextScenario(VirtualScenario):
         self.context_features = context_features
 
     def get_feature_group(self):
+        """Returns the feature group."""
         return self.feature_group
 
     def get_features(self):
+        """Returns the features associated."""
         return self.features
 
     def get_context_features(self):
+        """Returns the context features associated."""
         return self.context_features
 
 
@@ -98,18 +118,22 @@ class IndustrialDatasetScenarioProvider:
                               'Verdict']
 
     def read_testcases(self, tcfile):
+        """Reads the test cases from a provided CSV file."""
         # We use ';' separated values to avoid issues with thousands
         self.tcdf = pd.read_csv(tcfile, sep=';', parse_dates=['LastRun'])
         self.tcdf["Duration"] = self.tcdf["Duration"].apply(
             lambda x: float(x.replace(',', '')) if isinstance(x, str) else x)
 
     def __str__(self):
+        """Returns the name of the scenario provider."""
         return self.name
 
     def get_avail_time_ratio(self):
+        """Returns the available time ratio."""
         return self.avail_time_ratio
 
     def last_build(self, build):
+        """Sets the last build."""
         self.build = build
 
     def get(self):
@@ -144,9 +168,11 @@ class IndustrialDatasetScenarioProvider:
 
     # Generator functions
     def __iter__(self):
+        """Returns the iterator for the scenario provider."""
         return self
 
     def __next__(self):
+        """Returns the next scenario. Raises StopIteration if no more scenarios."""
         sc = self.get()
 
         if sc is None:
@@ -211,7 +237,7 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
 
         # List of columns used as features
         self.features = feature_group_values
-        
+
         self.previous_build = previous_build
 
     def __str__(self):
@@ -278,5 +304,5 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
                                                feature_group=self.feature_group,
                                                features=self.features,
                                                context_features=context_features)
-        
+
         return self.scenario
