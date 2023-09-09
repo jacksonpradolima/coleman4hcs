@@ -1,3 +1,32 @@
+"""
+`main` - Entry Point for Coleman4HCS
+
+This module provides the capabilities to run experiments for the Coleman4HCS framework.
+It facilitates the execution of various scenarios and evaluations based on predefined configurations.
+
+The module offers:
+- Experiment setups using configuration files.
+- Ability to use various policies and reward functions.
+- Parallel processing capabilities for experiment runs.
+- Tools for dataset processing and scenario generation.
+- Dynamic class loading for policies, reward functions, and agents.
+- Logging and storage functionalities for experiment results.
+
+Usage:
+    python main.py
+
+Preconditions:
+- Configuration files should be correctly set up.
+- Required dependencies should be installed.
+- Ensure all datasets are accessible and in the specified format.
+
+Environment Variables:
+This module uses environment variables, loaded through `dotenv`, to obtain specific configuration details.
+
+Author:
+    Jackson Antonio do Prado Lima - jacksonpradolima at gmail.com
+
+"""
 import os
 import time
 import warnings
