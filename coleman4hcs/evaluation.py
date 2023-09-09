@@ -1,3 +1,27 @@
+"""
+coleman4hcs.evaluation - Evaluation Metrics for COLEMAN
+
+This module provides classes and methods to evaluate the performance of the COLEMAN framework
+in the context of test case prioritization.
+Various metrics such as NAPFD (Normalized Average Percentage of Faults Detected) based on errors or
+verdicts can be utilized to measure the effectiveness.
+
+Classes:
+    - EvaluationMetric: Base class for all evaluation metrics.
+      Defines basic attributes and methods used across all metrics.
+    - NAPFDMetric: Implements the NAPFD metric based on error counts.
+    - NAPFDVerdictMetric: Implements the NAPFD metric based on test verdicts (e.g., pass/fail).
+
+Usage:
+    To evaluate the performance of a test suite, instantiate the desired metric class and call the 'evaluate'
+     method with the test suite as an argument.
+
+Note:
+    The 'evaluate' method in the 'EvaluationMetric' is abstract and should be overridden in child classes.
+    Ensure that the 'reset' method is called at the beginning of each evaluation to reset metric values.
+"""
+
+
 class EvaluationMetric:
     """
     Evaluation Metric
@@ -52,7 +76,7 @@ class EvaluationMetric:
         scheduled_time = 0
         costs = []
 
-        # We consider the faults are different, that is, a fault is only revelead by only a test case
+        # We consider the faults are different, that is, a fault is only revealed by only a test case
         # Build prefix sum of durations to find cut off point
         for row in test_suite:
             total_failure_count += row[error_key]
@@ -114,12 +138,19 @@ class NAPFDMetric(EvaluationMetric):
 
     def compute_metrics(self, costs, total_failure_count, total_failed_tests, no_testcases):
         """
-        Computes the metrics based on the provided parameters.
+        Computes the NAPFD (Normalized Average Percentage of Faults Detected)
+        and APFDc (Average Percentage of Faults Detected considering cost) metrics.
 
-        :param costs: List of costs for each test case.
-        :param total_failure_count: Total number of failures.
-        :param total_failed_tests: Total number of tests failed.
-        :param no_testcases: Total number of test cases.
+        :param costs: A list containing the costs (e.g., execution time) for each test case.
+        :type costs: list
+        :param total_failure_count: Total number of failures detected across all test cases.
+        :type total_failure_count: int
+        :param total_failed_tests: Total number of test cases that failed.
+        :type total_failed_tests: int
+        :param no_testcases: Total number of test cases in the test suite.
+        :type no_testcases: int
+
+        .. note:: This method updates the instance's attributes directly and does not return any value.
         """
         # Time to Fail (rank value)
         self.ttf = self.detection_ranks[0] if self.detection_ranks else 0
@@ -137,7 +168,13 @@ class NAPFDMetric(EvaluationMetric):
 
     def set_default_metrics(self):
         """
-        Sets default values for the metrics.
+        Sets the default values for the NAPFD (Normalized Average Percentage of Faults Detected)
+        and APFDc (Average Percentage of Faults Detected considering cost) metrics.
+
+        This method is called when there are no detected failures in the test suite,
+        ensuring that the metric attributes are appropriately initialized.
+
+        .. note:: This method updates the instance's attributes directly and does not return any value.
         """
         # Time to Fail (rank value)
         self.ttf = -1
@@ -167,6 +204,19 @@ class NAPFDVerdictMetric(EvaluationMetric):
             self.set_default_metrics()
 
     def compute_metrics(self, costs, total_failure_count, no_testcases):
+        """
+        Computes the NAPFD (Normalized Average Percentage of Faults Detected) based
+        on test verdicts and APFDc (Average Percentage of Faults Detected considering cost).
+
+        :param costs: A list containing the costs (e.g., execution time) for each test case.
+        :type costs: list
+        :param total_failure_count: Total number of test cases that failed.
+        :type total_failure_count: int
+        :param no_testcases: Total number of test cases in the test suite.
+        :type no_testcases: int
+
+        .. note:: This method updates the instance's attributes directly and does not return any value.
+        """
         # Time to Fail (rank value)
         self.ttf = self.detection_ranks[0] if self.detection_ranks else 0
         self.recall = self.detected_failures / total_failure_count
@@ -183,6 +233,15 @@ class NAPFDVerdictMetric(EvaluationMetric):
             sum(costs) * total_failure_count)
 
     def set_default_metrics(self):
+        """
+        Sets the default values for the NAPFD (Normalized Average Percentage of Faults Detected)
+        based on test verdicts and APFDc (Average Percentage of Faults Detected considering cost).
+
+        This method is called when there are no detected failures based on the test verdicts
+        in the test suite, ensuring that the metric attributes are appropriately initialized.
+
+        .. note:: This method updates the instance's attributes directly and does not return any value.
+        """
         # Time to Fail (rank value)
         self.ttf = -1
         self.recall = self.avg_precision = 1
