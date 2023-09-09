@@ -40,13 +40,11 @@ rnfail = { epsilon = 0.3 }
 
 [algorithm.linucb]
 # Algorithm Configuration for LinUCB
-is_contextual_mab = true
 timerank = { alpha = 0.5 }
 rnfail = { alpha = 0.5 }
 
 [algorithm.swlinucb]
 # Algorithm Configuration for SWLinUCB
-is_contextual_mab = true
 window_sizes = [100]
 timerank = { alpha = 0.5 }
 rnfail = { alpha = 0.5 }
