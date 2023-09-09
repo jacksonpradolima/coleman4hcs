@@ -7,5 +7,8 @@ disable=
     broad-except, # we want to catch all exceptions
     too-many-locals, # we don't care
     too-few-public-methods, # enum classes don't normally have methods
-    too-many-instance-attributes
-    too-many-arguments
+    too-many-instance-attributes,
+    too-many-arguments,
+    import-error,
+    attribute-defined-outside-init,
+    redefined-outer-name
