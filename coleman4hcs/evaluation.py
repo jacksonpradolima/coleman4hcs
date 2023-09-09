@@ -118,6 +118,23 @@ class EvaluationMetric:
         """
         raise NotImplementedError("This method must be overridden in child classes")
 
+    def set_default_metrics(self):
+        """
+        Sets the default values for the NAPFD (Normalized Average Percentage of Faults Detected)
+        and APFDc (Average Percentage of Faults Detected considering cost) metrics.
+
+        This method is called when there are no detected failures in the test suite,
+        ensuring that the metric attributes are appropriately initialized.
+
+        .. note:: This method updates the instance's attributes directly and does not return any value.
+        """
+        # Time to Fail (rank value)
+        self.ttf = -1
+        self.recall = self.avg_precision = 1
+
+        # NAPFD and APFDc
+        self.fitness = self.cost = 1
+
 
 class NAPFDMetric(EvaluationMetric):
     """
@@ -163,25 +180,8 @@ class NAPFDMetric(EvaluationMetric):
         self.fitness = p - self.detected_failures / (total_failure_count * no_testcases) + p / (2 * no_testcases)
 
         # APFDc
-        self.cost = sum([sum(costs[i - 1:]) - 0.5 * costs[i - 1] for i in self.detection_ranks]) / (
+        self.cost = sum((sum(costs[i - 1:]) - 0.5 * costs[i - 1] for i in self.detection_ranks)) / (
             sum(costs) * total_failed_tests)
-
-    def set_default_metrics(self):
-        """
-        Sets the default values for the NAPFD (Normalized Average Percentage of Faults Detected)
-        and APFDc (Average Percentage of Faults Detected considering cost) metrics.
-
-        This method is called when there are no detected failures in the test suite,
-        ensuring that the metric attributes are appropriately initialized.
-
-        .. note:: This method updates the instance's attributes directly and does not return any value.
-        """
-        # Time to Fail (rank value)
-        self.ttf = -1
-        self.recall = self.avg_precision = 1
-
-        # NAPFD and APFDc
-        self.fitness = self.cost = 1
 
 
 class NAPFDVerdictMetric(EvaluationMetric):
@@ -229,22 +229,5 @@ class NAPFDVerdictMetric(EvaluationMetric):
             2 * no_testcases)
 
         # APFDc
-        self.cost = sum([sum(costs[i - 1:]) - 0.5 * costs[i - 1] for i in self.detection_ranks]) / (
+        self.cost = sum((sum(costs[i - 1:]) - 0.5 * costs[i - 1] for i in self.detection_ranks)) / (
             sum(costs) * total_failure_count)
-
-    def set_default_metrics(self):
-        """
-        Sets the default values for the NAPFD (Normalized Average Percentage of Faults Detected)
-        based on test verdicts and APFDc (Average Percentage of Faults Detected considering cost).
-
-        This method is called when there are no detected failures based on the test verdicts
-        in the test suite, ensuring that the metric attributes are appropriately initialized.
-
-        .. note:: This method updates the instance's attributes directly and does not return any value.
-        """
-        # Time to Fail (rank value)
-        self.ttf = -1
-        self.recall = self.avg_precision = 1
-
-        # NAPFD and APFDc
-        self.fitness = self.cost = 1
