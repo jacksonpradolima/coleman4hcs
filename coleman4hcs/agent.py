@@ -77,7 +77,7 @@ class Agent:
         """
         self.actions[['ValueEstimates', 'ActionAttempts', 'Q']] = 0
 
-        # Last action (TC) choosen
+        # Last action (TC) chosen
         self.last_prioritization = None
 
         # Time of usage
@@ -240,7 +240,23 @@ class ContextualAgent(RewardAgent):
     def __str__(self):
         return f'{str(self.policy)}'
 
+    def choose(self) -> List[str]:
+        """
+        The policy choose an action.
+        An action is the Prioritized Test Suite
+        :return: List of Test Cases in ascendant order of priority
+        """
+        self.last_prioritization = self.policy.choose_all(self)
+        return self.last_prioritization
+
     def update_actions(self, actions):
+        """
+        Update the set of available actions based on the current context.
+
+        This method adjusts the agent's possible actions based on the current context. In some situations,
+        the available actions might change based on the state of the environment or other contextual information.
+        This method ensures that the agent always has an up-to-date set of actions to choose from.
+        """
         # Preserve the actual actions and remove the unnecessary
         self.actions = self.actions[self.actions.Name.isin(actions)]
 
@@ -256,6 +272,16 @@ class ContextualAgent(RewardAgent):
         self.actions = pd.concat([self.actions, new_actions_df], ignore_index=True)
 
     def update_bandit(self, bandit):
+        """
+        Update the internal bandit instance used by the agent.
+
+        This method updates the agent's internal bandit to the provided instance. This can be useful
+        when the agent needs to adapt to changes in the environment or when the bandit's state changes
+        over time.
+
+        :param bandit: The new bandit instance to be used by the agent.
+        :type bandit: coleman4hcs.bandit.Bandit
+        """
         self.bandit = bandit
         self.update_actions(self.bandit.get_arms())
 
@@ -272,7 +298,7 @@ class ContextualAgent(RewardAgent):
 
     def update_features(self, features):
         """
-        Update the features used by the agent for decision making.
+        Update the features used by the agent for decision-making.
 
         Features represent specific characteristics or properties of data that the agent uses
         to make its decisions.
@@ -280,15 +306,6 @@ class ContextualAgent(RewardAgent):
         :param features: A list or collection of features.
         """
         self.features = features
-
-    def choose(self) -> List[str]:
-        """
-        The policy choose an action.
-        An action is the Priorized Test Suite
-        :return: List of Test Cases in ascendent order of priority
-        """
-        self.last_prioritization = self.policy.choose_all(self)
-        return self.last_prioritization
 
 
 class RewardSlidingWindowAgent(RewardAgent):
@@ -351,7 +368,7 @@ class RewardSlidingWindowAgent(RewardAgent):
             self.history = self.history[self.history['T'] > min_t]
 
 
-class SlidingWindowContextualAgent(RewardAgent):
+class SlidingWindowContextualAgent(ContextualAgent):
     """
     The Reward Window Agent learns using a reward function and contextual information that the user can choose
     Additionally, it uses a sliding window
@@ -375,56 +392,6 @@ class SlidingWindowContextualAgent(RewardAgent):
 
     def __str__(self):
         return f'{str(self.policy)}, SW={self.window_size})'
-
-    def choose(self) -> List[str]:
-        """
-        The policy choose an action.
-        An action is the Priorized Test Suite
-        :return: List of Test Cases in ascendent order of priority
-        """
-        self.last_prioritization = self.policy.choose_all(self)
-        return self.last_prioritization
-
-    def update_actions(self, actions):
-        # Preserve the actual actions and remove the unnecessary
-        self.actions = self.actions[self.actions.Name.isin(actions)]
-
-        # Find the new actions (they are not in the actions that already exists)
-        new_actions = [action for action in actions if action not in self.actions['Name'].tolist()]
-
-        # Update the information about the arms in the policy
-        self.policy.update_actions(self, new_actions)
-
-        new_actions_df = pd.DataFrame(new_actions, columns=['Name'])
-        new_actions_df[['ValueEstimates', 'ActionAttempts', 'Q']] = 0
-
-        self.actions = pd.concat([self.actions, new_actions_df], ignore_index=True)
-
-    def update_bandit(self, bandit):
-        self.bandit = bandit
-        self.update_actions(self.bandit.get_arms())
-
-    def update_context(self, context_features):
-        """
-        Update the agent's current context information.
-
-        The context provides additional information that can help the agent in making decisions.
-        This might include external factors or environmental states that could influence the agent's strategy.
-
-        :param context_features: A collection or dataframe containing the contextual information.
-        """
-        self.context_features = context_features
-
-    def update_features(self, features):
-        """
-        Update the features used by the agent for decision making.
-
-        Features represent specific characteristics or properties of data that the agent uses
-        to make its decisions.
-
-        :param features: A list or collection of features.
-        """
-        self.features = features
 
     def observe(self, reward: EvaluationMetric):
         """
