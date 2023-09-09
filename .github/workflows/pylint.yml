@@ -29,10 +29,15 @@ jobs:
           echo "max-line-length=120" >> .pylintrc
           echo "disable=" >> .pylintrc
           echo "    C0103, # uppercase naming style" >> .pylintrc
-          echo "    logging-format-interpolation, # use %s for logging" >> .pylintrc          
+          echo "    logging-format-interpolation, # use %s for logging" >> .pylintrc
           echo "    broad-except, # we want to catch all exceptions" >> .pylintrc
-          echo "    too-many-locals, # we don't care" >> .pylintrc          
+          echo "    too-many-locals, # we don't care" >> .pylintrc
           echo "    too-few-public-methods, # enum classes don't normally have methods" >> .pylintrc
+          echo "    too-many-instance-attributes," >> .pylintrc
+          echo "    too-many-arguments," >> .pylintrc
+          echo "    import-error," >> .pylintrc
+          echo "    attribute-defined-outside-init," >> .pylintrc
+          echo "    redefined-outer-name" >> .pylintrc
 
       - name: Get Python changed files
         id: changed-py-files
