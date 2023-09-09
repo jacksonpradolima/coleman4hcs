@@ -53,12 +53,12 @@ class Environment:
         # Monitor saves the feedback during the process
         self.monitor = MonitorCollector()
 
-        self.variant_montitors = {}
+        self.variant_monitors = {}
 
         if isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider) and \
             self.scenario_provider.get_total_variants() > 0:
             for variant in self.scenario_provider.get_all_variants():
-                self.variant_montitors[variant] = MonitorCollector()
+                self.variant_monitors[variant] = MonitorCollector()
 
     def reset_agents_memory(self):
         """
@@ -93,7 +93,7 @@ class Environment:
         if restore:
             # Restore the experiment from the last backup
             # This is useful for long experiments
-            r_t, self.agents, self.monitor, self.variant_montitors, bandit = self.load_experiment(experiment)
+            r_t, self.agents, self.monitor, self.variant_monitors, bandit = self.load_experiment(experiment)
             self.scenario_provider.last_build(r_t)
             r_t += 1  # start 1 step after the last build
 
@@ -124,7 +124,7 @@ class Environment:
             bandit_duration = end_bandit - start_bandit
 
             # we can analyse the same "moment/scenario t" for "i agents"
-            for i, agent in enumerate(self.agents):
+            for _, agent in enumerate(self.agents):
                 # Update again because the variants
                 # each variant has its own test budget size, that is, different from the whole system
                 self.evaluation_metric.update_available_time(available_time)
@@ -229,7 +229,7 @@ class Environment:
                                vsc):
 
         """
-        Run the prioritization process for a given agent and HCS scen'ario.
+        Run the prioritization process for a given agent and HCS scenario.
 
         :param agent: The agent that is being used for the prioritization.
         :param action: The chosen action by the agent.
@@ -265,7 +265,7 @@ class Environment:
             self.evaluation_metric.evaluate(df.to_dict(orient='records'))
 
             # Save the information (collect the data)
-            self.variant_montitors[variant].collect(self.scenario_provider,
+            self.variant_monitors[variant].collect(self.scenario_provider,
                                                     total_time,
                                                     experiment,
                                                     t,
@@ -331,7 +331,7 @@ class Environment:
                 Path(name).mkdir(parents=True, exist_ok=True)
 
                 for variant in self.scenario_provider.get_all_variants():
-                    self.variant_montitors[variant].create_file(
+                    self.variant_monitors[variant].create_file(
                         f"{name}/{name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv")
 
     def store_experiment(self, name):
@@ -349,7 +349,7 @@ class Environment:
                 Path(name2).mkdir(parents=True, exist_ok=True)
 
                 for variant in self.scenario_provider.get_all_variants():
-                    self.variant_montitors[variant].save(
+                    self.variant_monitors[variant].save(
                         f"{name2}/{name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv")
 
     def load_experiment(self, experiment):
@@ -361,12 +361,12 @@ class Environment:
         if os.path.exists(filename):
             return pickle.load(open(filename, "rb"))
 
-        return 0, self.agents, self.monitor, self.variant_montitors, None
+        return 0, self.agents, self.monitor, self.variant_monitors, None
 
     def save_experiment(self, experiment, t, bandit):
         """
         Save a backup for the experiment
         """
         filename = f'backup/{str(self.scenario_provider)}_ex_{experiment}.p'
-        pickle.dump([t, self.agents, self.monitor,
-                     self.variant_montitors, bandit], open(filename, "wb"))
+        with open(filename, "wb") as f:
+            pickle.dump([t, self.agents, self.monitor, self.variant_monitors, bandit], f)
