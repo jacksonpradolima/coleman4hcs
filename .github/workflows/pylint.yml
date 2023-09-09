@@ -10,12 +10,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0 # To retrieve the preceding commit (deeply).
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.11
 
@@ -41,7 +41,7 @@ jobs:
 
       - name: Get Python changed files
         id: changed-py-files
-        uses: tj-actions/changed-files@v35
+        uses: tj-actions/changed-files@v39
         with:
           files: |
             *.py
