@@ -1,19 +1,41 @@
-import numpy as np
+"""
+coleman4hcs.environment
+~~~~~~~~~~~~~~~~~~~~~~~
+
+This module contains the `Environment` class which simulates the agent's interactions and collects results
+during the reinforcement learning process. The environment provides a platform where agents learn from interactions
+with the bandit to make better decisions over time.
+
+The module also contains the following features:
+
+- Mechanism to reset the environment and agent's memories.
+- Ability to run a single experiment or multiple experiments.
+- Support for both simple and contextual agents.
+- Periodic saving of experiments to handle long-running experiments.
+- Facilities for creating and storing results obtained during experiments.
+- Support for scenarios with variants, commonly found in Heterogeneous Computing Systems (HCS).
+- Helper methods for loading and saving experiment states for recovery purposes.
+
+Classes:
+    - Environment: Represents the learning environment where agents interact with bandits.
+"""
 import os
 import pickle
 import time
 from pathlib import Path
 
+import numpy as np
+
+from coleman4hcs.agent import ContextualAgent, SlidingWindowContextualAgent
 from coleman4hcs.bandit import DynamicBandit, EvaluationMetricBandit
 from coleman4hcs.scenarios import VirtualHCSScenario, IndustrialDatasetHCSScenarioProvider
 from coleman4hcs.utils.monitor import MonitorCollector
-from coleman4hcs.agent import ContextualAgent, SlidingWindowContextualAgent
 
 Path("backup").mkdir(parents=True, exist_ok=True)
 
 
-class Environment(object):
-    """    
+class Environment:
+    """
     The environment class that simulates the agent's interactions and collects results.
     """
 
@@ -127,13 +149,13 @@ class Environment(object):
                                                 start,
                                                 t,
                                                 vsc)
-            
+
             self.save_periodically(restore, t, experiment, bandit)
 
     def run_prioritization(self, agent, bandit, bandit_duration, experiment, print_log, t, vsc):
         """
         Run the prioritization process for a given agent and scenario.
-    
+
         :param agent: The agent that is being used for the prioritization.
         :param bandit: The bandit mechanism used for choosing actions.
         :param bandit_duration: Time taken by the bandit process.
@@ -141,10 +163,10 @@ class Environment(object):
         :param print_log: Flag to indicate if logs should be printed.
         :param t: The current step or iteration of the simulation.
         :param vsc: The virtual scenario being considered.
-        :return: tuple containing the chosen action by the agent, the ending time of the process, 
+        :return: tuple containing the chosen action by the agent, the ending time of the process,
                  the name of the experiment, and the starting time of the process.
         """
-        # MAB or CMAB                
+        # MAB or CMAB
         if type(agent) in [ContextualAgent, SlidingWindowContextualAgent]:
             # For a Contextual agent, we first update the current context information
             agent.update_context(vsc.get_context_features())
@@ -220,7 +242,7 @@ class Environment(object):
         :param t: The current step or iteration of the simulation.
         :param vsc: The virtual HCS scenario being considered.
         """
-    
+
         # Get the variants that exist in the current commit
         variants = vsc.get_variants()
 
@@ -254,7 +276,7 @@ class Environment(object):
                                                     (end - start) + bandit_duration,
                                                     0,
                                                     df['Name'].tolist())
-    
+
     def has_variants(self, vsc):
         """
         Check if the given scenario has variants.

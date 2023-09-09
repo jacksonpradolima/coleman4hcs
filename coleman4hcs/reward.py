@@ -1,3 +1,26 @@
+"""
+coleman4hcs.reward
+------------------
+
+Defines reward functions for agents in a multi-armed bandit framework in the context of software testing.
+These reward functions help agents to prioritize software test cases based on various strategies.
+
+The module provides an abstract base class `Reward` that serves as a blueprint for all reward functions.
+Derived classes implement specific reward strategies based on the number of failures and the order
+of test cases.
+
+Classes:
+    - Reward: An abstract base class that defines the structure and interface of a reward function.
+    - TimeRankReward: A reward function that considers the order of test cases and the number of failures.
+      It rewards each test case based on its rank in the test schedule and its pass/fail status.
+    - RNFailReward: A reward function that rewards based on the number of failures associated with test cases.
+
+Notes:
+    - Reward functions are essential components of the bandit-based test case prioritization framework.
+      They guide agents to make better decisions about which test cases to prioritize.
+    - Ensure that the evaluation metric provides necessary details like detection ranks for the
+      reward functions to work correctly.
+"""
 from abc import ABC, abstractmethod
 from typing import List
 
@@ -12,12 +35,20 @@ class Reward(ABC):
     """
 
     def get_name(self):
+        """
+        Retrieve the name or identifier of the reward function.
+
+        The name is used for identification purposes, such as logging or display in results.
+
+        :return: The name or identifier of the reward function.
+        :rtype: str
+        """
         return NotImplementedError
 
     @abstractmethod
     def evaluate(self, reward: EvaluationMetric, last_prioritization: List[str]):
         """
-        The reward function evaluate a bandit result and return a reward        
+        The reward function evaluate a bandit result and return a reward
         """
         return NotImplementedError
 

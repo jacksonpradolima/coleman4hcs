@@ -1,3 +1,36 @@
+"""
+coleman4hcs.agent
+-----------------
+
+This module provides an abstract representation of an agent in the Coleman4HCS framework.
+
+An `Agent` represents an entity that interacts with the environment to perform
+test case prioritization. The agent uses a policy to decide on an action (i.e.,
+a prioritized list of test cases) and then observes the environment to receive a reward.
+The agent updates its internal state or knowledge based on the reward, allowing it to
+improve its decisions over time.
+
+Classes
+-------
+- `Agent`: Base class for agents. Defines common methods and properties all agents should have.
+- `RewardAgent`: An agent that learns using a reward function. Inherits from `Agent`.
+- `ContextualAgent`: Extends the `RewardAgent` to incorporate contextual information for decision-making.
+- `RewardSlidingWindowAgent`: An agent that learns using a sliding window mechanism and a reward function.
+   Inherits from `RewardAgent`.
+- `SlidingWindowContextualAgent`: Combines the sliding window mechanism with contextual information.
+   Inherits from `RewardAgent`.
+
+Attributes
+----------
+- `policy`: The policy used by the agent to choose an action.
+- `bandit`: An instance of the Bandit class that the agent interacts with.
+- `actions`: A DataFrame that tracks the agent's actions and their respective outcomes.
+- `last_prioritization`: Stores the last action chosen by the agent.
+- `t`: Represents the time or the number of steps the agent has taken.
+- `context_features`: (For contextual agents) Contains the features of the context.
+- `history`: (For sliding window agents) Maintains a history of actions taken by the agent.
+- `window_size`: (For sliding window agents) Determines the size of the sliding window.
+"""
 import random
 from typing import List
 
@@ -8,7 +41,7 @@ from coleman4hcs.bandit import Bandit
 from coleman4hcs.evaluation import EvaluationMetric
 
 
-class Agent(object):
+class Agent:
     """
     An Agent is able to take one of a set of actions at each time step.
     The action is chosen using a strategy based on the history of prior actions and outcome observations.
@@ -22,6 +55,8 @@ class Agent(object):
         """
         self.policy = policy
         self.bandit = bandit
+        self.last_prioritization = None  # Last action (TC) chosen
+        self.t = 0
 
         # Name | Action name
         # ActionAttempts | Number of times action was chosen
@@ -57,27 +92,47 @@ class Agent(object):
         self.actions = self.actions.append(pd.DataFrame([[action, 0, 0, 0]], columns=self.col_names), ignore_index=True)
 
     def update_actions(self, actions):
+        """
+        Update the agent's action set.
+
+        This method performs several tasks:
+        1. Removes actions that are no longer available.
+        2. Identifies and adds new actions that were not previously in the agent's set.
+        3. Notifies the agent's policy of the new actions.
+
+        :param actions: List of available actions.
+        :type actions: list[str]
+        """
         # Preserve the actual actions and remove the unnecessary
         self.actions = self.actions[self.actions.Name.isin(actions)]
 
         # Find the new actions (they are not in the actions that already exists)
         new_actions = [action for action in actions if action not in self.actions['Name'].tolist()]
 
-        # Add new actions        
+        # Add new actions
         new_actions_df = pd.DataFrame(new_actions, columns=['Name'])
         new_actions_df[['ValueEstimates', 'ActionAttempts', 'Q']] = 0
 
         self.actions = pd.concat([self.actions, new_actions_df], ignore_index=True)
 
     def update_bandit(self, bandit):
+        """
+        Update the agent's associated bandit.
+
+        This method sets the agent's bandit to the provided instance and then updates the agent's action set
+        based on the arms available in the new bandit.
+
+        :param bandit: The new bandit instance to be associated with the agent.
+        :type bandit: Bandit
+        """
         self.bandit = bandit
         self.update_actions(self.bandit.get_arms())
 
     def choose(self) -> List[str]:
         """
         The policy choose an action.
-        An action is the Priorized Test Suite
-        :return: List of Test Cases in ascendent order of priority
+        An action is the Prioritized Test Suite
+        :return: List of Test Cases in ascendant order of priority
         """
         # If is the first time that the agent has been used, we don't have a "history" (rewards).
         # So, we can choose randomly
@@ -141,6 +196,14 @@ class RewardAgent(Agent):
         self.last_reward = 0
 
     def get_reward_function(self):
+        """
+        Retrieve the reward function associated with the agent.
+
+        This method returns the reward function instance that the agent uses to evaluate and update its policies.
+
+        :return: The reward function of the agent.
+        :rtype: RewardFunction (or the specific type of your reward function class)
+        """
         return self.reward_function
 
     def observe(self, reward: EvaluationMetric):
@@ -162,9 +225,6 @@ class RewardAgent(Agent):
         # Apply credit assignment
         self.policy.credit_assignment(self)
 
-    def reset(self):
-        super().reset()
-
 
 class ContextualAgent(RewardAgent):
     """
@@ -175,7 +235,7 @@ class ContextualAgent(RewardAgent):
         super().__init__(policy, reward_function)
 
         # List of features
-        self.context_features = None
+        self.context_features = self.features = None
 
     def __str__(self):
         return f'{str(self.policy)}'
@@ -200,9 +260,25 @@ class ContextualAgent(RewardAgent):
         self.update_actions(self.bandit.get_arms())
 
     def update_context(self, context_features):
+        """
+        Update the agent's current context information.
+
+        The context provides additional information that can help the agent in making decisions.
+        This might include external factors or environmental states that could influence the agent's strategy.
+
+        :param context_features: A collection or dataframe containing the contextual information.
+        """
         self.context_features = context_features
 
     def update_features(self, features):
+        """
+        Update the features used by the agent for decision making.
+
+        Features represent specific characteristics or properties of data that the agent uses
+        to make its decisions.
+
+        :param features: A list or collection of features.
+        """
         self.features = features
 
     def choose(self) -> List[str]:
@@ -253,6 +329,13 @@ class RewardSlidingWindowAgent(RewardAgent):
         self.policy.credit_assignment(self)
 
     def update_history(self):
+        """
+        Update the agent's history of actions and outcomes.
+
+        This method adds the current action and its outcome to the agent's history.
+        If the length of the history exceeds the window size,
+        the oldest entries are removed to maintain the specified window size.
+        """
         temp_hist = self.actions.copy()
         temp_hist['T'] = self.t
 
@@ -280,7 +363,7 @@ class SlidingWindowContextualAgent(RewardAgent):
         self.window_size = window_size
 
         # List of features
-        self.context_features = None
+        self.context_features = self.features = None
 
         # Name | Action name
         # ActionAttempts | Number of times action was chosen
@@ -322,9 +405,25 @@ class SlidingWindowContextualAgent(RewardAgent):
         self.update_actions(self.bandit.get_arms())
 
     def update_context(self, context_features):
+        """
+        Update the agent's current context information.
+
+        The context provides additional information that can help the agent in making decisions.
+        This might include external factors or environmental states that could influence the agent's strategy.
+
+        :param context_features: A collection or dataframe containing the contextual information.
+        """
         self.context_features = context_features
 
     def update_features(self, features):
+        """
+        Update the features used by the agent for decision making.
+
+        Features represent specific characteristics or properties of data that the agent uses
+        to make its decisions.
+
+        :param features: A list or collection of features.
+        """
         self.features = features
 
     def observe(self, reward: EvaluationMetric):
@@ -346,6 +445,13 @@ class SlidingWindowContextualAgent(RewardAgent):
         self.policy.credit_assignment(self)
 
     def update_history(self):
+        """
+        Update the agent's history of actions and outcomes.
+
+        This method adds the current action and its outcome to the agent's history.
+        If the length of the history exceeds the window size,
+        the oldest entries are removed to maintain the specified window size.
+        """
         temp_hist = self.actions.copy()
         temp_hist['T'] = self.t
 
