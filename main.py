@@ -61,8 +61,7 @@ def load_class_from_module(module, class_name: str):
 
     if hasattr(module, class_name):
         return getattr(module, class_name)
-    else:
-        raise ValueError(f"Class '{class_name}' not found in {module.__name__}!")
+    raise ValueError(f"Class '{class_name}' not found in {module.__name__}!")
 
 
 def create_agents(policy, rew_fun, window_sizes):
@@ -83,10 +82,13 @@ def create_agents(policy, rew_fun, window_sizes):
 
     if isinstance(policy, FRRMABPolicy):
         return [RewardSlidingWindowAgent(policy, rew_fun, w) for w in window_sizes]
-    elif isinstance(policy, SWLinUCBPolicy):
+
+    if isinstance(policy, SWLinUCBPolicy):
         return [SlidingWindowContextualAgent(policy, rew_fun, w) for w in window_sizes]
-    elif isinstance(policy, LinUCBPolicy):
+
+    if isinstance(policy, LinUCBPolicy):
         return [ContextualAgent(policy, rew_fun)]
+
     return [RewardAgent(policy, rew_fun)]
 
 
