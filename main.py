@@ -1,175 +1,279 @@
-import argparse
+"""
+`main` - Entry Point for Coleman4HCS
+
+This module provides the capabilities to run experiments for the Coleman4HCS framework.
+It facilitates the execution of various scenarios and evaluations based on predefined configurations.
+
+The module offers:
+- Experiment setups using configuration files.
+- Ability to use various policies and reward functions.
+- Parallel processing capabilities for experiment runs.
+- Tools for dataset processing and scenario generation.
+- Dynamic class loading for policies, reward functions, and agents.
+- Logging and storage functionalities for experiment results.
+
+Usage:
+    python main.py
+
+Preconditions:
+- Configuration files should be correctly set up.
+- Required dependencies should be installed.
+- Ensure all datasets are accessible and in the specified format.
+
+Environment Variables:
+This module uses environment variables, loaded through `dotenv`, to obtain specific configuration details.
+
+Author:
+    Jackson Antonio do Prado Lima - jacksonpradolima at gmail.com
+
+"""
 import os
 import time
 import warnings
 from multiprocessing import Pool
 from pathlib import Path
 
-from coleman4hcs import scenarios
-from coleman4hcs.agent import RewardAgent, RewardSlidingWindowAgent
+from dotenv import load_dotenv
+
+import coleman4hcs.policy
+import coleman4hcs.reward
+from coleman4hcs.agent import (
+    RewardAgent,
+    RewardSlidingWindowAgent,
+    ContextualAgent,
+    SlidingWindowContextualAgent
+)
 from coleman4hcs.environment import Environment
-from coleman4hcs.evaluation import NAPFDMetric, NAPFDVerdictMetric
-from coleman4hcs.policy import EpsilonGreedyPolicy
-from coleman4hcs.policy import FRRMABPolicy, GreedyPolicy, RandomPolicy, UCBPolicy
-from coleman4hcs.reward import RNFailReward, TimeRankReward
+from coleman4hcs.evaluation import NAPFDVerdictMetric
+from coleman4hcs.policy import FRRMABPolicy, SWLinUCBPolicy, LinUCBPolicy
+from coleman4hcs.scenarios import (
+    IndustrialDatasetHCSScenarioProvider,
+    IndustrialDatasetScenarioProvider,
+    IndustrialDatasetContextScenarioProvider
+)
+from config.config import get_config
 
 warnings.filterwarnings("ignore")
 
-ITERATIONS = 30
-PARALLEL_POOL_SIZE = 15
-DEFAULT_EXPERIMENT_DIR = 'results/experiments/'
-EXPERIMENT_DIR = DEFAULT_EXPERIMENT_DIR
-DEFAULT_SCALING_FACTOR_FRR = [0.3]
-DEFAULT_SCALING_FACTOR_UCB = [0.5, 0.3]
-DEFAULT_EPSILON = [0.5, 0.3]
-DEFAULT_WINDOW_SIZES = [100]
-DEFAULT_SCHED_TIME_RATIO = [0.1, 0.5, 0.8]
 
+def exp_run_industrial_dataset(iteration, trials, env: Environment, experiment_directory):
+    """
+    Execute a single run of the industrial dataset experiment.
 
-def run_experiments_with_threads(repo_path, dataset, policies, window_sizes=DEFAULT_WINDOW_SIZES,
-                                 sched_time_ratio=0.5,
-                                 reward_functions=[RNFailReward(), TimeRankReward()],
-                                 evaluation_metric=NAPFDMetric(),
-                                 considers_variants=False):
-    # Define my agents
-    agents = []
-    for policy in policies:
-        for rew_fun in reward_functions:
-            if type(policy) == FRRMABPolicy:
-                for w in window_sizes:
-                    agents.append(RewardSlidingWindowAgent(policy, rew_fun, w))
-            elif type(policy) == UCBPolicy:
-                # Based on tunning settings
-                if (type(rew_fun) == TimeRankReward) and policy.c == 0.5:
-                    agents.append(RewardAgent(policy, rew_fun))
-                elif type(rew_fun) == RNFailReward and policy.c == 0.3:
-                    agents.append(RewardAgent(policy, rew_fun))
-            elif type(policy) == EpsilonGreedyPolicy:
-                # Based on tunning settings
-                if (type(rew_fun) == TimeRankReward) and policy.epsilon == 0.5:
-                    agents.append(RewardAgent(policy, rew_fun))
-                elif type(rew_fun) == RNFailReward and policy.epsilon == 0.3:
-                    agents.append(RewardAgent(policy, rew_fun))
-            else:
-                agents.append(RewardAgent(policy, rew_fun))
+    :param iteration: The current iteration of the experiment.
+    :type iteration: int
+    :param trials: The total number of trials to be executed.
+    :type trials: int
+    :param env: An instance of the environment where the experiment is run.
+    :type env: Environment
+    :param experiment_directory: The directory where experiment results will be stored.
+    :type experiment_directory: str
+    :return: None
+    """
 
-    # Get scenario
-    if considers_variants:
-        scenario = scenarios.IndustrialDatasetHCSScenarioProvider(
-            f"{repo_path}/{dataset}/features-engineered.csv",
-            f"{repo_path}/{dataset}/data-variants.csv",
-            sched_time_ratio)
-    else:
-        scenario = scenarios.IndustrialDatasetScenarioProvider(
-            f"{repo_path}/{dataset}/features-engineered.csv",
-            sched_time_ratio)
-
-    # Stop conditional
-    trials = scenario.max_builds
-
-    # Prepare the experiment
-    env = Environment(agents, scenario, evaluation_metric)
-
-    parameters = [(i + 1, trials, env) for i in range(ITERATIONS)]
-
-    # create a file with a unique header for the scenario (workaround)
-    env.create_file(f"{EXPERIMENT_DIR}{str(env.scenario_provider)}.csv")
-
-    # Compute time
-    start = time.time()
-
-    with Pool(PARALLEL_POOL_SIZE) as p:
-        p.starmap(exp_run_industrial_dataset, parameters)
-
-    end = time.time()
-
-    print(f"Time expend to run the experiments: {end - start}")
-
-
-def exp_run_industrial_dataset(iteration, trials, env: Environment):
     env.run_single(iteration, trials, print_log=True)
-    env.store_experiment(f"{EXPERIMENT_DIR}{str(env.scenario_provider)}.csv")
+    env.store_experiment(f"{experiment_directory}{str(env.scenario_provider)}.csv")
+
+
+def load_class_from_module(module, class_name: str):
+    """
+    Dynamically loads a class from a given module.
+
+    :param module: The Python module from which to load the class.
+    :type module: module
+    :param class_name: The name of the class to be loaded.
+    :type class_name: str
+    :return: The loaded class.
+    :rtype: class
+    :raises ValueError: If the class is not found in the provided module.
+    """
+
+    if hasattr(module, class_name):
+        return getattr(module, class_name)
+    raise ValueError(f"Class '{class_name}' not found in {module.__name__}!")
+
+
+def create_agents(policy, rew_fun, window_sizes):
+    """
+    Create agent instances based on the policy type.
+
+    :param policy: The policy instance.
+    :type policy: Policy
+    :param rew_fun: The reward function instance.
+    :type rew_fun: RewardFunction
+    :param window_sizes: List of window sizes (only relevant for policies
+                         that use Sliding Window such as FRRMABPolicy).
+    :type window_sizes: list
+
+    :return: A list of agent instances.
+    :rtype: list
+    """
+
+    if isinstance(policy, FRRMABPolicy):
+        return [RewardSlidingWindowAgent(policy, rew_fun, w) for w in window_sizes]
+
+    if isinstance(policy, SWLinUCBPolicy):
+        return [SlidingWindowContextualAgent(policy, rew_fun, w) for w in window_sizes]
+
+    if isinstance(policy, LinUCBPolicy):
+        return [ContextualAgent(policy, rew_fun)]
+
+    return [RewardAgent(policy, rew_fun)]
+
+
+def get_scenario_provider(datasets_dir,
+                          dataset,
+                          sched_time_ratio,
+                          use_hcs,
+                          use_context,
+                          context_config,
+                          feature_groups):
+    """
+    Return the appropriate scenario provider based on the given configuration.
+
+    The function selects the scenario provider based on whether the
+    HCS (Highly-Configurable System) configuration is used.
+    It constructs the appropriate paths for the
+    dataset files and initializes the scenario provider with these paths.
+
+    :param datasets_dir: The directory where datasets are stored.
+    :type datasets_dir: str
+    :param dataset: The specific dataset to be used.
+    :type dataset: str
+    :param sched_time_ratio: The ratio of scheduled time to be used in the scenario.
+    :type sched_time_ratio: float
+    :param use_hcs: If True, returns an `IndustrialDatasetHCSScenarioProvider` instance.
+                    Otherwise, returns an `IndustrialDatasetScenarioProvider` instance.
+    :type use_hcs: bool
+
+    :return: An instance of the scenario provider based on the given configuration.
+    :rtype: IndustrialDatasetScenarioProvider or IndustrialDatasetHCSScenarioProvider
+    """
+    base_args = [f"{datasets_dir}/{dataset}/features-engineered.csv", sched_time_ratio]
+
+    if use_hcs and not use_context:
+        scenario_cls = IndustrialDatasetHCSScenarioProvider
+        base_args.insert(1, f"{datasets_dir}/{dataset}/data-variants.csv")
+    elif not use_hcs and use_context:
+        scenario_cls = IndustrialDatasetContextScenarioProvider
+        base_args[0] = f"{datasets_dir}/{dataset}/features-engineered-contextual.csv"
+        base_args.insert(1, feature_groups['feature_group_name'])
+        base_args.insert(2, feature_groups['feature_group_values'])
+        base_args.insert(3, context_config['previous_build'])
+    elif use_hcs and use_context:
+        raise NotImplementedError
+    else:
+        scenario_cls = IndustrialDatasetScenarioProvider
+
+    return scenario_cls(*base_args)
 
 
 if __name__ == '__main__':
-    ap = argparse.ArgumentParser(description='Main')
+    load_dotenv()
+    config = get_config()
 
-    ap.add_argument('--project_dir', required=True)
-    ap.add_argument('--considers_variants', default=False,
-                    type=lambda x: (str(x).lower() == 'true'))
+    # Execution configuration
+    (
+        parallel_pool_size,
+        independent_executions
+    ) = map(config['execution'].get, [
+        'parallel_pool_size',
+        'independent_executions'
+    ])
 
-    ap.add_argument('--parallel_pool_size', type=int,
-                    default=PARALLEL_POOL_SIZE)
+    # Experiment Configuration
+    (
+        sched_time_ratio,
+        datasets_dir,
+        datasets,
+        experiment_dir,
+        rewards_names,
+        policy_names
+    ) = map(config['experiment'].get, [
+        'scheduled_time_ratio',
+        'datasets_dir',
+        'datasets',
+        'experiment_dir',
+        'rewards',
+        'policies'
+    ])
 
-    ap.add_argument('--datasets', nargs='+', default=[], required=True,
-                    help='Datasets to analyse. Ex: \'deeplearning4j@deeplearning4j\'')
+    # Algorithms Configuration
+    algorithm_configs = config['algorithm']
 
-    ap.add_argument('-r', '--rewards', nargs='+', default=['RNFailReward', 'TimeRankReward'],
-                    help='Reward Functions available: RNFailReward and TimeRankReward')
+    # HCS Configuration
+    use_hcs = config.get('hcs_configuration', False).get('wts_strategy', False)
 
-    ap.add_argument('-p', '--policies', nargs='+', default=['Random', 'Greedy', 'EpsilonGreedy', 'UCB', 'FRR'],
-                    help='Policies available: Random, Greedy, EpsilonGreedy, UCB, FRR')
+    # Contextual Information
+    (
+        context_config,
+        feature_groups
+    ) = map(config['contextual_information'].get, [
+        'config',
+        'feature_group'
+    ])
 
-    ap.add_argument('--scaling_factor_frr', type=int,
-                    nargs='+', default=DEFAULT_SCALING_FACTOR_FRR)
+    # Load policy objects along with the target reward functions
+    policies = {
+        policy_name: {
+            reward_name: load_class_from_module(coleman4hcs.policy, policy_name + "Policy")(
+                **algorithm_configs.get(policy_name.lower(), {}).get(reward_name.lower(), {})
+            )
+            for reward_name in rewards_names
+        }
+        for policy_name in policy_names
+    }
 
-    ap.add_argument('--scaling_factor_ucb', type=int,
-                    nargs='+', default=DEFAULT_SCALING_FACTOR_UCB)
+    # Generate agents based on the policies and reward functions
+    agents = [
+        agent
+        for policy_name, reward_policies in policies.items()
+        for reward_name, policy in reward_policies.items()
+        for agent in create_agents(
+            policy,
+            load_class_from_module(coleman4hcs.reward, reward_name + "Reward")(),
+            algorithm_configs.get(policy_name.lower(), {}).get('window_sizes', [])
+        )
+    ]
 
-    ap.add_argument('--epsilon', type=int, nargs='+', default=DEFAULT_EPSILON)
+    # Check if there's an agent of type SlidingWindowContextualAgent or ContextualAgent
+    has_sliding_window_contextual_agent = any(isinstance(agent, SlidingWindowContextualAgent) for agent in agents)
+    has_contextual_agent = any(isinstance(agent, ContextualAgent) for agent in agents)
 
-    ap.add_argument('--window_sizes', type=int, nargs='+',
-                    default=DEFAULT_WINDOW_SIZES)
+    use_context = has_contextual_agent or has_sliding_window_contextual_agent
 
-    ap.add_argument('--sched_time_ratio', nargs='+',
-                    default=DEFAULT_SCHED_TIME_RATIO, help='Schedule Time Ratio')
+    evaluation_metric = NAPFDVerdictMetric()
 
-    ap.add_argument('-o', '--output_dir',
-                    default=DEFAULT_EXPERIMENT_DIR,
-                    const=DEFAULT_EXPERIMENT_DIR,
-                    nargs='?')
+    for tr in sched_time_ratio:
+        experiment_directory = os.path.join(experiment_dir, f"time_ratio_{int(tr * 100)}/")
 
-    args = ap.parse_args()
+        Path(experiment_directory).mkdir(parents=True, exist_ok=True)
 
-    PARALLEL_POOL_SIZE = args.parallel_pool_size
-    considers_variants = args.considers_variants
+        for dataset in datasets:
+            scenario = get_scenario_provider(datasets_dir, dataset, tr, use_hcs, use_context, context_config,
+                                             feature_groups)
 
-    reward_functions = []
-    for reward in args.rewards:
-        if reward == 'RNFailReward':
-            reward_functions.append(RNFailReward())
-        elif reward == 'TimeRankReward':
-            reward_functions.append(TimeRankReward())
+            # Stop conditional
+            trials = scenario.max_builds
 
-    policies = []
-    for pol in args.policies:
-        if pol == "Random":
-            policies.append(RandomPolicy())
-        elif pol == "Greedy":
-            policies.append(GreedyPolicy())
-        elif pol == "EpsilonGreedy":
-            policies.extend([EpsilonGreedyPolicy(float(epsilon))
-                             for epsilon in args.scaling_factor_ucb])
-        elif pol == "UCB":
-            policies.extend([UCBPolicy(float(scaling))
-                             for scaling in args.scaling_factor_ucb])
-        elif pol == "FRR":
-            policies.extend([FRRMABPolicy(float(scaling))
-                             for scaling in args.scaling_factor_frr])
-        else:
-            print(f"Policies '{pol}' not found!")
+            # Prepare the experiment
+            env = Environment(agents, scenario, evaluation_metric)
 
-    metric = NAPFDVerdictMetric()
+            parameters = [(i + 1, trials, env, experiment_directory) for i in range(independent_executions)]
 
-    for tr in args.sched_time_ratio:
-        EXPERIMENT_DIR = os.path.join(args.output_dir, f"time_ratio_{int(tr * 100)}/")
+            # create a file with a unique header for the scenario (workaround)
+            env.create_file(f"{experiment_directory}{str(env.scenario_provider)}.csv")
 
-        Path(EXPERIMENT_DIR).mkdir(parents=True, exist_ok=True)
+            # Compute time
+            start = time.time()
 
-        for dataset in args.datasets:
-            run_experiments_with_threads(args.project_dir, dataset, policies,
-                                         window_sizes=args.window_sizes,
-                                         reward_functions=reward_functions,
-                                         sched_time_ratio=tr,
-                                         evaluation_metric=metric,
-                                         considers_variants=considers_variants)
+            if parallel_pool_size > 1:
+                with Pool(parallel_pool_size) as p:
+                    p.starmap(exp_run_industrial_dataset, parameters)
+            else:
+                for param in parameters:
+                    exp_run_industrial_dataset(*param)
+
+            end = time.time()
+
+            print(f"Time expend to run the experiments: {end - start}\n\n")

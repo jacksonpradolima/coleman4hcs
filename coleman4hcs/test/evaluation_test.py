@@ -1,6 +1,6 @@
 import unittest
 
-from coleman4hcs.evaluation import NAPFDMetric, NAPFDVerdictMetric, APFDMetric, APFDcMetric
+from coleman4hcs.evaluation import NAPFDMetric, NAPFDVerdictMetric
 
 
 class RunningEvaluation(unittest.TestCase):
@@ -35,20 +35,10 @@ class RunningEvaluation(unittest.TestCase):
         napfd.evaluate(records)
         print("NAPFD:", napfd.fitness, "- APFDc:", napfd.cost)
 
-        napfdV = NAPFDVerdictMetric()
-        napfdV.update_available_time(available_time * 0.5)  # 50%
-        napfdV.evaluate(records)
-        print("NAPFD-Verdict:", napfdV.fitness, "- APFDc:", napfd.cost)
-
-        apfd = APFDMetric()
-        apfd.update_available_time(available_time * 0.5)  # 50%
-        apfd.evaluate(records)
-        print("APFD:", apfd.fitness)
-
-        apfdc = APFDcMetric()
-        apfdc.update_available_time(available_time * 0.5)  # 50%
-        apfdc.evaluate(records)
-        print("APFDc:", apfdc.fitness)
+        napfd_v = NAPFDVerdictMetric()
+        napfd_v.update_available_time(available_time * 0.5)  # 50%
+        napfd_v.evaluate(records)
+        print("NAPFD-Verdict:", napfd_v.fitness, "- APFDc:", napfd.cost)
 
 
 if __name__ == '__main__':
