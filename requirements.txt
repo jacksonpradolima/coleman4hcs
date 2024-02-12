@@ -1,5 +1,5 @@
 numpy==1.26.4
-pandas==2.1.0
+pandas==2.2.0
 pylint==3.0.3
 python-dotenv==1.0.1
 toml==0.10.2
