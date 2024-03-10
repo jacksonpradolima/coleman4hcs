@@ -368,41 +368,41 @@ if __name__ == '__main__':
     else:
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
         
-    # for tr in sched_time_ratio:
-    #     experiment_directory = os.path.join(experiment_dir, f"time_ratio_{int(tr * 100)}/")
+    for tr in sched_time_ratio:
+        experiment_directory = os.path.join(experiment_dir, f"time_ratio_{int(tr * 100)}/")
 
-    #     Path(experiment_directory).mkdir(parents=True, exist_ok=True)
+        Path(experiment_directory).mkdir(parents=True, exist_ok=True)
 
-    #     for dataset in datasets:
-    #         scenario = get_scenario_provider(datasets_dir, dataset, tr, use_hcs, use_context, context_config,
-    #                                          feature_groups)
+        for dataset in datasets:
+            scenario = get_scenario_provider(datasets_dir, dataset, tr, use_hcs, use_context, context_config,
+                                             feature_groups)
 
-    #         # Stop conditional
-    #         trials = scenario.max_builds
+            # Stop conditional
+            trials = scenario.max_builds
             
-    #         # Prepare the experiment
-    #         env = Environment(agents, scenario, evaluation_metric)
+            # Prepare the experiment
+            env = Environment(agents, scenario, evaluation_metric)
 
-    #         parameters = [(i + 1, trials, env, experiment_directory) for i in range(independent_executions)]
+            parameters = [(i + 1, trials, env, experiment_directory) for i in range(independent_executions)]
                         
-    #         # Compute time
-    #         start = time.time()
+            # Compute time
+            start = time.time()
 
-    #         if parallel_pool_size > 1:
-    #             with Pool(parallel_pool_size) as p:
-    #                 p.starmap(exp_run_industrial_dataset, parameters)
-    #         else:
-    #             for param in parameters:
-    #                 exp_run_industrial_dataset(*param)
+            if parallel_pool_size > 1:
+                with Pool(parallel_pool_size) as p:
+                    p.starmap(exp_run_industrial_dataset, parameters)
+            else:
+                for param in parameters:
+                    exp_run_industrial_dataset(*param)
 
-    #         end = time.time()    
+            end = time.time()    
 
-    #         # Read and merge the independent executions
-    #         csv_file_names = [f"{experiment_directory}{str(env.scenario_provider)}_{i+1}.csv" for i in range(independent_executions)]            
-    #         csv_file = f"{experiment_directory}{str(env.scenario_provider)}.csv"
-    #         merge_csv(csv_file_names, csv_file)
+            # Read and merge the independent executions
+            csv_file_names = [f"{experiment_directory}{str(env.scenario_provider)}_{i+1}.csv" for i in range(independent_executions)]            
+            csv_file = f"{experiment_directory}{str(env.scenario_provider)}.csv"
+            merge_csv(csv_file_names, csv_file)
             
-    #         # Store the results in the duckdb database
-    #         store_experiments(csv_file, scenario)
+            # Store the results in the duckdb database
+            store_experiments(csv_file, scenario)
                     
-    #         logging.info(f"Time expend to run the experiments: {end - start}\n\n")
+            logging.info(f"Time expend to run the experiments: {end - start}\n\n")
