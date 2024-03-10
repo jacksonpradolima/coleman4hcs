@@ -262,7 +262,7 @@ def store_experiments(csv_file, scenario):
     );
     """)
 
-    df = conn.read_csv(csv_file, delimiter=';', quotechar='"', header=True)
+    conn.read_csv(csv_file, delimiter=';', quotechar='"', header=True)
 
     # Insert the DataFrame into the 'experiments' table
     conn.execute("INSERT INTO experiments SELECT * FROM df;")

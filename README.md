@@ -71,6 +71,7 @@ In order to use this `version`, use any Contextual-MAB available, for instance, 
 	- [Running for an HCS system](#running-for-an-hcs-system)
 	  - [Whole Test Set Strategy](#whole-test-set-strategy)
 	  - [Variant Test Set Strategy](#variant-test-set-strategy)
+- [Analysis of COLEMAN4HCS Performance](#analysis-of-coleman4hcs-performance)
 - [References](#references)
 - [Contributors](#Contributors)
 ----------------------------------
@@ -304,7 +305,7 @@ Note: you can execute all the MAB and Contextual MAB policies together if you ha
 To execute **COLEMAN** for a non-HCS system, first update the variables in the provided **TOML** file:
 
 - `datasets_dir = "examples"`
-- `datasets = ["fakedata"]` 
+- `datasets = ["fakedata"]`
 
 Subsequently, you can run the program with the following command:
 
