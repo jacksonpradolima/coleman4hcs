@@ -44,7 +44,7 @@ class Environment:
     def __init__(self, agents, scenario_provider, evaluation_metric):
         self.agents = agents
         self.scenario_provider = scenario_provider
-        self.evaluation_metric = evaluation_metric        
+        self.evaluation_metric = evaluation_metric
         self.reset()
 
     def reset(self):
@@ -54,7 +54,7 @@ class Environment:
         self.reset_agents_memory()
         # Monitor saves the feedback during the process
         self.monitor = MonitorCollector()
-        
+
         self.variant_monitors = {}
 
         if isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider) and \
@@ -71,13 +71,13 @@ class Environment:
 
     def run_single(self,
                    experiment,
-                   trials=100,                   
+                   trials=100,
                    bandit_type: DynamicBandit = EvaluationMetricBandit,
                    restore=True):
         """
         Execute a single simulation experiment
         :param experiment: Current Experiment
-        :param trials: The max number of scenarios that will be analyzed        
+        :param trials: The max number of scenarios that will be analyzed
         :param bandit_type:
         :param restore: restore the experiment if fail (i.e., energy down)
         """
@@ -158,7 +158,7 @@ class Environment:
         :param agent: The agent that is being used for the prioritization.
         :param bandit: The bandit mechanism used for choosing actions.
         :param bandit_duration: Time taken by the bandit process.
-        :param experiment: The current experiment number.        
+        :param experiment: The current experiment number.
         :param t: The current step or iteration of the simulation.
         :param vsc: The virtual scenario being considered.
         :return: tuple containing the chosen action by the agent, the ending time of the process,
@@ -193,7 +193,7 @@ class Environment:
 
         # Compute end time
         end = time.time()
-                
+
         logging.debug(f"Exp: {experiment} - Ep: {t} - Name: {exp_name} ({str(agent.get_reward_function())}) - " +
                       f"NAPFD/APFDc: {metric.fitness:.4f}/{metric.cost:.4f}")
 
@@ -299,7 +299,7 @@ class Environment:
         """
         Execute a simulation
         :param experiments: Number of experiments
-        :param trials: The max number of scenarios that will be analyzed        
+        :param trials: The max number of scenarios that will be analyzed
         :param bandit_type:
         :param restore: restore the experiment if fail (i.e., energy down)
         :return:
@@ -312,7 +312,7 @@ class Environment:
     def create_file(self, name):
         """
         Create a file to store the results obtained during the experiment
-        """        
+        """
         self.monitor.create_file(name)
 
         # If we are working with HCS scenario, we create a file for each variant in a specific directory
@@ -331,10 +331,10 @@ class Environment:
     def store_experiment(self, csv_file_name):
         """
         Save the results obtained during the experiment
-        """                        
+        """
         # Collect from temp and save a file (backup and easy sharing/auditing)
         self.monitor.save(csv_file_name)
-        
+
         if isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider):
             if self.scenario_provider.get_total_variants() > 0:
                 # Ignore the extension
@@ -347,7 +347,7 @@ class Environment:
                     # Collect from temp and save a file (backup and easy sharing/auditing)
                     self.variant_monitors[variant].save(
                         f"{name2}/{csv_file_name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv")
-                                    
+
     def load_experiment(self, experiment):
         """
         Load the backup

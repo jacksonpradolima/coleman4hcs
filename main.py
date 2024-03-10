@@ -77,7 +77,7 @@ def exp_run_industrial_dataset(iteration, trials, env: Environment, experiment_d
     csv_file_name = f"{experiment_directory}{str(env.scenario_provider)}_{iteration}.csv"
     env.create_file(csv_file_name)
     env.run_single(iteration, trials)
-    env.store_experiment(csv_file_name)    
+    env.store_experiment(csv_file_name)
 
 
 def load_class_from_module(module, class_name: str):
@@ -196,10 +196,10 @@ def merge_csv(files, output_file):
     """
     # Merge all CSV files into one DataFrame
     df = pd.concat([pd.read_csv(file, sep=';') for file in files], ignore_index=True)
-    
+
     # Save the merged DataFrame to CSV
-    df.to_csv(output_file, index=False, sep=';', quoting=csv.QUOTE_NONE)     
-                      
+    df.to_csv(output_file, index=False, sep=';', quoting=csv.QUOTE_NONE)
+
     # Optionally, clean up temporary files
     for file in files:
         os.remove(file)
@@ -232,7 +232,7 @@ def store_experiments(csv_file, scenario):
     Example usage:
     >>> store_experiments("experiment_results.csv", my_scenario)
     """
-    # Create/Open a database to store the results            
+    # Create/Open a database to store the results
     conn = duckdb.connect('experiments.db')
 
     # Ensure the tables exist with the appropriate schema
@@ -261,12 +261,12 @@ def store_experiments(csv_file, scenario):
         prioritization_order VARCHAR
     );
     """)
-                
+
     df = conn.read_csv(csv_file, delimiter=';', quotechar='"', header=True)
 
     # Insert the DataFrame into the 'experiments' table
     conn.execute("INSERT INTO experiments SELECT * FROM df;")
-                
+
     if isinstance(scenario, IndustrialDatasetHCSScenarioProvider):
         if scenario.get_total_variants() > 0:
             # Ignore the extension
@@ -275,9 +275,9 @@ def store_experiments(csv_file, scenario):
 
             Path(name2).mkdir(parents=True, exist_ok=True)
 
-            for variant in scenario.get_all_variants():           
+            for variant in scenario.get_all_variants():
                 csv_file_variant = f"{name2}/{csv_file.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv"
-                conn.execute( f"COPY experiments FROM '{csv_file_variant}' (HEADER);")   
+                conn.execute( f"COPY experiments FROM '{csv_file_variant}' (HEADER);")
                 df = conn.read_csv(csv_file, delimiter=';', quotechar='"', header=True)
 
                 # Insert the DataFrame into the 'experiments' table
@@ -292,11 +292,11 @@ if __name__ == '__main__':
     # Execution configuration
     (
         parallel_pool_size,
-        independent_executions,        
+        independent_executions,
         verbose
     ) = map(config['execution'].get, [
         'parallel_pool_size',
-        'independent_executions',        
+        'independent_executions',
         'verbose'
     ])
 
@@ -367,7 +367,7 @@ if __name__ == '__main__':
         logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
     else:
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-        
+
     for tr in sched_time_ratio:
         experiment_directory = os.path.join(experiment_dir, f"time_ratio_{int(tr * 100)}/")
 
@@ -379,12 +379,12 @@ if __name__ == '__main__':
 
             # Stop conditional
             trials = scenario.max_builds
-            
+
             # Prepare the experiment
             env = Environment(agents, scenario, evaluation_metric)
 
             parameters = [(i + 1, trials, env, experiment_directory) for i in range(independent_executions)]
-                        
+
             # Compute time
             start = time.time()
 
@@ -395,14 +395,14 @@ if __name__ == '__main__':
                 for param in parameters:
                     exp_run_industrial_dataset(*param)
 
-            end = time.time()    
+            end = time.time()
 
             # Read and merge the independent executions
-            csv_file_names = [f"{experiment_directory}{str(env.scenario_provider)}_{i+1}.csv" for i in range(independent_executions)]            
+            csv_file_names = [f"{experiment_directory}{str(env.scenario_provider)}_{i+1}.csv" for i in range(independent_executions)]
             csv_file = f"{experiment_directory}{str(env.scenario_provider)}.csv"
             merge_csv(csv_file_names, csv_file)
-            
+
             # Store the results in the duckdb database
             store_experiments(csv_file, scenario)
-                    
+
             logging.info(f"Time expend to run the experiments: {end - start}\n\n")
