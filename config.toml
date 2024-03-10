@@ -1,14 +1,17 @@
 [execution]
 # Execution Configutation
-parallel_pool_size = 1
-independent_executions = 1
+parallel_pool_size = 10
+independent_executions = 10
+
+# Add a verbose flag or directly set the log level to debug for verbose output
+verbose = true  # You can toggle this flag to enable verbose logging
 
 [experiment]
 # Experiment Configuration
 scheduled_time_ratio = [0.1, 0.5, 0.8]
 datasets_dir = "examples"
-#datasets = ["fakedata"]
-datasets = ["square@retrofit"]
+# datasets = ["fakedata", "square@retrofit"]
+datasets = ["alibaba@druid"]
 
 # WTS
 #datasets_dir = "examples/core@dune-common"
@@ -20,7 +23,8 @@ datasets = ["square@retrofit"]
 
 experiment_dir = "results/experiments/"
 rewards = ["RNFail", "TimeRank"]
-policies = ['Random', 'Greedy', 'EpsilonGreedy', 'UCB', 'FRRMAB', 'LinUCB', 'SWLinUCB']
+#policies = ['Random', 'Greedy', 'EpsilonGreedy', 'UCB', 'FRRMAB', 'LinUCB', 'SWLinUCB']
+policies = ['Random', 'Greedy', 'EpsilonGreedy', 'UCB', 'FRRMAB']
 
 [algorithm.frrmab]
 # Algorithm Configuration for FRRMAB
