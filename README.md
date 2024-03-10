@@ -304,7 +304,7 @@ Note: you can execute all the MAB and Contextual MAB policies together if you ha
 To execute **COLEMAN** for a non-HCS system, first update the variables in the provided **TOML** file:
 
 - `datasets_dir = "examples"`
-- `datasets = ["fakedata]"`
+- `datasets = ["fakedata"]` 
 
 Subsequently, you can run the program with the following command:
 
@@ -354,6 +354,22 @@ As a hands-on example, set `datasets =
 and `datasets_dir = "examples/core@dune-common"`.
 This offers a succinct example using the Dune dataset, treating each variant as a unique system.
 Further insights into the dataset are available in the [Datasets](#datasets) section.
+
+# Analysis of COLEMAN4HCS Performance
+
+As part of our ongoing effort to provide the state-of-the-art tool, Coleman4HCS, for TCPCI optimize COLEMAN4HCS, we've created examples to guide any researcher to understand the performance, effectiveness, and adaptability of our tool. The analysis, available in our Jupyter notebook (`analysis.ipynb`), leverages various libraries such as DuckDB, Pandas, Seaborn, and Matplotlib to process data and visualize the results.
+
+## Performance Metrics
+
+The notebook has examples including but not limited to test case execution times, prioritization effectiveness, and algorithm efficiency under different configurations and environments.
+
+## Methodologies
+
+The notebook employs SQL queries for data manipulation and leverages Python's data analysis and visualization libraries to derive meaningful insights from historical test data. Our methodology ensures a robust analysis framework capable of handling large datasets and producing actionable intelligence.
+
+## Visualizations
+
+Data visualizations play a key role in our analysis, offering intuitive understanding of complex data patterns and algorithm performance. The notebook includes various charts and graphs that elucidate the trade-offs between different prioritization strategies and their impact on test cycle times and failure detection rates.
 
 # References
 
