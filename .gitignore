@@ -192,3 +192,6 @@ results/
 .idea/inspectionProfiles/
 
 data/
+
+.vscode/
+experiments.db*
