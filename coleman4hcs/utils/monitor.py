@@ -24,6 +24,7 @@ class MonitorCollector:
         Initializes the monitor collector with predefined column names and an empty dataframe.
         """
 
+        # scenario: Experiment name (system under test)
         # experiment: Experiment number
         # step: Part number (Build) from scenario that is been analyzed
         # policy: Policy name that is evaluating a part of the scenario
@@ -45,7 +46,8 @@ class MonitorCollector:
         # recall: How much test cases we found (detected/total)
         # avg_precision: 1 - We found all failures, 123 - We did not found all failures
         # prioritization_order: prioritized test set
-        self.col_names = ['experiment',
+        self.col_names = ['scenario',
+                          'experiment',
                           'step',
                           'policy',
                           'reward_function',
@@ -115,6 +117,7 @@ class MonitorCollector:
             self.collect_from_temp()
 
         records = {
+            'scenario': scenario_provider.name,
             'experiment': experiment,
             'step': t,
             'policy': policy,
