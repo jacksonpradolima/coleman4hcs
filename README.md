@@ -36,7 +36,7 @@ Furthermore, this repository contains the adaptation to deal with Highly-Configu
 
 For more information about **WTS** and **VTS** read **Ref2** in [References](#references).
 
-On the other hand, we extended **COLEMAN** to consider the context surrouding in each CY Cycle. The extended version
+On the other hand, we extended **COLEMAN** to consider the context surrouding in each CI Cycle. The extended version
 we named as **CONSTANTINE** (_**CON**textual te**S**t priori**T**iz**A**tion for co**NT**inuous **INE**gration_).
 
 **CONSTANTINE** can use any feature given a dataset, for instance:
