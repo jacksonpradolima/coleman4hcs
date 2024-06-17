@@ -1,5 +1,5 @@
 duckdb==0.10.2
-numpy==1.26.4
+numpy==2.0.0
 pandas==2.2.2
 pyarrow==15.0.2
 pylint==3.1.0
