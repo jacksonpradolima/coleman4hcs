@@ -57,10 +57,26 @@ from coleman4hcs.scenarios import (
     IndustrialDatasetContextScenarioProvider
 )
 from config.config import get_config
+import sys
 
 warnings.filterwarnings("ignore")
 
-def exp_run_industrial_dataset(iteration, trials, env: Environment, experiment_directory):
+# taken from https://stackoverflow.com/questions/641420/how-should-i-log-while-using-multiprocessing-in-python
+def create_logger(level):
+    logger = logging.getLogger()
+    logger.setLevel(level)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+
+    # this bit will make sure you won't have 
+    # duplicated messages in the output
+    if not len(logger.handlers): 
+        logger.addHandler(handler)
+    return logger
+
+
+def exp_run_industrial_dataset(iteration, trials, env: Environment, experiment_directory, level):
     """
     Execute a single run of the industrial dataset experiment.
 
@@ -75,6 +91,7 @@ def exp_run_industrial_dataset(iteration, trials, env: Environment, experiment_d
     :return: None
     """
     csv_file_name = f"{experiment_directory}{str(env.scenario_provider)}_{iteration}.csv"
+    env.logger = create_logger(level)
     env.create_file(csv_file_name)
     env.run_single(iteration, trials)
     env.store_experiment(csv_file_name)
@@ -363,10 +380,15 @@ if __name__ == '__main__':
 
     evaluation_metric = NAPFDVerdictMetric()
 
+    logger = None
+    level = logging.NOTSET
+
     if verbose:
-        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+        level = logging.DEBUG
+        logger = create_logger(level)
     else:
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        level = logging.INFO
+        logger = create_logger(level)
 
     for tr in sched_time_ratio:
         experiment_directory = os.path.join(experiment_dir, f"time_ratio_{int(tr * 100)}/")
@@ -383,7 +405,7 @@ if __name__ == '__main__':
             # Prepare the experiment
             env = Environment(agents, scenario, evaluation_metric)
 
-            parameters = [(i + 1, trials, env, experiment_directory) for i in range(independent_executions)]
+            parameters = [(i + 1, trials, env, experiment_directory, level) for i in range(independent_executions)]
 
             # Compute time
             start = time.time()

@@ -164,3 +164,6 @@ class MonitorCollector:
                        columns=self.col_names,
                        index=False,
                        quoting=csv.QUOTE_NONE)
+    
+    def clear(self):
+        self.df = pd.DataFrame(columns=self.col_names)
