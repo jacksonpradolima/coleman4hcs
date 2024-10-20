@@ -194,7 +194,7 @@ class Environment:
         # Compute end time
         end = time.time()
 
-        logging.debug(f"Exp: {experiment} - Ep: {t} - Name: {exp_name} ({str(agent.get_reward_function())}) - " +
+        self.logger.debug(f"Exp: {experiment} - Ep: {t} - Name: {exp_name} ({str(agent.get_reward_function())}) - " +
                       f"NAPFD/APFDc: {metric.fitness:.4f}/{metric.cost:.4f}")
 
         # Collect the data during the experiment
@@ -347,6 +347,9 @@ class Environment:
                     # Collect from temp and save a file (backup and easy sharing/auditing)
                     self.variant_monitors[variant].save(
                         f"{name2}/{csv_file_name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv")
+        
+        # Clear experiment
+        self.monitor.clear()
 
     def load_experiment(self, experiment):
         """
