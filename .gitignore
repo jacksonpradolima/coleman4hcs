@@ -195,3 +195,6 @@ data/
 
 .vscode/
 experiments.db*
+
+# Ignore coverage files
+htmlcov/

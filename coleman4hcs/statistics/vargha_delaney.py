@@ -1,3 +1,28 @@
+"""
+Effect Size Computation for Statistical Analysis
+
+This module implements methods for computing and analyzing effect sizes, specifically
+Vargha and Delaney's A index, which measures the probability that one random observation
+from a treatment group is larger than a random observation from a control group. The A index
+is widely used in educational and behavioral statistics.
+
+Functions:
+- VD_A: Computes the Vargha and Delaney A index for two groups.
+- VD_A_DF: Computes pairwise A index comparisons for multiple groups in a pandas DataFrame.
+- reduce: Filters and annotates effect sizes for comparisons against a specified best group.
+
+Key Features:
+- Accurate computation of the A index using a formula that minimizes numerical errors.
+- Categorization of effect sizes into magnitudes (negligible, small, medium, large).
+- Flexible handling of data through pandas DataFrame operations for group comparisons.
+- Latex-compatible symbols for presenting effect sizes in reports or visualizations.
+
+References:
+- A. Vargha and H. D. Delaney, "A critique and improvement of the CL common language
+  effect size statistics of McGraw and Wong," Journal of Educational and Behavioral
+  Statistics, vol. 25, no. 2, pp. 101–132, 2000.
+- Hess and Kromrey, 2004, for thresholds of effect size magnitudes.
+"""
 import itertools as it
 from bisect import bisect_left
 from typing import List
@@ -9,6 +34,7 @@ from pandas import Categorical
 
 # turn off the SettingWithCopyWarning
 pd.set_option('mode.chained_assignment', None)
+
 
 def VD_A(treatment: List[float], control: List[float]):
     """
@@ -97,6 +123,7 @@ def VD_A_DF(data, val_col: str = None, group_col: str = None, sort=True):
         'magnitude': ef[:, 1]
     })
 
+
 def reduce(df, best, symbols=True):
     """
     Reduce a pandas DataFrame of effect sizes to compare only against to the best among the comparison (algorithm/item)
@@ -121,10 +148,9 @@ def reduce(df, best, symbols=True):
 
     # Get magnitude symbol (in latex) for each comparison
     # The best has the bigstart symbol
-    if symbols:
-        df['effect_size_symbol'] = df['temp'].apply(lambda x: "$\\bigstar$"
-        if x == best
-        else symbols[magnitude.index(df.loc[df['temp'] == x, 'magnitude'].tolist()[0])])
+    df['effect_size_symbol'] = df['temp'].apply(lambda x: "$\\bigstar$"
+    if x == best
+    else symbols[magnitude.index(df.loc[df['temp'] == x, 'magnitude'].tolist()[0])])
 
     df.drop(['temp'], axis=1, inplace=True)
 
