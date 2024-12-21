@@ -78,7 +78,7 @@ class RunningPolicy(unittest.TestCase):
         # Compute time
         start = time.time()
 
-        env.run_single(iteration, trials, print_log=True)
+        env.run_single(iteration, trials)
         env.store_experiment(f"{self.output_dir_hcs}{str(env.scenario_provider)}.csv")
 
         end = time.time()
@@ -103,7 +103,7 @@ class RunningPolicy(unittest.TestCase):
         # Compute time
         start = time.time()
 
-        env.run_single(iteration, trials, print_log=True)
+        env.run_single(iteration, trials)
         env.store_experiment(f"{self.output_dir}{str(env.scenario_provider)}.csv")
 
         end = time.time()
