@@ -12,7 +12,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # To retrieve the preceding commit (deeply).
+          fetch-depth: 0 # Retrieve full commit history for proper diff.
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -25,14 +25,13 @@ jobs:
       - name: Create Pylintrc file
         run: |
           echo "[MASTER]" > .pylintrc
-          echo "init-hook=\"from pylint.config import find_pylintrc; import os, sys; sys.path.append(os.path.dirname(find_pylintrc())+ '/web')\"" >> .pylintrc
           echo "max-line-length=120" >> .pylintrc
           echo "disable=" >> .pylintrc
-          echo "    C0103, # uppercase naming style" >> .pylintrc
-          echo "    logging-format-interpolation, # use %s for logging" >> .pylintrc
-          echo "    broad-except, # we want to catch all exceptions" >> .pylintrc
-          echo "    too-many-locals, # we don't care" >> .pylintrc
-          echo "    too-few-public-methods, # enum classes don't normally have methods" >> .pylintrc
+          echo "    C0103, # variable naming style" >> .pylintrc
+          echo "    logging-format-interpolation, # prefer % formatting" >> .pylintrc
+          echo "    broad-except, # catch all exceptions" >> .pylintrc
+          echo "    too-many-locals, # relax constraints" >> .pylintrc
+          echo "    too-few-public-methods," >> .pylintrc
           echo "    too-many-instance-attributes," >> .pylintrc
           echo "    too-many-arguments," >> .pylintrc
           echo "    import-error," >> .pylintrc
@@ -41,15 +40,15 @@ jobs:
 
       - name: Get Python changed files
         id: changed-py-files
-        uses: tj-actions/changed-files@v44
+        uses: tj-actions/changed-files@v45
         with:
           files: |
             *.py
             **/*.py
 
-      - name: Run pylint step if python files changed
+      - name: Run pylint if Python files changed
         if: steps.changed-py-files.outputs.any_changed == 'true'
         run: |
-          echo "One or more py files not in the doc folder has changed."
-          echo "List all the files that have changed: ${{ steps.changed-py-files.outputs.all_changed_files }}"
-          pylint --rcfile .pylintrc ${{ steps.changed-py-files.outputs.all_changed_files }}
+          echo "One or more Python files have changed."
+          echo "List of changed files: ${{ steps.changed-py-files.outputs.all_changed_files }}"
+          python -m pylint --rcfile=.pylintrc ${{ steps.changed-py-files.outputs.all_changed_files }}
