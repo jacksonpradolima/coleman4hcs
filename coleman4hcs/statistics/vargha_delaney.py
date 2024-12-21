@@ -10,6 +10,7 @@ from pandas import Categorical
 # turn off the SettingWithCopyWarning
 pd.set_option('mode.chained_assignment', None)
 
+
 def VD_A(treatment: List[float], control: List[float]):
     """
     Computes Vargha and Delaney A index
@@ -96,6 +97,7 @@ def VD_A_DF(data, val_col: str = None, group_col: str = None, sort=True):
         'estimate': ef[:, 0],
         'magnitude': ef[:, 1]
     })
+
 
 def reduce(df, best, symbols=True):
     """
