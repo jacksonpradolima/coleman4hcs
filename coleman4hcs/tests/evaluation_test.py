@@ -8,6 +8,9 @@ NAPFD_COST_NON_NEGATIVE = "NAPFD cost should be non-negative."
 
 @pytest.fixture
 def sample_records():
+    """
+    Provide sample test records for evaluation metrics.
+    """
     return [
         {'Name': 8, 'Duration': 0.001, 'NumRan': 1, 'NumErrors': 3, 'Verdict': 1},
         {'Name': 9, 'Duration': 0.497, 'NumRan': 1, 'NumErrors': 1, 'Verdict': 1},
@@ -22,7 +25,10 @@ def sample_records():
 
 @pytest.fixture
 def available_time(sample_records):
-    return sum([item['Duration'] for item in sample_records])
+    """
+    Calculate total available time from sample records.
+    """
+    return sum(item['Duration'] for item in sample_records)
 
 def test_evaluation_metric_not_implemented():
     """
@@ -93,6 +99,9 @@ def test_napfd_verdict_metric_no_failures(available_time):
     assert napfd_v.cost == 1, "NAPFD-V cost should be 1 when no failures are present."
 
 def _common_test_napfd(records, available_time):
+    """
+    Common helper function to test NAPFDMetric.
+    """
     napfd = NAPFDMetric()
     napfd.update_available_time(available_time * 0.5)
     napfd.evaluate(records)
