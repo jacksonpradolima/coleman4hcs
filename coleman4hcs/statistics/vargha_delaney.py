@@ -121,10 +121,9 @@ def reduce(df, best, symbols=True):
 
     # Get magnitude symbol (in latex) for each comparison
     # The best has the bigstart symbol
-    if symbols:
-        df['effect_size_symbol'] = df['temp'].apply(lambda x: "$\\bigstar$"
-        if x == best
-        else symbols[magnitude.index(df.loc[df['temp'] == x, 'magnitude'].tolist()[0])])
+    df['effect_size_symbol'] = df['temp'].apply(lambda x: "$\\bigstar$"
+    if x == best
+    else symbols[magnitude.index(df.loc[df['temp'] == x, 'magnitude'].tolist()[0])])
 
     df.drop(['temp'], axis=1, inplace=True)
 

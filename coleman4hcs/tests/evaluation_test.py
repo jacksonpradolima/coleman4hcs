@@ -1,6 +1,10 @@
 import unittest
 from coleman4hcs.evaluation import NAPFDMetric, NAPFDVerdictMetric, EvaluationMetric
 
+# Constants for error messages
+NAPFD_FITNESS_NON_NEGATIVE = "NAPFD fitness should be non-negative."
+NAPFD_FITNESS_NOT_EXCEED_ONE = "NAPFD fitness should not exceed 1."
+NAPFD_COST_NON_NEGATIVE = "NAPFD cost should be non-negative."
 
 class RunningEvaluationTests(unittest.TestCase):
     def setUp(self):
@@ -48,9 +52,9 @@ class RunningEvaluationTests(unittest.TestCase):
         napfd.evaluate(self.records)
 
         # Assertions for fitness and cost
-        self.assertGreaterEqual(napfd.fitness, 0, "NAPFD fitness should be non-negative.")
-        self.assertLessEqual(napfd.fitness, 1, "NAPFD fitness should not exceed 1.")
-        self.assertGreaterEqual(napfd.cost, 0, "NAPFD cost should be non-negative.")
+        self.assertGreaterEqual(napfd.fitness, 0, NAPFD_FITNESS_NON_NEGATIVE)
+        self.assertLessEqual(napfd.fitness, 1, NAPFD_FITNESS_NOT_EXCEED_ONE)
+        self.assertGreaterEqual(napfd.cost, 0, NAPFD_COST_NON_NEGATIVE)
 
     def test_napfd_verdict_metric(self):
         """
@@ -61,9 +65,9 @@ class RunningEvaluationTests(unittest.TestCase):
         napfd_v.evaluate(self.records)
 
         # Assertions for fitness and cost
-        self.assertGreaterEqual(napfd_v.fitness, 0, "NAPFD-V fitness should be non-negative.")
-        self.assertLessEqual(napfd_v.fitness, 1, "NAPFD-V fitness should not exceed 1.")
-        self.assertGreaterEqual(napfd_v.cost, 0, "NAPFD-V cost should be non-negative.")
+        self.assertGreaterEqual(napfd_v.fitness, 0, NAPFD_FITNESS_NON_NEGATIVE)
+        self.assertLessEqual(napfd_v.fitness, 1, NAPFD_FITNESS_NOT_EXCEED_ONE)
+        self.assertGreaterEqual(napfd_v.cost, 0, NAPFD_COST_NON_NEGATIVE)
 
     def test_empty_records(self):
         """
@@ -106,9 +110,9 @@ class RunningEvaluationTests(unittest.TestCase):
         napfd.evaluate(identical_records)
 
         # Assertions for fitness and cost
-        self.assertGreaterEqual(napfd.fitness, 0, "NAPFD fitness should be non-negative.")
-        self.assertLessEqual(napfd.fitness, 1, "NAPFD fitness should not exceed 1.")
-        self.assertGreaterEqual(napfd.cost, 0, "NAPFD cost should be non-negative.")
+        self.assertGreaterEqual(napfd.fitness, 0, NAPFD_FITNESS_NON_NEGATIVE)
+        self.assertLessEqual(napfd.fitness, 1, NAPFD_FITNESS_NOT_EXCEED_ONE)
+        self.assertGreaterEqual(napfd.cost, 0, NAPFD_COST_NON_NEGATIVE)
 
     def test_identical_cost_and_results(self):
         """
@@ -123,9 +127,9 @@ class RunningEvaluationTests(unittest.TestCase):
         napfd.evaluate(identical_cost_records)
 
         # Assertions for fitness and cost
-        self.assertGreaterEqual(napfd.fitness, 0, "NAPFD fitness should be non-negative.")
-        self.assertLessEqual(napfd.fitness, 1, "NAPFD fitness should not exceed 1.")
-        self.assertGreaterEqual(napfd.cost, 0, "NAPFD cost should be non-negative.")
+        self.assertGreaterEqual(napfd.fitness, 0, NAPFD_FITNESS_NON_NEGATIVE)
+        self.assertLessEqual(napfd.fitness, 1, NAPFD_FITNESS_NOT_EXCEED_ONE)
+        self.assertGreaterEqual(napfd.cost, 0, NAPFD_COST_NON_NEGATIVE)
 
 if __name__ == '__main__':
     unittest.main()
