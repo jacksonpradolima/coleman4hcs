@@ -53,7 +53,7 @@ def test_reduce():
 
     # Verify that only comparisons with 'A' remain
     assert all((reduced_data['base'] == 'A') | (
-            reduced_data['compared_with'] == 'A')), "Expected only comparisons involving 'A'"
+        reduced_data['compared_with'] == 'A')), "Expected only comparisons involving 'A'"
     assert 'effect_size_symbol' in reduced_data.columns
 
 
