@@ -1,3 +1,33 @@
+"""
+Unit tests for the coleman4hcs evaluation module.
+
+This test suite validates the correctness and robustness of the evaluation metrics
+implemented in the coleman4hcs library, including NAPFDMetric and NAPFDVerdictMetric.
+
+Tests cover various scenarios, including:
+- Standard test cases with faults and verdicts.
+- Handling of edge cases like empty records and no failures.
+- Common behaviors such as string representation and abstract class enforcement.
+- Metrics computation with records having identical durations or results.
+
+Fixtures:
+- `sample_records`: Provides a set of sample test cases with varying durations, errors, and verdicts.
+- `available_time`: Computes the total available time from the sample records.
+
+Constants:
+- `NAPFD_FITNESS_NON_NEGATIVE`: Ensures that the NAPFD fitness value is non-negative.
+- `NAPFD_FITNESS_NOT_EXCEED_ONE`: Ensures that the NAPFD fitness value does not exceed 1.
+- `NAPFD_COST_NON_NEGATIVE`: Ensures that the NAPFD cost value is non-negative.
+
+Helper Functions:
+- `_common_test_napfd`: A shared utility to test NAPFDMetric across multiple scenarios.
+
+Coverage:
+- Ensures all methods, including edge cases, are well-tested to maintain high reliability.
+
+Usage:
+Run the tests using pytest to verify the functionality of evaluation metrics.
+"""
 import pytest
 from coleman4hcs.evaluation import NAPFDMetric, NAPFDVerdictMetric, EvaluationMetric
 
@@ -5,6 +35,7 @@ from coleman4hcs.evaluation import NAPFDMetric, NAPFDVerdictMetric, EvaluationMe
 NAPFD_FITNESS_NON_NEGATIVE = "NAPFD fitness should be non-negative."
 NAPFD_FITNESS_NOT_EXCEED_ONE = "NAPFD fitness should not exceed 1."
 NAPFD_COST_NON_NEGATIVE = "NAPFD cost should be non-negative."
+
 
 @pytest.fixture
 def sample_records():
@@ -23,12 +54,14 @@ def sample_records():
         {'Name': 7, 'Duration': 0.034, 'NumRan': 1, 'NumErrors': 5, 'Verdict': 1}
     ]
 
+
 @pytest.fixture
 def available_time(sample_records):
     """
     Calculate total available time from sample records.
     """
     return sum(item['Duration'] for item in sample_records)
+
 
 def test_evaluation_metric_not_implemented():
     """
@@ -37,6 +70,7 @@ def test_evaluation_metric_not_implemented():
     metric = EvaluationMetric()
     with pytest.raises(NotImplementedError):
         metric.evaluate([])
+
 
 def test_evaluation_metric_str():
     """
@@ -47,6 +81,7 @@ def test_evaluation_metric_str():
 
     assert str(napfd) == "NAPFD", "NAPFDMetric __str__ method failed."
     assert str(napfd_v) == "NAPFDVerdict", "NAPFDVerdictMetric __str__ method failed."
+
 
 def test_napfd_metric(sample_records, available_time):
     """
@@ -60,6 +95,7 @@ def test_napfd_metric(sample_records, available_time):
     assert napfd.fitness <= 1, NAPFD_FITNESS_NOT_EXCEED_ONE
     assert napfd.cost >= 0, NAPFD_COST_NON_NEGATIVE
 
+
 def test_napfd_verdict_metric(sample_records, available_time):
     """
     Test NAPFDVerdictMetric with standard records and 50% available time.
@@ -72,6 +108,7 @@ def test_napfd_verdict_metric(sample_records, available_time):
     assert napfd_v.fitness <= 1, NAPFD_FITNESS_NOT_EXCEED_ONE
     assert napfd_v.cost >= 0, NAPFD_COST_NON_NEGATIVE
 
+
 def test_empty_records(available_time):
     """
     Test metrics with empty records to ensure proper handling.
@@ -82,6 +119,7 @@ def test_empty_records(available_time):
 
     assert napfd.fitness == 1, "NAPFD fitness should be 1 for empty records."
     assert napfd.cost == 1, "NAPFD cost should be 1 for empty records."
+
 
 def test_napfd_verdict_metric_no_failures(available_time):
     """
@@ -98,6 +136,7 @@ def test_napfd_verdict_metric_no_failures(available_time):
     assert napfd_v.fitness == 1, "NAPFD-V fitness should be 1 when no failures are present."
     assert napfd_v.cost == 1, "NAPFD-V cost should be 1 when no failures are present."
 
+
 def _common_test_napfd(records, available_time):
     """
     Common helper function to test NAPFDMetric.
@@ -110,6 +149,7 @@ def _common_test_napfd(records, available_time):
     assert napfd.fitness <= 1, NAPFD_FITNESS_NOT_EXCEED_ONE
     assert napfd.cost >= 0, NAPFD_COST_NON_NEGATIVE
 
+
 def test_identical_durations(available_time):
     """
     Test metrics with records having identical durations.
@@ -118,6 +158,7 @@ def test_identical_durations(available_time):
         {'Name': i, 'Duration': 1, 'NumRan': 1, 'NumErrors': i % 2, 'Verdict': i % 2} for i in range(1, 10)
     ]
     _common_test_napfd(identical_records, available_time)
+
 
 def test_identical_cost_and_results(available_time):
     """
