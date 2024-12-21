@@ -1,4 +1,4 @@
-name: Run tests and upload coverage
+name: Run tests and upload coverage and analytics
 
 on:
     push
@@ -22,9 +22,18 @@ jobs:
                 run: pip install -r requirements.txt
 
             -   name: Run tests
-                run: pytest --cov-branch --cov-report=xml
+                run: pytest --cov --cov-branch --junitxml=junit.xml -o junit_family=legacy
 
-            -   name: Upload results to Codecov
+            -   name: Upload coverage to Codecov
                 uses: codecov/codecov-action@v5
+                with:
+                    token: ${{ secrets.CODECOV_TOKEN }}
+                    files: coverage.xml
+                    flags: unittests
+                    name: codecov-coverage-report
+
+            -   name: Upload test results to Codecov
+                if: ${{ !cancelled() }}
+                uses: codecov/test-results-action@v1
                 with:
                     token: ${{ secrets.CODECOV_TOKEN }}
