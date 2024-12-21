@@ -1,3 +1,28 @@
+"""
+Unit tests for the coleman4hcs evaluation metrics module.
+
+This test suite covers the functionality of the evaluation metrics implemented
+in the coleman4hcs package, specifically the NAPFDMetric and NAPFDVerdictMetric classes.
+It ensures that the metrics behave as expected under various scenarios, including:
+
+- Standard test records
+- Identical durations across records
+- Identical cost and results
+- Empty test records
+- No failure scenarios
+
+Additionally, it tests the base EvaluationMetric class for its abstract behavior,
+ensuring that derived classes implement required methods properly.
+
+Fixtures:
+- sample_records: Provides sample test records for evaluation.
+- available_time: Calculates the total available time from the sample records.
+
+Constants:
+- NAPFD_FITNESS_NON_NEGATIVE: Ensures that fitness is non-negative.
+- NAPFD_FITNESS_NOT_EXCEED_ONE: Ensures that fitness does not exceed 1.
+- NAPFD_COST_NON_NEGATIVE: Ensures that cost is non-negative.
+"""
 import numpy as np
 import pandas as pd
 import pytest
