@@ -66,8 +66,9 @@ def test_collect_single_record(monitor_collector, mock_scenario_provider, mock_m
     assert record['scenario'] == "TestScenario"
     assert record['experiment'] == 1
     assert record['policy'] == "TestPolicy"
-    assert record['fitness'] == 0.8
-    assert record['cost'] == 0.6
+    # Use pytest.approx for floating-point comparisons
+    assert record['fitness'] == pytest.approx(0.8, rel=1e-6)
+    assert record['cost'] == pytest.approx(0.6, rel=1e-6)
 
 
 def test_collect_from_temp(monitor_collector, mock_scenario_provider, mock_metric):
