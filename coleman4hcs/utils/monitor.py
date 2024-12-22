@@ -73,17 +73,22 @@ class MonitorCollector:
         self.df = pd.DataFrame(columns=self.col_names)
 
         # the temp is used when we have more than 1000 records. This is used to improve the performance
-        self.temp_df = pd.DataFrame(columns=self.col_names)
+        self.temp_rows = []
+        self.temp_limit = 1000 # Limit for batching temp data collection
 
     def collect_from_temp(self):
         """
-        Transfers data from the temporary dataframe to the main dataframe and clears the temporary dataframe.
+        Transfers data from the temporary rows to the main dataframe and clears the temporary rows.
+        This can boost our performance by around 10 to 170 times
         """
-        # Pass the temp dataframe to the original dataframe
-        self.df = pd.concat([self.df, self.temp_df])
-        # Empty the temp dataframe
-        self.temp_df = pd.DataFrame(columns=self.col_names)
-        # This can boost our performance by around 10 times
+        if self.temp_rows:
+            batch_df = pd.DataFrame(self.temp_rows, columns=self.col_names)
+            if not batch_df.empty:
+                if self.df.empty:
+                    self.df = batch_df
+                else:
+                    self.df = pd.concat([self.df, batch_df], ignore_index=True)
+            self.temp_rows = []
 
     def collect(self,
                 scenario_provider,
@@ -103,7 +108,7 @@ class MonitorCollector:
         :param scenario_provider: Scenario in analysis
         :param available_time:
         :param experiment: Experiment number
-        :param t: Part number (Build) from scenario that is been analyzed.
+        :param t: Part number (Build) from scenario that is being analyzed.
         :param policy: Policy name that is evaluating a part (sc) of the scenario
         :param reward_function: Reward function used by the agent to observe the environment
         :param metric: The result (metric) of the analysis
@@ -113,7 +118,8 @@ class MonitorCollector:
         :param prioritization_order: prioritized test set
         :return:
         """
-        if len(self.temp_df) > 1000:
+        # Trigger flush when temp_limit is reached
+        if len(self.temp_rows) >= self.temp_limit:
             self.collect_from_temp()
 
         records = {
@@ -140,7 +146,7 @@ class MonitorCollector:
             'prioritization_order': prioritization_order
         }
 
-        self.temp_df.loc[len(self.temp_df)] = records
+        self.temp_rows.append(records)
 
     def create_file(self, name):
         """
@@ -156,14 +162,21 @@ class MonitorCollector:
         Saves the collected data to a CSV file.
         """
         # Collect data remain
-        if len(self.temp_df) > 0:
+        if self.temp_rows:
             self.collect_from_temp()
 
+        # Determine if the file already exists
+        write_header = not os.path.exists(name) or os.stat(name).st_size == 0  # Empty file means headers are missing
+
         self.df.to_csv(name, mode='a+', sep=';', na_rep='[]',
-                       header=False,
+                       header=write_header, # Write header only if the file is empty
                        columns=self.col_names,
                        index=False,
                        quoting=csv.QUOTE_NONE)
-    
+
     def clear(self):
+        """
+        Clears the dataframe.
+        """
         self.df = pd.DataFrame(columns=self.col_names)
+        self.temp_rows = []
