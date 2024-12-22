@@ -59,14 +59,19 @@ class Bandit(ABC):
         self.add_arms(arms)
 
         # Convert columns
-        self.arms = self.arms.infer_objects()
+        # self.arms = self.arms.infer_objects()
 
     def reset(self):
         """
         Reset the arms.
         """
-
         self.arms = pd.DataFrame(columns=self.tc_fieldnames)
+        self.arms = self.arms.astype({
+            'CalcPrio': 'int32',
+            'Duration': 'float32',
+            'Name': 'category',
+            'Verdict': 'int8'
+        })
 
     def get_arms(self) -> List[str]:
         """
@@ -83,7 +88,9 @@ class Bandit(ABC):
         :param arms: List of arms.
         """
         if arms:
-            self.arms = pd.concat([self.arms, pd.DataFrame(arms, columns=self.tc_fieldnames)], ignore_index=True)
+            new_arms = pd.DataFrame(arms, columns=self.tc_fieldnames)
+            self.arms = pd.concat([self.arms, new_arms], ignore_index=True)
+            self.arms.reset_index(drop=True, inplace=True)  # Ensure index consistency
 
     @abstractmethod
     def pull(self, action):
@@ -119,7 +126,7 @@ class DynamicBandit(Bandit, ABC):
         self.add_arms(arms)
 
         # Convert columns
-        self.arms = self.arms.infer_objects()
+        # self.arms = self.arms.infer_objects()
 
 
 class EvaluationMetricBandit(DynamicBandit):
@@ -152,7 +159,7 @@ class EvaluationMetricBandit(DynamicBandit):
 
         # After, we need to order the test cases based on the priorities
         # Sort tc by Prio ASC (for backwards scheduling)
-        self.arms = self.arms.sort_values(by=['CalcPrio'])
+        self.arms = self.arms.iloc[self.arms['CalcPrio'].to_numpy().argsort(kind='stable')]
 
         self.evaluation_metric.evaluate(self.arms.to_dict('records'))
 
