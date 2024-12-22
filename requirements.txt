@@ -4,6 +4,7 @@ numpy==2.0.1
 pandas==2.2.2
 pyarrow==18.1.0
 pylint==3.2.6
+pytest==8.3.4
 pytest-benchmark==5.1.0
 pytest-cov==6.0.0
 python-dotenv==1.0.1
