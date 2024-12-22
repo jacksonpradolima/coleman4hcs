@@ -30,11 +30,13 @@ Performance Tests:
 - Pulling actions with `EvaluationMetricBandit` for test suites of varying sizes
 """
 
-import pytest
+from unittest.mock import MagicMock
+
 import pandas as pd
+import pytest
+
 from coleman4hcs.bandit import Bandit, DynamicBandit, EvaluationMetricBandit
 from coleman4hcs.evaluation import EvaluationMetric
-from unittest.mock import MagicMock
 
 
 class MockBandit(Bandit):
