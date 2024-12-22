@@ -12,6 +12,7 @@ import pytest
 
 from coleman4hcs.evaluation import EvaluationMetric
 from coleman4hcs.utils.monitor import MonitorCollector
+from coleman4hcs.utils.monitor_params import CollectParams
 
 
 @pytest.fixture
@@ -55,7 +56,7 @@ def test_collect_single_record(monitor_collector, mock_scenario_provider, mock_m
     """
     Test collecting a single record.
     """
-    monitor_collector.collect(
+    params = CollectParams(
         scenario_provider=mock_scenario_provider,
         available_time=50,
         experiment=1,
@@ -68,6 +69,7 @@ def test_collect_single_record(monitor_collector, mock_scenario_provider, mock_m
         rewards=0.9,
         prioritization_order=['test1', 'test2']
     )
+    monitor_collector.collect(params)
 
     assert len(monitor_collector.temp_rows) == 1
     record = monitor_collector.temp_rows[0]
@@ -84,7 +86,7 @@ def test_collect_from_temp(monitor_collector, mock_scenario_provider, mock_metri
     Test transferring data from temp_rows to df.
     """
     for i in range(5):
-        monitor_collector.collect(
+        params = CollectParams(
             scenario_provider=mock_scenario_provider,
             available_time=50,
             experiment=i,
@@ -97,6 +99,7 @@ def test_collect_from_temp(monitor_collector, mock_scenario_provider, mock_metri
             rewards=0.9,
             prioritization_order=['test1', 'test2']
         )
+        monitor_collector.collect(params)
 
     monitor_collector.collect_from_temp()
 
@@ -124,7 +127,7 @@ def test_save_to_file(tmp_path, monitor_collector, mock_scenario_provider, mock_
     file_path = tmp_path / "test_save.csv"
 
     for i in range(3):
-        monitor_collector.collect(
+        params = CollectParams(
             scenario_provider=mock_scenario_provider,
             available_time=50,
             experiment=i,
@@ -137,6 +140,7 @@ def test_save_to_file(tmp_path, monitor_collector, mock_scenario_provider, mock_
             rewards=0.9,
             prioritization_order=['test1', 'test2']
         )
+        monitor_collector.collect(params)
 
     monitor_collector.save(file_path)
 
@@ -167,7 +171,7 @@ def test_temp_limit_trigger(monitor_collector, mock_scenario_provider, mock_metr
     monitor_collector.temp_limit = 5
 
     for i in range(6):  # Exceed the limit by 1 record
-        monitor_collector.collect(
+        params = CollectParams(
             scenario_provider=mock_scenario_provider,
             available_time=50,
             experiment=i,
@@ -180,6 +184,7 @@ def test_temp_limit_trigger(monitor_collector, mock_scenario_provider, mock_metr
             rewards=0.9,
             prioritization_order=['test1', 'test2']
         )
+        monitor_collector.collect(params)
 
     # After exceeding the limit, temp_rows should only contain the last record
     assert len(
@@ -217,7 +222,7 @@ def test_temp_limit_exceeded():
 
     # Generate records to exceed temp_limit
     for i in range(1100):  # Exceed the temp_limit by 100 records
-        collector.collect(
+        params = CollectParams(
             scenario_provider=mock_scenario_provider,
             available_time=0.5,
             experiment=1,
@@ -230,6 +235,7 @@ def test_temp_limit_exceeded():
             rewards=0.95,
             prioritization_order=[1, 2, 3]
         )
+        collector.collect(params)
 
     # Check that temp_rows has only the remaining 100 records
     assert len(collector.temp_rows) == 100, "Temp rows should contain the remaining records after flush."
@@ -327,7 +333,7 @@ def test_save_with_non_empty_temp_rows(tmp_path, monitor_collector, mock_scenari
 
     # Collect some data into temp_rows
     for i in range(3):
-        monitor_collector.collect(
+        params = CollectParams(
             scenario_provider=mock_scenario_provider,
             available_time=50,
             experiment=i,
@@ -340,6 +346,7 @@ def test_save_with_non_empty_temp_rows(tmp_path, monitor_collector, mock_scenari
             rewards=0.9,
             prioritization_order=['test1', 'test2']
         )
+        monitor_collector.collect(params)
 
     # Call save and ensure temp_rows is flushed
     monitor_collector.save(file_path)
@@ -385,7 +392,7 @@ def test_temp_limit_performance(benchmark, num_records):
         collector = MonitorCollector()  # Re-instantiate for each round
         collector.temp_limit = 1000
         for i in range(num_records):
-            collector.collect(
+            params = CollectParams(
                 scenario_provider=mock_scenario_provider,
                 available_time=0.5,
                 experiment=1,
@@ -398,6 +405,7 @@ def test_temp_limit_performance(benchmark, num_records):
                 rewards=0.95,
                 prioritization_order=[1, 2, 3]
             )
+            collector.collect(params)
         collector.collect_from_temp()
         return collector
 
