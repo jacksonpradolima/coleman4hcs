@@ -274,6 +274,85 @@ def test_collect_from_temp_empty_batch_df(monitor_collector):
     )
 
 
+def test_create_file_existing_file(tmp_path, monitor_collector):
+    """
+    Test that create_file does not overwrite an existing file.
+    """
+    file_path = tmp_path / "test_existing_file.csv"
+
+    # Create a file manually
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write("existing_header\n")
+
+    # Call create_file and verify it does not overwrite
+    monitor_collector.create_file(file_path)
+
+    # Read back the file and ensure it retains the original content
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    assert content == "existing_header\n", "File content was unexpectedly overwritten."
+
+
+def test_save_with_empty_temp_rows(tmp_path, monitor_collector):
+    """
+    Test saving data to a CSV file when temp_rows is empty.
+    """
+    file_path = tmp_path / "test_empty_temp_rows_save.csv"
+
+    # Ensure temp_rows is empty
+    monitor_collector.temp_rows = []
+
+    # Add some data to df directly
+    monitor_collector.df = pd.DataFrame(
+        [{'scenario': 'TestScenario', 'experiment': 1, 'step': 1, 'policy': 'PolicyA'}],
+        columns=monitor_collector.col_names
+    )
+
+    # Call save and ensure no errors occur
+    monitor_collector.save(file_path)
+
+    # Verify that the file is created and has the data from df
+    assert os.path.exists(file_path), "File was not created."
+    saved_data = pd.read_csv(file_path, sep=';')
+    assert len(saved_data) == 1, f"Expected 1 record, found {len(saved_data)}."
+    assert saved_data['scenario'].iloc[0] == "TestScenario"
+
+
+def test_save_with_non_empty_temp_rows(tmp_path, monitor_collector, mock_scenario_provider, mock_metric):
+    """
+    Test saving data to a CSV file when temp_rows has data.
+    """
+    file_path = tmp_path / "test_non_empty_temp_rows_save.csv"
+
+    # Collect some data into temp_rows
+    for i in range(3):
+        monitor_collector.collect(
+            scenario_provider=mock_scenario_provider,
+            available_time=50,
+            experiment=i,
+            t=1,
+            policy="TestPolicy",
+            reward_function="TestReward",
+            metric=mock_metric,
+            total_build_duration=100,
+            prioritization_time=10,
+            rewards=0.9,
+            prioritization_order=['test1', 'test2']
+        )
+
+    # Call save and ensure temp_rows is flushed
+    monitor_collector.save(file_path)
+
+    # Verify that the file is created and has the data from temp_rows
+    assert os.path.exists(file_path), "File was not created."
+    saved_data = pd.read_csv(file_path, sep=';')
+    assert len(saved_data) == 3, f"Expected 3 records, found {len(saved_data)}."
+
+    # Verify that temp_rows is empty
+    assert not monitor_collector.temp_rows, "temp_rows should be empty after save."
+
+
 @pytest.mark.performance
 @pytest.mark.parametrize("num_records", [1000, 10_000, 100_000])
 def test_temp_limit_performance(benchmark, num_records):
