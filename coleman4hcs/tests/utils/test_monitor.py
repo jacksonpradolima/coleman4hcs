@@ -237,6 +237,35 @@ def test_temp_limit_exceeded():
     assert all(col in collector.df.columns for col in collector.col_names), "DataFrame structure is incorrect."
 
 
+def test_collect_from_temp_empty_temp_rows(monitor_collector):
+    """
+    Test that collect_from_temp does nothing when temp_rows is empty.
+    """
+    monitor_collector.temp_rows = []  # Ensure temp_rows is empty
+    monitor_collector.collect_from_temp()
+
+    # Assert that df remains empty
+    assert monitor_collector.df.empty, "Expected df to remain empty when temp_rows is empty."
+
+
+def test_collect_from_temp_empty_batch_df(monitor_collector):
+    """
+    Test that collect_from_temp does nothing when batch_df is empty.
+    """
+    # Create a temp_rows list that results in an empty DataFrame
+    monitor_collector.temp_rows = [{}]  # Add a record that lacks proper data
+    monitor_collector.collect_from_temp()
+
+    # Assert that df remains empty
+    assert monitor_collector.df.empty, (
+        f"Expected df to remain empty when batch_df is empty. Found: {monitor_collector.df}"
+    )
+    # Assert that temp_rows is cleared
+    assert not monitor_collector.temp_rows, (
+        f"Expected temp_rows to be cleared but found: {monitor_collector.temp_rows}"
+    )
+
+
 @pytest.mark.performance
 @pytest.mark.parametrize("num_records", [1000, 10_000, 100_000])
 def test_temp_limit_performance(benchmark, num_records):
