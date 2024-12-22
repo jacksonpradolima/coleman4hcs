@@ -51,16 +51,12 @@ class EvaluationMetric:
         self.detection_ranks = []
         self.detection_ranks_time = []
         self.detection_ranks_failures = []
-        # Time to Fail (rank value)
-        self.ttf = self.ttf_duration = 0
-        # APFD or NAPFD value
-        self.fitness = 0
-        self.detected_failures = 0
-        self.undetected_failures = 0
-        self.recall = 0
-        self.avg_precision = 0
-        # APFDc (to compute at same time, for instance, with NAPFD)
-        self.cost = 0
+        self.ttf = self.ttf_duration = 0 # Time to Fail (rank value)
+        self.fitness = 0 # APFD or NAPFD value
+        self.cost = 0 # APFDc (to compute at same time, for instance, with NAPFD)
+        self.detected_failures = self.undetected_failures = 0
+        self.recall = self.avg_precision = 0
+
 
     def process_test_suite(self, test_suite, error_key):
         """
@@ -71,38 +67,37 @@ class EvaluationMetric:
         :return: Tuple containing costs and total failure count.
         """
         rank_counter = 1
-        total_failure_count = 0
-        total_failed_tests = 0
-        scheduled_time = 0
+        total_failure_count = total_failed_tests = scheduled_time = 0
         costs = []
 
         # We consider the faults are different, that is, a fault is only revealed by only a test case
         # Build prefix sum of durations to find cut off point
-        for row in test_suite:
-            total_failure_count += row[error_key]
-            total_failed_tests += row['Verdict']
-            costs.append(row['Duration'])
+        for test_case in test_suite:
+            failure_count = test_case[error_key]
+            total_failure_count += failure_count
+            total_failed_tests += test_case['Verdict']
+            costs.append(test_case['Duration'])
 
             # Time spent to fail
             if not self.detection_ranks_time:
-                self.ttf_duration += row['Duration']
+                self.ttf_duration += test_case['Duration']
 
-            if scheduled_time + row['Duration'] <= self.available_time:
+            if scheduled_time + test_case['Duration'] <= self.available_time:
                 # If the Verdict is "Failed"
-                if row[error_key]:
-                    self.detected_failures += row[error_key] * rank_counter
+                if failure_count:
+                    self.detected_failures += failure_count * rank_counter
                     self.detection_ranks.append(rank_counter)
 
                     # Individual information
-                    self.detection_ranks_failures.append(row[error_key])
-                    self.detection_ranks_time.append(row['Duration'])
+                    self.detection_ranks_failures.append(failure_count)
+                    self.detection_ranks_time.append(test_case['Duration'])
 
-                scheduled_time += row['Duration']
-                self.scheduled_testcases.append(row['Name'])
+                scheduled_time += test_case['Duration']
+                self.scheduled_testcases.append(test_case['Name'])
                 rank_counter += 1
             else:
-                self.unscheduled_testcases.append(row['Name'])
-                self.undetected_failures += row[error_key]
+                self.unscheduled_testcases.append(test_case['Name'])
+                self.undetected_failures += failure_count
 
         # Update detected failures if verdict-based
         self.detected_failures = len(self.detection_ranks) if error_key == "Verdict" else self.detected_failures
@@ -128,11 +123,8 @@ class EvaluationMetric:
 
         .. note:: This method updates the instance's attributes directly and does not return any value.
         """
-        # Time to Fail (rank value)
         self.ttf = -1
         self.recall = self.avg_precision = 1
-
-        # NAPFD and APFDc
         self.fitness = self.cost = 1
 
 
@@ -145,7 +137,7 @@ class NAPFDMetric(EvaluationMetric):
         return 'NAPFD'
 
     def evaluate(self, test_suite):
-        super().reset()
+        self.reset()
         costs, total_failure_count, total_failed_tests = self.process_test_suite(test_suite, 'NumErrors')
 
         if total_failure_count > 0:
@@ -169,7 +161,6 @@ class NAPFDMetric(EvaluationMetric):
 
         .. note:: This method updates the instance's attributes directly and does not return any value.
         """
-        # Time to Fail (rank value)
         self.ttf = self.detection_ranks[0] if self.detection_ranks else 0
         self.recall = sum(self.detection_ranks_failures) / total_failure_count
         self.avg_precision = 123
@@ -193,7 +184,7 @@ class NAPFDVerdictMetric(EvaluationMetric):
         return 'NAPFDVerdict'
 
     def evaluate(self, test_suite):
-        super().reset()
+        self.reset()
         costs, total_failure_count, _ = self.process_test_suite(test_suite, 'Verdict')
 
         assert self.undetected_failures + self.detected_failures == total_failure_count
@@ -217,7 +208,6 @@ class NAPFDVerdictMetric(EvaluationMetric):
 
         .. note:: This method updates the instance's attributes directly and does not return any value.
         """
-        # Time to Fail (rank value)
         self.ttf = self.detection_ranks[0] if self.detection_ranks else 0
         self.recall = self.detected_failures / total_failure_count
         self.avg_precision = 123  # Placeholder value, can be replaced with real calculation
