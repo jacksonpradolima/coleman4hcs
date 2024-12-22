@@ -357,7 +357,14 @@ def test_save_with_non_empty_temp_rows(tmp_path, monitor_collector, mock_scenari
 @pytest.mark.parametrize("num_records", [1000, 10_000, 100_000])
 def test_temp_limit_performance(benchmark, num_records):
     """
-    Performance benchmark for data collection and handling large temporary buffers.
+    Test the performance of the MonitorCollector when collecting large numbers of records.
+
+    This test benchmarks the time taken to add records to the MonitorCollector and ensures
+    that all records are correctly handled, whether stored in `temp_rows` or flushed to `df`.
+
+    Args:
+        benchmark: Pytest benchmark fixture to measure performance.
+        num_records (int): Number of records to test performance for.
     """
     mock_metric = MagicMock()
     mock_metric.detected_failures = 5
