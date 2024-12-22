@@ -1,9 +1,17 @@
+"""
+Test cases for the MonitorCollector utility in the coleman4hcs package.
+
+These tests cover functionality including data collection, handling of temporary
+buffers, and performance benchmarks.
+"""
 import os
+from unittest.mock import MagicMock
+
 import pandas as pd
 import pytest
-from unittest.mock import MagicMock
-from coleman4hcs.utils.monitor import MonitorCollector
+
 from coleman4hcs.evaluation import EvaluationMetric
+from coleman4hcs.utils.monitor import MonitorCollector
 
 
 @pytest.fixture
@@ -104,7 +112,7 @@ def test_create_file(tmp_path, monitor_collector):
     monitor_collector.create_file(file_path)
 
     assert os.path.exists(file_path)
-    with open(file_path, 'r') as f:
+    with open(file_path, 'r', encoding='utf-8') as f:
         header = f.readline().strip()
         assert header == ";".join(monitor_collector.col_names)
 
