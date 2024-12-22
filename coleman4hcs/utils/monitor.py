@@ -83,11 +83,13 @@ class MonitorCollector:
         """
         if self.temp_rows:
             batch_df = pd.DataFrame(self.temp_rows, columns=self.col_names)
-            if not batch_df.empty:
+            # Explicitly check if batch_df contains valid rows
+            if not batch_df.empty and not batch_df.isna().all(axis=None):
                 if self.df.empty:
                     self.df = batch_df
                 else:
                     self.df = pd.concat([self.df, batch_df], ignore_index=True)
+            # Clear temp_rows regardless of batch_df state
             self.temp_rows = []
 
     def collect(self,
