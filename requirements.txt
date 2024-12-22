@@ -4,8 +4,9 @@ numpy==2.0.1
 pandas==2.2.2
 pyarrow==18.1.0
 pylint==3.2.6
-python-dotenv==1.0.1
+pytest-benchmark==5.1.0
 pytest-cov==6.0.0
+python-dotenv==1.0.1
 scipy==1.14.1
 scikit-posthocs==0.11.2
 snakeviz==2.2.2
