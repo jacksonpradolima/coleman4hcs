@@ -20,7 +20,9 @@ Usage examples and further details can be found in the documentation of individu
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
+import numpy as np
 import pandas as pd
+
 from coleman4hcs.evaluation import EvaluationMetric
 
 
@@ -80,14 +82,14 @@ class Bandit(ABC):
 
         :param arms: List of arms.
         """
-        self.arms = pd.concat([self.arms, pd.DataFrame(arms, columns=self.tc_fieldnames)], ignore_index=True)
+        if arms:
+            self.arms = pd.concat([self.arms, pd.DataFrame(arms, columns=self.tc_fieldnames)], ignore_index=True)
 
     @abstractmethod
     def pull(self, action):
         """
         Simulate pulling an arm. To be implemented by subclasses.
         """
-
         return NotImplementedError('You must to implemented this function')
 
     def update_priority(self, action):
@@ -95,10 +97,12 @@ class Bandit(ABC):
         Update the Priority column with the priorities
         :param action: List of test cases in order of prioritization
         """
-        self.arms['CalcPrio'] = self.arms['Name'].apply(lambda x: action.index(x) + 1)
+        action_map = {name: priority for priority, name in enumerate(action, start=1)}
+        priorities = np.vectorize(action_map.get)(self.arms['Name'].to_numpy())
+        self.arms['CalcPrio'] = priorities
 
 
-class DynamicBandit(Bandit):
+class DynamicBandit(Bandit, ABC):
     """
     A Bandit that allows dynamic management of its arms.
     """
@@ -107,7 +111,6 @@ class DynamicBandit(Bandit):
         """
         Update the arms of the bandit.
         """
-
         # I can replace all arms because the bandit don't need to maintain a "history"
         # The agent needs to maintain the "history"
         self.reset()
@@ -142,6 +145,9 @@ class EvaluationMetricBandit(DynamicBandit):
         :param action: The Prioritized Test Suite List
         :return: The result ("state") of an evaluation by Evaluation Metric
         """
+        if not action:
+            raise ValueError("Action list cannot be empty")
+
         super().update_priority(action)
 
         # After, we need to order the test cases based on the priorities
