@@ -153,11 +153,11 @@ def test_clear(monitor_collector):
 
 def test_temp_limit_trigger(monitor_collector, mock_scenario_provider, mock_metric):
     """
-    Test that collect_from_temp is triggered when temp_rowss exceeds the temp_limit.
+    Test that collect_from_temp is triggered when temp_rows exceeds the temp_limit.
     """
     monitor_collector.temp_limit = 5
 
-    for i in range(6): # Exceed the limit by 1 record
+    for i in range(6):  # Exceed the limit by 1 record
         monitor_collector.collect(
             scenario_provider=mock_scenario_provider,
             available_time=50,
@@ -278,4 +278,3 @@ def test_temp_limit_performance(benchmark, num_records):
     collector = benchmark(add_records)
     total_records = len(collector.df) + len(collector.temp_rows)
     assert total_records == num_records, f"Expected {num_records} records, found {total_records}."
-
