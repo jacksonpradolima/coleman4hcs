@@ -19,19 +19,18 @@ The module also contains the following features:
 Classes:
     - Environment: Represents the learning environment where agents interact with bandits.
 """
-import logging
 import os
 import pickle
 import time
 from pathlib import Path
 
-import duckdb
 import numpy as np
 
 from coleman4hcs.agent import ContextualAgent, SlidingWindowContextualAgent
 from coleman4hcs.bandit import DynamicBandit, EvaluationMetricBandit
 from coleman4hcs.scenarios import VirtualHCSScenario, IndustrialDatasetHCSScenarioProvider
 from coleman4hcs.utils.monitor import MonitorCollector
+from coleman4hcs.utils.monitor_params import CollectParams
 
 Path("backup").mkdir(parents=True, exist_ok=True)
 
@@ -195,20 +194,25 @@ class Environment:
         end = time.time()
 
         self.logger.debug(f"Exp: {experiment} - Ep: {t} - Name: {exp_name} ({str(agent.get_reward_function())}) - " +
-                      f"NAPFD/APFDc: {metric.fitness:.4f}/{metric.cost:.4f}")
+                          f"NAPFD/APFDc: {metric.fitness:.4f}/{metric.cost:.4f}")
 
         # Collect the data during the experiment
-        self.monitor.collect(self.scenario_provider,
-                             vsc.get_available_time(),
-                             experiment,
-                             t,
-                             exp_name,
-                             str(agent.get_reward_function()),
-                             metric,
-                             self.scenario_provider.total_build_duration,
-                             (end - start) + bandit_duration,
-                             np.mean(agent.last_reward),
-                             action)
+        params = CollectParams(
+            scenario_provider=self.scenario_provider,
+            available_time=vsc.get_available_time(),
+            experiment=experiment,
+            t=t,
+            policy=exp_name,
+            reward_function=str(agent.get_reward_function()),
+            metric=metric,
+            total_build_duration=self.scenario_provider.total_build_duration,
+            prioritization_time=(end - start) + bandit_duration,
+            rewards=np.mean(agent.last_reward),
+            prioritization_order=action,
+        )
+
+        self.monitor.collect(params)
+
         return action, end, exp_name, start
 
     def run_prioritization_hcs(self,
@@ -260,17 +264,21 @@ class Environment:
             self.evaluation_metric.evaluate(df.to_dict(orient='records'))
 
             # Save the information (collect the data)
-            self.variant_monitors[variant].collect(self.scenario_provider,
-                                                    total_time,
-                                                    experiment,
-                                                    t,
-                                                    exp_name,
-                                                    str(agent.get_reward_function()),
-                                                    self.evaluation_metric,
-                                                    total_build_duration,
-                                                    (end - start) + bandit_duration,
-                                                    0,
-                                                    df['Name'].tolist())
+            params = CollectParams(
+                scenario_provider=self.scenario_provider,
+                available_time=total_time,
+                experiment=experiment,
+                t=t,
+                policy=exp_name,
+                reward_function=str(agent.get_reward_function()),
+                metric=self.evaluation_metric,
+                total_build_duration=total_build_duration,
+                prioritization_time=(end - start) + bandit_duration,
+                rewards=0,
+                prioritization_order=df['Name'].tolist(),
+            )
+
+            self.variant_monitors[variant].collect(params)
 
     def has_variants(self, vsc):
         """
@@ -347,7 +355,7 @@ class Environment:
                     # Collect from temp and save a file (backup and easy sharing/auditing)
                     self.variant_monitors[variant].save(
                         f"{name2}/{csv_file_name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv")
-        
+
         # Clear experiment
         self.monitor.clear()
 

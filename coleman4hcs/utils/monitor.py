@@ -11,7 +11,7 @@ import os
 
 import pandas as pd
 
-from coleman4hcs.evaluation import EvaluationMetric
+from coleman4hcs.utils.monitor_params import CollectParams
 
 
 class MonitorCollector:
@@ -74,7 +74,7 @@ class MonitorCollector:
 
         # the temp is used when we have more than 1000 records. This is used to improve the performance
         self.temp_rows = []
-        self.temp_limit = 1000 # Limit for batching temp data collection
+        self.temp_limit = 1000  # Limit for batching temp data collection
 
     def collect_from_temp(self):
         """
@@ -92,32 +92,11 @@ class MonitorCollector:
             # Clear temp_rows regardless of batch_df state
             self.temp_rows = []
 
-    def collect(self,
-                scenario_provider,
-                available_time,
-                experiment,
-                t,
-                policy,
-                reward_function,
-                metric: EvaluationMetric,
-                total_build_duration,
-                prioritization_time,
-                rewards,
-                prioritization_order):
+    def collect(self, params: CollectParams):
         """
         This function collects the feedback of an analysis and stores in a dataframe.
         In this way, i.e., I can export a BIG experiment to CSV
-        :param scenario_provider: Scenario in analysis
-        :param available_time:
-        :param experiment: Experiment number
-        :param t: Part number (Build) from scenario that is being analyzed.
-        :param policy: Policy name that is evaluating a part (sc) of the scenario
-        :param reward_function: Reward function used by the agent to observe the environment
-        :param metric: The result (metric) of the analysis
-        :param total_build_duration: Build Duration
-        :param prioritization_time: Prioritization time
-        :param rewards: AVG Reward from the prioritized test set
-        :param prioritization_order: prioritized test set
+        :param params: CollectParams object containing all input data.
         :return:
         """
         # Trigger flush when temp_limit is reached
@@ -125,27 +104,27 @@ class MonitorCollector:
             self.collect_from_temp()
 
         records = {
-            'scenario': scenario_provider.name,
-            'experiment': experiment,
-            'step': t,
-            'policy': policy,
-            'reward_function': reward_function,
-            'sched_time': scenario_provider.avail_time_ratio,
-            'sched_time_duration': available_time,
-            'total_build_duration': total_build_duration,
-            'prioritization_time': prioritization_time,
-            'detected': metric.detected_failures,
-            'missed': metric.undetected_failures,
-            'tests_ran': len(metric.scheduled_testcases),
-            'tests_not_ran': len(metric.unscheduled_testcases),
-            'ttf': metric.ttf,
-            'ttf_duration': metric.ttf_duration,
-            'time_reduction': total_build_duration - metric.ttf_duration,
-            'fitness': metric.fitness,
-            'cost': metric.cost,
-            'rewards': rewards,
-            'avg_precision': metric.avg_precision,
-            'prioritization_order': prioritization_order
+            'scenario': params.scenario_provider.name,
+            'experiment': params.experiment,
+            'step': params.t,
+            'policy': params.policy,
+            'reward_function': params.reward_function,
+            'sched_time': params.scenario_provider.avail_time_ratio,
+            'sched_time_duration': params.available_time,
+            'total_build_duration': params.total_build_duration,
+            'prioritization_time': params.prioritization_time,
+            'detected': params.metric.detected_failures,
+            'missed': params.metric.undetected_failures,
+            'tests_ran': len(params.metric.scheduled_testcases),
+            'tests_not_ran': len(params.metric.unscheduled_testcases),
+            'ttf': params.metric.ttf,
+            'ttf_duration': params.metric.ttf_duration,
+            'time_reduction': params.total_build_duration - params.metric.ttf_duration,
+            'fitness': params.metric.fitness,
+            'cost': params.metric.cost,
+            'rewards': params.rewards,
+            'avg_precision': params.metric.avg_precision,
+            'prioritization_order': params.prioritization_order
         }
 
         self.temp_rows.append(records)
@@ -171,7 +150,7 @@ class MonitorCollector:
         write_header = not os.path.exists(name) or os.stat(name).st_size == 0  # Empty file means headers are missing
 
         self.df.to_csv(name, mode='a+', sep=';', na_rep='[]',
-                       header=write_header, # Write header only if the file is empty
+                       header=write_header,  # Write header only if the file is empty
                        columns=self.col_names,
                        index=False,
                        quoting=csv.QUOTE_NONE)
