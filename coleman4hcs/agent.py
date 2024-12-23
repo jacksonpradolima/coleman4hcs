@@ -85,11 +85,10 @@ class Agent:
 
     def add_action(self, action):
         """
-        Add an action
-        :param action:
-        :return:
+        Efficiently add a new action if it doesn't exist.
         """
-        self.actions = self.actions.append(pd.DataFrame([[action, 0, 0, 0]], columns=self.col_names), ignore_index=True)
+        if action not in self.actions['Name'].values:
+            self.actions.loc[len(self.actions)] = [action, 0, 0, 0]
 
     def update_actions(self, actions):
         """
@@ -103,17 +102,23 @@ class Agent:
         :param actions: List of available actions.
         :type actions: list[str]
         """
-        # Preserve the actual actions and remove the unnecessary
-        self.actions = self.actions[self.actions.Name.isin(actions)]
+        current_actions = set(self.actions['Name'].values)
+        new_actions = set(actions) - current_actions
+        obsolete_actions = current_actions - set(actions)
 
-        # Find the new actions (they are not in the actions that already exists)
-        new_actions = [action for action in actions if action not in self.actions['Name'].tolist()]
+        # Remove obsolete actions
+        if obsolete_actions:
+            self.actions = self.actions[~self.actions['Name'].isin(obsolete_actions)]
 
         # Add new actions
-        new_actions_df = pd.DataFrame(new_actions, columns=['Name'])
-        new_actions_df[['ValueEstimates', 'ActionAttempts', 'Q']] = 0
-
-        self.actions = pd.concat([self.actions, new_actions_df], ignore_index=True)
+        if new_actions:
+            new_actions_df = pd.DataFrame({
+                'Name': list(new_actions),
+                'ActionAttempts': 0,
+                'ValueEstimates': 0,
+                'Q': 0
+            })
+            self.actions = pd.concat([self.actions, new_actions_df], ignore_index=True)
 
     def update_bandit(self, bandit):
         """
@@ -137,9 +142,7 @@ class Agent:
         # If is the first time that the agent has been used, we don't have a "history" (rewards).
         # So, we can choose randomly
         if self.t == 0:
-            actions = self.actions['Name'].tolist()
-            random.shuffle(actions)
-            self.last_prioritization = actions
+            self.last_prioritization = random.sample(self.actions['Name'].tolist(), len(self.actions))
         else:
             # To avoid arms non-applied yet
             self.actions['Q'] = self.actions['Q'].fillna(value=0)
@@ -155,21 +158,20 @@ class Agent:
         """
         # We have a list, so all the tests were select.
         # to counterbalance the order of choice, a weight is given
-
         state_size = len(self.last_prioritization)
-        weights = np.arange(1e-12, 1.0, (1. / state_size))[::-1]
+        weights = np.linspace(1.0, 1e-12, state_size)
+        index_map = {name: idx for idx, name in enumerate(self.last_prioritization)}
 
-        self.actions['ActionAttempts'] = self.actions.apply(
-            lambda x: weights[self.last_prioritization.index(x['Name'])] + x['ActionAttempts'], axis=1)
+        self.actions['ActionAttempts'] += self.actions['Name'].map(index_map).apply(
+            lambda idx: weights[idx] if idx is not None else 0)
 
-    def observe(self, reward):
+def observe(self, reward):
         """
         Update Q action-value using:
         Q(a) <- Q(a) + 1/(k+1) * (r(a) - Q(a))
         :param reward:
         :return:
         """
-
         self.update_action_attempts()
 
         for test_case, r in zip(self.last_prioritization, reward):
