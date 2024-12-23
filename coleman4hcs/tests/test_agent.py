@@ -1,3 +1,28 @@
+"""
+coleman4hcs.agent.tests
+-----------------------
+
+This module contains unit and performance tests for the `Agent` module in the Coleman4HCS framework.
+
+Tests ensure the functionality and efficiency of the following classes:
+- `Agent`: Base class for agents, including action management, selection, and reward observation.
+- `RewardAgent`: Extends `Agent` to incorporate reward-based learning.
+- `ContextualAgent`: Extends `RewardAgent` with context-aware decision-making.
+- `RewardSlidingWindowAgent`: Combines reward-based learning with a sliding window for historical data.
+- `SlidingWindowContextualAgent`: Combines the sliding window mechanism with context-aware decision-making.
+
+Features Tested
+---------------
+- Initialization, action management, and reward observation methods for all agent types.
+- Contextual updates and historical data management for contextual and sliding window agents.
+- Performance benchmarks for scaling with a large number of test cases.
+
+Performance Benchmark Results
+-----------------------------
+- `Agent` execution time reduced by ~69% from 92s to 28s in large-scale experiments.
+- Significant improvements in reward-based decision-making speed.
+"""
+
 import random
 from unittest.mock import MagicMock
 
