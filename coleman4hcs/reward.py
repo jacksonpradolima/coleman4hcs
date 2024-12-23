@@ -123,12 +123,23 @@ class RNFailReward(Reward):
         return 'RNFail'
 
     def evaluate(self, reward: EvaluationMetric, last_prioritization: List[str]):
-        if not reward.detected_failures:
+        """
+        Evaluate rewards based on failures.
+
+        :param reward: Evaluation metric containing detection ranks and scheduled test cases.
+        :param last_prioritization: Test case names in prioritization order.
+        :return: List of rewards for each test case in the prioritization.
+        """
+        if not reward.detection_ranks:
+            # No failing test cases: All rewards are 0
             return [0.0] * len(last_prioritization)
 
-        rank_idx = np.array(reward.detection_ranks) - 1
-        rewards = np.zeros(len(reward.scheduled_testcases))
-        rewards[rank_idx] = 1
+        # Convert detection ranks to 0-based indices
+        failing_indices = set(reward.detection_ranks)
 
-        return [rewards[reward.scheduled_testcases.index(tc)] if tc in reward.scheduled_testcases else 0.0 for tc in
-                last_prioritization]
+        # Assign rewards: 1 for failing test cases, 0 otherwise
+        rewards = [
+            1.0 if i + 1 in failing_indices else 0.0
+            for i, tc in enumerate(last_prioritization)
+        ]
+        return rewards
