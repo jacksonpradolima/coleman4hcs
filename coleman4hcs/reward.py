@@ -73,21 +73,39 @@ class TimeRankReward(Reward):
     def get_name(self):
         return 'timerank'
 
-    def evaluate(self, reward: EvaluationMetric, last_prioritization: List[str]):
-        # number of test cases which failed
-        detected_failures = len(reward.detection_ranks)
+    def evaluate(self, reward: EvaluationMetric, last_prioritization: list):
+        """
+        Evaluate rewards based on the prioritization rank of test cases.
 
-        if not detected_failures:
+        :param reward: The evaluation metric containing detection ranks and scheduled test cases.
+        :param last_prioritization: The list of test case names in the prioritization order.
+        :return: A list of rewards for each test case in the prioritization.
+        """
+        # Total number of failing test cases
+        num_failing_tests = len(reward.detection_ranks)
+        if num_failing_tests == 0:
+            # No failing test cases: All rewards are 0
             return [0.0] * len(last_prioritization)
 
-        rank_idx = np.array(reward.detection_ranks) - 1
-        rewards = np.zeros(len(reward.scheduled_testcases))
-        rewards[rank_idx] = 1
-        rewards = np.cumsum(rewards)  # Rewards for passed testcases
-        rewards[rank_idx] = detected_failures  # Rewards for failed testcases
+        # Detection ranks (convert to 0-based index)
+        failing_indices = np.array(reward.detection_ranks) - 1
 
-        return [rewards[reward.scheduled_testcases.index(tc)] if tc in reward.scheduled_testcases else 0.0 for tc in
-                last_prioritization]
+        # Rewards for scheduled test cases
+        rewards = np.zeros(len(reward.scheduled_testcases))
+        rewards[failing_indices] = 1  # Assign reward for failing test cases
+        rewards = np.cumsum(rewards)  # Accumulate rewards for passing test cases
+        rewards[failing_indices] = num_failing_tests  # Assign full reward to failing test cases
+
+        # Normalize the rewards to scale them between 0 and 1.
+        # This ensures that the rewards are proportionate to the number of failing test cases,
+        # aligning with the equation's intent to penalize non-failing test cases scheduled before failing ones.
+        normalized_rewards = [
+            rewards[reward.scheduled_testcases.index(tc)] / num_failing_tests
+            if tc in reward.scheduled_testcases else 0.0
+            for tc in last_prioritization
+        ]
+
+        return normalized_rewards
 
 
 class RNFailReward(Reward):
