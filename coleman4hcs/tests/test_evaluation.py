@@ -168,3 +168,29 @@ def test_identical_cost_and_results(available_time):
         {'Name': i, 'Duration': 1, 'NumRan': 1, 'NumErrors': 0, 'Verdict': 1} for i in range(1, 10)
     ]
     _common_test_napfd(identical_cost_records, available_time)
+
+
+@pytest.mark.benchmark(group="evaluation")
+def test_benchmark_napfd_metric(benchmark, sample_records, available_time):
+    """
+    Benchmark the performance of NAPFDMetric with a large dataset.
+    """
+    large_dataset = sample_records * 10_000  # Simulate a large dataset
+    napfd = NAPFDMetric()
+    napfd.update_available_time(available_time * 0.5)
+
+    # Benchmark the evaluation process
+    benchmark(napfd.evaluate, large_dataset)
+
+
+@pytest.mark.benchmark(group="evaluation")
+def test_benchmark_napfd_verdict_metric(benchmark, sample_records, available_time):
+    """
+    Benchmark the performance of NAPFDVerdictMetric with a large dataset.
+    """
+    large_dataset = sample_records * 10_000  # Simulate a large dataset
+    napfd_v = NAPFDVerdictMetric()
+    napfd_v.update_available_time(available_time * 0.5)
+
+    # Benchmark the evaluation process
+    benchmark(napfd_v.evaluate, large_dataset)

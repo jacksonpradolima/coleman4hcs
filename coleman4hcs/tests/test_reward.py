@@ -115,14 +115,14 @@ def test_rn_fail_reward_no_failures(mock_empty_evaluation_metric, sample_priorit
     assert np.allclose(results, [0.0] * len(sample_prioritization))
 
 
-@pytest.mark.benchmark
-def test_time_rank_reward_performance(benchmark):
+@pytest.mark.benchmark(group="reward")
+@pytest.mark.parametrize("num_testcases", [100, 1000, 10000])
+def test_time_rank_reward_performance(benchmark, num_testcases):
     """
     Performance test for TimeRankReward evaluation method.
     This test evaluates the performance of the reward function for larger datasets.
     """
     # Mocking a large dataset
-    num_testcases = 10000
     detection_ranks = list(range(1, num_testcases + 1, 2))  # Failures at odd indices
     scheduled_testcases = [f"Test{i}" for i in range(1, num_testcases + 1)]
     sample_prioritization = scheduled_testcases  # Assume prioritization is the same as scheduling
@@ -141,14 +141,14 @@ def test_time_rank_reward_performance(benchmark):
     benchmark(run_evaluation)
 
 
-@pytest.mark.benchmark
-def test_rn_fail_reward_performance(benchmark):
+@pytest.mark.benchmark(group="reward")
+@pytest.mark.parametrize("num_testcases", [100, 1000, 10000])
+def test_rn_fail_reward_performance(benchmark, num_testcases):
     """
     Performance test for RNFailReward evaluation method.
     This test evaluates the performance of the reward function for larger datasets.
     """
     # Mocking a large dataset
-    num_testcases = 10000
     detection_ranks = list(range(1, num_testcases + 1, 2))  # Failures at odd indices
     scheduled_testcases = [f"Test{i}" for i in range(1, num_testcases + 1)]
     sample_prioritization = scheduled_testcases  # Assume prioritization is the same as scheduling

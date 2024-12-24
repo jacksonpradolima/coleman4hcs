@@ -175,29 +175,33 @@ def test_sliding_window_contextual_agent_history_truncation():
     assert agent.history["T"].min() == 2
 
 
-def test_agent_performance(benchmark):
+@pytest.mark.benchmark(group="agent")
+@pytest.mark.parametrize("action_count", [100, 1000, 10000])
+def test_agent_performance(benchmark, action_count):
     """
     Benchmark the performance of the Agent class with a large number of actions.
     """
     agent = Agent(MagicMock())
-    actions = [f"Test{i}" for i in range(10000)]
+    actions = [f"Test{i}" for i in range(action_count)]
 
     def update_actions():
         agent.update_actions(actions)
 
-    result = benchmark(update_actions)
-    assert len(agent.actions) == 10000
+    benchmark(update_actions)
+    assert len(agent.actions) == action_count
 
 
-def test_reward_agent_performance(benchmark, mock_policy):
+@pytest.mark.benchmark(group="agent")
+@pytest.mark.parametrize("action_count", [100, 1000, 10000])
+def test_reward_agent_performance(benchmark, mock_policy, action_count):
     """
     Benchmark the performance of the RewardAgent class with a large number of actions.
     """
     reward_function = MagicMock()
-    reward_function.evaluate.return_value = [random.random() for _ in range(10000)]
+    reward_function.evaluate.return_value = [random.random() for _ in range(action_count)]
 
     agent = RewardAgent(mock_policy, reward_function)
-    actions = [f"Test{i}" for i in range(10000)]
+    actions = [f"Test{i}" for i in range(action_count)]
 
     agent.update_actions(actions)
     agent.choose()
@@ -205,5 +209,5 @@ def test_reward_agent_performance(benchmark, mock_policy):
     def observe():
         agent.observe(MagicMock())
 
-    result = benchmark(observe)
-    assert len(agent.actions) == 10000
+    benchmark(observe)
+    assert len(agent.actions) == action_count

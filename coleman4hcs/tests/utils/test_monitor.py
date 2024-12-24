@@ -5,6 +5,7 @@ These tests cover functionality including data collection, handling of temporary
 buffers, and performance benchmarks.
 """
 import os
+from lib2to3.pgen2.tokenize import group
 from unittest.mock import MagicMock
 
 import pandas as pd
@@ -360,7 +361,7 @@ def test_save_with_non_empty_temp_rows(tmp_path, monitor_collector, mock_scenari
     assert not monitor_collector.temp_rows, "temp_rows should be empty after save."
 
 
-@pytest.mark.performance
+@pytest.mark.benchmark(group="monitor_collector")
 @pytest.mark.parametrize("num_records", [1000, 10_000, 100_000])
 def test_temp_limit_performance(benchmark, num_records):
     """
