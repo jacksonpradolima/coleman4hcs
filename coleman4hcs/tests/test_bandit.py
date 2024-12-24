@@ -275,7 +275,7 @@ def test_bandit_subclass_with_pull():
     assert bandit.pull(["Test1", "Test2"]) == ["Test1", "Test2"]
 
 
-@pytest.mark.benchmark(group="bandit_add_arms")
+@pytest.mark.benchmark(group="bandit")
 def test_bandit_add_arms_performance(benchmark, sample_arms):
     """
     Benchmark adding a large number of arms to a Bandit.
@@ -289,7 +289,7 @@ def test_bandit_add_arms_performance(benchmark, sample_arms):
     benchmark(add_arms)
 
 
-@pytest.mark.benchmark(group="bandit_update_priority")
+@pytest.mark.benchmark(group="bandit")
 def test_bandit_update_priority_performance(benchmark, sample_arms):
     """
     Benchmark updating priorities for a large set of arms.
@@ -304,7 +304,7 @@ def test_bandit_update_priority_performance(benchmark, sample_arms):
     benchmark(update_priority)
 
 
-@pytest.mark.benchmark(group="evaluation_metric_bandit_pull")
+@pytest.mark.benchmark(group="bandit")
 def test_evaluation_metric_bandit_pull_performance(benchmark, sample_arms, mock_evaluation_metric):
     """
     Benchmark the pull operation in EvaluationMetricBandit for large action sets.
