@@ -15,8 +15,11 @@ Classes:
     - IndustrialDatasetContextScenarioProvider: Extends IndustrialDatasetScenarioProvider to handle context scenarios.
 """
 import os
+from functools import lru_cache
+from typing import List, Dict, Optional
 
 import pandas as pd
+from setuptools.command.build_py import build_py
 
 
 class VirtualScenario:
@@ -24,36 +27,35 @@ class VirtualScenario:
     Virtual Scenario, used to manipulate the data for each commit
     """
 
-    def __init__(self, available_time, testcases, build_id, total_build_duration):
+    def __init__(self, available_time: float, testcases: List[Dict], build_id: int, total_build_duration: float):
         self.available_time = available_time
         self.testcases = testcases
         self.build_id = build_id
         self.total_build_duration = total_build_duration
         self.reset()
 
-    def reset(self):
+    def reset(self) -> None:
         """Resets the priorities for all test cases in the scenario."""
         # Reset the priorities
-        for row in self.get_testcases():
-            row['CalcPrio'] = 0
+        for testcase in self.testcases:
+            testcase['CalcPrio'] = 0
 
-    def get_available_time(self):
+    def get_available_time(self) -> float:
         """Returns the available time to execute the tests."""
         return self.available_time
 
-    def get_testcases(self):
+    def get_testcases(self) -> List[Dict]:
         """Returns the test cases for the scenario."""
         return self.testcases
 
 
 class VirtualHCSScenario(VirtualScenario):
     """
-    Virtual Scenario HCS, used to manipulate the data for each commit in the HCS context.
+    Extends VirtualScenario to handle data in an HCS-specific context.
     """
 
-    def __init__(self, available_time, testcases, build_id, total_build_duration, variants):
-        super().__init__(available_time, testcases, build_id, total_build_duration)
-
+    def __init__(self, *args, variants: pd.DataFrame, **kwargs):
+        super().__init__(*args, **kwargs)
         self.variants = variants
 
     def get_variants(self):
@@ -63,115 +65,115 @@ class VirtualHCSScenario(VirtualScenario):
 
 class VirtualContextScenario(VirtualScenario):
     """
-    Virtual Context Scenario, used to manipulate the data for each commit
-    considering context information from each commit
+    Extends VirtualScenario to include context-specific features for each commit.
     """
 
-    def __init__(self, available_time, testcases, build_id, total_build_duration,
-                 feature_group, features, context_features):
-        super().__init__(available_time, testcases, build_id, total_build_duration)
+    def __init__(
+        self,
+        *args,
+        feature_group: str,
+        features: List[str],
+        context_features: pd.DataFrame,
+        **kwargs
+    ):
+        super().__init__(*args, **kwargs)
         self.feature_group = feature_group
         self.features = features
         self.context_features = context_features
 
-    def get_feature_group(self):
+    def get_feature_group(self) -> str:
         """Returns the feature group."""
         return self.feature_group
 
-    def get_features(self):
+    def get_features(self) -> List[str]:
         """Returns the features associated."""
         return self.features
 
-    def get_context_features(self):
+    def get_context_features(self) -> pd.DataFrame:
         """Returns the context features associated."""
         return self.context_features
 
 
 class IndustrialDatasetScenarioProvider:
     """
-    Scenario provider to process CSV files for experimental evaluation.
-    Required columns are `self.tc_fieldnames`
+    Base class for scenario providers that process test case data from CSV files.
     """
 
-    def __init__(self, tcfile, sched_time_ratio=0.5):
+    # ColName | Description
+    # Name | Unique numeric identifier of the test case
+    # Duration | Approximated runtime of the test case
+    # CalcPrio | Priority of the test case, calculated by the prioritization algorithm(output column, initially 0)
+    # LastRun | Previous last execution of the test case as date - time - string(Format: `YYYY - MM - DD HH: ii`)
+    # LastResults | List of previous test results (Failed: 1, Passed: 0), ordered by ascending age
+    # Verdict | Test Case result (Failed: 1, Passed: 0)
+    REQUIRED_COLUMNS = ['Name', 'Duration', 'CalcPrio', 'LastRun', 'Verdict']
+
+    def __init__(self, tcfile: str, sched_time_ratio: float = 0.5) -> None:
         self.name = os.path.split(os.path.dirname(tcfile))[1]
-
-        self.read_testcases(tcfile)
-
-        self.build = 0
-        self.max_builds = max(self.tcdf.BuildId)
-        self.scenario = None
         self.avail_time_ratio = sched_time_ratio
+        self.current_build = 0
         self.total_build_duration = 0
+        self.scenario: Optional[VirtualScenario] = None
 
-        # ColName | Description
-        # Name | Unique numeric identifier of the test case
-        # Duration | Approximated runtime of the test case
-        # CalcPrio | Priority of the test case, calculated by the prioritization algorithm(output column, initially 0)
-        # LastRun | Previous last execution of the test case as date - time - string(Format: `YYYY - MM - DD HH: ii`)
-        # LastResults | List of previous test results (Failed: 1, Passed: 0), ordered by ascending age
-        # Verdict | Test Case result (Failed: 1, Passed: 0)
-        self.tc_fieldnames = ['Name',
-                              'Duration',
-                              'CalcPrio',
-                              'LastRun',
-                              'Verdict']
+        self.tcdf = self._read_testcases(tcfile)
+        self.max_builds = self.tcdf["BuildId"].max()
 
-    def read_testcases(self, tcfile):
+    def _read_testcases(self, tcfile: str) -> pd.DataFrame:
         """Reads the test cases from a provided CSV file."""
         # We use ';' separated values to avoid issues with thousands
-        self.tcdf = pd.read_csv(tcfile, sep=';', parse_dates=['LastRun'])
-        self.tcdf["Duration"] = self.tcdf["Duration"].apply(
-            lambda x: float(x.replace(',', '')) if isinstance(x, str) else x)
+        df = pd.read_csv(tcfile, sep=';', parse_dates=['LastRun'])
+        df["Duration"] = pd.to_numeric(df["Duration"], errors="coerce").fillna(
+            0)  # Handle unexpected non-numeric values
+        return df
 
-    def __str__(self):
-        """Returns the name of the scenario provider."""
-        return self.name
-
-    def get_avail_time_ratio(self):
+    def get_avail_time_ratio(self) -> float:
         """Returns the available time ratio."""
         return self.avail_time_ratio
 
-    def last_build(self, build):
+    def last_build(self, build: int) -> None:
         """Sets the last build."""
-        self.build = build
+        self.current_build = build
 
-    def get(self):
+    def get(self) -> Optional[VirtualScenario]:
         """
         This function is called when the __next__ function is called.
         In this function the data is "separated" by builds. Each next build is returned.
         :return:
         """
-        self.build += 1
+        self.current_build += 1
 
         # Stop when reaches the max build
-        if self.build > self.max_builds:
-            self.scenario = None
+        if self.current_build > self.max_builds:
+            # self.scenario = None
             return None
 
         # Select the data for the current build
-        builddf = self.tcdf.loc[self.tcdf.BuildId == self.build]
+        build_df = self.tcdf[self.tcdf["BuildId"] == self.current_build]
 
         # Convert the solutions to a list of dict
-        seltc = builddf[self.tc_fieldnames].to_dict('records')
+        testcases = build_df[self.REQUIRED_COLUMNS].to_dict('records')
 
-        self.total_build_duration = builddf['Duration'].sum()
-        total_time = self.total_build_duration * self.avail_time_ratio
+        self.total_build_duration = build_df['Duration'].sum()
+        available_time = self.total_build_duration * self.avail_time_ratio
 
         # This test set is a "scenario" that must be evaluated.
-        self.scenario = VirtualScenario(testcases=seltc,
-                                        available_time=total_time,
-                                        build_id=self.build,
-                                        total_build_duration=self.total_build_duration)
+        self.scenario = VirtualScenario(
+            available_time=available_time,
+            testcases=testcases,
+            build_id=self.current_build,
+            total_build_duration=self.total_build_duration)
 
         return self.scenario
 
-    # Generator functions
+    def __str__(self) -> str:
+        """Returns the name of the scenario provider."""
+        return self.name
+
     def __iter__(self):
         """Returns the iterator for the scenario provider."""
         return self
 
-    def __next__(self):
+    def __next__(self) -> VirtualScenario:
         """Returns the next scenario. Raises StopIteration if no more scenarios."""
         sc = self.get()
 
@@ -182,19 +184,23 @@ class IndustrialDatasetScenarioProvider:
 
 
 class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
-    def __init__(self, tcfile, variantsfile, sched_time_ratio=0.5):
+    """
+    Scenario provider for HCS-specific data, extending the base scenario provider.
+    """
+
+    def __init__(self, tcfile: str, variantsfile: str, sched_time_ratio=0.5) -> None:
         super().__init__(tcfile, sched_time_ratio)
 
-        self.read_variants(variantsfile)
+        self.variants = self._read_variants(variantsfile)
 
-    def read_variants(self, variantsfile):
+    def _read_variants(self, variantsfile: str) -> pd.DataFrame:
         # Read the variants (additional file)
-        self.variants = pd.read_csv(
-            variantsfile, sep=';', parse_dates=['LastRun'])
+        df = pd.read_csv(variantsfile, sep=';', parse_dates=['LastRun'])
 
         # We remove weird characters
-        self.variants['Variant'] = self.variants['Variant'].apply(
-            lambda x: x.translate({ord(c): "_" for c in "!#$%^&*()[]{};:,.<>?|`~=+"}))
+        df["Variant"] = df["Variant"].str.replace(r'[!#$%^&*()[]{};:,.<>?|`~=+]', '_', regex=True)
+
+        return df
 
     def get_total_variants(self):
         return self.variants['Variant'].nunique()
@@ -213,74 +219,88 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
         if not base_scenario:
             return None
 
-        variants = self.variants.loc[self.variants.BuildId == self.build]
+        # Match variants to the current build
+        variants = self.variants[self.variants["BuildId"] == self.current_build]
 
-        self.scenario = VirtualHCSScenario(testcases=base_scenario.get_testcases(),
-                                           available_time=base_scenario.get_available_time(),
-                                           build_id=self.build,
-                                           total_build_duration=self.total_build_duration,
-                                           variants=variants)
+        self.scenario = VirtualHCSScenario(
+            **base_scenario.__dict__,
+            variants=variants
+        )
 
         return self.scenario
 
 
 class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider):
     """
-    Scenario provider to process CSV files for experimental evaluation.
-    Required columns are `self.tc_fieldnames`
+    Scenario provider for context-aware data.
     """
 
-    def __init__(self, tcfile, feature_group_name, feature_group_values, previous_build, sched_time_ratio=0.5):
+    def __init__(
+        self,
+        tcfile: str,
+        feature_group_name: str,
+        feature_group_values: List[str],
+        previous_build: List[str],
+        sched_time_ratio: float = 0.5,
+    ):
+        """
+        Initializes the context-aware scenario provider.
+        :param tcfile: Path to the test case file.
+        :param feature_group_name: Name of the feature group.
+        :param feature_group_values: List of features.
+        :param previous_build: List of features from the previous build.
+        :param sched_time_ratio: Ratio of the total build time to be used for scheduling.
+        """
         super().__init__(tcfile, sched_time_ratio)
-
         self.feature_group = feature_group_name
-
-        # List of columns used as features
+        # List of columns that are features
         self.features = feature_group_values
-
         self.previous_build = previous_build
 
     def __str__(self):
         return self.name
 
-    def get_context(self, builddf):
-        # Now, we will get the features from previous build
-        if self.build == 1:
-            # If we are in the first build, we do not have previous build
-            # We create an empty dataframe
-            df = pd.DataFrame(columns=self.features)
+    def _merge_context_features(self, build_df):
+        if self.current_build == 1:
+            return self._initialize_first_build_features(build_df)
 
-            # Get the test cases from current build
-            df['Name'] = builddf['Name']
+        # Compute intersections of features for current and previous builds
+        current_features = list(set(self.features).difference(self.previous_build))
+        # Previous features are those shared between `self.features` and `previous_build`
+        previous_features = list(set(self.previous_build).intersection(self.features))
 
-            # So we fill all features to start with a default value equal 1
-            df[self.features] = 1
+        # Extract data for the previous build
+        previous_build_df = self.tcdf[self.tcdf["BuildId"] == self.current_build - 1]
 
-            return df
-        else:
-            # Features from the current build
-            current_build_features = list(set(self.features) - set(self.previous_build))
-            df = builddf[['Name'] + current_build_features]
+        # Start with the current build's features
+        merged_df = build_df[["Name"] + list(current_features)].copy()
 
-            # We have previous build, lets to get all the previous features for each test case
-            previous_build = self.tcdf.loc[self.tcdf.BuildId == self.build - 1, ['Name'] + self.previous_build]
+        # Merge features from the previous build if any are relevant
+        if previous_features:
+            previous_data = previous_build_df[["Name"] + list(previous_features)]
+            merged_df = merged_df.merge(previous_data, on="Name", how="left")
 
-            # Merge the data from current build with the data which we obtain from previous build
-            # (only with features chosen)
-            previous_build_features = [x for x in self.previous_build if x in self.features]
+        # Fill missing values for previous features using their mean values from the previous build
+        # Precompute mean values for efficiency
+        feature_means = previous_build_df[list(previous_features)].mean().to_dict()
+        for feature in previous_features:
+            # Fill missing values with the mean of the feature or default to 0 if no mean is available
+            merged_df[feature].fillna(feature_means.get(feature, 0), inplace=True)
 
-            if len(previous_build_features) > 0:
-                # In the case if we do not have an of then chosen
-                df = df.merge(previous_build[['Name'] + previous_build_features], on=['Name'], how='left')
+        return merged_df
 
-            # Fill the NA values for each feature
-            # This is done when we have a new test case and the tests were not execute yet
-            # (If the feature chosen is one of the features that we have information only after the tests are executed)
-            for feature in previous_build_features:
-                # We fill it with the mean from previous build
-                df[feature].fillna((previous_build[feature].mean()), inplace=True)
-
-            return df
+    def _initialize_first_build_features(self, build_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Initializes default feature values for the first build.
+        - Creates a DataFrame with default values for all features, as the first build has no prior context.
+        - Each feature is assigned a default value of 1.
+        :param build_df: DataFrame for the current build.
+        :return: DataFrame with default feature values for the first build.
+        """
+        return pd.DataFrame({
+            "Name": build_df["Name"],
+            **{feature: 1 for feature in self.features}  # Default value of 1 for all features
+        })
 
     def get(self):
         """
@@ -293,16 +313,15 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         if not base_scenario:
             return None
 
-        builddf = self.tcdf.loc[self.tcdf.BuildId == self.build]
-        context_features = self.get_context(builddf)
+        build_df = self.tcdf[self.tcdf["BuildId"] == self.current_build]
+        context_features = self._merge_context_features(build_df)
 
         # This test set is a "scenario" that must be evaluated.
-        self.scenario = VirtualContextScenario(testcases=base_scenario.get_testcases(),
-                                               available_time=base_scenario.get_available_time(),
-                                               build_id=self.build,
-                                               total_build_duration=self.total_build_duration,
-                                               feature_group=self.feature_group,
-                                               features=self.features,
-                                               context_features=context_features)
+        self.scenario = VirtualContextScenario(
+            **base_scenario.__dict__,
+            feature_group=self.feature_group,
+            features=self.features,
+            context_features=context_features
+        )
 
         return self.scenario
