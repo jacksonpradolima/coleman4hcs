@@ -198,3 +198,6 @@ experiments.db*
 
 # Ignore coverage files
 htmlcov/
+
+# Ignore profiling files
+prof/
