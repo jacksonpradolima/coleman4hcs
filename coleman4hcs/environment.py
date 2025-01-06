@@ -19,6 +19,7 @@ The module also contains the following features:
 Classes:
     - Environment: Represents the learning environment where agents interact with bandits.
 """
+import logging
 import os
 import pickle
 import time
@@ -27,12 +28,14 @@ from pathlib import Path
 import numpy as np
 
 from coleman4hcs.agent import ContextualAgent, SlidingWindowContextualAgent
-from coleman4hcs.bandit import DynamicBandit, EvaluationMetricBandit
+from coleman4hcs.bandit import EvaluationMetricBandit
 from coleman4hcs.scenarios import VirtualHCSScenario, IndustrialDatasetHCSScenarioProvider
 from coleman4hcs.utils.monitor import MonitorCollector
 from coleman4hcs.utils.monitor_params import CollectParams
 
 Path("backup").mkdir(parents=True, exist_ok=True)
+
+logger = logging.getLogger(__name__)
 
 
 class Environment:
@@ -44,6 +47,8 @@ class Environment:
         self.agents = agents
         self.scenario_provider = scenario_provider
         self.evaluation_metric = evaluation_metric
+        self.monitor = None
+        self.variant_monitors = {}
         self.reset()
 
     def reset(self):
@@ -53,7 +58,6 @@ class Environment:
         self.reset_agents_memory()
         # Monitor saves the feedback during the process
         self.monitor = MonitorCollector()
-
         self.variant_monitors = {}
 
         if isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider) and \
@@ -63,7 +67,7 @@ class Environment:
 
     def reset_agents_memory(self):
         """
-        # Resets the agent's memory to an initial state.
+        Resets the agent's memory to an initial state.
         """
         for agent in self.agents:
             agent.reset()
@@ -71,10 +75,11 @@ class Environment:
     def run_single(self,
                    experiment,
                    trials=100,
-                   bandit_type: DynamicBandit = EvaluationMetricBandit,
+                   bandit_type=EvaluationMetricBandit,
                    restore=True):
         """
         Execute a single simulation experiment
+
         :param experiment: Current Experiment
         :param trials: The max number of scenarios that will be analyzed
         :param bandit_type:
@@ -87,36 +92,36 @@ class Environment:
         bandit = None
 
         # restore to step
-        r_t = 1
+        restore_step = 1
 
         if restore:
             # Restore the experiment from the last backup
             # This is useful for long experiments
-            r_t, self.agents, self.monitor, self.variant_monitors, bandit = self.load_experiment(experiment)
-            self.scenario_provider.last_build(r_t)
-            r_t += 1  # start 1 step after the last build
+            restore_step, self.agents, self.monitor, self.variant_monitors, bandit = self.load_experiment(experiment)
+            self.scenario_provider.last_build(restore_step)
+            restore_step += 1  # start 1 step after the last build
 
         # Test Budget percentage
         avail_time_ratio = self.scenario_provider.get_avail_time_ratio()
 
-        # For each "virtual scenario (vsc)" I must analyse it and evaluate it
-        for t, vsc in enumerate(self.scenario_provider, start=r_t):
+        # For each "virtual scenario" I must analyse it and evaluate it
+        for t, virtual_scenario in enumerate(self.scenario_provider, start=restore_step):
             # The max number of scenarios that will be analyzed
             if t > trials:
                 break
 
             # Time Budget
-            available_time = vsc.get_available_time()
+            available_time = virtual_scenario.get_available_time()
             self.evaluation_metric.update_available_time(available_time)
 
             # Compute time
             start_bandit = time.time()
 
             if bandit is None:
-                bandit = bandit_type(vsc.get_testcases(), self.evaluation_metric)
+                bandit = bandit_type(virtual_scenario.get_testcases(), self.evaluation_metric)
             else:
                 # Update bandit (the arms = TC available) for all agents
-                bandit.update_arms(vsc.get_testcases())
+                bandit.update_arms(virtual_scenario.get_testcases())
 
             end_bandit = time.time()
 
@@ -133,10 +138,10 @@ class Environment:
                                                                        bandit_duration,
                                                                        experiment,
                                                                        t,
-                                                                       vsc)
+                                                                       virtual_scenario)
 
                 # If we are working with HCS scenario and there are variants
-                if self.has_variants(vsc):
+                if self.has_variants(virtual_scenario):
                     self.run_prioritization_hcs(agent,
                                                 action,
                                                 avail_time_ratio,
@@ -146,11 +151,11 @@ class Environment:
                                                 experiment,
                                                 start,
                                                 t,
-                                                vsc)
+                                                virtual_scenario)
 
             self.save_periodically(restore, t, experiment, bandit)
 
-    def run_prioritization(self, agent, bandit, bandit_duration, experiment, t, vsc):
+    def run_prioritization(self, agent, bandit, bandit_duration, experiment, t, virtual_scenario):
         """
         Run the prioritization process for a given agent and scenario.
 
@@ -159,17 +164,17 @@ class Environment:
         :param bandit_duration: Time taken by the bandit process.
         :param experiment: The current experiment number.
         :param t: The current step or iteration of the simulation.
-        :param vsc: The virtual scenario being considered.
+        :param virtual_scenario: The virtual scenario being considered.
         :return: tuple containing the chosen action by the agent, the ending time of the process,
                  the name of the experiment, and the starting time of the process.
         """
         # MAB or CMAB
         if type(agent) in [ContextualAgent, SlidingWindowContextualAgent]:
             # For a Contextual agent, we first update the current context information
-            agent.update_context(vsc.get_context_features())
-            agent.update_features(vsc.get_features())
+            agent.update_context(virtual_scenario.get_context_features())
+            agent.update_features(virtual_scenario.get_features())
 
-            exp_name = f"{str(agent)}_{vsc.get_feature_group()}"
+            exp_name = f"{str(agent)}_{virtual_scenario.get_feature_group()}"
         else:
             exp_name = str(agent)
 
@@ -193,13 +198,13 @@ class Environment:
         # Compute end time
         end = time.time()
 
-        self.logger.debug(f"Exp: {experiment} - Ep: {t} - Name: {exp_name} ({str(agent.get_reward_function())}) - " +
-                          f"NAPFD/APFDc: {metric.fitness:.4f}/{metric.cost:.4f}")
+        logger.debug(f"Exp: {experiment} - Ep: {t} - Name: {exp_name} ({str(agent.get_reward_function())}) - " +
+                     f"NAPFD/APFDc: {metric.fitness:.4f}/{metric.cost:.4f}")
 
         # Collect the data during the experiment
         params = CollectParams(
             scenario_provider=self.scenario_provider,
-            available_time=vsc.get_available_time(),
+            available_time=virtual_scenario.get_available_time(),
             experiment=experiment,
             t=t,
             policy=exp_name,
@@ -225,7 +230,7 @@ class Environment:
                                experiment,
                                start,
                                t,
-                               vsc):
+                               virtual_scenario):
 
         """
         Run the prioritization process for a given agent and HCS scenario.
@@ -239,11 +244,11 @@ class Environment:
         :param experiment: The current experiment number.
         :param start: The starting time of the process.
         :param t: The current step or iteration of the simulation.
-        :param vsc: The virtual HCS scenario being considered.
+        :param virtual_scenario: The virtual HCS scenario being considered.
         """
 
         # Get the variants that exist in the current commit
-        variants = vsc.get_variants()
+        variants = virtual_scenario.get_variants()
 
         # For each variant I will evaluate the impact of the main prioritization
         for variant in variants['Variant'].unique():
@@ -280,14 +285,14 @@ class Environment:
 
             self.variant_monitors[variant].collect(params)
 
-    def has_variants(self, vsc):
+    def has_variants(self, virtual_scenario):
         """
         Check if the given scenario has variants.
 
-        :param vsc: The virtual scenario to check for variants.
+        :param virtual_scenario: The virtual scenario to check for variants.
         :returns: True if the scenario has variants, False otherwise.
         """
-        return isinstance(vsc, VirtualHCSScenario) and len(vsc.get_variants()) > 0
+        return isinstance(virtual_scenario, VirtualHCSScenario) and len(virtual_scenario.get_variants()) > 0
 
     def save_periodically(self, restore, t, experiment, bandit):
         """
@@ -302,10 +307,11 @@ class Environment:
         if restore and t % 50000 == 0:
             self.save_experiment(experiment, t, bandit)
 
-    def run(self, experiments=1, trials=100, bandit_type: DynamicBandit = EvaluationMetricBandit,
+    def run(self, experiments=1, trials=100, bandit_type=EvaluationMetricBandit,
             restore=True):
         """
         Execute a simulation
+
         :param experiments: Number of experiments
         :param trials: The max number of scenarios that will be analyzed
         :param bandit_type:
@@ -320,6 +326,8 @@ class Environment:
     def create_file(self, name):
         """
         Create a file to store the results obtained during the experiment
+
+        :param name: The name of the file to store the results.
         """
         self.monitor.create_file(name)
 
@@ -339,6 +347,8 @@ class Environment:
     def store_experiment(self, csv_file_name):
         """
         Save the results obtained during the experiment
+
+        :param csv_file_name: The name of the file to store the results.
         """
         # Collect from temp and save a file (backup and easy sharing/auditing)
         self.monitor.save(csv_file_name)
@@ -362,18 +372,29 @@ class Environment:
     def load_experiment(self, experiment):
         """
         Load the backup
+
+        :param experiment: The current experiment number.
         """
         filename = f'backup/{str(self.scenario_provider)}_ex_{experiment}.p'
 
-        if os.path.exists(filename):
-            return pickle.load(open(filename, "rb"))
+        if not os.path.exists(filename):
+            return 0, self.agents, self.monitor, self.variant_monitors, None
 
-        return 0, self.agents, self.monitor, self.variant_monitors, None
+        with open(filename, "rb") as file:
+            return pickle.load(file)
 
     def save_experiment(self, experiment, t, bandit):
         """
         Save a backup for the experiment
+
+        :param experiment: The current experiment number.
+        :param t: The current step or iteration of the simulation.
+        :param bandit: The current bandit being used in the simulation.
         """
-        filename = f'backup/{str(self.scenario_provider)}_ex_{experiment}.p'
-        with open(filename, "wb") as f:
-            pickle.dump([t, self.agents, self.monitor, self.variant_monitors, bandit], f)
+        try:
+            filename = f'backup/{str(self.scenario_provider)}_ex_{experiment}.p'
+            with open(filename, "wb") as f:
+                pickle.dump([t, self.agents, self.monitor, self.variant_monitors, bandit], f)
+        except Exception as e:
+            logger.error(f"Error saving the experiment: {e}")
+            raise e
