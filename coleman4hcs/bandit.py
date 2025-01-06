@@ -54,12 +54,9 @@ class Bandit(ABC):
                               'Verdict',
                               'LastResults']
 
+        self.arms = None
         self.reset()
-
         self.add_arms(arms)
-
-        # Convert columns
-        # self.arms = self.arms.infer_objects()
 
     def reset(self):
         """
@@ -124,9 +121,6 @@ class DynamicBandit(Bandit, ABC):
 
         # Add new arms
         self.add_arms(arms)
-
-        # Convert columns
-        # self.arms = self.arms.infer_objects()
 
 
 class EvaluationMetricBandit(DynamicBandit):
