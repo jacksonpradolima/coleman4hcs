@@ -144,7 +144,7 @@ class Environment:
                                                                        virtual_scenario)
 
                 # If we are working with HCS scenario and there are variants
-                if self.has_variants(virtual_scenario):
+                if isinstance(virtual_scenario, VirtualHCSScenario) and len(virtual_scenario.get_variants()) > 0:
                     self.run_prioritization_hcs(agent,
                                                 action,
                                                 avail_time_ratio,
@@ -288,16 +288,7 @@ class Environment:
 
             self.variant_monitors[variant].collect(params)
 
-    def has_variants(self, virtual_scenario):
-        """
-        Check if the given scenario has variants.
-
-        :param virtual_scenario: The virtual scenario to check for variants.
-        :returns: True if the scenario has variants, False otherwise.
-        """
-        return isinstance(virtual_scenario, VirtualHCSScenario) and len(virtual_scenario.get_variants()) > 0
-
-    def save_periodically(self, restore, t, experiment, bandit):
+    def save_periodically(self, restore, t, experiment, bandit, interval=50000):
         """
        Save the experiment periodically based on a predefined interval.
 
@@ -305,9 +296,10 @@ class Environment:
        :param  t: The current step or iteration of the simulation.
        :param  experiment: The current experiment number.
        :param  bandit: The current bandit being used in the simulation.
+       :param  interval: The interval at which the experiment should be saved.
        """
-        # Save experiment each 50000 builds
-        if restore and t % 50000 == 0:
+        # Save experiment each X builds
+        if restore and t % interval == 0:
             self.save_experiment(experiment, t, bandit)
 
     def run(self, experiments=1, trials=100, bandit_type=EvaluationMetricBandit,
