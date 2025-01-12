@@ -285,7 +285,7 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         feature_means = previous_build_df[list(previous_features)].mean().to_dict()
         for feature in previous_features:
             # Fill missing values with the mean of the feature or default to 0 if no mean is available
-            merged_df[feature].fillna(feature_means.get(feature, 0), inplace=True)
+            merged_df[feature] = merged_df[feature].fillna(feature_means.get(feature, 0))
 
         return merged_df
 

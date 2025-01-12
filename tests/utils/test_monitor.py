@@ -5,7 +5,6 @@ These tests cover functionality including data collection, handling of temporary
 buffers, and performance benchmarks.
 """
 import os
-from lib2to3.pgen2.tokenize import group
 from unittest.mock import MagicMock
 
 import pandas as pd

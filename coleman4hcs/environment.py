@@ -23,6 +23,7 @@ import logging
 import os
 import pickle
 import time
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -36,6 +37,8 @@ from coleman4hcs.utils.monitor_params import CollectParams
 Path("backup").mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
+
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 class Environment:
