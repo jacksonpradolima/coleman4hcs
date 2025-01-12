@@ -119,7 +119,7 @@ class IndustrialDatasetScenarioProvider:
     def _read_testcases(self, tcfile: str) -> pd.DataFrame:
         """Reads the test cases from a provided CSV file."""
         # We use ';' separated values to avoid issues with thousands
-        df = pd.read_csv(tcfile, sep=';', parse_dates=['LastRun'])
+        df = pd.read_csv(tcfile, sep=';', parse_dates=['LastRun'], dayfirst=True)
         df["Duration"] = pd.to_numeric(df["Duration"], errors="coerce").fillna(
             0)  # Handle unexpected non-numeric values
         return df
