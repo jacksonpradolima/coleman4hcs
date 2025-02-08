@@ -1,3 +1,36 @@
+"""
+Unit tests for the Environment class and related components.
+
+This module contains a suite of unit tests to validate the functionality of
+the `Environment` class as well as the associated functionalities in the
+`coleman4hcs` package. These tests cover the behaviors, interactions, and
+edge cases for:
+
+- Initialization of `Environment` objects.
+- Reset and run behaviors for the Environment with various scenarios and agents.
+- Integration with other components such as Scenario Providers, Agents, Bandits, and Monitor Collectors.
+- File handling methods, including saving, loading, and backup operations.
+
+Fixtures:
+- `mock_agent`: A fixture for a mocked `ContextualAgent`.
+- `mock_scenario_provider`: A fixture for a mocked `IndustrialDatasetHCSScenarioProvider`.
+- `mock_evaluation_metric`: A fixture for a mocked evaluation metric.
+- `environment`: A fixture for an initialized instance of the `Environment` class.
+
+Tested Functionalities:
+1. Initialization and reset operations.
+2. Simulation workflows, including single runs (`run_single`) and prioritization.
+3. File-related methods like saving (`save_experiment`) and loading (`load_experiment`).
+4. Exception handling during file operations.
+5. Monitoring and metric updates during simulations.
+6. Execution and prioritization of test cases and variants.
+
+Dependencies:
+- `pytest` for parameterization and fixtures.
+- `unittest.mock` for mocking behavior of dependencies.
+- Core components (`Environment`, `ContextualAgent`, etc.) from the `coleman4hcs` package.
+
+"""
 from unittest.mock import MagicMock, patch, mock_open
 
 import numpy as np
@@ -226,7 +259,7 @@ def test_run_with_multiple_experiments(environment, mocker):
 
 @patch("os.path.exists", return_value=True)  # Mock os.path.exists to always return True
 @patch("builtins.open", new_callable=mock_open)  # Mock the open function
-@patch("pickle.load", return_value=("mocked_data"))  # Mock pickle.load
+@patch("pickle.load", return_value="mocked_data")  # Mock pickle.load
 def test_load_experiment(mocked_pickle_load, mocked_open, mocked_path_exists, environment):
     """
     Test load_experiment to ensure the backup is properly loaded.
