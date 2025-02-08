@@ -1,3 +1,54 @@
+"""
+Unit and integration tests for the main application logic.
+
+This module contains unit and integration tests to verify the functionality
+of various core functions present in the project's `main` module. The tests
+cover a wide range of behaviors, including logging setup, managing agents,
+loading classes dynamically, working with experiments, scenario providers,
+and CSV processing.
+
+Purpose:
+- Ensure the robustness, reliability, and correct behavior of the `main` module's core logic.
+- Validate the integrations with other components like agents, policies, and scenario providers.
+
+Tested Functionalities:
+1. **Logging**:
+   - `create_logger`: Verifies correct logger creation and configuration.
+
+2. **Experiment Execution**:
+   - `exp_run_industrial_dataset`: Tests running experiments with mock environments.
+
+3. **Dynamic Class Loading**:
+   - `load_class_from_module`: Ensures classes are correctly loaded dynamically from modules.
+
+4. **Agent Creation**:
+   - `create_agents`: Verifies the creation of different agent types (e.g., `RewardSlidingWindowAgent`, `ContextualAgent`) based on the provided policies and window sizes.
+
+5. **Scenario Setup**:
+   - `get_scenario_provider`: Tests the initialization of different scenario providers.
+
+6. **File Management**:
+   - `merge_csv`: Verifies merging of multiple CSV files into one while ensuring cleanup of temporary files.
+   - `store_experiments`: Tests the storage of experiment results into the database.
+
+7. **End-to-End Workflow**:
+   - Ensures integration of various components with mock objects to validate behavior across larger workflows.
+
+Dependencies:
+- `pytest` for test management and fixtures.
+- `unittest.mock` for mocking dependencies like functions, modules, and objects.
+- Core components from the `coleman4hcs` package that integrate with the tested functions.
+
+Test Structure:
+- **Unit Tests**:
+  Focused on validating individual functions in the `main` module.
+  Examples: `test_create_logger`, `test_create_agents_frrmab`.
+
+- **Integration Tests**:
+  Comprehensive tests to ensure modules and components work together as expected.
+  Examples: `test_end_to_end_execution`.
+
+"""
 import csv
 import logging
 from unittest.mock import Mock, patch, call
