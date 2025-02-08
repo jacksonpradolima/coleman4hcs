@@ -82,7 +82,7 @@ def test_virtual_scenario_initialization(mock_testcases):
     assert scenario.get_available_time() == 10
     assert scenario.get_testcases() == mock_testcases
     assert scenario.build_id == 1
-    assert scenario.total_build_duration == 6.5
+    assert abs(scenario.total_build_duration - 6.5) < 1e-6
 
 
 def test_virtual_scenario_reset(mock_testcases):
@@ -140,7 +140,7 @@ def test_industrial_dataset_scenario_provider(mock_csv_data, tmp_path):
     print("Scenario Available Time:", scenario.get_available_time())
 
     # Verify total duration and available time
-    assert scenario.get_available_time() == 0.5 * scenario.total_build_duration, (
+    assert abs(scenario.get_available_time() - 0.5 * scenario.total_build_duration) < 1e-6, (
         f"Available time should be half of total duration. "
         f"Expected: {0.5 * scenario.total_build_duration}, Got: {scenario.get_available_time()}"
     )
@@ -177,7 +177,7 @@ def test_industrial_dataset_hcs_scenario_provider(mock_csv_data, mock_variants, 
     print("Scenario Available Time:", scenario.get_available_time())
 
     # Verify total duration and available time
-    assert scenario.get_available_time() == 0.5 * scenario.total_build_duration, (
+    assert abs(scenario.get_available_time() - 0.5 * scenario.total_build_duration) < 1e-6, (
         f"Available time should be half of total duration. "
         f"Expected: {0.5 * scenario.total_build_duration}, Got: {scenario.get_available_time()}"
     )
