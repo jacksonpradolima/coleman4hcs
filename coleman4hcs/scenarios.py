@@ -142,7 +142,6 @@ class IndustrialDatasetScenarioProvider:
 
         # Stop when reaches the max build
         if self.current_build > self.max_builds:
-            # self.scenario = None
             return None
 
         # Select the data for the current build
