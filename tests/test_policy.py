@@ -35,10 +35,12 @@ from coleman4hcs.policy import (
     UCBPolicy,
     FRRMABPolicy,
     LinUCBPolicy,
-    SWLinUCBPolicy,
 )
-from coleman4hcs.agent import Agent, ContextualAgent, RewardSlidingWindowAgent, SlidingWindowContextualAgent
-from coleman4hcs.exceptions import QException
+from coleman4hcs.agent import Agent, ContextualAgent, SlidingWindowContextualAgent
+
+# Set a fixed random seed for reproducibility
+seed = 42
+rng = np.random.default_rng(seed)
 
 
 # ------------------------ Fixtures ------------------------
@@ -293,7 +295,7 @@ def test_epsilon_greedy_policy_performance(dummy_agent, benchmark):
     dummy_agent.actions = pd.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': [0] * num_actions,
-        'ValueEstimates': np.random.default_rng().random(num_actions),
+        'ValueEstimates': rng.random(num_actions),
         'Q': [0] * num_actions
     })
 
@@ -320,8 +322,8 @@ def test_greedy_policy_performance(dummy_agent, benchmark):
     dummy_agent.actions = pd.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': [0] * num_actions,
-        'ValueEstimates': np.random.default_rng().random(num_actions),
-        'Q': np.random.default_rng().random(num_actions)  # Random Q-values
+        'ValueEstimates': rng.random(num_actions),
+        'Q': rng.random(num_actions)  # Random Q-values
     })
 
     # Benchmark the `choose_all` method
@@ -348,7 +350,7 @@ def test_random_policy_performance(dummy_agent, benchmark):
     dummy_agent.actions = pd.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': [0] * num_actions,
-        'ValueEstimates': np.random.default_rng().random(num_actions),
+        'ValueEstimates': rng.random(num_actions),
         'Q': [0] * num_actions
     })
 
@@ -382,7 +384,7 @@ def test_ucb1_credit_assignment_performance(dummy_agent, benchmark):
     dummy_agent.actions = pd.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': np.random.randint(1, 100, num_actions),  # Random non-zero attempts
-        'ValueEstimates': np.random.default_rng().random(num_actions) * 100,  # Random reward estimates
+        'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
         'Q': [0] * num_actions  # Will be calculated
     })
 
@@ -411,8 +413,8 @@ def test_ucb1_choose_all_performance(dummy_agent, benchmark):
     dummy_agent.actions = pd.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': np.random.randint(1, 100, num_actions),  # Random non-zero attempts
-        'ValueEstimates': np.random.default_rng().random(num_actions) * 100,  # Random reward estimates
-        'Q': np.random.default_rng().random(num_actions)  # Already calculated Q values
+        'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
+        'Q': rng.random(num_actions)  # Already calculated Q values
     })
 
     # Benchmark the `choose_all` method
@@ -442,7 +444,7 @@ def test_frrmab_credit_assignment_performance(dummy_agent, benchmark):
     dummy_agent.actions = pd.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': np.random.randint(1, 50, num_actions),  # Random attempts
-        'ValueEstimates': np.random.default_rng().random(num_actions) * 100,  # Random reward estimates
+        'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
         'T': [0] * num_actions,  # Initial usage time
         'Q': [0] * num_actions  # Will be calculated
     })
@@ -482,9 +484,9 @@ def test_frrmab_choose_all_performance(dummy_agent, benchmark):
     dummy_agent.actions = pd.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': np.random.randint(1, 50, num_actions),  # Random attempts
-        'ValueEstimates': np.random.default_rng().random(num_actions) * 100,  # Random reward estimates
+        'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
         'T': [0] * num_actions,  # Initial usage time
-        'Q': np.random.default_rng().random(num_actions)  # Already calculated Q values
+        'Q': rng.random(num_actions)  # Already calculated Q values
     })
 
     # Simulate historical reward data to populate policy.history
@@ -522,12 +524,12 @@ def test_swlinucb_policy_choose_all_performance(sliding_window_contextual_agent,
     actions = [f"A{i}" for i in range(num_actions)]
     sliding_window_contextual_agent.context_features = pd.DataFrame({
         'Name': actions,
-        'feat1': np.random.default_rng().random(num_actions),
-        'feat2': np.random.default_rng().random(num_actions)
+        'feat1': rng.random(num_actions),
+        'feat2': rng.random(num_actions)
     })
     sliding_window_contextual_agent.history = pd.DataFrame({
         'Name': np.random.choice(actions, size=100_000),
-        'Reward': np.random.default_rng().random(100_000),
+        'Reward': rng.random(100_000),
         'T': np.arange(100_000)
     })
 
@@ -565,13 +567,13 @@ def test_linucb_policy_credit_assignment_performance(contextual_agent, benchmark
     num_actions = 5_000
     num_features = 100
     actions = [f"A{i}" for i in range(num_actions)]
-    features = {f"feat{i}": np.random.default_rng().random(num_actions) for i in range(num_features)}
+    features = {f"feat{i}": rng.random(num_actions) for i in range(num_features)}
     features["Name"] = actions
 
     contextual_agent.context_features = pd.DataFrame(features)
     contextual_agent.actions = pd.DataFrame({
         'Name': actions,
-        'ValueEstimates': np.random.default_rng().random(num_actions)
+        'ValueEstimates': rng.random(num_actions)
     })
 
     # Update actions with the policy
@@ -588,9 +590,9 @@ def simulate_actions(num_actions, include_q=False):
     actions = pd.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': np.random.randint(1, 100, num_actions),  # Random non-zero attempts
-        'ValueEstimates': np.random.default_rng().random(num_actions) * 100,  # Random reward estimates
+        'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
         'T': [0] * num_actions,  # Timestamp/usage in FRRMABPolicy
-        'Q': np.random.default_rng().random(num_actions) if include_q else [0] * num_actions  # Random Q if needed
+        'Q': rng.random(num_actions) if include_q else [0] * num_actions  # Random Q if needed
     })
     return actions
 
