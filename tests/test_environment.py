@@ -157,7 +157,7 @@ def test_run_prioritization(environment):
     environment.monitor.collect = MagicMock()  # Mock the collect method
 
     # Call the method
-    action, end, exp_name, start = environment.run_prioritization(
+    _, _, _, _ = environment.run_prioritization(
         agent=mock_agent,
         bandit=mock_bandit,
         bandit_duration=1.5,

@@ -92,22 +92,6 @@ def test_create_agents_swlinucb():
     assert all(isinstance(agent, ContextualAgent) for agent in agents)
 
 
-# def test_get_scenario_provider_hcs():
-#     datasets_dir = "/examples"
-#     dataset = "test-dataset"
-#     sched_time_ratio = 0.5
-#     use_hcs = True
-#     use_context = False
-#     context_config = {}
-#     feature_groups = {}
-#
-#     scenario_provider = get_scenario_provider(
-#         datasets_dir, dataset, sched_time_ratio, use_hcs, use_context, context_config, feature_groups
-#     )
-#
-#     assert isinstance(scenario_provider, IndustrialDatasetHCSScenarioProvider)
-
-
 def test_get_scenario_provider_basic():
     datasets_dir = "examples"
     dataset = "fakedata"
