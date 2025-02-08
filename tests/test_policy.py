@@ -383,7 +383,7 @@ def test_ucb1_credit_assignment_performance(dummy_agent, benchmark):
     num_actions = 5_000
     dummy_agent.actions = pd.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
-        'ActionAttempts': np.random.randint(1, 100, num_actions),  # Random non-zero attempts
+        'ActionAttempts': rng.integers(1, 100, num_actions),  # Random non-zero attempts
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
         'Q': [0] * num_actions  # Will be calculated
     })
@@ -412,7 +412,7 @@ def test_ucb1_choose_all_performance(dummy_agent, benchmark):
     num_actions = 5_000
     dummy_agent.actions = pd.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
-        'ActionAttempts': np.random.randint(1, 100, num_actions),  # Random non-zero attempts
+        'ActionAttempts': rng.integers(1, 100, num_actions),  # Random non-zero attempts
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
         'Q': rng.random(num_actions)  # Already calculated Q values
     })
@@ -443,7 +443,7 @@ def test_frrmab_credit_assignment_performance(dummy_agent, benchmark):
     num_actions = 10_000
     dummy_agent.actions = pd.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
-        'ActionAttempts': np.random.randint(1, 50, num_actions),  # Random attempts
+        'ActionAttempts': rng.integers(1, 50, num_actions),  # Random attempts
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
         'T': [0] * num_actions,  # Initial usage time
         'Q': [0] * num_actions  # Will be calculated
@@ -483,7 +483,7 @@ def test_frrmab_choose_all_performance(dummy_agent, benchmark):
     num_actions = 10_000
     dummy_agent.actions = pd.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
-        'ActionAttempts': np.random.randint(1, 50, num_actions),  # Random attempts
+        'ActionAttempts': rng.integers(1, 50, num_actions),  # Random attempts
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
         'T': [0] * num_actions,  # Initial usage time
         'Q': rng.random(num_actions)  # Already calculated Q values
@@ -589,7 +589,7 @@ def simulate_actions(num_actions, include_q=False):
     """Simulates a DataFrame of actions with required columns."""
     actions = pd.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
-        'ActionAttempts': np.random.randint(1, 100, num_actions),  # Random non-zero attempts
+        'ActionAttempts': rng.integers(1, 100, num_actions),  # Random non-zero attempts
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
         'T': [0] * num_actions,  # Timestamp/usage in FRRMABPolicy
         'Q': rng.random(num_actions) if include_q else [0] * num_actions  # Random Q if needed
