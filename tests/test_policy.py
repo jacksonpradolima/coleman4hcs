@@ -528,7 +528,7 @@ def test_swlinucb_policy_choose_all_performance(sliding_window_contextual_agent,
         'feat2': rng.random(num_actions)
     })
     sliding_window_contextual_agent.history = pd.DataFrame({
-        'Name': np.random.choice(actions, size=100_000),
+        'Name': rng.choice(actions, size=100_000),
         'Reward': rng.random(100_000),
         'T': np.arange(100_000)
     })
