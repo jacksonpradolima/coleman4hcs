@@ -35,6 +35,7 @@ from coleman4hcs.policy import (
     UCBPolicy,
     FRRMABPolicy,
     LinUCBPolicy,
+    SWLinUCBPolicy,
 )
 from coleman4hcs.agent import Agent, ContextualAgent, SlidingWindowContextualAgent
 
@@ -225,8 +226,6 @@ def test_linucb_policy_choose_all(contextual_agent):
     Test the `choose_all` method of LinUCBPolicy.
     Ensure it chooses actions based on contextual features.
     """
-    from coleman4hcs.policy import LinUCBPolicy
-
     # Set up the LinUCBPolicy
     policy = LinUCBPolicy(alpha=0.5)
 
@@ -262,8 +261,6 @@ def test_swlinucb_policy_choose_all(sliding_window_contextual_agent):
     Test the `choose_all` method of SWLinUCBPolicy.
     Verify sliding window logic for contextual actions.
     """
-    from coleman4hcs.policy import SWLinUCBPolicy
-
     # Set up the SWLinUCBPolicy
     policy = SWLinUCBPolicy(alpha=0.5)
 
@@ -285,8 +282,6 @@ def test_epsilon_greedy_policy_performance(dummy_agent, benchmark):
     Performance test for `choose_all` method of EpsilonGreedyPolicy.
     Simulate a large workload and benchmark execution time.
     """
-    from coleman4hcs.policy import EpsilonGreedyPolicy
-
     # Initialize EpsilonGreedyPolicy
     policy = EpsilonGreedyPolicy(epsilon=0.1)
 
@@ -312,8 +307,6 @@ def test_greedy_policy_performance(dummy_agent, benchmark):
     Performance test for `choose_all` method of GreedyPolicy.
     Simulate a large workload and benchmark execution time.
     """
-    from coleman4hcs.policy import GreedyPolicy
-
     # Initialize GreedyPolicy
     policy = GreedyPolicy()
 
@@ -373,8 +366,6 @@ def test_ucb1_credit_assignment_performance(dummy_agent, benchmark):
     Performance test for `credit_assignment` method of UCB1Policy.
     Benchmark execution time with a large dataset.
     """
-    from coleman4hcs.policy import UCB1Policy
-
     # Initialize UCB1Policy
     c = 2  # Exploration parameter
     policy = UCB1Policy(c=c)
@@ -402,8 +393,6 @@ def test_ucb1_choose_all_performance(dummy_agent, benchmark):
     Performance test for `choose_all` method of UCB1Policy.
     Benchmark execution time with a large dataset.
     """
-    from coleman4hcs.policy import UCB1Policy
-
     # Initialize UCB1Policy
     c = 2  # Exploration parameter
     policy = UCB1Policy(c=c)
@@ -432,8 +421,6 @@ def test_frrmab_credit_assignment_performance(dummy_agent, benchmark):
     Performance test for `credit_assignment` method of FRRMABPolicy.
     Benchmark execution time with a large dataset, including historical data.
     """
-    from coleman4hcs.policy import FRRMABPolicy
-
     # Initialize FRRMABPolicy
     c = 2  # Exploration parameter
     decayed_factor = 0.9  # Decay factor for ranking
@@ -472,8 +459,6 @@ def test_frrmab_choose_all_performance(dummy_agent, benchmark):
     Performance test for `choose_all` method of FRRMABPolicy.
     Benchmark execution time with a large dataset, including historical data.
     """
-    from coleman4hcs.policy import FRRMABPolicy
-
     # Initialize FRRMABPolicy
     c = 2  # Exploration parameter
     decayed_factor = 0.9  # Decay factor for ranking
@@ -514,8 +499,6 @@ def test_swlinucb_policy_choose_all_performance(sliding_window_contextual_agent,
     Performance test for `choose_all` method of SWLinUCBPolicy using pytest-benchmark.
     Simulate a large workload and benchmark execution time.
     """
-    from coleman4hcs.policy import SWLinUCBPolicy
-
     # Initialize SWLinUCBPolicy
     policy = SWLinUCBPolicy(alpha=0.5)
 
@@ -558,8 +541,6 @@ def test_linucb_policy_credit_assignment_performance(contextual_agent, benchmark
     Performance test for the `credit_assignment` method of LinUCBPolicy.
     Benchmark behavior with large contextual features and actions.
     """
-    from coleman4hcs.policy import LinUCBPolicy
-
     # Initialize LinUCBPolicy
     policy = LinUCBPolicy(alpha=0.5)
 
@@ -638,7 +619,7 @@ def test_policy_performance(dummy_agent, benchmark, policy_class, policy_kwargs,
 
     # Simulate a large number of actions for the agent
     num_actions = 5_000
-    dummy_agent.actions = simulate_actions(num_actions, include_q=(benchmark_method == 'choose_all'))
+    dummy_agent.actions = simulate_actions(num_actions, include_q=benchmark_method == 'choose_all')
 
     # Simulate history if policy requires it (e.g., FRRMABPolicy)
     if policy_class in [FRRMABPolicy]:
