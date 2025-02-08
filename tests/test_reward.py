@@ -166,4 +166,3 @@ def test_rn_fail_reward_performance(benchmark, num_testcases):
         reward.evaluate(mock_metric, sample_prioritization)
 
     benchmark(run_evaluation)
-
