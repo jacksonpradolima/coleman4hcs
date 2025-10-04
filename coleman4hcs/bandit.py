@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List
 
 import numpy as np
-import pandas as pd
+import polars as pl
 
 from coleman4hcs.evaluation import EvaluationMetric
 
@@ -62,13 +62,17 @@ class Bandit(ABC):
         """
         Reset the arms.
         """
-        self.arms = pd.DataFrame(columns=self.tc_fieldnames)
-        self.arms = self.arms.astype({
-            'CalcPrio': 'int32',
-            'Duration': 'float32',
-            'Name': 'category',
-            'Verdict': 'int8'
-        })
+        schema = {
+            'Name': pl.Utf8,
+            'Duration': pl.Float32,
+            'CalcPrio': pl.Int32,
+            'LastRun': pl.Utf8,
+            'NumRan': pl.Int64,
+            'NumErrors': pl.Int64,
+            'Verdict': pl.Int8,
+            'LastResults': pl.Utf8
+        }
+        self.arms = pl.DataFrame(schema=schema)
 
     def get_arms(self) -> List[str]:
         """
@@ -76,7 +80,7 @@ class Bandit(ABC):
 
         :return: List of arm names.
         """
-        return self.arms['Name'].tolist()
+        return self.arms['Name'].to_list()
 
     def add_arms(self, arms: List[Dict]):
         """
@@ -85,9 +89,8 @@ class Bandit(ABC):
         :param arms: List of arms.
         """
         if arms:
-            new_arms = pd.DataFrame(arms, columns=self.tc_fieldnames)
-            self.arms = pd.concat([self.arms, new_arms], ignore_index=True)
-            self.arms.reset_index(drop=True, inplace=True)  # Ensure index consistency
+            new_arms = pl.DataFrame(arms, schema=self.arms.schema)
+            self.arms = pl.concat([self.arms, new_arms], how="vertical")
 
     @abstractmethod
     def pull(self, action):
