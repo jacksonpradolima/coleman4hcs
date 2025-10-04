@@ -40,7 +40,7 @@ References:
 import random
 
 import numpy as np
-import pandas as pd
+import polars as pl
 
 from coleman4hcs.agent import Agent, RewardSlidingWindowAgent, ContextualAgent, SlidingWindowContextualAgent
 from coleman4hcs.exceptions import QException
@@ -221,7 +221,14 @@ class FRRMABPolicy(Policy):
         # Q | Quality estimate
         self.hist_col_names = ['Name', 'ActionAttempts', 'ValueEstimates', 'T', 'Q']
 
-        self.history = pd.DataFrame(columns=self.hist_col_names)
+        schema = {
+            'Name': pl.Utf8,
+            'ActionAttempts': pl.Float64,
+            'ValueEstimates': pl.Float64,
+            'T': pl.Int64,
+            'Q': pl.Float64
+        }
+        self.history = pl.DataFrame(schema=schema)
 
     def __str__(self):
         # return f"FRRMAB (C={self.c}, D={self.decayed_factor})"
@@ -230,14 +237,22 @@ class FRRMABPolicy(Policy):
 
     def choose_all(self, agent: RewardSlidingWindowAgent):
         # Identify new test cases
-        new_tcs = agent.actions.loc[~agent.actions.Name.isin(self.history['Name'])]
-
-        if not new_tcs.empty:
-            new_entries = new_tcs[['Name']].assign(ActionAttempts=0, ValueEstimates=0, T=0, Q=0)
-            self.history = pd.concat([self.history, new_entries], ignore_index=True)
+        existing_names = set(self.history['Name'].to_list())
+        agent_names = set(agent.actions['Name'].to_list())
+        new_names = agent_names - existing_names
+        
+        if new_names:
+            new_entries = pl.DataFrame({
+                'Name': list(new_names),
+                'ActionAttempts': [0.0] * len(new_names),
+                'ValueEstimates': [0.0] * len(new_names),
+                'T': [0] * len(new_names),
+                'Q': [0.0] * len(new_names)
+            })
+            self.history = pl.concat([self.history, new_entries], how="vertical")
 
         # Sort by Q values to determine priorities
-        return self.history.sort_values(by='Q', ascending=False)['Name'].tolist()
+        return self.history.sort('Q', descending=True)['Name'].to_list()
 
     def credit_assignment(self, agent: RewardSlidingWindowAgent):
         """
@@ -245,15 +260,15 @@ class FRRMABPolicy(Policy):
         :return: FRR, Selected Times, and Sum Applications for all arms
         """
         # We must calculate the sum of the rewards (FIRs, Fitness Improvement Rates) by each arm in the sliding window
-        self.history = agent.history.groupby('Name', as_index=False).agg(
-            ActionAttempts=('ActionAttempts', 'sum'),
-            ValueEstimates=('ValueEstimates', 'sum'),
-            T=('T', 'count')
-        )
+        self.history = agent.history.group_by('Name').agg([
+            pl.col('ActionAttempts').sum(),
+            pl.col('ValueEstimates').sum(),
+            pl.col('T').count().alias('T')
+        ])
 
         # Find rank of each arm
-        self.history.sort_values(by='ValueEstimates', ascending=False, inplace=True)
-        reward_arm = self.history['ValueEstimates'].to_numpy(copy=True)
+        self.history = self.history.sort('ValueEstimates', descending=True)
+        reward_arm = self.history['ValueEstimates'].to_numpy()
         ranking = np.arange(1, len(reward_arm) + 1)
 
         # Compute decay values
@@ -271,14 +286,16 @@ class FRRMABPolicy(Policy):
 
         # Compute Q
         # T column contains the count of usage for each "arm"
-        selected_times = self.history['T'].to_numpy(copy=True)
+        selected_times = self.history['T'].to_numpy()
 
         # Precompute log(sum of selected times)
         log_selected_times = np.log1p(selected_times.sum())
 
         exploration = np.sqrt((2 * log_selected_times) / selected_times)
         exploration = np.nan_to_num(exploration, nan=0.0, posinf=0.0, neginf=0.0)
-        self.history['Q'] = frr + self.c * exploration
+        self.history = self.history.with_columns([
+            (pl.lit(frr) + self.c * pl.lit(exploration)).alias('Q')
+        ])
 
 
 class SlMABPolicy(Policy):
@@ -293,7 +310,14 @@ class SlMABPolicy(Policy):
         # T | Time of usage
         self.hist_col_names = ['Name', 'ActionAttempts', 'ValueEstimates', 'T', 'Q']
 
-        self.history = pd.DataFrame(columns=self.hist_col_names)
+        schema = {
+            'Name': pl.Utf8,
+            'ActionAttempts': pl.Float64,
+            'ValueEstimates': pl.Float64,
+            'T': pl.Int64,
+            'Q': pl.Float64
+        }
+        self.history = pl.DataFrame(schema=schema)
 
     def __str__(self):
         # return f"SLMAB ("
@@ -302,14 +326,22 @@ class SlMABPolicy(Policy):
 
     def choose_all(self, agent: RewardSlidingWindowAgent):
         # Identify new test cases
-        new_tcs = agent.actions.loc[~agent.actions.Name.isin(self.history['Name'])]
-
-        if not new_tcs.empty:
-            new_entries = new_tcs[['Name']].assign(ActionAttempts=0, ValueEstimates=0, T=0, Q=0)
-            self.history = pd.concat([self.history, new_entries], ignore_index=True)
+        existing_names = set(self.history['Name'].to_list())
+        agent_names = set(agent.actions['Name'].to_list())
+        new_names = agent_names - existing_names
+        
+        if new_names:
+            new_entries = pl.DataFrame({
+                'Name': list(new_names),
+                'ActionAttempts': [0.0] * len(new_names),
+                'ValueEstimates': [0.0] * len(new_names),
+                'T': [0] * len(new_names),
+                'Q': [0.0] * len(new_names)
+            })
+            self.history = pl.concat([self.history, new_entries], how="vertical")
 
         # Sort by Q values to determine priorities
-        return self.history.sort_values(by='Q', ascending=False)['Name'].tolist()
+        return self.history.sort('Q', descending=True)['Name'].to_list()
 
     def credit_assignment(self, agent: RewardSlidingWindowAgent):
         """
