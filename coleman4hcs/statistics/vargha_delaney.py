@@ -8,13 +8,13 @@ is widely used in educational and behavioral statistics.
 
 Functions:
 - VD_A: Computes the Vargha and Delaney A index for two groups.
-- VD_A_DF: Computes pairwise A index comparisons for multiple groups in a pandas DataFrame.
+- VD_A_DF: Computes pairwise A index comparisons for multiple groups in a Polars DataFrame.
 - reduce: Filters and annotates effect sizes for comparisons against a specified best group.
 
 Key Features:
 - Accurate computation of the A index using a formula that minimizes numerical errors.
 - Categorization of effect sizes into magnitudes (negligible, small, medium, large).
-- Flexible handling of data through pandas DataFrame operations for group comparisons.
+- Flexible handling of data through Polars DataFrame operations for group comparisons.
 - Latex-compatible symbols for presenting effect sizes in reports or visualizations.
 
 References:
@@ -28,12 +28,8 @@ from bisect import bisect_left
 from typing import List
 
 import numpy as np
-import pandas as pd
+import polars as pl
 import scipy.stats as ss
-from pandas import Categorical
-
-# turn off the SettingWithCopyWarning
-pd.set_option('mode.chained_assignment', None)
 
 
 def VD_A(treatment: List[float], control: List[float]):
@@ -102,23 +98,25 @@ def VD_A_DF(data, val_col: str = None, group_col: str = None, sort=True):
 
     """
 
-    x = data.copy()
+    x = data.clone()
     if sort:
-        x[group_col] = Categorical(x[group_col], categories=x[group_col].unique(), ordered=True)
-        x.sort_values(by=[group_col, val_col], ascending=True, inplace=True)
+        x = x.with_columns([
+            pl.col(group_col).cast(pl.Categorical)
+        ]).sort([group_col, val_col])
 
     groups = x[group_col].unique()
 
     # Pairwise combinations
-    g1, g2 = np.array(list(it.combinations(np.arange(groups.size), 2))).T
+    g1, g2 = np.array(list(it.combinations(np.arange(len(groups)), 2))).T
 
     # Compute effect size for each combination
-    ef = np.array([VD_A(list(x[val_col][x[group_col] == groups[i]].values),
-                        list(x[val_col][x[group_col] == groups[j]].values)) for i, j in zip(g1, g2)])
+    ef = np.array([VD_A(list(x.filter(pl.col(group_col) == groups[i])[val_col].to_list()),
+                        list(x.filter(pl.col(group_col) == groups[j])[val_col].to_list())) 
+                   for i, j in zip(g1, g2)])
 
-    return pd.DataFrame({
-        'base': np.unique(data[group_col])[g1],
-        'compared_with': np.unique(data[group_col])[g2],
+    return pl.DataFrame({
+        'base': data[group_col].unique().to_numpy()[g1],
+        'compared_with': data[group_col].unique().to_numpy()[g2],
         'estimate': ef[:, 0],
         'magnitude': ef[:, 1]
     })

@@ -32,7 +32,7 @@ import logging
 import os
 import time
 import warnings
-import pandas as pd
+import polars as pl
 from multiprocessing import Pool
 from pathlib import Path
 
@@ -212,10 +212,11 @@ def merge_csv(files, output_file):
     >>> merge_csv(temp_files, "merged_data.csv")
     """
     # Merge all CSV files into one DataFrame
-    df = pd.concat([pd.read_csv(file, sep=';') for file in files], ignore_index=True)
+    dfs = [pl.read_csv(file, separator=';') for file in files]
+    df = pl.concat(dfs, how="vertical")
 
     # Save the merged DataFrame to CSV
-    df.to_csv(output_file, index=False, sep=';', quoting=csv.QUOTE_NONE)
+    df.write_csv(output_file, separator=';')
 
     # Optionally, clean up temporary files
     for file in files:
