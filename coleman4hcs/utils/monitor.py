@@ -9,7 +9,7 @@ to a CSV file.
 import csv
 import os
 
-import pandas as pd
+import polars as pl
 
 from coleman4hcs.utils.monitor_params import CollectParams
 
@@ -70,7 +70,31 @@ class MonitorCollector:
                           'avg_precision',
                           'prioritization_order']
 
-        self.df = pd.DataFrame(columns=self.col_names)
+        # Define schema for the DataFrame
+        schema = {
+            'scenario': pl.Utf8,
+            'experiment': pl.Int64,
+            'step': pl.Int64,
+            'policy': pl.Utf8,
+            'reward_function': pl.Utf8,
+            'sched_time': pl.Float64,
+            'sched_time_duration': pl.Float64,
+            'total_build_duration': pl.Float64,
+            'prioritization_time': pl.Float64,
+            'detected': pl.Int64,
+            'missed': pl.Int64,
+            'tests_ran': pl.Int64,
+            'tests_not_ran': pl.Int64,
+            'ttf': pl.Float64,
+            'ttf_duration': pl.Float64,
+            'time_reduction': pl.Float64,
+            'fitness': pl.Float64,
+            'cost': pl.Float64,
+            'rewards': pl.Float64,
+            'avg_precision': pl.Float64,
+            'prioritization_order': pl.Utf8
+        }
+        self.df = pl.DataFrame(schema=schema)
 
         # the temp is used when we have more than 1000 records. This is used to improve the performance
         self.temp_rows = []
@@ -82,13 +106,13 @@ class MonitorCollector:
         This can boost our performance by around 10 to 170 times
         """
         if self.temp_rows:
-            batch_df = pd.DataFrame(self.temp_rows, columns=self.col_names)
+            batch_df = pl.DataFrame(self.temp_rows, schema=self.df.schema)
             # Explicitly check if batch_df contains valid rows
-            if not batch_df.empty and not batch_df.isna().all(axis=None):
-                if self.df.empty:
+            if batch_df.height > 0 and batch_df.null_count().sum_horizontal()[0] < (batch_df.height * batch_df.width):
+                if self.df.height == 0:
                     self.df = batch_df
                 else:
-                    self.df = pd.concat([self.df, batch_df], ignore_index=True)
+                    self.df = pl.concat([self.df, batch_df], how="vertical")
             # Clear temp_rows regardless of batch_df state
             self.temp_rows = []
 
@@ -149,15 +173,26 @@ class MonitorCollector:
         # Determine if the file already exists
         write_header = not os.path.exists(name) or os.stat(name).st_size == 0  # Empty file means headers are missing
 
-        self.df.to_csv(name, mode='a+', sep=';', na_rep='[]',
-                       header=write_header,  # Write header only if the file is empty
-                       columns=self.col_names,
-                       index=False,
-                       quoting=csv.QUOTE_NONE)
+        # Polars write_csv doesn't have mode parameter, so we need to handle appending manually
+        if write_header or not os.path.exists(name):
+            self.df.write_csv(name, separator=';', null_value='[]')
+        else:
+            # For appending, we write to temp and then append manually
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv') as tmp:
+                tmp_name = tmp.name
+                self.df.write_csv(tmp_name, separator=';', null_value='[]', include_header=False)
+            
+            # Append the content
+            with open(tmp_name, 'r') as tmp_file:
+                content = tmp_file.read()
+            with open(name, 'a') as f:
+                f.write(content)
+            os.unlink(tmp_name)
 
     def clear(self):
         """
         Clears the dataframe.
         """
-        self.df = pd.DataFrame(columns=self.col_names)
+        self.df = pl.DataFrame(schema=self.df.schema)
         self.temp_rows = []
