@@ -185,9 +185,9 @@ class Agent:
         # Create weight mapping
         weight_map = {name: weights[idx] for name, idx in index_map.items()}
         
-        # Update using replace
+        # Update using replace_strict for newer polars versions
         self.actions = self.actions.with_columns([
-            (pl.col('ActionAttempts') + pl.col('Name').replace(weight_map, default=0.0)).alias('ActionAttempts')
+            (pl.col('ActionAttempts') + pl.col('Name').replace_strict(weight_map, default=0.0, return_dtype=pl.Float64)).alias('ActionAttempts')
         ])
 
     def observe(self, reward):
@@ -252,9 +252,19 @@ class RewardAgent(Agent):
         # Get rewards for each test case
         self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
 
-        # Update value estimates (accumulative reward)
-        self.actions['ValueEstimates'] += self.actions['Name'].apply(
-            lambda x: self.last_reward[self.last_prioritization.index(x)])
+        # Update value estimates (accumulative reward) - create mapping
+        reward_map = {name: self.last_reward[self.last_prioritization.index(name)]
+                     for name in self.actions['Name'].to_list() if name in self.last_prioritization}
+        
+        # Update using with_columns
+        current_estimates = self.actions['ValueEstimates'].to_list()
+        name_list = self.actions['Name'].to_list()
+        new_estimates = [current_estimates[i] + reward_map.get(name_list[i], 0.0) 
+                        for i in range(len(name_list))]
+        
+        self.actions = self.actions.with_columns([
+            pl.Series('ValueEstimates', new_estimates)
+        ])
 
         self.t += 1
 
@@ -384,9 +394,18 @@ class RewardSlidingWindowAgent(RewardAgent):
 
         # Get rewards for each test case
         self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
-        # Update value estimates
-        self.actions['ValueEstimates'] = self.actions['Name'].apply(
-            lambda x: self.last_reward[self.last_prioritization.index(x)])
+        
+        # Update value estimates - create mapping
+        reward_map = {name: self.last_reward[self.last_prioritization.index(name)] 
+                     for name in self.actions['Name'].to_list() if name in self.last_prioritization}
+        
+        # Update using with_columns
+        name_list = self.actions['Name'].to_list()
+        new_estimates = [reward_map.get(name, 0.0) for name in name_list]
+        
+        self.actions = self.actions.with_columns([
+            pl.Series('ValueEstimates', new_estimates)
+        ])
 
         self.t += 1
         self.update_history()

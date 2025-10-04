@@ -29,6 +29,7 @@ from typing import List
 
 import numpy as np
 import polars as pl
+import pandas as pd
 import scipy.stats as ss
 
 
@@ -98,28 +99,43 @@ def VD_A_DF(data, val_col: str = None, group_col: str = None, sort=True):
 
     """
 
-    x = data.clone()
+    # Handle both Pandas and Polars DataFrames
+    is_pandas = isinstance(data, pd.DataFrame)
+    
+    if is_pandas:
+        # Convert to Polars for processing
+        x = pl.from_pandas(data)
+    else:
+        x = data.clone()
+        
     if sort:
         x = x.with_columns([
             pl.col(group_col).cast(pl.Categorical)
         ]).sort([group_col, val_col])
 
     groups = x[group_col].unique()
+    groups_list = groups.to_list()
 
     # Pairwise combinations
-    g1, g2 = np.array(list(it.combinations(np.arange(len(groups)), 2))).T
+    g1, g2 = np.array(list(it.combinations(np.arange(len(groups_list)), 2))).T
 
     # Compute effect size for each combination
-    ef = np.array([VD_A(list(x.filter(pl.col(group_col) == groups[i])[val_col].to_list()),
-                        list(x.filter(pl.col(group_col) == groups[j])[val_col].to_list())) 
+    ef = np.array([VD_A(list(x.filter(pl.col(group_col) == groups_list[i])[val_col].to_list()),
+                        list(x.filter(pl.col(group_col) == groups_list[j])[val_col].to_list())) 
                    for i, j in zip(g1, g2)])
 
-    return pl.DataFrame({
-        'base': data[group_col].unique().to_numpy()[g1],
-        'compared_with': data[group_col].unique().to_numpy()[g2],
+    groups_array = groups.to_numpy()
+    result = pl.DataFrame({
+        'base': groups_array[g1],
+        'compared_with': groups_array[g2],
         'estimate': ef[:, 0],
         'magnitude': ef[:, 1]
     })
+    
+    # Return same type as input
+    if is_pandas:
+        return result.to_pandas()
+    return result
 
 
 def reduce(df, best, symbols=True):
