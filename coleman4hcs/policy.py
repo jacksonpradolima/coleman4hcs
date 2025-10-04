@@ -37,8 +37,6 @@ References:
       April 8–12, 2019, Limassol, Cyprus.
 """
 
-import random
-
 import numpy as np
 import polars as pl
 

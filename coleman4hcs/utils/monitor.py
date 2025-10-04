@@ -6,7 +6,6 @@ the Coleman4HCS framework. The primary functionality revolves around the `Monito
 facilitates data collection during an experiment and provides methods for saving the collected data
 to a CSV file.
 """
-import csv
 import os
 
 import polars as pl
@@ -184,9 +183,9 @@ class MonitorCollector:
                 self.df.write_csv(tmp_name, separator=';', null_value='[]', include_header=False)
             
             # Append the content
-            with open(tmp_name, 'r') as tmp_file:
+            with open(tmp_name, 'r', encoding='utf-8') as tmp_file:
                 content = tmp_file.read()
-            with open(name, 'a') as f:
+            with open(name, 'a', encoding='utf-8') as f:
                 f.write(content)
             os.unlink(tmp_name)
 
