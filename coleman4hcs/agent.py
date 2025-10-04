@@ -35,7 +35,7 @@ import random
 from typing import List
 
 import numpy as np
-import pandas as pd
+import polars as pl
 
 from coleman4hcs.bandit import Bandit
 from coleman4hcs.evaluation import EvaluationMetric
@@ -64,7 +64,14 @@ class Agent:
         # Q | Q value used in the Policy (updated in the credit assignment)
         self.col_names = ['Name', 'ActionAttempts', 'ValueEstimates', 'Q']
 
-        self.actions = pd.DataFrame(columns=self.col_names).infer_objects()
+        # Define schema for the DataFrame
+        schema = {
+            'Name': pl.Utf8,
+            'ActionAttempts': pl.Float64,
+            'ValueEstimates': pl.Float64,
+            'Q': pl.Float64
+        }
+        self.actions = pl.DataFrame(schema=schema)
 
         self.reset()
 
@@ -75,7 +82,12 @@ class Agent:
         """
         Resets the agent's memory to an initial state.
         """
-        self.actions[['ValueEstimates', 'ActionAttempts', 'Q']] = 0
+        if self.actions.height > 0:
+            self.actions = self.actions.with_columns([
+                pl.lit(0.0).alias('ValueEstimates'),
+                pl.lit(0.0).alias('ActionAttempts'),
+                pl.lit(0.0).alias('Q')
+            ])
 
         # Last action (TC) chosen
         self.last_prioritization = None
@@ -87,8 +99,14 @@ class Agent:
         """
         Efficiently add a new action if it doesn't exist.
         """
-        if action not in self.actions['Name'].values:
-            self.actions.loc[len(self.actions)] = [action, 0, 0, 0]
+        if action not in self.actions['Name'].to_list():
+            new_row = pl.DataFrame({
+                'Name': [action],
+                'ActionAttempts': [0.0],
+                'ValueEstimates': [0.0],
+                'Q': [0.0]
+            })
+            self.actions = pl.concat([self.actions, new_row], how="vertical")
 
     def update_actions(self, actions):
         """
@@ -102,23 +120,23 @@ class Agent:
         :param actions: List of available actions.
         :type actions: list[str]
         """
-        current_actions = set(self.actions['Name'].values)
+        current_actions = set(self.actions['Name'].to_list())
         new_actions = set(actions) - current_actions
         obsolete_actions = current_actions - set(actions)
 
         # Remove obsolete actions
         if obsolete_actions:
-            self.actions = self.actions[~self.actions['Name'].isin(obsolete_actions)]
+            self.actions = self.actions.filter(~pl.col('Name').is_in(list(obsolete_actions)))
 
         # Add new actions
         if new_actions:
-            new_actions_df = pd.DataFrame({
+            new_actions_df = pl.DataFrame({
                 'Name': list(new_actions),
-                'ActionAttempts': 0,
-                'ValueEstimates': 0,
-                'Q': 0
+                'ActionAttempts': [0.0] * len(new_actions),
+                'ValueEstimates': [0.0] * len(new_actions),
+                'Q': [0.0] * len(new_actions)
             })
-            self.actions = pd.concat([self.actions, new_actions_df], ignore_index=True)
+            self.actions = pl.concat([self.actions, new_actions_df], how="vertical")
 
     def update_bandit(self, bandit):
         """
@@ -142,10 +160,12 @@ class Agent:
         # If is the first time that the agent has been used, we don't have a "history" (rewards).
         # So, we can choose randomly
         if self.t == 0:
-            self.last_prioritization = random.sample(self.actions['Name'].tolist(), len(self.actions))
+            self.last_prioritization = random.sample(self.actions['Name'].to_list(), self.actions.height)
         else:
             # To avoid arms non-applied yet
-            self.actions['Q'] = self.actions['Q'].fillna(value=0)
+            self.actions = self.actions.with_columns([
+                pl.col('Q').fill_null(0.0)
+            ])
             self.last_prioritization = self.policy.choose_all(self)
 
         # Return the Prioritized Test Suite
@@ -161,11 +181,16 @@ class Agent:
         state_size = len(self.last_prioritization)
         weights = np.linspace(1.0, 1e-12, state_size)
         index_map = {name: idx for idx, name in enumerate(self.last_prioritization)}
+        
+        # Create weight mapping
+        weight_map = {name: weights[idx] for name, idx in index_map.items()}
+        
+        # Update using replace
+        self.actions = self.actions.with_columns([
+            (pl.col('ActionAttempts') + pl.col('Name').replace(weight_map, default=0.0)).alias('ActionAttempts')
+        ])
 
-        self.actions['ActionAttempts'] += self.actions['Name'].map(index_map).apply(
-            lambda idx: weights[idx] if idx is not None else 0)
-
-def observe(self, reward):
+    def observe(self, reward):
         """
         Update Q action-value using:
         Q(a) <- Q(a) + 1/(k+1) * (r(a) - Q(a))
@@ -175,14 +200,23 @@ def observe(self, reward):
         self.update_action_attempts()
 
         for test_case, r in zip(self.last_prioritization, reward):
-            # Update Q action-value, in our case ValueEstimates column is Q
-            k = self.actions.loc[self.actions.Name == test_case, 'ActionAttempts'].values[0]
-            q = self.actions.loc[self.actions.Name == test_case, 'ValueEstimates'].values[0]
-
-            alpha = 1. / k
-
-            # Update Q value by keeping running average of rewards for each action
-            self.actions.loc[self.actions.Name == test_case, 'ValueEstimates'] += alpha * (r - q)
+            # Get current values using filter
+            row_data = self.actions.filter(pl.col('Name') == test_case)
+            
+            if row_data.height > 0:
+                k = row_data['ActionAttempts'][0]
+                q = row_data['ValueEstimates'][0]
+                
+                alpha = 1.0 / k
+                
+                # Update Q value by keeping running average of rewards for each action
+                new_value = q + alpha * (r - q)
+                self.actions = self.actions.with_columns([
+                    pl.when(pl.col('Name') == test_case)
+                      .then(new_value)
+                      .otherwise(pl.col('ValueEstimates'))
+                      .alias('ValueEstimates')
+                ])
 
         self.t += 1
 
@@ -260,18 +294,22 @@ class ContextualAgent(RewardAgent):
         This method ensures that the agent always has an up-to-date set of actions to choose from.
         """
         # Preserve the actual actions and remove the unnecessary
-        self.actions = self.actions[self.actions.Name.isin(actions)]
+        self.actions = self.actions.filter(pl.col('Name').is_in(actions))
 
         # Find the new actions (they are not in the actions that already exists)
-        new_actions = [action for action in actions if action not in self.actions['Name'].tolist()]
+        new_actions = [action for action in actions if action not in self.actions['Name'].to_list()]
 
         # Update the information about the arms in the policy
         self.policy.update_actions(self, new_actions)
 
-        new_actions_df = pd.DataFrame(new_actions, columns=['Name'])
-        new_actions_df[['ValueEstimates', 'ActionAttempts', 'Q']] = 0
-
-        self.actions = pd.concat([self.actions, new_actions_df], ignore_index=True)
+        if new_actions:
+            new_actions_df = pl.DataFrame({
+                'Name': new_actions,
+                'ValueEstimates': [0.0] * len(new_actions),
+                'ActionAttempts': [0.0] * len(new_actions),
+                'Q': [0.0] * len(new_actions)
+            })
+            self.actions = pl.concat([self.actions, new_actions_df], how="vertical")
 
     def update_bandit(self, bandit):
         """
@@ -325,7 +363,14 @@ class RewardSlidingWindowAgent(RewardAgent):
         # T | Time of usage
         self.hist_col_names = ['Name', 'ActionAttempts', 'ValueEstimates', 'Q', 'T']
 
-        self.history = pd.DataFrame(columns=self.hist_col_names)
+        schema = {
+            'Name': pl.Utf8,
+            'ActionAttempts': pl.Float64,
+            'ValueEstimates': pl.Float64,
+            'Q': pl.Float64,
+            'T': pl.Int64
+        }
+        self.history = pl.DataFrame(schema=schema)
 
     def __str__(self):
         return f'{str(self.policy)}, SW={self.window_size})'
@@ -355,19 +400,20 @@ class RewardSlidingWindowAgent(RewardAgent):
         If the length of the history exceeds the window size,
         the oldest entries are removed to maintain the specified window size.
         """
-        temp_hist = self.actions.copy()
-        temp_hist['T'] = self.t
+        temp_hist = self.actions.clone()
+        temp_hist = temp_hist.with_columns([
+            pl.lit(self.t).alias('T')
+        ])
 
-        self.history = pd.concat([self.history, temp_hist])
-        self.history = self.history.infer_objects()
+        self.history = pl.concat([self.history, temp_hist], how="vertical")
 
         # Truncate
-        unique_t = self.history['T'].unique()
+        unique_t = self.history['T'].unique().to_list()
 
         if len(unique_t) > self.window_size:
             # Remove older
             min_t = max(unique_t) - self.window_size
-            self.history = self.history[self.history['T'] > min_t]
+            self.history = self.history.filter(pl.col('T') > min_t)
 
 
 class SlidingWindowContextualAgent(ContextualAgent):
@@ -390,7 +436,14 @@ class SlidingWindowContextualAgent(ContextualAgent):
         # T | Time of usage
         self.hist_col_names = ['Name', 'ActionAttempts', 'ValueEstimates', 'Q', 'T']
 
-        self.history = pd.DataFrame(columns=self.hist_col_names)
+        schema = {
+            'Name': pl.Utf8,
+            'ActionAttempts': pl.Float64,
+            'ValueEstimates': pl.Float64,
+            'Q': pl.Float64,
+            'T': pl.Int64
+        }
+        self.history = pl.DataFrame(schema=schema)
 
     def __str__(self):
         return f'{str(self.policy)}, SW={self.window_size})'
@@ -405,9 +458,13 @@ class SlidingWindowContextualAgent(ContextualAgent):
         # Get rewards for each test case
         self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
 
-        # Update value estimates
-        self.actions['ValueEstimates'] = self.actions['Name'].apply(
-            lambda x: self.last_reward[self.last_prioritization.index(x)])
+        # Update value estimates - create mapping
+        reward_map = {name: self.last_reward[self.last_prioritization.index(name)] 
+                     for name in self.actions['Name'].to_list() if name in self.last_prioritization}
+        
+        self.actions = self.actions.with_columns([
+            pl.col('Name').replace(reward_map).alias('ValueEstimates')
+        ])
 
         self.t += 1
         self.update_history()
@@ -421,16 +478,17 @@ class SlidingWindowContextualAgent(ContextualAgent):
         If the length of the history exceeds the window size,
         the oldest entries are removed to maintain the specified window size.
         """
-        temp_hist = self.actions.copy()
-        temp_hist['T'] = self.t
+        temp_hist = self.actions.clone()
+        temp_hist = temp_hist.with_columns([
+            pl.lit(self.t).alias('T')
+        ])
 
-        self.history = pd.concat([self.history, temp_hist])
-        self.history = self.history.infer_objects()
+        self.history = pl.concat([self.history, temp_hist], how="vertical")
 
         # Truncate
-        unique_t = self.history['T'].unique()
+        unique_t = self.history['T'].unique().to_list()
 
         if len(unique_t) > self.window_size:
             # Remove older
             min_t = max(unique_t) - self.window_size
-            self.history = self.history[self.history['T'] > min_t]
+            self.history = self.history.filter(pl.col('T') > min_t)
