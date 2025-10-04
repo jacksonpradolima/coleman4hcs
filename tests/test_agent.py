@@ -26,7 +26,7 @@ Performance Benchmark Results
 import random
 from unittest.mock import MagicMock
 
-import pandas as pd
+import polars as pl
 import pytest
 
 from coleman4hcs.agent import (
@@ -80,7 +80,7 @@ def test_agent_initialization(mock_policy, mock_bandit):
     assert agent.policy == mock_policy
     assert agent.bandit == mock_bandit
     assert agent.t == 0
-    assert isinstance(agent.actions, pd.DataFrame)
+    assert isinstance(agent.actions, pl.DataFrame)
 
 
 def test_agent_add_action():
@@ -89,7 +89,7 @@ def test_agent_add_action():
     """
     agent = Agent(MagicMock())
     agent.add_action("Test1")
-    assert "Test1" in agent.actions["Name"].values
+    assert "Test1" in agent.actions["Name"].to_list()
 
 
 def test_agent_update_actions():
@@ -98,7 +98,7 @@ def test_agent_update_actions():
     """
     agent = Agent(MagicMock())
     agent.update_actions(["Test1", "Test2"])
-    assert all(name in agent.actions["Name"].values for name in ["Test1", "Test2"])
+    assert all(name in agent.actions["Name"].to_list() for name in ["Test1", "Test2"])
 
 
 def test_agent_choose(mock_policy, mock_bandit):
@@ -162,9 +162,9 @@ def test_sliding_window_contextual_agent_history_truncation():
     Test the history truncation logic of SlidingWindowContextualAgent.
     """
     agent = SlidingWindowContextualAgent(MagicMock(), MagicMock(), window_size=2)
-    agent.history = pd.DataFrame({
+    agent.history = pl.DataFrame({
         "Name": ["Test1", "Test2", "Test3"],
-        "ActionAttempts": [1, 1, 1],
+        "ActionAttempts": [1.0, 1.0, 1.0],
         "ValueEstimates": [0.1, 0.2, 0.3],
         "Q": [0.1, 0.2, 0.3],
         "T": [1, 2, 3],

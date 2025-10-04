@@ -421,7 +421,7 @@ class RewardSlidingWindowAgent(RewardAgent):
         """
         temp_hist = self.actions.clone()
         temp_hist = temp_hist.with_columns([
-            pl.lit(self.t).alias('T')
+            pl.lit(self.t, dtype=pl.Int64).alias('T')
         ])
 
         self.history = pl.concat([self.history, temp_hist], how="vertical")
@@ -499,7 +499,7 @@ class SlidingWindowContextualAgent(ContextualAgent):
         """
         temp_hist = self.actions.clone()
         temp_hist = temp_hist.with_columns([
-            pl.lit(self.t).alias('T')
+            pl.lit(self.t, dtype=pl.Int64).alias('T')
         ])
 
         self.history = pl.concat([self.history, temp_hist], how="vertical")

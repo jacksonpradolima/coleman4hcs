@@ -89,7 +89,15 @@ class Bandit(ABC):
         :param arms: List of arms.
         """
         if arms:
-            new_arms = pl.DataFrame(arms, schema=self.arms.schema)
+            # Convert list values to strings to match schema
+            processed_arms = []
+            for arm in arms:
+                processed_arm = arm.copy()
+                if 'LastResults' in processed_arm and isinstance(processed_arm['LastResults'], list):
+                    processed_arm['LastResults'] = str(processed_arm['LastResults'])
+                processed_arms.append(processed_arm)
+            
+            new_arms = pl.DataFrame(processed_arms, schema=self.arms.schema)
             self.arms = pl.concat([self.arms, new_arms], how="vertical")
 
     @abstractmethod
@@ -106,7 +114,9 @@ class Bandit(ABC):
         """
         action_map = {name: priority for priority, name in enumerate(action, start=1)}
         priorities = np.vectorize(action_map.get)(self.arms['Name'].to_numpy())
-        self.arms['CalcPrio'] = priorities
+        self.arms = self.arms.with_columns([
+            pl.Series('CalcPrio', priorities, dtype=pl.Int32)
+        ])
 
 
 class DynamicBandit(Bandit, ABC):
@@ -156,8 +166,9 @@ class EvaluationMetricBandit(DynamicBandit):
 
         # After, we need to order the test cases based on the priorities
         # Sort tc by Prio ASC (for backwards scheduling)
-        self.arms = self.arms.iloc[self.arms['CalcPrio'].to_numpy().argsort(kind='stable')]
+        sorted_indices = self.arms['CalcPrio'].to_numpy().argsort(kind='stable')
+        self.arms = self.arms[[int(i) for i in sorted_indices]]
 
-        self.evaluation_metric.evaluate(self.arms.to_dict('records'))
+        self.evaluation_metric.evaluate(self.arms.to_dicts())
 
         return self.evaluation_metric
