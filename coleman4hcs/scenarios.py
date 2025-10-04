@@ -17,7 +17,7 @@ Classes:
 import os
 from typing import List, Dict, Optional
 
-import pandas as pd
+import polars as pl
 
 
 class VirtualScenario:
@@ -52,7 +52,7 @@ class VirtualHCSScenario(VirtualScenario):
     Extends VirtualScenario to handle data in an HCS-specific context.
     """
 
-    def __init__(self, *args, variants: pd.DataFrame, **kwargs):
+    def __init__(self, *args, variants: pl.DataFrame, **kwargs):
         super().__init__(*args, **kwargs)
         self.variants = variants
 
@@ -71,7 +71,7 @@ class VirtualContextScenario(VirtualScenario):
         *args,
         feature_group: str,
         features: List[str],
-        context_features: pd.DataFrame,
+        context_features: pl.DataFrame,
         **kwargs
     ):
         super().__init__(*args, **kwargs)
@@ -87,7 +87,7 @@ class VirtualContextScenario(VirtualScenario):
         """Returns the features associated."""
         return self.features
 
-    def get_context_features(self) -> pd.DataFrame:
+    def get_context_features(self) -> pl.DataFrame:
         """Returns the context features associated."""
         return self.context_features
 
@@ -116,12 +116,16 @@ class IndustrialDatasetScenarioProvider:
         self.tcdf = self._read_testcases(tcfile)
         self.max_builds = self.tcdf["BuildId"].max()
 
-    def _read_testcases(self, tcfile: str) -> pd.DataFrame:
+    def _read_testcases(self, tcfile: str) -> pl.DataFrame:
         """Reads the test cases from a provided CSV file."""
         # We use ';' separated values to avoid issues with thousands
-        df = pd.read_csv(tcfile, sep=';', parse_dates=['LastRun'], dayfirst=True)
-        df["Duration"] = pd.to_numeric(df["Duration"], errors="coerce").fillna(
-            0)  # Handle unexpected non-numeric values
+        df = pl.read_csv(tcfile, separator=';', try_parse_dates=True)
+        
+        # Handle Duration column - convert to numeric and fill nulls
+        df = df.with_columns([
+            pl.col("Duration").cast(pl.Float64, strict=False).fill_null(0.0)
+        ])
+        
         return df
 
     def get_avail_time_ratio(self) -> float:
@@ -145,10 +149,10 @@ class IndustrialDatasetScenarioProvider:
             return None
 
         # Select the data for the current build
-        build_df = self.tcdf[self.tcdf["BuildId"] == self.current_build]
+        build_df = self.tcdf.filter(pl.col("BuildId") == self.current_build)
 
         # Convert the solutions to a list of dict
-        testcases = build_df[self.REQUIRED_COLUMNS].to_dict('records')
+        testcases = build_df.select(self.REQUIRED_COLUMNS).to_dicts()
 
         self.total_build_duration = build_df['Duration'].sum()
         available_time = self.total_build_duration * self.avail_time_ratio
@@ -190,20 +194,22 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
 
         self.variants = self._read_variants(variantsfile)
 
-    def _read_variants(self, variantsfile: str) -> pd.DataFrame:
+    def _read_variants(self, variantsfile: str) -> pl.DataFrame:
         # Read the variants (additional file)
-        df = pd.read_csv(variantsfile, sep=';', parse_dates=['LastRun'])
+        df = pl.read_csv(variantsfile, separator=';', try_parse_dates=True)
 
         # We remove weird characters
-        df["Variant"] = df["Variant"].str.replace(r'[!#$%^&*()[]{};:,.<>?|`~=+]', '_', regex=True)
+        df = df.with_columns([
+            pl.col("Variant").str.replace_all(r'[!#$%^&*()[]{};:,.<>?|`~=+]', '_')
+        ])
 
         return df
 
     def get_total_variants(self):
-        return self.variants['Variant'].nunique()
+        return self.variants['Variant'].n_unique()
 
     def get_all_variants(self):
-        return self.variants['Variant'].unique()
+        return self.variants['Variant'].unique().to_list()
 
     def get(self):
         """
@@ -217,7 +223,7 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
             return None
 
         # Match variants to the current build
-        variants = self.variants[self.variants["BuildId"] == self.current_build]
+        variants = self.variants.filter(pl.col("BuildId") == self.current_build)
 
         self.scenario = VirtualHCSScenario(
             **base_scenario.__dict__,
@@ -267,26 +273,32 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         previous_features = list(set(self.previous_build).intersection(self.features))
 
         # Extract data for the previous build
-        previous_build_df = self.tcdf[self.tcdf["BuildId"] == self.current_build - 1]
+        previous_build_df = self.tcdf.filter(pl.col("BuildId") == self.current_build - 1)
 
         # Start with the current build's features
-        merged_df = build_df[["Name"] + list(current_features)].copy()
+        merged_df = build_df.select(["Name"] + list(current_features))
 
         # Merge features from the previous build if any are relevant
         if previous_features:
-            previous_data = previous_build_df[["Name"] + list(previous_features)]
-            merged_df = merged_df.merge(previous_data, on="Name", how="left")
+            previous_data = previous_build_df.select(["Name"] + list(previous_features))
+            merged_df = merged_df.join(previous_data, on="Name", how="left")
 
         # Fill missing values for previous features using their mean values from the previous build
         # Precompute mean values for efficiency
-        feature_means = previous_build_df[list(previous_features)].mean().to_dict()
-        for feature in previous_features:
-            # Fill missing values with the mean of the feature or default to 0 if no mean is available
-            merged_df[feature] = merged_df[feature].fillna(feature_means.get(feature, 0))
+        if previous_features:
+            feature_means_df = previous_build_df.select(previous_features).mean()
+            fill_exprs = []
+            for i, feature in enumerate(previous_features):
+                mean_val = feature_means_df[feature][0] if feature_means_df.height > 0 else 0
+                fill_exprs.append(
+                    pl.col(feature).fill_null(mean_val).alias(feature)
+                )
+            if fill_exprs:
+                merged_df = merged_df.with_columns(fill_exprs)
 
         return merged_df
 
-    def _initialize_first_build_features(self, build_df: pd.DataFrame) -> pd.DataFrame:
+    def _initialize_first_build_features(self, build_df: pl.DataFrame) -> pl.DataFrame:
         """
         Initializes default feature values for the first build.
         - Creates a DataFrame with default values for all features, as the first build has no prior context.
@@ -294,10 +306,11 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         :param build_df: DataFrame for the current build.
         :return: DataFrame with default feature values for the first build.
         """
-        return pd.DataFrame({
-            "Name": build_df["Name"],
-            **{feature: 1 for feature in self.features}  # Default value of 1 for all features
-        })
+        data_dict = {
+            "Name": build_df["Name"].to_list(),
+            **{feature: [1] * build_df.height for feature in self.features}  # Default value of 1 for all features
+        }
+        return pl.DataFrame(data_dict)
 
     def get(self):
         """
@@ -310,7 +323,7 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         if not base_scenario:
             return None
 
-        build_df = self.tcdf[self.tcdf["BuildId"] == self.current_build]
+        build_df = self.tcdf.filter(pl.col("BuildId") == self.current_build)
         context_features = self._merge_context_features(build_df)
 
         # This test set is a "scenario" that must be evaluated.
