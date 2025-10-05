@@ -109,7 +109,7 @@ def test_virtual_hcs_scenario(mock_testcases, mock_variants):
 # VirtualContextScenario
 def test_virtual_context_scenario(mock_testcases):
     """Test VirtualContextScenario initialization and getters."""
-    context_features = pl.DataFrame({"Name": ["TC1", "TC2"], "feat1": [0.5, 1], "feat2": [1, 0.2]})
+    context_features = pl.DataFrame({"Name": ["TC1", "TC2"], "feat1": [0.5, 1.0], "feat2": [1.0, 0.2]})
     scenario = VirtualContextScenario(
         available_time=10,
         testcases=mock_testcases,

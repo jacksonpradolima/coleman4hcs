@@ -76,13 +76,16 @@ class Policy:
        .. note:: The method modifies the agent's state, updating the value estimates
                  for each action based on the outcomes observed.
        """
-        action_attempts = agent.actions['ActionAttempts'].to_numpy(copy=True)
-        value_estimates = agent.actions['ValueEstimates'].to_numpy(copy=True)
+        action_attempts = agent.actions['ActionAttempts'].to_numpy()
+        value_estimates = agent.actions['ValueEstimates'].to_numpy()
 
         # Prevent division by zero
         with np.errstate(divide='ignore', invalid='ignore'):
             # Quality estimate: average of reward
-            agent.actions['Q'] = np.where(action_attempts > 0, value_estimates / action_attempts, 0)
+            q_values = np.where(action_attempts > 0, value_estimates / action_attempts, 0)
+            agent.actions = agent.actions.with_columns([
+                pl.Series('Q', q_values)
+            ])
 
 
 class EpsilonGreedyPolicy(Policy):
@@ -138,7 +141,7 @@ class RandomPolicy(Policy):
         return 'Random'
 
     def choose_all(self, agent: Agent):
-        actions = agent.actions['Name'].to_numpy(copy=True)
+        actions = agent.actions['Name'].to_numpy()
         np.random.shuffle(actions)
         return actions.tolist()  # numpy tolist() is correct
 
@@ -169,15 +172,18 @@ class UCB1Policy(UCBPolicyBase):
         # Compute the average of rewards
         super().credit_assignment(agent)
 
-        action_attempts = agent.actions['ActionAttempts'].to_numpy(copy=True)
-        quality_estimates = agent.actions['Q'].to_numpy(copy=True)
+        action_attempts = agent.actions['ActionAttempts'].to_numpy()
+        quality_estimates = agent.actions['Q'].to_numpy()
 
         # Exploration term with precomputed logarithm
         exploration = np.log1p(agent.t) / action_attempts
         exploration = np.nan_to_num(exploration, nan=0.0, posinf=0.0, neginf=0.0)
         exploration = np.power(exploration, 1 / self.c)
 
-        agent.actions['Q'] = quality_estimates + exploration
+        q_values = quality_estimates + exploration
+        agent.actions = agent.actions.with_columns([
+            pl.Series('Q', q_values)
+        ])
 
 
 class UCBPolicy(UCBPolicyBase):
@@ -192,8 +198,8 @@ class UCBPolicy(UCBPolicyBase):
         # Compute the average of rewards
         super().credit_assignment(agent)
 
-        action_attempts = agent.actions['ActionAttempts'].to_numpy(copy=True)
-        quality_estimates = agent.actions['Q'].to_numpy(copy=True)
+        action_attempts = agent.actions['ActionAttempts'].to_numpy()
+        quality_estimates = agent.actions['Q'].to_numpy()
 
         # Precompute log(sum of action attempts)
         log_sum_attempts = np.log1p(action_attempts.sum())
@@ -202,7 +208,10 @@ class UCBPolicy(UCBPolicyBase):
         exploration = np.nan_to_num(exploration, nan=0.0, posinf=0.0, neginf=0.0)
 
         # Update Q values directly
-        agent.actions['Q'] = quality_estimates + self.c * exploration
+        q_values = quality_estimates + self.c * exploration
+        agent.actions = agent.actions.with_columns([
+            pl.Series('Q', q_values)
+        ])
 
 
 class FRRMABPolicy(Policy):

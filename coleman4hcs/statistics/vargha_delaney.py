@@ -140,10 +140,10 @@ def VD_A_DF(data, val_col: str = None, group_col: str = None, sort=True):
 
 def reduce(df, best, symbols=True):
     """
-    Reduce a pandas DataFrame of effect sizes to compare only against to the best among the comparison (algorithm/item)
+    Reduce a pandas/polars DataFrame of effect sizes to compare only against to the best among the comparison (algorithm/item)
 
-    :param df: pandas DataFrame object
-        A pandas DataFrame of effect sizes
+    :param df: pandas or polars DataFrame object
+        A DataFrame of effect sizes
     :param best: str
         The name of the best sample, for instance, algorithm AAA
     :param symbols: bool, optional
@@ -154,18 +154,52 @@ def reduce(df, best, symbols=True):
     magnitude = ["negligible", "small", "medium", "large"]
     symbols = ["$\\blacktriangledown$", "$\\triangledown$", "$\\vartriangle$", "$\\blacktriangle$"]
 
-    # Get only the effect size manitudes related with the best
-    df = df[(df.base == best) | (df.compared_with == best)]
+    # Check if input is Polars DataFrame
+    is_polars = isinstance(df, pl.DataFrame)
+    
+    # Convert to Polars if it's Pandas
+    if not is_polars:
+        import pandas as pd
+        df = pl.from_pandas(df)
+
+    # Get only the effect size magnitudes related with the best
+    df = df.filter((pl.col('base') == best) | (pl.col('compared_with') == best))
 
     # Create a new column to compare against the other policies
-    df['temp'] = df.apply(lambda row: row['compared_with'] if row['base'] == best else row['base'], axis=1)
+    df = df.with_columns([
+        pl.when(pl.col('base') == best)
+        .then(pl.col('compared_with'))
+        .otherwise(pl.col('base'))
+        .alias('temp')
+    ])
 
     # Get magnitude symbol (in latex) for each comparison
-    # The best has the bigstart symbol
-    df['effect_size_symbol'] = df['temp'].apply(lambda x: "$\\bigstar$"
-    if x == best
-    else symbols[magnitude.index(df.loc[df['temp'] == x, 'magnitude'].tolist()[0])])
+    # The best has the bigstar symbol
+    def get_symbol(row):
+        temp = row['temp']
+        if temp == best:
+            return "$\\bigstar$"
+        else:
+            # Find the magnitude for this temp value
+            mag_row = df.filter(pl.col('temp') == temp)
+            if mag_row.height > 0:
+                mag = mag_row['magnitude'][0]
+                return symbols[magnitude.index(mag)]
+            return ""
+    
+    # Apply symbol mapping
+    effect_symbols = []
+    for row in df.to_dicts():
+        effect_symbols.append(get_symbol(row))
+    
+    df = df.with_columns([
+        pl.Series('effect_size_symbol', effect_symbols)
+    ])
 
-    df.drop(['temp'], axis=1, inplace=True)
+    df = df.drop('temp')
+
+    # Convert back to pandas if input was pandas
+    if not is_polars:
+        df = df.to_pandas()
 
     return df
