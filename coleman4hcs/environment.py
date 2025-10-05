@@ -27,6 +27,7 @@ import warnings
 from pathlib import Path
 
 import numpy as np
+import polars as pl
 
 from coleman4hcs.agent import ContextualAgent, SlidingWindowContextualAgent
 from coleman4hcs.bandit import EvaluationMetricBandit
@@ -256,11 +257,14 @@ class Environment:
         # For each variant I will evaluate the impact of the main prioritization
         for variant in variants['Variant'].unique():
             # Get the data from current variant
-            df = variants[variants.Variant == variant]
+            df = variants.filter(pl.col('Variant') == variant)
 
             # Order by the test cases according to the main prioritization
-            df['CalcPrio'] = df['Name'].apply(lambda x: action.index(x) + 1)
-            df.sort_values(by=['CalcPrio'], inplace=True)
+            action_map = {name: idx + 1 for idx, name in enumerate(action)}
+            df = df.with_columns([
+                pl.col('Name').replace(action_map, default=0).alias('CalcPrio')
+            ])
+            df = df.sort('CalcPrio')
 
             total_build_duration = df['Duration'].sum()
             total_time = total_build_duration * avail_time_ratio
@@ -269,7 +273,7 @@ class Environment:
             self.evaluation_metric.update_available_time(total_time)
 
             # Submit prioritized test cases for evaluation step and get new measurements
-            self.evaluation_metric.evaluate(df.to_dict(orient='records'))
+            self.evaluation_metric.evaluate(df.to_dicts())
 
             # Save the information (collect the data)
             params = CollectParams(
