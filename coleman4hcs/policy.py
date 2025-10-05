@@ -101,14 +101,16 @@ class EpsilonGreedyPolicy(Policy):
 
     def choose_all(self, agent: Agent):
         # Copy the actions and add a random mask column
-        actions = agent.actions.copy()
-        actions['is_random'] = np.random.random(len(actions)) < self.epsilon
+        actions = agent.actions.clone()
+        actions = actions.with_columns([
+            pl.Series('is_random', np.random.random(len(actions)) < self.epsilon)
+        ])
 
         # Use sorting to prioritize best actions for exploitation (high Q) and exploration (random actions)
-        actions = actions.sort_values(by=['is_random', 'Q'], ascending=[False, False])
+        actions = actions.sort(['is_random', 'Q'], descending=[True, True])
 
         # Return the ordered list of action names
-        return actions['Name'].tolist()
+        return actions['Name'].to_list()
 
 
 class GreedyPolicy(EpsilonGreedyPolicy):
@@ -150,7 +152,7 @@ class UCBPolicyBase(Policy):
         self.c = c
 
     def choose_all(self, agent: Agent) -> list:
-        return agent.actions.sort_values(by='Q', ascending=False)['Name'].tolist()
+        return agent.actions.sort('Q', descending=True)['Name'].to_list()
 
 
 class UCB1Policy(UCBPolicyBase):
@@ -435,7 +437,7 @@ class LinUCBPolicy(Policy):
         Update actions based on the agent's context.
         """
         # Update the current context given by the agent
-        self.context_features = agent.context_features.sort_values(by=['Name'])
+        self.context_features = agent.context_features.sort('Name')
         self.features = agent.features
 
         # Add new actions
@@ -482,14 +484,14 @@ class LinUCBPolicy(Policy):
        Assign credit based on the agent's actions and rewards.
        """
         # We always have the same test case set
-        assert len(set(agent.actions['Name']) - set(self.context_features['Name'])) == 0
+        assert len(set(agent.actions['Name'].to_list()) - set(self.context_features['Name'].to_list())) == 0
 
-        actions = agent.actions.copy()
-        actions.sort_values(by=['Name'], inplace=True)
+        actions = agent.actions.clone()
+        actions = actions.sort('Name')
 
-        features = self.context_features[self.features].values
-        actions = list(actions[['Name', 'ValueEstimates']].values)
-        for a, x in zip(actions, features):
+        features = self.context_features.select(self.features).to_numpy()
+        actions_data = actions.select(['Name', 'ValueEstimates']).to_numpy()
+        for a, x in zip(actions_data, features):
             x_i = x.reshape(-1, 1)
             act = a[0]
             reward = a[1]  # ValueEstimates
@@ -522,12 +524,13 @@ class SWLinUCBPolicy(LinUCBPolicy):
         Choose all actions based on the sliding window policy.
         """
 
-        features = self.context_features[self.features].values  # Shape: (num_actions, context_dim)
-        actions = self.context_features.Name.tolist()
+        features = self.context_features.select(self.features).to_numpy()  # Shape: (num_actions, context_dim)
+        actions = self.context_features['Name'].to_list()
 
         # Precompute sliding window factors
-        history_names = set(agent.history['Name'].unique())  # Faster membership check
-        history_counts = agent.history['Name'].value_counts().to_dict()  # Fast dictionary lookup
+        history_names = set(agent.history['Name'].unique().to_list())  # Faster membership check
+        history_counts = agent.history['Name'].value_counts().to_dicts()  # List of dicts
+        history_counts_dict = {item['Name']: item['count'] for item in history_counts}  # Convert to dict
 
         q_values = []
         for a, x in zip(actions, features):
@@ -542,7 +545,7 @@ class SWLinUCBPolicy(LinUCBPolicy):
             # and if the test case is on the sliding window
             occ = 0
             if agent.t > agent.window_size and a in history_names:
-                occ = history_counts.get(a, 0)  # Get count or 0 if not present
+                occ = history_counts_dict.get(a, 0)  # Get count or 0 if not present
 
             q *= (1 - occ / agent.window_size)
 
