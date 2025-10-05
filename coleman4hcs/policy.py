@@ -349,26 +349,37 @@ class SlMABPolicy(Policy):
         # Compute the average of rewards (and save in Q column)
         super().credit_assignment(agent)
 
-        self.history = agent.history.groupby(['Name'], as_index=False).agg({'T': ['count', np.max]})
-        self.history.columns = ['Name', 'T', 'Ti']
+        # Group by Name and aggregate T column
+        self.history = agent.history.group_by(['Name']).agg([
+            pl.col('T').count().alias('T'),
+            pl.col('T').max().alias('Ti')
+        ])
 
-        self.history['Q'] = agent.actions['Q']
-        self.history['R'] = agent.actions['R']
+        # Get Q and R values from agent.actions by joining on Name
+        agent_data = agent.actions.select(['Name', 'Q']).rename({'Q': 'action_Q'})
+        self.history = self.history.join(agent_data, on='Name', how='left')
+        self.history = self.history.rename({'action_Q': 'Q'})
+        
+        # Add R column (assuming R is a column in agent.actions, or set to 0 if not exists)
+        if 'R' in agent.actions.columns:
+            agent_r = agent.actions.select(['Name', 'R']).rename({'R': 'action_R'})
+            self.history = self.history.join(agent_r, on='Name', how='left')
+            self.history = self.history.rename({'action_R': 'R'})
+        else:
+            self.history = self.history.with_columns([pl.lit(0.0).alias('R')])
 
-        # Check, at the time point t, the number of time points elapsed since
-        # the previous time point ti in which the ith arm has been applied
-        self.history['DiffSelection'] = self.history['Ti'].apply(lambda x: agent.t - x)
-
-        # T column contains the count of usage for each "arm"
-        self.history['T'] = self.history.apply(
-            lambda x: x['T'] * ((agent.window_size / (agent.window_size + x['DiffSelection'])) + (1 / (x['T'] + 1))),
-            axis=1)
-
-        # Compute Q
-        self.history['Q'] = self.history.apply(
-            lambda x: x['Q'] * (
-                (agent.window_size / (agent.window_size + x['DiffSelection'])) + x['R'] * (1 / (x['T'] + 1))),
-            axis=1)
+        # Compute DiffSelection, T, and Q using with_columns
+        self.history = self.history.with_columns([
+            (pl.lit(agent.t) - pl.col('Ti')).alias('DiffSelection')
+        ])
+        
+        self.history = self.history.with_columns([
+            (pl.col('T') * ((agent.window_size / (agent.window_size + pl.col('DiffSelection'))) + (1.0 / (pl.col('T') + 1)))).alias('T')
+        ])
+        
+        self.history = self.history.with_columns([
+            (pl.col('Q') * ((agent.window_size / (agent.window_size + pl.col('DiffSelection'))) + pl.col('R') * (1.0 / (pl.col('T') + 1)))).alias('Q')
+        ])
 
 
 class LinUCBPolicy(Policy):

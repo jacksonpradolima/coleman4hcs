@@ -289,7 +289,7 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
             feature_means_df = previous_build_df.select(previous_features).mean()
             fill_exprs = []
             for feature in previous_features:
-                mean_val = feature_means_df[feature][0] if feature_means_df.height > 0 else 0
+                mean_val = feature_means_df[feature][0] if feature_means_df.height > 0 else 0.0
                 fill_exprs.append(
                     pl.col(feature).fill_null(mean_val).alias(feature)
                 )
