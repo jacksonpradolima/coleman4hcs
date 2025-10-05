@@ -243,7 +243,8 @@ def test_bandit_abstract_method():
         Bandit([])
     exception_message = str(excinfo.value)
     assert "Can't instantiate abstract class Bandit" in exception_message
-    assert "abstract method 'pull'" in exception_message
+    # Python 3.12+ uses "abstract method pull" while older versions use "abstract method 'pull'"
+    assert ("abstract method pull" in exception_message or "abstract method 'pull'" in exception_message)
 
 
 def test_bandit_subclass_without_pull():
@@ -259,7 +260,8 @@ def test_bandit_subclass_without_pull():
 
     exception_message = str(excinfo.value)
     assert "Can't instantiate abstract class IncompleteBandit" in exception_message
-    assert "abstract method 'pull'" in exception_message
+    # Python 3.12+ uses "abstract method pull" while older versions use "abstract method 'pull'"
+    assert ("abstract method pull" in exception_message or "abstract method 'pull'" in exception_message)
 
 
 def test_bandit_subclass_with_pull():
