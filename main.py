@@ -216,7 +216,7 @@ def merge_csv(files, output_file):
     df = pl.concat(dfs, how="vertical")
 
     # Save the merged DataFrame to CSV
-    df.write_csv(output_file, separator=';')
+    df.write_csv(output_file, separator=';', quote_style="never")
 
     # Optionally, clean up temporary files
     for file in files:

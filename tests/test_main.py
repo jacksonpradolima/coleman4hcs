@@ -175,9 +175,9 @@ def test_merge_csv(mock_concat, mock_read_csv, mock_remove, tmpdir):
     merge_csv(temp_files, output_file)
 
     # Ensure files were merged
-    mock_read_csv.assert_has_calls([call(file, sep=";") for file in temp_files])
+    mock_read_csv.assert_has_calls([call(file, separator=";") for file in temp_files])
     mock_concat.assert_called_once()
-    df_merged.to_csv.assert_called_once_with(output_file, index=False, sep=";", quoting=csv.QUOTE_NONE)
+    df_merged.write_csv.assert_called_once_with(output_file, separator=";", quote_style="never")
 
     # Ensure temp files were deleted
     mock_remove.assert_has_calls([call(file) for file in temp_files])

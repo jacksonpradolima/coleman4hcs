@@ -128,7 +128,7 @@ def test_virtual_context_scenario(mock_testcases):
 def test_industrial_dataset_scenario_provider(mock_csv_data, tmp_path):
     """Test IndustrialDatasetScenarioProvider functionality, ensuring available_time is computed correctly."""
     csv_file = tmp_path / "testcases.csv"
-    mock_csv_data.to_csv(csv_file, sep=";", index=False)
+    mock_csv_data.write_csv(csv_file, separator=";")
 
     # Initialize provider with sched_time_ratio = 0.5
     provider = IndustrialDatasetScenarioProvider(str(csv_file), sched_time_ratio=0.5)
@@ -150,7 +150,7 @@ def test_industrial_dataset_scenario_provider(mock_csv_data, tmp_path):
 def test_provider_stop_iteration(mock_csv_data, tmp_path):
     """Test StopIteration after all scenarios are retrieved."""
     csv_file = tmp_path / "testcases.csv"
-    mock_csv_data.to_csv(csv_file, sep=";", index=False)
+    mock_csv_data.write_csv(csv_file, separator=";")
 
     provider = IndustrialDatasetScenarioProvider(str(csv_file))
     scenarios = list(provider)  # Consume all scenarios
@@ -164,8 +164,8 @@ def test_industrial_dataset_hcs_scenario_provider(mock_csv_data, mock_variants, 
     """Test IndustrialDatasetHCSScenarioProvider with variants, ensuring available_time is computed correctly."""
     csv_file = tmp_path / "testcases.csv"
     var_file = tmp_path / "variants.csv"
-    mock_csv_data.to_csv(csv_file, sep=";", index=False)
-    mock_variants.to_csv(var_file, sep=";", index=False)
+    mock_csv_data.write_csv(csv_file, separator=";")
+    mock_variants.write_csv(var_file, separator=";")
 
     # Initialize provider with sched_time_ratio = 0.5
     provider = IndustrialDatasetHCSScenarioProvider(str(csv_file), str(var_file), sched_time_ratio=0.5)
@@ -188,7 +188,7 @@ def test_industrial_dataset_hcs_scenario_provider(mock_csv_data, mock_variants, 
 def test_industrial_dataset_context_scenario_provider(mock_csv_data, tmp_path):
     """Test IndustrialDatasetContextScenarioProvider."""
     csv_file = tmp_path / "testcases.csv"
-    mock_csv_data.to_csv(csv_file, sep=";", index=False)
+    mock_csv_data.write_csv(csv_file, separator=";")
 
     provider = IndustrialDatasetContextScenarioProvider(
         str(csv_file),
@@ -208,7 +208,7 @@ def test_industrial_dataset_context_scenario_provider(mock_csv_data, tmp_path):
 def test_scenario_provider_benchmark(mock_csv_data, tmp_path, benchmark):
     """Benchmark for scenario provider performance."""
     csv_file = tmp_path / "testcases.csv"
-    mock_csv_data.to_csv(csv_file, sep=";", index=False)
+    mock_csv_data.write_csv(csv_file, separator=";")
 
     provider = IndustrialDatasetScenarioProvider(str(csv_file))
 
@@ -281,7 +281,7 @@ def test_benchmark_virtual_context_scenario_get_features(large_testcases, benchm
 def test_benchmark_industrial_scenario_provider_iteration(large_csv_data, tmp_path, benchmark):
     """Benchmark iterating over scenarios with a large dataset."""
     csv_file = tmp_path / "testcases.csv"
-    large_csv_data.to_csv(csv_file, sep=";", index=False)
+    large_csv_data.write_csv(csv_file, separator=";")
 
     provider = IndustrialDatasetScenarioProvider(str(csv_file), sched_time_ratio=0.5)
 
@@ -297,8 +297,8 @@ def test_benchmark_industrial_hcs_scenario_provider(large_csv_data, large_varian
     """Benchmark initialization and iteration of IndustrialDatasetHCSScenarioProvider with large data."""
     csv_file = tmp_path / "testcases.csv"
     var_file = tmp_path / "variants.csv"
-    large_csv_data.to_csv(csv_file, sep=";", index=False)
-    large_variants.to_csv(var_file, sep=";", index=False)
+    large_csv_data.write_csv(csv_file, separator=";")
+    large_variants.write_csv(var_file, separator=";")
 
     provider = IndustrialDatasetHCSScenarioProvider(str(csv_file), str(var_file), sched_time_ratio=0.5)
 
@@ -313,7 +313,7 @@ def test_benchmark_industrial_hcs_scenario_provider(large_csv_data, large_varian
 def test_benchmark_industrial_context_scenario_provider(large_csv_data, tmp_path, benchmark):
     """Benchmark context scenario provider initialization and iteration with large data."""
     csv_file = tmp_path / "testcases.csv"
-    large_csv_data.to_csv(csv_file, sep=";", index=False)
+    large_csv_data.write_csv(csv_file, separator=";")
 
     provider = IndustrialDatasetContextScenarioProvider(
         str(csv_file),
