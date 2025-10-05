@@ -160,8 +160,8 @@ def test_get_scenario_provider_basic():
 
 
 @patch("main.os.remove")
-@patch("main.pd.read_csv")
-@patch("main.pd.concat")
+@patch("main.pl.read_csv")
+@patch("main.pl.concat")
 def test_merge_csv(mock_concat, mock_read_csv, mock_remove, tmpdir):
     # Mocked return values
     df_merged = Mock()
@@ -184,7 +184,7 @@ def test_merge_csv(mock_concat, mock_read_csv, mock_remove, tmpdir):
 
 
 @patch("main.duckdb.connect")
-@patch("main.pd.read_csv")
+@patch("main.pl.read_csv")
 def test_store_experiments(mock_read_csv, mock_duckdb_connect, tmpdir):
     # Mock database connection and DataFrame
     mock_conn = mock_duckdb_connect.return_value

@@ -7,7 +7,7 @@ buffers, and performance benchmarks.
 import os
 from unittest.mock import MagicMock
 
-import pandas as pd
+import polars as pl
 import pytest
 
 from coleman4hcs.evaluation import EvaluationMetric
@@ -145,22 +145,22 @@ def test_save_to_file(tmp_path, monitor_collector, mock_scenario_provider, mock_
     monitor_collector.save(file_path)
 
     assert os.path.exists(file_path)
-    saved_data = pd.read_csv(file_path, sep=';')
+    saved_data = pl.read_csv(file_path, separator=';')
     assert len(saved_data) == 3, f"Expected 3 records, found {len(saved_data)}"
     assert 'scenario' in saved_data.columns
-    assert saved_data['scenario'].iloc[0] == "TestScenario"
+    assert saved_data['scenario'][0] == "TestScenario"
 
 
 def test_clear(monitor_collector):
     """
     Test clearing the dataframe.
     """
-    monitor_collector.df = pd.DataFrame({'a': [1, 2, 3]})
+    monitor_collector.df = pl.DataFrame({'a': [1, 2, 3]})
     monitor_collector.temp_rows = [{'b': 4}, {'b': 5}, {'b': 6}]
 
     monitor_collector.clear()
 
-    assert monitor_collector.df.empty
+    assert monitor_collector.df.height == 0
     assert len(monitor_collector.temp_rows) == 0
 
 
@@ -259,7 +259,7 @@ def test_collect_from_temp_empty_temp_rows(monitor_collector):
     monitor_collector.collect_from_temp()
 
     # Assert that df remains empty
-    assert monitor_collector.df.empty, "Expected df to remain empty when temp_rows is empty."
+    assert monitor_collector.df.height == 0, "Expected df to remain empty when temp_rows is empty."
 
 
 def test_collect_from_temp_empty_batch_df(monitor_collector):
@@ -271,7 +271,7 @@ def test_collect_from_temp_empty_batch_df(monitor_collector):
     monitor_collector.collect_from_temp()
 
     # Assert that df remains empty
-    assert monitor_collector.df.empty, (
+    assert monitor_collector.df.height == 0, (
         f"Expected df to remain empty when batch_df is empty. Found: {monitor_collector.df}"
     )
     # Assert that temp_rows is cleared
@@ -310,9 +310,9 @@ def test_save_with_empty_temp_rows(tmp_path, monitor_collector):
     monitor_collector.temp_rows = []
 
     # Add some data to df directly
-    monitor_collector.df = pd.DataFrame(
+    monitor_collector.df = pl.DataFrame(
         [{'scenario': 'TestScenario', 'experiment': 1, 'step': 1, 'policy': 'PolicyA'}],
-        columns=monitor_collector.col_names
+        schema=monitor_collector.df.schema
     )
 
     # Call save and ensure no errors occur
@@ -320,9 +320,9 @@ def test_save_with_empty_temp_rows(tmp_path, monitor_collector):
 
     # Verify that the file is created and has the data from df
     assert os.path.exists(file_path), "File was not created."
-    saved_data = pd.read_csv(file_path, sep=';')
+    saved_data = pl.read_csv(file_path, separator=';')
     assert len(saved_data) == 1, f"Expected 1 record, found {len(saved_data)}."
-    assert saved_data['scenario'].iloc[0] == "TestScenario"
+    assert saved_data['scenario'][0] == "TestScenario"
 
 
 def test_save_with_non_empty_temp_rows(tmp_path, monitor_collector, mock_scenario_provider, mock_metric):
@@ -353,7 +353,7 @@ def test_save_with_non_empty_temp_rows(tmp_path, monitor_collector, mock_scenari
 
     # Verify that the file is created and has the data from temp_rows
     assert os.path.exists(file_path), "File was not created."
-    saved_data = pd.read_csv(file_path, sep=';')
+    saved_data = pl.read_csv(file_path, separator=';')
     assert len(saved_data) == 3, f"Expected 3 records, found {len(saved_data)}."
 
     # Verify that temp_rows is empty

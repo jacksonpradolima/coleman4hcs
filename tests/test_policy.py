@@ -24,7 +24,7 @@ Test Plan:
 """
 
 import pytest
-import pandas as pd
+import polars as pl
 import numpy as np
 from coleman4hcs.policy import (
     Policy,
@@ -51,7 +51,7 @@ def dummy_agent():
     """Fixture for creating a basic Agent with mock actions."""
     policy = Policy()  # Initialize the required policy
     agent = Agent(policy=policy)  # Pass the policy during initialization
-    agent.actions = pd.DataFrame({  # Mock the actions dataframe
+    agent.actions = pl.DataFrame({  # Mock the actions dataframe
         'Name': ['A1', 'A2', 'A3'],
         'ActionAttempts': [0, 0, 0],
         'ValueEstimates': [0, 0, 0],
@@ -77,7 +77,7 @@ def contextual_agent():
     )
 
     # Add context_features attribute (required for LinUCBPolicy)
-    agent.context_features = pd.DataFrame({
+    agent.context_features = pl.DataFrame({
         'Name': ['A1', 'A2'],  # Action Names
         'feat1': [0.2, 0.5],  # Feature 1
         'feat2': [0.7, 0.3]  # Feature 2
@@ -107,14 +107,14 @@ def sliding_window_contextual_agent():
     )
 
     # Set the context_features attribute (required for policies)
-    agent.context_features = pd.DataFrame({
+    agent.context_features = pl.DataFrame({
         'Name': ['A1', 'A2'],  # Action Names
         'feat1': [0.2, 0.5],  # Feature 1
         'feat2': [0.7, 0.3]  # Feature 2
     })
 
     # Add a history DataFrame with the required 'T' column
-    agent.history = pd.DataFrame({
+    agent.history = pl.DataFrame({
         'Name': ['A1', 'A2', 'A1', 'A2'],  # Action Names
         'Reward': [1.0, 0.5, 0.8, 0.3],  # Rewards associated with the actions
         'T': [1, 2, 3, 4]  # Timestamp or sequential event data
@@ -243,7 +243,7 @@ def test_linucb_policy_credit_assignment(contextual_agent):
     """
     policy = LinUCBPolicy(alpha=0.5)
     policy.update_actions(contextual_agent, ['A1', 'A2'])
-    contextual_agent.actions = pd.DataFrame({
+    contextual_agent.actions = pl.DataFrame({
         'Name': ['A1', 'A2'],
         'ValueEstimates': [10, 20]
     })
@@ -287,7 +287,7 @@ def test_epsilon_greedy_policy_performance(dummy_agent, benchmark):
 
     # Simulate a large number of actions
     num_actions = 10_000
-    dummy_agent.actions = pd.DataFrame({
+    dummy_agent.actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': [0] * num_actions,
         'ValueEstimates': rng.random(num_actions),
@@ -312,7 +312,7 @@ def test_greedy_policy_performance(dummy_agent, benchmark):
 
     # Simulate a large number of actions
     num_actions = 10_000
-    dummy_agent.actions = pd.DataFrame({
+    dummy_agent.actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': [0] * num_actions,
         'ValueEstimates': rng.random(num_actions),
@@ -340,7 +340,7 @@ def test_random_policy_performance(dummy_agent, benchmark):
 
     # Simulate a large number of actions
     num_actions = 10_000
-    dummy_agent.actions = pd.DataFrame({
+    dummy_agent.actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': [0] * num_actions,
         'ValueEstimates': rng.random(num_actions),
@@ -372,7 +372,7 @@ def test_ucb1_credit_assignment_performance(dummy_agent, benchmark):
 
     # Simulate a large dataset of actions
     num_actions = 5_000
-    dummy_agent.actions = pd.DataFrame({
+    dummy_agent.actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': rng.integers(1, 100, num_actions),  # Random non-zero attempts
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
@@ -399,7 +399,7 @@ def test_ucb1_choose_all_performance(dummy_agent, benchmark):
 
     # Simulate a large dataset of actions
     num_actions = 5_000
-    dummy_agent.actions = pd.DataFrame({
+    dummy_agent.actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': rng.integers(1, 100, num_actions),  # Random non-zero attempts
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
@@ -428,7 +428,7 @@ def test_frrmab_credit_assignment_performance(dummy_agent, benchmark):
 
     # Simulate agent actions with some historical arms
     num_actions = 10_000
-    dummy_agent.actions = pd.DataFrame({
+    dummy_agent.actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': rng.integers(1, 50, num_actions),  # Random attempts
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
@@ -438,7 +438,7 @@ def test_frrmab_credit_assignment_performance(dummy_agent, benchmark):
 
     # Simulate historical reward data
     reward_history = dummy_agent.actions.sample(frac=0.5)  # Sample 50% of actions as historical
-    dummy_agent.history = pd.DataFrame({
+    dummy_agent.history = pl.DataFrame({
         'Name': reward_history['Name'].tolist(),
         'ActionAttempts': reward_history['ActionAttempts'].tolist(),
         'ValueEstimates': reward_history['ValueEstimates'].tolist(),
@@ -466,7 +466,7 @@ def test_frrmab_choose_all_performance(dummy_agent, benchmark):
 
     # Simulate agent actions
     num_actions = 10_000
-    dummy_agent.actions = pd.DataFrame({
+    dummy_agent.actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': rng.integers(1, 50, num_actions),  # Random attempts
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
@@ -476,7 +476,7 @@ def test_frrmab_choose_all_performance(dummy_agent, benchmark):
 
     # Simulate historical reward data to populate policy.history
     reward_history = dummy_agent.actions.sample(frac=0.5)  # Sample 50% of actions as historical
-    policy.history = pd.DataFrame({
+    policy.history = pl.DataFrame({
         'Name': reward_history['Name'].tolist(),
         'ActionAttempts': reward_history['ActionAttempts'].tolist(),
         'ValueEstimates': reward_history['ValueEstimates'].tolist(),
@@ -505,12 +505,12 @@ def test_swlinucb_policy_choose_all_performance(sliding_window_contextual_agent,
     # Simulate a large input
     num_actions = 10_000
     actions = [f"A{i}" for i in range(num_actions)]
-    sliding_window_contextual_agent.context_features = pd.DataFrame({
+    sliding_window_contextual_agent.context_features = pl.DataFrame({
         'Name': actions,
         'feat1': rng.random(num_actions),
         'feat2': rng.random(num_actions)
     })
-    sliding_window_contextual_agent.history = pd.DataFrame({
+    sliding_window_contextual_agent.history = pl.DataFrame({
         'Name': rng.choice(actions, size=100_000),
         'Reward': rng.random(100_000),
         'T': np.arange(100_000)
@@ -551,8 +551,8 @@ def test_linucb_policy_credit_assignment_performance(contextual_agent, benchmark
     features = {f"feat{i}": rng.random(num_actions) for i in range(num_features)}
     features["Name"] = actions
 
-    contextual_agent.context_features = pd.DataFrame(features)
-    contextual_agent.actions = pd.DataFrame({
+    contextual_agent.context_features = pl.DataFrame(features)
+    contextual_agent.actions = pl.DataFrame({
         'Name': actions,
         'ValueEstimates': rng.random(num_actions)
     })
@@ -568,7 +568,7 @@ def test_linucb_policy_credit_assignment_performance(contextual_agent, benchmark
 
 def simulate_actions(num_actions, include_q=False):
     """Simulates a DataFrame of actions with required columns."""
-    actions = pd.DataFrame({
+    actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': rng.integers(1, 100, num_actions),  # Random non-zero attempts
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
@@ -581,7 +581,7 @@ def simulate_actions(num_actions, include_q=False):
 def simulate_history(actions, fraction=0.5):
     """Simulates historical data by sampling existing actions."""
     sampled_actions = actions.sample(frac=fraction)
-    history = pd.DataFrame({
+    history = pl.DataFrame({
         'Name': sampled_actions['Name'].tolist(),
         'ActionAttempts': sampled_actions['ActionAttempts'].tolist(),
         'ValueEstimates': sampled_actions['ValueEstimates'].tolist(),

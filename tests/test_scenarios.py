@@ -181,7 +181,7 @@ def test_industrial_dataset_hcs_scenario_provider(mock_csv_data, mock_variants, 
         f"Available time should be half of total duration. "
         f"Expected: {0.5 * scenario.total_build_duration}, Got: {scenario.get_available_time()}"
     )
-    assert not scenario.get_variants().empty, "Variants should be non-empty."
+    assert scenario.get_variants().height > 0, "Variants should be non-empty."
 
 
 # IndustrialDatasetContextScenarioProvider
@@ -199,7 +199,7 @@ def test_industrial_dataset_context_scenario_provider(mock_csv_data, tmp_path):
     scenario = next(provider)
 
     assert scenario.get_features() == ["CalcPrio", "Duration"], "Features should match."
-    assert not scenario.get_context_features().empty, "Context features should not be empty."
+    assert scenario.get_context_features().height > 0, "Context features should not be empty."
 
 
 # ------------------------ Benchmark Tests ------------------------
