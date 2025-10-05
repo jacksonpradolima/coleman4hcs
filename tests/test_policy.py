@@ -24,7 +24,7 @@ Test Plan:
 """
 
 import pytest
-import pandas as pd
+import polars as pl
 import numpy as np
 from coleman4hcs.policy import (
     Policy,
@@ -51,7 +51,7 @@ def dummy_agent():
     """Fixture for creating a basic Agent with mock actions."""
     policy = Policy()  # Initialize the required policy
     agent = Agent(policy=policy)  # Pass the policy during initialization
-    agent.actions = pd.DataFrame({  # Mock the actions dataframe
+    agent.actions = pl.DataFrame({  # Mock the actions dataframe
         'Name': ['A1', 'A2', 'A3'],
         'ActionAttempts': [0, 0, 0],
         'ValueEstimates': [0, 0, 0],
@@ -77,7 +77,7 @@ def contextual_agent():
     )
 
     # Add context_features attribute (required for LinUCBPolicy)
-    agent.context_features = pd.DataFrame({
+    agent.context_features = pl.DataFrame({
         'Name': ['A1', 'A2'],  # Action Names
         'feat1': [0.2, 0.5],  # Feature 1
         'feat2': [0.7, 0.3]  # Feature 2
@@ -107,14 +107,14 @@ def sliding_window_contextual_agent():
     )
 
     # Set the context_features attribute (required for policies)
-    agent.context_features = pd.DataFrame({
+    agent.context_features = pl.DataFrame({
         'Name': ['A1', 'A2'],  # Action Names
         'feat1': [0.2, 0.5],  # Feature 1
         'feat2': [0.7, 0.3]  # Feature 2
     })
 
     # Add a history DataFrame with the required 'T' column
-    agent.history = pd.DataFrame({
+    agent.history = pl.DataFrame({
         'Name': ['A1', 'A2', 'A1', 'A2'],  # Action Names
         'Reward': [1.0, 0.5, 0.8, 0.3],  # Rewards associated with the actions
         'T': [1, 2, 3, 4]  # Timestamp or sequential event data
@@ -138,12 +138,20 @@ def test_policy_choose_all_default(dummy_agent):
 def test_policy_credit_assignment(dummy_agent):
     """Test the `credit_assignment` method in the base Policy class."""
     policy = Policy()
-    dummy_agent.actions.loc[0, 'ActionAttempts'] = 1
-    dummy_agent.actions.loc[0, 'ValueEstimates'] = 10
+    dummy_agent.actions = dummy_agent.actions.with_columns([
+        pl.when(pl.col('Name') == dummy_agent.actions['Name'][0])
+        .then(pl.lit(1.0))
+        .otherwise(pl.col('ActionAttempts'))
+        .alias('ActionAttempts'),
+        pl.when(pl.col('Name') == dummy_agent.actions['Name'][0])
+        .then(pl.lit(10.0))
+        .otherwise(pl.col('ValueEstimates'))
+        .alias('ValueEstimates')
+    ])
 
     # Assign credit and test Q calculation
     policy.credit_assignment(dummy_agent)
-    assert np.allclose(dummy_agent.actions['Q'][0], 10), "Credit assignment failed"
+    assert np.allclose(dummy_agent.actions['Q'][0], 10.0), "Credit assignment failed"
 
 
 # ------------------------ EpsilonGreedyPolicy ------------------------
@@ -164,7 +172,9 @@ def test_epsilon_greedy_policy_exploit(dummy_agent):
     It should always select the greedy (best) actions.
     """
     policy = EpsilonGreedyPolicy(epsilon=0.0)
-    dummy_agent.actions['Q'] = [0.2, 0.8, 0.5]
+    dummy_agent.actions = dummy_agent.actions.with_columns([
+        pl.Series('Q', [0.2, 0.8, 0.5])
+    ])
     actions = policy.choose_all(dummy_agent)
     assert actions == ['A2', 'A3', 'A1'], "Epsilon=0 should only pick the best actions"
 
@@ -174,7 +184,9 @@ def test_epsilon_greedy_policy_exploit(dummy_agent):
 def test_greedy_policy(dummy_agent):
     """Test the `choose_all` method of the GreedyPolicy (epsilon=0)."""
     policy = GreedyPolicy()
-    dummy_agent.actions['Q'] = [1.0, 2.0, 3.0]
+    dummy_agent.actions = dummy_agent.actions.with_columns([
+        pl.Series('Q', [1.0, 2.0, 3.0])
+    ])
     assert policy.choose_all(dummy_agent) == ['A3', 'A2', 'A1'], "GreedyPolicy must choose in descending Q order"
 
 
@@ -195,12 +207,13 @@ def test_ucb1_policy_credit_assignment(dummy_agent):
     Ensure it adjusts Q values based on exploration and rewards.
     """
     policy = UCB1Policy(c=2.0)
-    dummy_agent.actions['ActionAttempts'] = [1, 1, 2]
-    dummy_agent.actions['ValueEstimates'] = [3, 4, 1]
+    dummy_agent.actions = dummy_agent.actions.with_columns([
+        pl.Series('ActionAttempts', [1.0, 1.0, 2.0]),
+        pl.Series('ValueEstimates', [3.0, 4.0, 1.0])
+    ])
 
     policy.credit_assignment(dummy_agent)
-    assert dummy_agent.actions['Q'].iloc[0] > dummy_agent.actions['Q'].iloc[
-        2], "UCB1 failed to compute exploration factor"
+    assert dummy_agent.actions['Q'][0] > dummy_agent.actions['Q'][2], "UCB1 failed to compute exploration factor"
 
 
 # ------------------------ UCBPolicy ------------------------
@@ -211,8 +224,10 @@ def test_ucb_policy_credit_assignment(dummy_agent):
     Ensure it applies greater scaling factors than UCB1.
     """
     policy = UCBPolicy(c=1.5)
-    dummy_agent.actions['ActionAttempts'] = [1, 10, 5]
-    dummy_agent.actions['ValueEstimates'] = [10, 20, 15]
+    dummy_agent.actions = dummy_agent.actions.with_columns([
+        pl.Series('ActionAttempts', [1.0, 10.0, 5.0]),
+        pl.Series('ValueEstimates', [10.0, 20.0, 15.0])
+    ])
 
     policy.credit_assignment(dummy_agent)
     q_values = dummy_agent.actions['Q']
@@ -243,7 +258,7 @@ def test_linucb_policy_credit_assignment(contextual_agent):
     """
     policy = LinUCBPolicy(alpha=0.5)
     policy.update_actions(contextual_agent, ['A1', 'A2'])
-    contextual_agent.actions = pd.DataFrame({
+    contextual_agent.actions = pl.DataFrame({
         'Name': ['A1', 'A2'],
         'ValueEstimates': [10, 20]
     })
@@ -287,7 +302,7 @@ def test_epsilon_greedy_policy_performance(dummy_agent, benchmark):
 
     # Simulate a large number of actions
     num_actions = 10_000
-    dummy_agent.actions = pd.DataFrame({
+    dummy_agent.actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': [0] * num_actions,
         'ValueEstimates': rng.random(num_actions),
@@ -312,7 +327,7 @@ def test_greedy_policy_performance(dummy_agent, benchmark):
 
     # Simulate a large number of actions
     num_actions = 10_000
-    dummy_agent.actions = pd.DataFrame({
+    dummy_agent.actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': [0] * num_actions,
         'ValueEstimates': rng.random(num_actions),
@@ -324,7 +339,7 @@ def test_greedy_policy_performance(dummy_agent, benchmark):
 
     # Assertions - Ensure all actions are returned
     assert len(chosen_actions) == num_actions, "GreedyPolicy should return all actions."
-    assert sorted(chosen_actions) == sorted(dummy_agent.actions['Name'].tolist()), (
+    assert sorted(chosen_actions) == sorted(dummy_agent.actions['Name'].to_list()), (
         "GreedyPolicy should return all actions, but names mismatch."
     )
 
@@ -340,7 +355,7 @@ def test_random_policy_performance(dummy_agent, benchmark):
 
     # Simulate a large number of actions
     num_actions = 10_000
-    dummy_agent.actions = pd.DataFrame({
+    dummy_agent.actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
         'ActionAttempts': [0] * num_actions,
         'ValueEstimates': rng.random(num_actions),
@@ -352,10 +367,10 @@ def test_random_policy_performance(dummy_agent, benchmark):
 
     # Assertions - Ensure all actions are returned
     assert len(chosen_actions) == num_actions, "RandomPolicy should return all actions."
-    assert sorted(chosen_actions) == sorted(dummy_agent.actions['Name'].tolist()), (
+    assert sorted(chosen_actions) == sorted(dummy_agent.actions['Name'].to_list()), (
         "RandomPolicy should return all actions, but there is a mismatch in the names."
     )
-    assert chosen_actions != dummy_agent.actions['Name'].tolist(), (
+    assert chosen_actions != dummy_agent.actions['Name'].to_list(), (
         "RandomPolicy should shuffle the actions, but returned them in the original order!"
     )
 
@@ -372,11 +387,11 @@ def test_ucb1_credit_assignment_performance(dummy_agent, benchmark):
 
     # Simulate a large dataset of actions
     num_actions = 5_000
-    dummy_agent.actions = pd.DataFrame({
+    dummy_agent.actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
-        'ActionAttempts': rng.integers(1, 100, num_actions),  # Random non-zero attempts
+        'ActionAttempts': rng.integers(1, 100, num_actions).astype(float),  # Random non-zero attempts
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
-        'Q': [0] * num_actions  # Will be calculated
+        'Q': [0.0] * num_actions  # Will be calculated - use float
     })
 
     # Benchmark the `credit_assignment` method
@@ -384,7 +399,7 @@ def test_ucb1_credit_assignment_performance(dummy_agent, benchmark):
 
     # Assertions to validate functionality
     assert "Q" in dummy_agent.actions.columns, "credit_assignment must update the Q values."
-    assert dummy_agent.actions["Q"].notnull().all(), "Q values must not contain null values."
+    assert dummy_agent.actions["Q"].is_not_null().all(), "Q values must not contain null values."
 
 
 @pytest.mark.benchmark(group="policy")
@@ -399,9 +414,9 @@ def test_ucb1_choose_all_performance(dummy_agent, benchmark):
 
     # Simulate a large dataset of actions
     num_actions = 5_000
-    dummy_agent.actions = pd.DataFrame({
+    dummy_agent.actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
-        'ActionAttempts': rng.integers(1, 100, num_actions),  # Random non-zero attempts
+        'ActionAttempts': rng.integers(1, 100, num_actions).astype(float),  # Random non-zero attempts
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
         'Q': rng.random(num_actions)  # Already calculated Q values
     })
@@ -411,7 +426,7 @@ def test_ucb1_choose_all_performance(dummy_agent, benchmark):
 
     # Assertions to validate functionality
     assert len(chosen_actions) == num_actions, "UCB1Policy should return all actions."
-    expected_order = dummy_agent.actions.sort_values(by='Q', ascending=False)['Name'].tolist()
+    expected_order = dummy_agent.actions.sort('Q', descending=True)['Name'].to_list()
     assert chosen_actions == expected_order, "UCB1Policy did not return actions sorted by Q values."
 
 
@@ -428,21 +443,21 @@ def test_frrmab_credit_assignment_performance(dummy_agent, benchmark):
 
     # Simulate agent actions with some historical arms
     num_actions = 10_000
-    dummy_agent.actions = pd.DataFrame({
+    dummy_agent.actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
-        'ActionAttempts': rng.integers(1, 50, num_actions),  # Random attempts
+        'ActionAttempts': rng.integers(1, 50, num_actions).astype(float),  # Random attempts as float
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
         'T': [0] * num_actions,  # Initial usage time
-        'Q': [0] * num_actions  # Will be calculated
+        'Q': [0.0] * num_actions  # Will be calculated - use float
     })
 
     # Simulate historical reward data
-    reward_history = dummy_agent.actions.sample(frac=0.5)  # Sample 50% of actions as historical
-    dummy_agent.history = pd.DataFrame({
-        'Name': reward_history['Name'].tolist(),
-        'ActionAttempts': reward_history['ActionAttempts'].tolist(),
-        'ValueEstimates': reward_history['ValueEstimates'].tolist(),
-        'T': reward_history['T'].tolist()
+    reward_history = dummy_agent.actions.sample(fraction=0.5)  # Sample 50% of actions as historical
+    dummy_agent.history = pl.DataFrame({
+        'Name': reward_history['Name'].to_list(),
+        'ActionAttempts': reward_history['ActionAttempts'].to_list(),
+        'ValueEstimates': reward_history['ValueEstimates'].to_list(),
+        'T': reward_history['T'].to_list()
     })
 
     # Benchmark the `credit_assignment` method
@@ -450,7 +465,7 @@ def test_frrmab_credit_assignment_performance(dummy_agent, benchmark):
 
     # Assertions to validate functionality
     assert "Q" in policy.history.columns, "credit_assignment must update the Q values in history."
-    assert policy.history["Q"].notnull().all(), "Q values must not contain null values."
+    assert policy.history["Q"].is_not_null().all(), "Q values must not contain null values."
 
 
 @pytest.mark.benchmark(group="policy")
@@ -466,22 +481,22 @@ def test_frrmab_choose_all_performance(dummy_agent, benchmark):
 
     # Simulate agent actions
     num_actions = 10_000
-    dummy_agent.actions = pd.DataFrame({
+    dummy_agent.actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
-        'ActionAttempts': rng.integers(1, 50, num_actions),  # Random attempts
+        'ActionAttempts': rng.integers(1, 50, num_actions).astype(float),  # Random attempts as float
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
         'T': [0] * num_actions,  # Initial usage time
         'Q': rng.random(num_actions)  # Already calculated Q values
     })
 
     # Simulate historical reward data to populate policy.history
-    reward_history = dummy_agent.actions.sample(frac=0.5)  # Sample 50% of actions as historical
-    policy.history = pd.DataFrame({
-        'Name': reward_history['Name'].tolist(),
-        'ActionAttempts': reward_history['ActionAttempts'].tolist(),
-        'ValueEstimates': reward_history['ValueEstimates'].tolist(),
-        'T': reward_history['T'].tolist(),
-        'Q': reward_history['Q'].tolist()
+    reward_history = dummy_agent.actions.sample(fraction=0.5)  # Sample 50% of actions as historical
+    policy.history = pl.DataFrame({
+        'Name': reward_history['Name'].to_list(),
+        'ActionAttempts': reward_history['ActionAttempts'].to_list(),
+        'ValueEstimates': reward_history['ValueEstimates'].to_list(),
+        'T': reward_history['T'].to_list(),
+        'Q': reward_history['Q'].to_list()
     })
 
     # Benchmark the `choose_all` method
@@ -489,7 +504,7 @@ def test_frrmab_choose_all_performance(dummy_agent, benchmark):
 
     # Assertions to validate functionality
     assert len(chosen_actions) == num_actions, "FRRMABPolicy should select all actions."
-    expected_order = policy.history.sort_values(by='Q', ascending=False)['Name'].tolist()
+    expected_order = policy.history.sort('Q', descending=True)['Name'].to_list()
     assert chosen_actions == expected_order, "FRRMABPolicy did not return actions sorted by Q values."
 
 
@@ -505,12 +520,12 @@ def test_swlinucb_policy_choose_all_performance(sliding_window_contextual_agent,
     # Simulate a large input
     num_actions = 10_000
     actions = [f"A{i}" for i in range(num_actions)]
-    sliding_window_contextual_agent.context_features = pd.DataFrame({
+    sliding_window_contextual_agent.context_features = pl.DataFrame({
         'Name': actions,
         'feat1': rng.random(num_actions),
         'feat2': rng.random(num_actions)
     })
-    sliding_window_contextual_agent.history = pd.DataFrame({
+    sliding_window_contextual_agent.history = pl.DataFrame({
         'Name': rng.choice(actions, size=100_000),
         'Reward': rng.random(100_000),
         'T': np.arange(100_000)
@@ -551,8 +566,8 @@ def test_linucb_policy_credit_assignment_performance(contextual_agent, benchmark
     features = {f"feat{i}": rng.random(num_actions) for i in range(num_features)}
     features["Name"] = actions
 
-    contextual_agent.context_features = pd.DataFrame(features)
-    contextual_agent.actions = pd.DataFrame({
+    contextual_agent.context_features = pl.DataFrame(features)
+    contextual_agent.actions = pl.DataFrame({
         'Name': actions,
         'ValueEstimates': rng.random(num_actions)
     })
@@ -568,25 +583,25 @@ def test_linucb_policy_credit_assignment_performance(contextual_agent, benchmark
 
 def simulate_actions(num_actions, include_q=False):
     """Simulates a DataFrame of actions with required columns."""
-    actions = pd.DataFrame({
+    actions = pl.DataFrame({
         'Name': [f"A{i}" for i in range(num_actions)],
-        'ActionAttempts': rng.integers(1, 100, num_actions),  # Random non-zero attempts
+        'ActionAttempts': rng.integers(1, 100, num_actions).astype(float),  # Random non-zero attempts
         'ValueEstimates': rng.random(num_actions) * 100,  # Random reward estimates
         'T': [0] * num_actions,  # Timestamp/usage in FRRMABPolicy
-        'Q': rng.random(num_actions) if include_q else [0] * num_actions  # Random Q if needed
+        'Q': rng.random(num_actions) if include_q else [0.0] * num_actions  # Random Q if needed - use float
     })
     return actions
 
 
 def simulate_history(actions, fraction=0.5):
     """Simulates historical data by sampling existing actions."""
-    sampled_actions = actions.sample(frac=fraction)
-    history = pd.DataFrame({
-        'Name': sampled_actions['Name'].tolist(),
-        'ActionAttempts': sampled_actions['ActionAttempts'].tolist(),
-        'ValueEstimates': sampled_actions['ValueEstimates'].tolist(),
-        'T': sampled_actions['T'].tolist(),  # Include the T column
-        'Q': sampled_actions['Q'].tolist()  # Include the Q column if actions have it
+    sampled_actions = actions.sample(fraction=fraction)
+    history = pl.DataFrame({
+        'Name': sampled_actions['Name'].to_list(),
+        'ActionAttempts': sampled_actions['ActionAttempts'].to_list(),
+        'ValueEstimates': sampled_actions['ValueEstimates'].to_list(),
+        'T': sampled_actions['T'].to_list(),  # Include the T column
+        'Q': sampled_actions['Q'].to_list()  # Include the Q column if actions have it
     })
     return history
 
@@ -630,7 +645,7 @@ def test_policy_performance(dummy_agent, benchmark, policy_class, policy_kwargs,
         benchmark(policy.credit_assignment, dummy_agent)
         # Ensure that Q-values are assigned correctly
         assert "Q" in dummy_agent.actions.columns, "credit_assignment must update the Q values."
-        assert dummy_agent.actions["Q"].notnull().all(), "Q values must not contain null values."
+        assert dummy_agent.actions["Q"].is_not_null().all(), "Q values must not contain null values."
 
     elif benchmark_method == 'choose_all':
         chosen_actions = benchmark(policy.choose_all, dummy_agent)

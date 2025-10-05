@@ -37,10 +37,8 @@ References:
       April 8–12, 2019, Limassol, Cyprus.
 """
 
-import random
-
 import numpy as np
-import pandas as pd
+import polars as pl
 
 from coleman4hcs.agent import Agent, RewardSlidingWindowAgent, ContextualAgent, SlidingWindowContextualAgent
 from coleman4hcs.exceptions import QException
@@ -58,7 +56,7 @@ class Policy:
         """
         By default, a policy returns untreated actions.
         """
-        return agent.actions['Name'].tolist()
+        return agent.actions['Name'].to_list()
 
     def credit_assignment(self, agent):
         """
@@ -78,13 +76,16 @@ class Policy:
        .. note:: The method modifies the agent's state, updating the value estimates
                  for each action based on the outcomes observed.
        """
-        action_attempts = agent.actions['ActionAttempts'].to_numpy(copy=True)
-        value_estimates = agent.actions['ValueEstimates'].to_numpy(copy=True)
+        action_attempts = agent.actions['ActionAttempts'].to_numpy()
+        value_estimates = agent.actions['ValueEstimates'].to_numpy()
 
         # Prevent division by zero
         with np.errstate(divide='ignore', invalid='ignore'):
             # Quality estimate: average of reward
-            agent.actions['Q'] = np.where(action_attempts > 0, value_estimates / action_attempts, 0)
+            q_values = np.where(action_attempts > 0, value_estimates / action_attempts, 0)
+            agent.actions = agent.actions.with_columns([
+                pl.Series('Q', q_values)
+            ])
 
 
 class EpsilonGreedyPolicy(Policy):
@@ -103,14 +104,16 @@ class EpsilonGreedyPolicy(Policy):
 
     def choose_all(self, agent: Agent):
         # Copy the actions and add a random mask column
-        actions = agent.actions.copy()
-        actions['is_random'] = np.random.random(len(actions)) < self.epsilon
+        actions = agent.actions.clone()
+        actions = actions.with_columns([
+            pl.Series('is_random', np.random.random(len(actions)) < self.epsilon)
+        ])
 
         # Use sorting to prioritize best actions for exploitation (high Q) and exploration (random actions)
-        actions = actions.sort_values(by=['is_random', 'Q'], ascending=[False, False])
+        actions = actions.sort(['is_random', 'Q'], descending=[True, True])
 
         # Return the ordered list of action names
-        return actions['Name'].tolist()
+        return actions['Name'].to_list()
 
 
 class GreedyPolicy(EpsilonGreedyPolicy):
@@ -138,9 +141,9 @@ class RandomPolicy(Policy):
         return 'Random'
 
     def choose_all(self, agent: Agent):
-        actions = agent.actions['Name'].to_numpy(copy=True)
+        actions = agent.actions['Name'].to_numpy()
         np.random.shuffle(actions)
-        return actions.tolist()
+        return actions.tolist()  # numpy tolist() is correct
 
 
 class UCBPolicyBase(Policy):
@@ -152,7 +155,7 @@ class UCBPolicyBase(Policy):
         self.c = c
 
     def choose_all(self, agent: Agent) -> list:
-        return agent.actions.sort_values(by='Q', ascending=False)['Name'].tolist()
+        return agent.actions.sort('Q', descending=True)['Name'].to_list()
 
 
 class UCB1Policy(UCBPolicyBase):
@@ -169,15 +172,18 @@ class UCB1Policy(UCBPolicyBase):
         # Compute the average of rewards
         super().credit_assignment(agent)
 
-        action_attempts = agent.actions['ActionAttempts'].to_numpy(copy=True)
-        quality_estimates = agent.actions['Q'].to_numpy(copy=True)
+        action_attempts = agent.actions['ActionAttempts'].to_numpy()
+        quality_estimates = agent.actions['Q'].to_numpy()
 
         # Exploration term with precomputed logarithm
         exploration = np.log1p(agent.t) / action_attempts
         exploration = np.nan_to_num(exploration, nan=0.0, posinf=0.0, neginf=0.0)
         exploration = np.power(exploration, 1 / self.c)
 
-        agent.actions['Q'] = quality_estimates + exploration
+        q_values = quality_estimates + exploration
+        agent.actions = agent.actions.with_columns([
+            pl.Series('Q', q_values)
+        ])
 
 
 class UCBPolicy(UCBPolicyBase):
@@ -192,8 +198,8 @@ class UCBPolicy(UCBPolicyBase):
         # Compute the average of rewards
         super().credit_assignment(agent)
 
-        action_attempts = agent.actions['ActionAttempts'].to_numpy(copy=True)
-        quality_estimates = agent.actions['Q'].to_numpy(copy=True)
+        action_attempts = agent.actions['ActionAttempts'].to_numpy()
+        quality_estimates = agent.actions['Q'].to_numpy()
 
         # Precompute log(sum of action attempts)
         log_sum_attempts = np.log1p(action_attempts.sum())
@@ -202,7 +208,10 @@ class UCBPolicy(UCBPolicyBase):
         exploration = np.nan_to_num(exploration, nan=0.0, posinf=0.0, neginf=0.0)
 
         # Update Q values directly
-        agent.actions['Q'] = quality_estimates + self.c * exploration
+        q_values = quality_estimates + self.c * exploration
+        agent.actions = agent.actions.with_columns([
+            pl.Series('Q', q_values)
+        ])
 
 
 class FRRMABPolicy(Policy):
@@ -221,7 +230,14 @@ class FRRMABPolicy(Policy):
         # Q | Quality estimate
         self.hist_col_names = ['Name', 'ActionAttempts', 'ValueEstimates', 'T', 'Q']
 
-        self.history = pd.DataFrame(columns=self.hist_col_names)
+        schema = {
+            'Name': pl.Utf8,
+            'ActionAttempts': pl.Float64,
+            'ValueEstimates': pl.Float64,
+            'T': pl.Int64,
+            'Q': pl.Float64
+        }
+        self.history = pl.DataFrame(schema=schema)
 
     def __str__(self):
         # return f"FRRMAB (C={self.c}, D={self.decayed_factor})"
@@ -230,14 +246,22 @@ class FRRMABPolicy(Policy):
 
     def choose_all(self, agent: RewardSlidingWindowAgent):
         # Identify new test cases
-        new_tcs = agent.actions.loc[~agent.actions.Name.isin(self.history['Name'])]
-
-        if not new_tcs.empty:
-            new_entries = new_tcs[['Name']].assign(ActionAttempts=0, ValueEstimates=0, T=0, Q=0)
-            self.history = pd.concat([self.history, new_entries], ignore_index=True)
+        existing_names = set(self.history['Name'].to_list())
+        agent_names = set(agent.actions['Name'].to_list())
+        new_names = agent_names - existing_names
+        
+        if new_names:
+            new_entries = pl.DataFrame({
+                'Name': list(new_names),
+                'ActionAttempts': [0.0] * len(new_names),
+                'ValueEstimates': [0.0] * len(new_names),
+                'T': [0] * len(new_names),
+                'Q': [0.0] * len(new_names)
+            })
+            self.history = pl.concat([self.history, new_entries], how="vertical")
 
         # Sort by Q values to determine priorities
-        return self.history.sort_values(by='Q', ascending=False)['Name'].tolist()
+        return self.history.sort('Q', descending=True)['Name'].to_list()
 
     def credit_assignment(self, agent: RewardSlidingWindowAgent):
         """
@@ -245,15 +269,15 @@ class FRRMABPolicy(Policy):
         :return: FRR, Selected Times, and Sum Applications for all arms
         """
         # We must calculate the sum of the rewards (FIRs, Fitness Improvement Rates) by each arm in the sliding window
-        self.history = agent.history.groupby('Name', as_index=False).agg(
-            ActionAttempts=('ActionAttempts', 'sum'),
-            ValueEstimates=('ValueEstimates', 'sum'),
-            T=('T', 'count')
-        )
+        self.history = agent.history.group_by('Name').agg([
+            pl.col('ActionAttempts').sum(),
+            pl.col('ValueEstimates').sum(),
+            pl.col('T').count().alias('T')
+        ])
 
         # Find rank of each arm
-        self.history.sort_values(by='ValueEstimates', ascending=False, inplace=True)
-        reward_arm = self.history['ValueEstimates'].to_numpy(copy=True)
+        self.history = self.history.sort('ValueEstimates', descending=True)
+        reward_arm = self.history['ValueEstimates'].to_numpy()
         ranking = np.arange(1, len(reward_arm) + 1)
 
         # Compute decay values
@@ -271,14 +295,16 @@ class FRRMABPolicy(Policy):
 
         # Compute Q
         # T column contains the count of usage for each "arm"
-        selected_times = self.history['T'].to_numpy(copy=True)
+        selected_times = self.history['T'].to_numpy()
 
         # Precompute log(sum of selected times)
         log_selected_times = np.log1p(selected_times.sum())
 
         exploration = np.sqrt((2 * log_selected_times) / selected_times)
         exploration = np.nan_to_num(exploration, nan=0.0, posinf=0.0, neginf=0.0)
-        self.history['Q'] = frr + self.c * exploration
+        self.history = self.history.with_columns([
+            (pl.lit(frr) + self.c * pl.lit(exploration)).alias('Q')
+        ])
 
 
 class SlMABPolicy(Policy):
@@ -293,7 +319,14 @@ class SlMABPolicy(Policy):
         # T | Time of usage
         self.hist_col_names = ['Name', 'ActionAttempts', 'ValueEstimates', 'T', 'Q']
 
-        self.history = pd.DataFrame(columns=self.hist_col_names)
+        schema = {
+            'Name': pl.Utf8,
+            'ActionAttempts': pl.Float64,
+            'ValueEstimates': pl.Float64,
+            'T': pl.Int64,
+            'Q': pl.Float64
+        }
+        self.history = pl.DataFrame(schema=schema)
 
     def __str__(self):
         # return f"SLMAB ("
@@ -302,14 +335,22 @@ class SlMABPolicy(Policy):
 
     def choose_all(self, agent: RewardSlidingWindowAgent):
         # Identify new test cases
-        new_tcs = agent.actions.loc[~agent.actions.Name.isin(self.history['Name'])]
-
-        if not new_tcs.empty:
-            new_entries = new_tcs[['Name']].assign(ActionAttempts=0, ValueEstimates=0, T=0, Q=0)
-            self.history = pd.concat([self.history, new_entries], ignore_index=True)
+        existing_names = set(self.history['Name'].to_list())
+        agent_names = set(agent.actions['Name'].to_list())
+        new_names = agent_names - existing_names
+        
+        if new_names:
+            new_entries = pl.DataFrame({
+                'Name': list(new_names),
+                'ActionAttempts': [0.0] * len(new_names),
+                'ValueEstimates': [0.0] * len(new_names),
+                'T': [0] * len(new_names),
+                'Q': [0.0] * len(new_names)
+            })
+            self.history = pl.concat([self.history, new_entries], how="vertical")
 
         # Sort by Q values to determine priorities
-        return self.history.sort_values(by='Q', ascending=False)['Name'].tolist()
+        return self.history.sort('Q', descending=True)['Name'].to_list()
 
     def credit_assignment(self, agent: RewardSlidingWindowAgent):
         """
@@ -319,26 +360,37 @@ class SlMABPolicy(Policy):
         # Compute the average of rewards (and save in Q column)
         super().credit_assignment(agent)
 
-        self.history = agent.history.groupby(['Name'], as_index=False).agg({'T': ['count', np.max]})
-        self.history.columns = ['Name', 'T', 'Ti']
+        # Group by Name and aggregate T column
+        self.history = agent.history.group_by(['Name']).agg([
+            pl.col('T').count().alias('T'),
+            pl.col('T').max().alias('Ti')
+        ])
 
-        self.history['Q'] = agent.actions['Q']
-        self.history['R'] = agent.actions['R']
+        # Get Q and R values from agent.actions by joining on Name
+        agent_data = agent.actions.select(['Name', 'Q']).rename({'Q': 'action_Q'})
+        self.history = self.history.join(agent_data, on='Name', how='left')
+        self.history = self.history.rename({'action_Q': 'Q'})
+        
+        # Add R column (assuming R is a column in agent.actions, or set to 0 if not exists)
+        if 'R' in agent.actions.columns:
+            agent_r = agent.actions.select(['Name', 'R']).rename({'R': 'action_R'})
+            self.history = self.history.join(agent_r, on='Name', how='left')
+            self.history = self.history.rename({'action_R': 'R'})
+        else:
+            self.history = self.history.with_columns([pl.lit(0.0).alias('R')])
 
-        # Check, at the time point t, the number of time points elapsed since
-        # the previous time point ti in which the ith arm has been applied
-        self.history['DiffSelection'] = self.history['Ti'].apply(lambda x: agent.t - x)
-
-        # T column contains the count of usage for each "arm"
-        self.history['T'] = self.history.apply(
-            lambda x: x['T'] * ((agent.window_size / (agent.window_size + x['DiffSelection'])) + (1 / (x['T'] + 1))),
-            axis=1)
-
-        # Compute Q
-        self.history['Q'] = self.history.apply(
-            lambda x: x['Q'] * (
-                (agent.window_size / (agent.window_size + x['DiffSelection'])) + x['R'] * (1 / (x['T'] + 1))),
-            axis=1)
+        # Compute DiffSelection, T, and Q using with_columns
+        self.history = self.history.with_columns([
+            (pl.lit(agent.t) - pl.col('Ti')).alias('DiffSelection')
+        ])
+        
+        self.history = self.history.with_columns([
+            (pl.col('T') * ((agent.window_size / (agent.window_size + pl.col('DiffSelection'))) + (1.0 / (pl.col('T') + 1)))).alias('T')
+        ])
+        
+        self.history = self.history.with_columns([
+            (pl.col('Q') * ((agent.window_size / (agent.window_size + pl.col('DiffSelection'))) + pl.col('R') * (1.0 / (pl.col('T') + 1)))).alias('Q')
+        ])
 
 
 class LinUCBPolicy(Policy):
@@ -394,7 +446,7 @@ class LinUCBPolicy(Policy):
         Update actions based on the agent's context.
         """
         # Update the current context given by the agent
-        self.context_features = agent.context_features.sort_values(by=['Name'])
+        self.context_features = agent.context_features.sort('Name')
         self.features = agent.features
 
         # Add new actions
@@ -406,9 +458,8 @@ class LinUCBPolicy(Policy):
         Choose all actions based on the policy.
         """
 
-        # features = list(self.context_features[self.features].values)
-        features = self.context_features[self.features].values  # Shape: (num_actions, context_dim)
-        actions = self.context_features.Name.tolist()
+        features = self.context_features.select(self.features).to_numpy()  # Shape: (num_actions, context_dim)
+        actions = self.context_features['Name'].to_list()
 
         # Batch processing for theta and confidence bounds
         q_values = []
@@ -430,10 +481,7 @@ class LinUCBPolicy(Policy):
             # q[0,0]: scalar Q-value (confidence-adjusted reward estimate) computed for the given action
             q_values.append((a, p_t[0, 0]))
 
-        # arms = pd.DataFrame(q_values, columns=['Name', 'Q'])
-        # arms.sort_values(by='Q', ascending=False, inplace=True)
-        # return arms['Name'].tolist()
-        # Sort actions by Q value
+        # Sort actions by Q value in descending order
         return [action for action, _ in sorted(q_values, key=lambda x: x[1], reverse=True)]
 
     def credit_assignment(self, agent):
@@ -441,14 +489,14 @@ class LinUCBPolicy(Policy):
        Assign credit based on the agent's actions and rewards.
        """
         # We always have the same test case set
-        assert len(set(agent.actions['Name']) - set(self.context_features['Name'])) == 0
+        assert len(set(agent.actions['Name'].to_list()) - set(self.context_features['Name'].to_list())) == 0
 
-        actions = agent.actions.copy()
-        actions.sort_values(by=['Name'], inplace=True)
+        actions = agent.actions.clone()
+        actions = actions.sort('Name')
 
-        features = self.context_features[self.features].values
-        actions = list(actions[['Name', 'ValueEstimates']].values)
-        for a, x in zip(actions, features):
+        features = self.context_features.select(self.features).to_numpy()
+        actions_data = actions.select(['Name', 'ValueEstimates']).to_numpy()
+        for a, x in zip(actions_data, features):
             x_i = x.reshape(-1, 1)
             act = a[0]
             reward = a[1]  # ValueEstimates
@@ -481,12 +529,13 @@ class SWLinUCBPolicy(LinUCBPolicy):
         Choose all actions based on the sliding window policy.
         """
 
-        features = self.context_features[self.features].values  # Shape: (num_actions, context_dim)
-        actions = self.context_features.Name.tolist()
+        features = self.context_features.select(self.features).to_numpy()  # Shape: (num_actions, context_dim)
+        actions = self.context_features['Name'].to_list()
 
         # Precompute sliding window factors
-        history_names = set(agent.history['Name'].unique())  # Faster membership check
-        history_counts = agent.history['Name'].value_counts().to_dict()  # Fast dictionary lookup
+        history_names = set(agent.history['Name'].unique().to_list())  # Faster membership check
+        history_counts = agent.history['Name'].value_counts().to_dicts()  # List of dicts
+        history_counts_dict = {item['Name']: item['count'] for item in history_counts}  # Convert to dict
 
         q_values = []
         for a, x in zip(actions, features):
@@ -501,7 +550,7 @@ class SWLinUCBPolicy(LinUCBPolicy):
             # and if the test case is on the sliding window
             occ = 0
             if agent.t > agent.window_size and a in history_names:
-                occ = history_counts.get(a, 0)  # Get count or 0 if not present
+                occ = history_counts_dict.get(a, 0)  # Get count or 0 if not present
 
             q *= (1 - occ / agent.window_size)
 

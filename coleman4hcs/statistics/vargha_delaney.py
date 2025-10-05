@@ -8,13 +8,13 @@ is widely used in educational and behavioral statistics.
 
 Functions:
 - VD_A: Computes the Vargha and Delaney A index for two groups.
-- VD_A_DF: Computes pairwise A index comparisons for multiple groups in a pandas DataFrame.
+- VD_A_DF: Computes pairwise A index comparisons for multiple groups in a Polars DataFrame.
 - reduce: Filters and annotates effect sizes for comparisons against a specified best group.
 
 Key Features:
 - Accurate computation of the A index using a formula that minimizes numerical errors.
 - Categorization of effect sizes into magnitudes (negligible, small, medium, large).
-- Flexible handling of data through pandas DataFrame operations for group comparisons.
+- Flexible handling of data through Polars DataFrame operations for group comparisons.
 - Latex-compatible symbols for presenting effect sizes in reports or visualizations.
 
 References:
@@ -28,12 +28,9 @@ from bisect import bisect_left
 from typing import List
 
 import numpy as np
+import polars as pl
 import pandas as pd
 import scipy.stats as ss
-from pandas import Categorical
-
-# turn off the SettingWithCopyWarning
-pd.set_option('mode.chained_assignment', None)
 
 
 def VD_A(treatment: List[float], control: List[float]):
@@ -102,34 +99,51 @@ def VD_A_DF(data, val_col: str = None, group_col: str = None, sort=True):
 
     """
 
-    x = data.copy()
+    # Handle both Pandas and Polars DataFrames
+    is_pandas = isinstance(data, pd.DataFrame)
+    
+    if is_pandas:
+        # Convert to Polars for processing
+        x = pl.from_pandas(data)
+    else:
+        x = data.clone()
+        
     if sort:
-        x[group_col] = Categorical(x[group_col], categories=x[group_col].unique(), ordered=True)
-        x.sort_values(by=[group_col, val_col], ascending=True, inplace=True)
+        x = x.with_columns([
+            pl.col(group_col).cast(pl.Categorical)
+        ]).sort([group_col, val_col])
 
     groups = x[group_col].unique()
+    groups_list = groups.to_list()
 
     # Pairwise combinations
-    g1, g2 = np.array(list(it.combinations(np.arange(groups.size), 2))).T
+    g1, g2 = np.array(list(it.combinations(np.arange(len(groups_list)), 2))).T
 
     # Compute effect size for each combination
-    ef = np.array([VD_A(list(x[val_col][x[group_col] == groups[i]].values),
-                        list(x[val_col][x[group_col] == groups[j]].values)) for i, j in zip(g1, g2)])
+    ef = np.array([VD_A(list(x.filter(pl.col(group_col) == groups_list[i])[val_col].to_list()),
+                        list(x.filter(pl.col(group_col) == groups_list[j])[val_col].to_list())) 
+                   for i, j in zip(g1, g2)])
 
-    return pd.DataFrame({
-        'base': np.unique(data[group_col])[g1],
-        'compared_with': np.unique(data[group_col])[g2],
+    groups_array = groups.to_numpy()
+    result = pl.DataFrame({
+        'base': groups_array[g1],
+        'compared_with': groups_array[g2],
         'estimate': ef[:, 0],
         'magnitude': ef[:, 1]
     })
+    
+    # Return same type as input
+    if is_pandas:
+        return result.to_pandas()
+    return result
 
 
 def reduce(df, best, symbols=True):
     """
-    Reduce a pandas DataFrame of effect sizes to compare only against to the best among the comparison (algorithm/item)
+    Reduce a pandas/polars DataFrame of effect sizes to compare only against to the best among the comparison (algorithm/item)
 
-    :param df: pandas DataFrame object
-        A pandas DataFrame of effect sizes
+    :param df: pandas or polars DataFrame object
+        A DataFrame of effect sizes
     :param best: str
         The name of the best sample, for instance, algorithm AAA
     :param symbols: bool, optional
@@ -140,18 +154,52 @@ def reduce(df, best, symbols=True):
     magnitude = ["negligible", "small", "medium", "large"]
     symbols = ["$\\blacktriangledown$", "$\\triangledown$", "$\\vartriangle$", "$\\blacktriangle$"]
 
-    # Get only the effect size manitudes related with the best
-    df = df[(df.base == best) | (df.compared_with == best)]
+    # Check if input is Polars DataFrame
+    is_polars = isinstance(df, pl.DataFrame)
+    
+    # Convert to Polars if it's Pandas
+    if not is_polars:
+        import pandas as pd
+        df = pl.from_pandas(df)
+
+    # Get only the effect size magnitudes related with the best
+    df = df.filter((pl.col('base') == best) | (pl.col('compared_with') == best))
 
     # Create a new column to compare against the other policies
-    df['temp'] = df.apply(lambda row: row['compared_with'] if row['base'] == best else row['base'], axis=1)
+    df = df.with_columns([
+        pl.when(pl.col('base') == best)
+        .then(pl.col('compared_with'))
+        .otherwise(pl.col('base'))
+        .alias('temp')
+    ])
 
     # Get magnitude symbol (in latex) for each comparison
-    # The best has the bigstart symbol
-    df['effect_size_symbol'] = df['temp'].apply(lambda x: "$\\bigstar$"
-    if x == best
-    else symbols[magnitude.index(df.loc[df['temp'] == x, 'magnitude'].tolist()[0])])
+    # The best has the bigstar symbol
+    def get_symbol(row):
+        temp = row['temp']
+        if temp == best:
+            return "$\\bigstar$"
+        else:
+            # Find the magnitude for this temp value
+            mag_row = df.filter(pl.col('temp') == temp)
+            if mag_row.height > 0:
+                mag = mag_row['magnitude'][0]
+                return symbols[magnitude.index(mag)]
+            return ""
+    
+    # Apply symbol mapping
+    effect_symbols = []
+    for row in df.to_dicts():
+        effect_symbols.append(get_symbol(row))
+    
+    df = df.with_columns([
+        pl.Series('effect_size_symbol', effect_symbols)
+    ])
 
-    df.drop(['temp'], axis=1, inplace=True)
+    df = df.drop('temp')
+
+    # Convert back to pandas if input was pandas
+    if not is_polars:
+        df = df.to_pandas()
 
     return df

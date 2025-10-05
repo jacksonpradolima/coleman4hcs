@@ -1,4 +1,4 @@
-import pandas as pd
+import polars as pl
 import pytest
 from coleman4hcs.scenarios import (
     VirtualScenario,
@@ -25,7 +25,7 @@ def mock_testcases():
 @pytest.fixture
 def mock_variants():
     """Fixture to generate a mock DataFrame of variants."""
-    return pd.DataFrame({
+    return pl.DataFrame({
         "BuildId": [1, 1, 2],
         "Variant": ["A", "B", "A"],
         "LastRun": ["2023-01-01", "2023-01-02", "2023-01-03"]
@@ -35,8 +35,8 @@ def mock_variants():
 @pytest.fixture
 def mock_csv_data(mock_testcases):
     """Fixture to generate a mock CSV DataFrame."""
-    data = pd.DataFrame(mock_testcases)
-    data["BuildId"] = [1, 1, 2]
+    data = pl.DataFrame(mock_testcases)
+    data = data.with_columns(pl.Series("BuildId", [1, 1, 2]))
     return data
 
 
@@ -53,7 +53,7 @@ def large_testcases():
 @pytest.fixture
 def large_variants():
     """Fixture to generate a large dataset of variants."""
-    return pd.DataFrame({
+    return pl.DataFrame({
         "BuildId": [i % 100 for i in range(10000)],  # Simulate 100 builds
         "Variant": [f"Variant_{i % 5}" for i in range(10000)],
         "LastRun": ["2023-01-01"] * 10000
@@ -63,8 +63,8 @@ def large_variants():
 @pytest.fixture
 def large_csv_data(large_testcases):
     """Fixture to generate a large CSV-like DataFrame."""
-    data = pd.DataFrame(large_testcases)
-    data["BuildId"] = [i % 100 for i in range(len(data))]  # 100 builds
+    data = pl.DataFrame(large_testcases)
+    data = data.with_columns(pl.Series("BuildId", [i % 100 for i in range(len(data))]))  # 100 builds
     return data
 
 
@@ -109,7 +109,7 @@ def test_virtual_hcs_scenario(mock_testcases, mock_variants):
 # VirtualContextScenario
 def test_virtual_context_scenario(mock_testcases):
     """Test VirtualContextScenario initialization and getters."""
-    context_features = pd.DataFrame({"Name": ["TC1", "TC2"], "feat1": [0.5, 1], "feat2": [1, 0.2]})
+    context_features = pl.DataFrame({"Name": ["TC1", "TC2"], "feat1": [0.5, 1.0], "feat2": [1.0, 0.2]})
     scenario = VirtualContextScenario(
         available_time=10,
         testcases=mock_testcases,
@@ -128,7 +128,7 @@ def test_virtual_context_scenario(mock_testcases):
 def test_industrial_dataset_scenario_provider(mock_csv_data, tmp_path):
     """Test IndustrialDatasetScenarioProvider functionality, ensuring available_time is computed correctly."""
     csv_file = tmp_path / "testcases.csv"
-    mock_csv_data.to_csv(csv_file, sep=";", index=False)
+    mock_csv_data.write_csv(csv_file, separator=";")
 
     # Initialize provider with sched_time_ratio = 0.5
     provider = IndustrialDatasetScenarioProvider(str(csv_file), sched_time_ratio=0.5)
@@ -150,7 +150,7 @@ def test_industrial_dataset_scenario_provider(mock_csv_data, tmp_path):
 def test_provider_stop_iteration(mock_csv_data, tmp_path):
     """Test StopIteration after all scenarios are retrieved."""
     csv_file = tmp_path / "testcases.csv"
-    mock_csv_data.to_csv(csv_file, sep=";", index=False)
+    mock_csv_data.write_csv(csv_file, separator=";")
 
     provider = IndustrialDatasetScenarioProvider(str(csv_file))
     scenarios = list(provider)  # Consume all scenarios
@@ -164,8 +164,8 @@ def test_industrial_dataset_hcs_scenario_provider(mock_csv_data, mock_variants, 
     """Test IndustrialDatasetHCSScenarioProvider with variants, ensuring available_time is computed correctly."""
     csv_file = tmp_path / "testcases.csv"
     var_file = tmp_path / "variants.csv"
-    mock_csv_data.to_csv(csv_file, sep=";", index=False)
-    mock_variants.to_csv(var_file, sep=";", index=False)
+    mock_csv_data.write_csv(csv_file, separator=";")
+    mock_variants.write_csv(var_file, separator=";")
 
     # Initialize provider with sched_time_ratio = 0.5
     provider = IndustrialDatasetHCSScenarioProvider(str(csv_file), str(var_file), sched_time_ratio=0.5)
@@ -181,14 +181,14 @@ def test_industrial_dataset_hcs_scenario_provider(mock_csv_data, mock_variants, 
         f"Available time should be half of total duration. "
         f"Expected: {0.5 * scenario.total_build_duration}, Got: {scenario.get_available_time()}"
     )
-    assert not scenario.get_variants().empty, "Variants should be non-empty."
+    assert scenario.get_variants().height > 0, "Variants should be non-empty."
 
 
 # IndustrialDatasetContextScenarioProvider
 def test_industrial_dataset_context_scenario_provider(mock_csv_data, tmp_path):
     """Test IndustrialDatasetContextScenarioProvider."""
     csv_file = tmp_path / "testcases.csv"
-    mock_csv_data.to_csv(csv_file, sep=";", index=False)
+    mock_csv_data.write_csv(csv_file, separator=";")
 
     provider = IndustrialDatasetContextScenarioProvider(
         str(csv_file),
@@ -199,7 +199,7 @@ def test_industrial_dataset_context_scenario_provider(mock_csv_data, tmp_path):
     scenario = next(provider)
 
     assert scenario.get_features() == ["CalcPrio", "Duration"], "Features should match."
-    assert not scenario.get_context_features().empty, "Context features should not be empty."
+    assert scenario.get_context_features().height > 0, "Context features should not be empty."
 
 
 # ------------------------ Benchmark Tests ------------------------
@@ -208,7 +208,7 @@ def test_industrial_dataset_context_scenario_provider(mock_csv_data, tmp_path):
 def test_scenario_provider_benchmark(mock_csv_data, tmp_path, benchmark):
     """Benchmark for scenario provider performance."""
     csv_file = tmp_path / "testcases.csv"
-    mock_csv_data.to_csv(csv_file, sep=";", index=False)
+    mock_csv_data.write_csv(csv_file, separator=";")
 
     provider = IndustrialDatasetScenarioProvider(str(csv_file))
 
@@ -259,7 +259,7 @@ def test_benchmark_virtual_hcs_scenario_get_variants(large_testcases, large_vari
 @pytest.mark.benchmark(group="scenarios")
 def test_benchmark_virtual_context_scenario_get_features(large_testcases, benchmark):
     """Benchmark retrieving features from a VirtualContextScenario."""
-    context_features = pd.DataFrame({
+    context_features = pl.DataFrame({
         "Name": [f"TC{i}" for i in range(10000)],
         "feat1": [i % 3 for i in range(10000)],
         "feat2": [i % 5 for i in range(10000)]
@@ -281,7 +281,7 @@ def test_benchmark_virtual_context_scenario_get_features(large_testcases, benchm
 def test_benchmark_industrial_scenario_provider_iteration(large_csv_data, tmp_path, benchmark):
     """Benchmark iterating over scenarios with a large dataset."""
     csv_file = tmp_path / "testcases.csv"
-    large_csv_data.to_csv(csv_file, sep=";", index=False)
+    large_csv_data.write_csv(csv_file, separator=";")
 
     provider = IndustrialDatasetScenarioProvider(str(csv_file), sched_time_ratio=0.5)
 
@@ -297,8 +297,8 @@ def test_benchmark_industrial_hcs_scenario_provider(large_csv_data, large_varian
     """Benchmark initialization and iteration of IndustrialDatasetHCSScenarioProvider with large data."""
     csv_file = tmp_path / "testcases.csv"
     var_file = tmp_path / "variants.csv"
-    large_csv_data.to_csv(csv_file, sep=";", index=False)
-    large_variants.to_csv(var_file, sep=";", index=False)
+    large_csv_data.write_csv(csv_file, separator=";")
+    large_variants.write_csv(var_file, separator=";")
 
     provider = IndustrialDatasetHCSScenarioProvider(str(csv_file), str(var_file), sched_time_ratio=0.5)
 
@@ -313,7 +313,7 @@ def test_benchmark_industrial_hcs_scenario_provider(large_csv_data, large_varian
 def test_benchmark_industrial_context_scenario_provider(large_csv_data, tmp_path, benchmark):
     """Benchmark context scenario provider initialization and iteration with large data."""
     csv_file = tmp_path / "testcases.csv"
-    large_csv_data.to_csv(csv_file, sep=";", index=False)
+    large_csv_data.write_csv(csv_file, separator=";")
 
     provider = IndustrialDatasetContextScenarioProvider(
         str(csv_file),

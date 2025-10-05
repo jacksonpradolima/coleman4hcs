@@ -383,6 +383,26 @@ Data visualizations play a key role in our analysis, offering intuitive understa
 
 [![SPLC](https://img.youtube.com/vi/tT8Ygt8jCKg/0.jpg)](https://www.youtube.com/watch?v=tT8Ygt8jCKg)
 
+# Migration Documentation
+
+📚 **Pandas to Polars Migration Planning**
+
+Comprehensive documentation for migrating Coleman4HCS from Pandas to Polars is available:
+
+- **[MIGRATION_README.md](MIGRATION_README.md)** - Start here! Navigation guide for all migration documents
+- **[MIGRATION_PLAN_PANDAS_TO_POLARS.md](MIGRATION_PLAN_PANDAS_TO_POLARS.md)** - Complete migration strategy (760 lines)
+- **[MIGRATION_EXAMPLES.md](MIGRATION_EXAMPLES.md)** - Detailed code examples from actual codebase (660 lines)
+- **[POLARS_QUICK_REFERENCE.md](POLARS_QUICK_REFERENCE.md)** - Quick API lookup cheat sheet (350 lines)
+- **[MIGRATION_SUMMARY.md](MIGRATION_SUMMARY.md)** - Executive summary and implementation guide
+
+**Expected Benefits:**
+- 5-10x performance improvement
+- Lower memory usage
+- Better code clarity with expression API
+- Parallel execution out of the box
+
+See the [migration documentation](MIGRATION_README.md) for complete details on the 6-week migration plan, detailed code examples, and risk assessment.
+
 # Contributors
 
 - 👨‍💻 Jackson Antonio do Prado Lima <a href="mailto:jacksonpradolima@gmail.com">:e-mail:</a>
