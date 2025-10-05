@@ -115,11 +115,13 @@ class MonitorCollector:
             
             batch_df = pl.DataFrame(processed_rows, schema=self.df.schema)
             # Explicitly check if batch_df contains valid rows
-            if batch_df.height > 0 and batch_df.null_count().sum_horizontal()[0] < (batch_df.height * batch_df.width):
-                if self.df.height == 0:
-                    self.df = batch_df
-                else:
-                    self.df = pl.concat([self.df, batch_df], how="vertical")
+            if batch_df.height > 0:
+                total_nulls = batch_df.null_count().sum_horizontal().to_list()[0]
+                if total_nulls < (batch_df.height * batch_df.width):
+                    if self.df.height == 0:
+                        self.df = batch_df
+                    else:
+                        self.df = pl.concat([self.df, batch_df], how="vertical")
             # Clear temp_rows regardless of batch_df state
             self.temp_rows = []
 

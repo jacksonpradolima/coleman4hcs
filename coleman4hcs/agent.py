@@ -185,9 +185,9 @@ class Agent:
         # Create weight mapping
         weight_map = {name: weights[idx] for name, idx in index_map.items()}
         
-        # Update using replace_strict for newer polars versions
+        # Update using replace for Polars 1.34.0
         self.actions = self.actions.with_columns([
-            (pl.col('ActionAttempts') + pl.col('Name').replace_strict(weight_map, default=0.0, return_dtype=pl.Float64)).alias('ActionAttempts')
+            (pl.col('ActionAttempts') + pl.col('Name').replace(weight_map, default=0.0)).alias('ActionAttempts')
         ])
 
     def observe(self, reward):

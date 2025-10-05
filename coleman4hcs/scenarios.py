@@ -200,7 +200,7 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
 
         # We remove weird characters
         df = df.with_columns([
-            pl.col("Variant").str.replace_all(r'[!#$%^&*()[]{};:,.<>?|`~=+]', '_')
+            pl.col("Variant").str.replace_all(r'[!#$%^&*()\[\]{};:,.<>?|`~=+]', '_')
         ])
 
         return df
