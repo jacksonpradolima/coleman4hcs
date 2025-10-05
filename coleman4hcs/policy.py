@@ -56,7 +56,7 @@ class Policy:
         """
         By default, a policy returns untreated actions.
         """
-        return agent.actions['Name'].tolist()
+        return agent.actions['Name'].to_list()
 
     def credit_assignment(self, agent):
         """
@@ -140,7 +140,7 @@ class RandomPolicy(Policy):
     def choose_all(self, agent: Agent):
         actions = agent.actions['Name'].to_numpy(copy=True)
         np.random.shuffle(actions)
-        return actions.tolist()
+        return actions.tolist()  # numpy tolist() is correct
 
 
 class UCBPolicyBase(Policy):
@@ -449,9 +449,8 @@ class LinUCBPolicy(Policy):
         Choose all actions based on the policy.
         """
 
-        # features = list(self.context_features[self.features].values)
-        features = self.context_features[self.features].values  # Shape: (num_actions, context_dim)
-        actions = self.context_features.Name.tolist()
+        features = self.context_features.select(self.features).to_numpy()  # Shape: (num_actions, context_dim)
+        actions = self.context_features['Name'].to_list()
 
         # Batch processing for theta and confidence bounds
         q_values = []
@@ -473,10 +472,7 @@ class LinUCBPolicy(Policy):
             # q[0,0]: scalar Q-value (confidence-adjusted reward estimate) computed for the given action
             q_values.append((a, p_t[0, 0]))
 
-        # arms = pd.DataFrame(q_values, columns=['Name', 'Q'])
-        # arms.sort_values(by='Q', ascending=False, inplace=True)
-        # return arms['Name'].tolist()
-        # Sort actions by Q value
+        # Sort actions by Q value in descending order
         return [action for action, _ in sorted(q_values, key=lambda x: x[1], reverse=True)]
 
     def credit_assignment(self, agent):

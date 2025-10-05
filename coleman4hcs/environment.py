@@ -287,7 +287,7 @@ class Environment:
                 total_build_duration=total_build_duration,
                 prioritization_time=(end - start) + bandit_duration,
                 rewards=0,
-                prioritization_order=df['Name'].tolist(),
+                prioritization_order=df['Name'].to_list(),
             )
 
             self.variant_monitors[variant].collect(params)
