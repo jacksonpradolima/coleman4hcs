@@ -1,4 +1,4 @@
-import pandas as pd
+import polars as pl
 import pytest
 from coleman4hcs.scenarios import (
     VirtualScenario,
@@ -25,7 +25,7 @@ def mock_testcases():
 @pytest.fixture
 def mock_variants():
     """Fixture to generate a mock DataFrame of variants."""
-    return pd.DataFrame({
+    return pl.DataFrame({
         "BuildId": [1, 1, 2],
         "Variant": ["A", "B", "A"],
         "LastRun": ["2023-01-01", "2023-01-02", "2023-01-03"]
@@ -35,8 +35,8 @@ def mock_variants():
 @pytest.fixture
 def mock_csv_data(mock_testcases):
     """Fixture to generate a mock CSV DataFrame."""
-    data = pd.DataFrame(mock_testcases)
-    data["BuildId"] = [1, 1, 2]
+    data = pl.DataFrame(mock_testcases)
+    data = data.with_columns(pl.Series("BuildId", [1, 1, 2]))
     return data
 
 
@@ -53,7 +53,7 @@ def large_testcases():
 @pytest.fixture
 def large_variants():
     """Fixture to generate a large dataset of variants."""
-    return pd.DataFrame({
+    return pl.DataFrame({
         "BuildId": [i % 100 for i in range(10000)],  # Simulate 100 builds
         "Variant": [f"Variant_{i % 5}" for i in range(10000)],
         "LastRun": ["2023-01-01"] * 10000
@@ -63,8 +63,8 @@ def large_variants():
 @pytest.fixture
 def large_csv_data(large_testcases):
     """Fixture to generate a large CSV-like DataFrame."""
-    data = pd.DataFrame(large_testcases)
-    data["BuildId"] = [i % 100 for i in range(len(data))]  # 100 builds
+    data = pl.DataFrame(large_testcases)
+    data = data.with_columns(pl.Series("BuildId", [i % 100 for i in range(len(data))]))  # 100 builds
     return data
 
 
@@ -109,7 +109,7 @@ def test_virtual_hcs_scenario(mock_testcases, mock_variants):
 # VirtualContextScenario
 def test_virtual_context_scenario(mock_testcases):
     """Test VirtualContextScenario initialization and getters."""
-    context_features = pd.DataFrame({"Name": ["TC1", "TC2"], "feat1": [0.5, 1], "feat2": [1, 0.2]})
+    context_features = pl.DataFrame({"Name": ["TC1", "TC2"], "feat1": [0.5, 1], "feat2": [1, 0.2]})
     scenario = VirtualContextScenario(
         available_time=10,
         testcases=mock_testcases,
@@ -259,7 +259,7 @@ def test_benchmark_virtual_hcs_scenario_get_variants(large_testcases, large_vari
 @pytest.mark.benchmark(group="scenarios")
 def test_benchmark_virtual_context_scenario_get_features(large_testcases, benchmark):
     """Benchmark retrieving features from a VirtualContextScenario."""
-    context_features = pd.DataFrame({
+    context_features = pl.DataFrame({
         "Name": [f"TC{i}" for i in range(10000)],
         "feat1": [i % 3 for i in range(10000)],
         "feat2": [i % 5 for i in range(10000)]

@@ -24,7 +24,7 @@ Constants:
 - NAPFD_COST_NON_NEGATIVE: Ensures that cost is non-negative.
 """
 import numpy as np
-import pandas as pd
+import polars as pl
 import pytest
 
 from coleman4hcs.statistics.vargha_delaney import VD_A, VD_A_DF, reduce
@@ -46,7 +46,7 @@ def test_vd_a_df():
     """
     Test VD_A_DF function for pairwise comparisons.
     """
-    data = pd.DataFrame({
+    data = pl.DataFrame({
         'values': [1, 2, 3, 4, 5, 6],
         'group': ['A', 'A', 'B', 'B', 'C', 'C']  # Equal sizes for all groups
     })
@@ -67,7 +67,7 @@ def test_reduce():
     """
     Test reduce function for filtering DataFrame against the best group.
     """
-    data = pd.DataFrame({
+    data = pl.DataFrame({
         'base': ['A', 'A', 'B', 'B'],
         'compared_with': ['B', 'C', 'A', 'C'],
         'estimate': [0.6, 0.8, 0.4, 0.3],
