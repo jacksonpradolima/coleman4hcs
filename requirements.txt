@@ -11,7 +11,7 @@ pytest-mock==3.14.0
 pytest-profiling==1.8.1
 pytest-xdist==3.6.1
 python-dotenv==1.0.1
-scipy==1.14.1
+scipy==1.16.3
 scikit-posthocs==0.11.2
 snakeviz==2.2.2
 toml==0.10.2
