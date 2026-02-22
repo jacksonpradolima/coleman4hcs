@@ -281,7 +281,7 @@ def store_experiments(csv_file, scenario):
     );
     """)
 
-    conn.read_csv(csv_file, delimiter=';', quotechar='"', header=True)
+    df = conn.read_csv(csv_file, delimiter=';', quotechar='"', header=True)  # pylint: disable=unused-variable
 
     # Insert the DataFrame into the 'experiments' table
     conn.execute("INSERT INTO experiments SELECT * FROM df;")
@@ -299,8 +299,7 @@ def store_experiments(csv_file, scenario):
                     f"{name2}/{csv_file.split('/')[-1].split('@')[0]}"
                     f"@{variant.replace('/', '-')}.csv"
                 )
-                conn.execute(f"COPY experiments FROM '{csv_file_variant}' (HEADER);")
-                conn.read_csv(csv_file, delimiter=';', quotechar='"', header=True)
+                df = conn.read_csv(csv_file_variant, delimiter=';', quotechar='"', header=True)
 
                 # Insert the DataFrame into the 'experiments' table
                 conn.execute("INSERT INTO experiments SELECT * FROM df;")

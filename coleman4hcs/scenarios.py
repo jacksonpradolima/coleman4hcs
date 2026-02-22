@@ -308,11 +308,10 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         :param build_df: DataFrame for the current build.
         :return: DataFrame with default feature values for the first build.
         """
-        data_dict = {
-            "Name": build_df["Name"].to_list(),
-            **{feature: [1] * build_df.height for feature in self.features}  # Default value of 1 for all features
-        }
-        return pl.DataFrame(data_dict)
+        result = build_df.select(['Name'])
+        for feature in self.features:
+            result = result.with_columns([pl.lit(1).alias(feature)])
+        return result
 
     def get(self):
         """

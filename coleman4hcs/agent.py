@@ -476,8 +476,11 @@ class SlidingWindowContextualAgent(ContextualAgent):
         reward_map = {name: self.last_reward[self.last_prioritization.index(name)]
                      for name in self.actions['Name'].to_list() if name in self.last_prioritization}
 
+        name_list = self.actions['Name'].to_list()
+        new_estimates = [reward_map.get(name, 0.0) for name in name_list]
+
         self.actions = self.actions.with_columns([
-            pl.col('Name').replace(reward_map).alias('ValueEstimates')
+            pl.Series('ValueEstimates', new_estimates)
         ])
 
         self.t += 1

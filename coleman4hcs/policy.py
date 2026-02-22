@@ -302,9 +302,17 @@ class FRRMABPolicy(Policy):
 
         exploration = np.sqrt((2 * log_selected_times) / selected_times)
         exploration = np.nan_to_num(exploration, nan=0.0, posinf=0.0, neginf=0.0)
-        self.history = self.history.with_columns([
-            (pl.lit(frr) + self.c * pl.lit(exploration)).alias('Q')
-        ])
+        self.history = self.history.with_columns(
+            pl.Series('frr', frr),
+            pl.Series('exploration', exploration),
+        )
+        self.history = (
+            self.history
+            .with_columns(
+                (pl.col('frr') + self.c * pl.col('exploration')).alias('Q')
+            )
+            .drop(['frr', 'exploration'])
+        )
 
 
 class SlMABPolicy(Policy):
