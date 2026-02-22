@@ -176,6 +176,32 @@ what kind of information can be used!
 
 #  Using the tool
 
+## How data flows through Coleman4HCS
+
+```mermaid
+flowchart TD
+    A[Config files and env vars: config.toml + .env] --> B[main.py orchestrator]
+    C["features-engineered.csv (data-variants.csv for HCS)"] --> D[Scenario Provider]
+    B --> D
+
+    D --> E["Virtual Scenarios (CI cycles with test cases)"]
+    E --> F[Environment]
+
+    G["Policy (Random, UCB, FRRMAB, LinUCB, etc.)"] --> H[Agent]
+    I["Reward Function: (RNFail, TimeRank)"] --> H
+    H --> F
+
+    F --> J[Test prioritization per cycle]
+    J --> K["Test execution outcomes (verdict, duration, rank)"]
+    K --> L["Evaluation Metricsm (e.g., NAPFD)"]
+    L --> M[CSV experiment outputs]
+    M --> N[DuckDB experiments.db]
+
+    K --> O[Feedback loop]
+    O --> I
+    O --> G
+```
+
 To use COLEMAN, you need to provide the necessary configurations. This includes setting up environment variables and configuration files.
 
 Configure the utility by editing the `config.toml` file located in the project's root directory.
