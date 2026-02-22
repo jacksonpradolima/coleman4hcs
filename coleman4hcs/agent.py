@@ -31,7 +31,6 @@ Attributes
 - `history`: (For sliding window agents) Maintains a history of actions taken by the agent.
 - `window_size`: (For sliding window agents) Determines the size of the sliding window.
 """
-import random
 from typing import List
 
 import numpy as np
@@ -158,7 +157,7 @@ class Agent:
         # If is the first time that the agent has been used, we don't have a "history" (rewards).
         # So, we can choose randomly
         if self.t == 0:
-            self.last_prioritization = random.sample(self.actions['Name'].to_list(), self.actions.height)
+            self.last_prioritization = self.actions['Name'].shuffle().to_list()
         else:
             # To avoid arms non-applied yet
             self.actions = self.actions.with_columns([
