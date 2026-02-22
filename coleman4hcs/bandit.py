@@ -96,7 +96,7 @@ class Bandit(ABC):
                 if 'LastResults' in processed_arm and isinstance(processed_arm['LastResults'], list):
                     processed_arm['LastResults'] = str(processed_arm['LastResults'])
                 processed_arms.append(processed_arm)
-            
+
             new_arms = pl.DataFrame(processed_arms, schema=self.arms.schema)
             self.arms = pl.concat([self.arms, new_arms], how="vertical")
 

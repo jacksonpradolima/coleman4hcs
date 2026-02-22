@@ -7,6 +7,7 @@ facilitates data collection during an experiment and provides methods for saving
 to a CSV file.
 """
 import os
+import tempfile
 
 import polars as pl
 
@@ -20,54 +21,31 @@ class MonitorCollector:
 
     def __init__(self):
         """
-        Initializes the monitor collector with predefined column names and an empty dataframe.
-        """
+        Initializes the monitor collector with an empty dataframe using a predefined schema.
 
-        # scenario: Experiment name (system under test)
-        # experiment: Experiment number
-        # step: Part number (Build) from scenario that is been analyzed
-        # policy: Policy name that is evaluating a part of the scenario
-        # reward_function: Reward function used by the agent to observe the environment
-        # sched_time: Percentage of time available (i.e., 50% of total for the Build)
-        # sched_time_duration: The time in number obtained from percentage.
-        # total_build_duration: Build Duration
-        # prioritization_time: Prioritization Time
-        # detected: Failures detected
-        # missed: Failures missed
-        # tests_ran: Number of tests executed
-        # tests_ran_time: Time spent by the test cases executed
-        # tests_not_ran: Number of tests not executed
-        # ttf: Rank of the Time to Fail (Order of the first test case which failed)
-        # time_reduction: Time Reduction (Total Time for the Build - Time spent until the first test case fail)
-        # fitness: Evaluation metric result (example, NAPFD)
-        # cost: Evaluation metric that considers cost, for instance, APFDc
-        # rewards: AVG Reward from the prioritized test set
-        # recall: How much test cases we found (detected/total)
-        # avg_precision: 1 - We found all failures, 123 - We did not found all failures
-        # prioritization_order: prioritized test set
-        self.col_names = ['scenario',
-                          'experiment',
-                          'step',
-                          'policy',
-                          'reward_function',
-                          'sched_time',
-                          'sched_time_duration',
-                          'total_build_duration',
-                          'prioritization_time',
-                          'detected',
-                          'missed',
-                          'tests_ran',
-                          # 'tests_ran_time',
-                          'tests_not_ran',
-                          'ttf',
-                          'ttf_duration',
-                          'time_reduction',
-                          'fitness',
-                          'cost',
-                          'rewards',
-                          # 'recall',
-                          'avg_precision',
-                          'prioritization_order']
+        Schema columns:
+        - scenario: Experiment name (system under test)
+        - experiment: Experiment number
+        - step: Part number (Build) from scenario that is been analyzed
+        - policy: Policy name that is evaluating a part of the scenario
+        - reward_function: Reward function used by the agent to observe the environment
+        - sched_time: Percentage of time available (i.e., 50% of total for the Build)
+        - sched_time_duration: The time in number obtained from percentage.
+        - total_build_duration: Build Duration
+        - prioritization_time: Prioritization Time
+        - detected: Failures detected
+        - missed: Failures missed
+        - tests_ran: Number of tests executed
+        - tests_not_ran: Number of tests not executed
+        - ttf: Rank of the Time to Fail (Order of the first test case which failed)
+        - ttf_duration: Time spent until the first test case fail
+        - time_reduction: Time Reduction (Total Time for the Build - ttf_duration)
+        - fitness: Evaluation metric result (example, NAPFD)
+        - cost: Evaluation metric that considers cost, for instance, APFDc
+        - rewards: AVG Reward from the prioritized test set
+        - avg_precision: 1 - We found all failures, 123 - We did not found all failures
+        - prioritization_order: prioritized test set
+        """
 
         # Define schema for the DataFrame
         schema = {
@@ -112,7 +90,7 @@ class MonitorCollector:
                 if 'prioritization_order' in processed_row and isinstance(processed_row['prioritization_order'], list):
                     processed_row['prioritization_order'] = str(processed_row['prioritization_order'])
                 processed_rows.append(processed_row)
-            
+
             batch_df = pl.DataFrame(processed_rows, schema=self.df.schema)
             # Explicitly check if batch_df contains valid rows
             if batch_df.height > 0:
@@ -169,7 +147,7 @@ class MonitorCollector:
         # if the file not exist, we need to create the header
         if not os.path.isfile(name):
             with open(name, 'w', encoding='utf-8') as f:
-                f.write(";".join(self.col_names) + "\n")
+                f.write(";".join(self.df.columns) + "\n")
 
     def save(self, name):
         """
@@ -187,11 +165,10 @@ class MonitorCollector:
             self.df.write_csv(name, separator=';', null_value='[]')
         else:
             # For appending, we write to temp and then append manually
-            import tempfile
             with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv') as tmp:
                 tmp_name = tmp.name
                 self.df.write_csv(tmp_name, separator=';', null_value='[]', include_header=False)
-            
+
             # Append the content
             with open(tmp_name, 'r', encoding='utf-8') as tmp_file:
                 content = tmp_file.read()

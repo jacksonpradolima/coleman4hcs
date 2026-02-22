@@ -1,3 +1,4 @@
+"""Tests for the monitor utility module."""
 import polars as pl
 import pytest
 from coleman4hcs.scenarios import (

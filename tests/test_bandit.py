@@ -11,7 +11,8 @@ the `Bandit`, `DynamicBandit`, and `EvaluationMetricBandit` classes, including:
 - Validation of actions and error handling for invalid input.
 - Performance benchmarking for core operations like adding arms and updating priorities.
 
-The test suite uses mock classes (`MockBandit` and `MockDynamicBandit`) to simulate behavior for the abstract base classes.
+The test suite uses mock classes (`MockBandit` and
+`MockDynamicBandit`) to simulate behavior for the abstract base classes.
 
 Fixtures:
 - `sample_arms`: Provides a sample set of test cases with attributes such as `Name`, `Duration`, and `Verdict`.
@@ -45,10 +46,7 @@ class MockBandit(Bandit):
     """
 
     def pull(self, action):
-        """
-        Mock implementation of the abstract pull method.
-        """
-        pass
+        """Mock implementation of the abstract pull method."""
 
 
 class MockDynamicBandit(DynamicBandit):
@@ -57,10 +55,7 @@ class MockDynamicBandit(DynamicBandit):
     """
 
     def pull(self, action):
-        """
-        Mock implementation of the abstract pull method.
-        """
-        pass
+        """Mock implementation of the abstract pull method."""
 
 
 @pytest.fixture
@@ -240,7 +235,7 @@ def test_bandit_abstract_method():
     Test that the Bandit class cannot be instantiated due to its abstract pull method.
     """
     with pytest.raises(TypeError) as excinfo:
-        Bandit([])
+        Bandit([])  # pylint: disable=abstract-class-instantiated
     exception_message = str(excinfo.value)
     assert "Can't instantiate abstract class Bandit" in exception_message
     # Python 3.12+ uses "abstract method pull" while older versions use "abstract method 'pull'"
@@ -252,11 +247,11 @@ def test_bandit_subclass_without_pull():
     Test that a subclass of Bandit without implementing the pull method cannot be instantiated.
     """
 
-    class IncompleteBandit(Bandit):
-        pass
+    class IncompleteBandit(Bandit):  # pylint: disable=abstract-class-instantiated
+        """Incomplete bandit subclass without pull method for testing."""
 
     with pytest.raises(TypeError) as excinfo:
-        IncompleteBandit([])
+        IncompleteBandit([])  # pylint: disable=abstract-class-instantiated
 
     exception_message = str(excinfo.value)
     assert "Can't instantiate abstract class IncompleteBandit" in exception_message
@@ -270,6 +265,7 @@ def test_bandit_subclass_with_pull():
     """
 
     class CompleteBandit(Bandit):
+        """Complete bandit subclass with pull method for testing."""
         def pull(self, action):
             return action
 

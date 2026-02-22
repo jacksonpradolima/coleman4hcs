@@ -117,7 +117,7 @@ def test_create_file(tmp_path, monitor_collector):
     assert os.path.exists(file_path)
     with open(file_path, 'r', encoding='utf-8') as f:
         header = f.readline().strip()
-        assert header == ";".join(monitor_collector.col_names)
+        assert header == ";".join(monitor_collector.df.columns)
 
 
 def test_save_to_file(tmp_path, monitor_collector, mock_scenario_provider, mock_metric):
@@ -248,7 +248,9 @@ def test_temp_limit_exceeded():
     assert total_records == 1100, "Total records should match the number of records added."
 
     # Validate the structure of the DataFrame
-    assert all(col in collector.df.columns for col in collector.col_names), "DataFrame structure is incorrect."
+    expected_columns = list(collector.df.schema.keys())
+    assert all(col in collector.df.columns for col in expected_columns), \
+        "DataFrame structure is incorrect."
 
 
 def test_collect_from_temp_empty_temp_rows(monitor_collector):

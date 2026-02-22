@@ -120,12 +120,12 @@ class IndustrialDatasetScenarioProvider:
         """Reads the test cases from a provided CSV file."""
         # We use ';' separated values to avoid issues with thousands
         df = pl.read_csv(tcfile, separator=';', try_parse_dates=True)
-        
+
         # Handle Duration column - convert to numeric and fill nulls
         df = df.with_columns([
             pl.col("Duration").cast(pl.Float64, strict=False).fill_null(0.0)
         ])
-        
+
         return df
 
     def get_avail_time_ratio(self) -> float:
@@ -206,9 +206,11 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
         return df
 
     def get_total_variants(self):
+        """Returns the number of unique variants."""
         return self.variants['Variant'].n_unique()
 
     def get_all_variants(self):
+        """Returns all unique variant names as a list."""
         return self.variants['Variant'].unique().to_list()
 
     def get(self):
@@ -238,7 +240,7 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
     Scenario provider for context-aware data.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         tcfile: str,
         feature_group_name: str,

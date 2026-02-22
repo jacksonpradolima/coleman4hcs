@@ -143,7 +143,7 @@ class RandomPolicy(Policy):
     def choose_all(self, agent: Agent):
         actions = agent.actions['Name'].to_numpy()
         np.random.shuffle(actions)
-        return actions.tolist()  # numpy tolist() is correct
+        return actions.tolist()
 
 
 class UCBPolicyBase(Policy):
@@ -249,7 +249,7 @@ class FRRMABPolicy(Policy):
         existing_names = set(self.history['Name'].to_list())
         agent_names = set(agent.actions['Name'].to_list())
         new_names = agent_names - existing_names
-        
+
         if new_names:
             new_entries = pl.DataFrame({
                 'Name': list(new_names),
@@ -338,7 +338,7 @@ class SlMABPolicy(Policy):
         existing_names = set(self.history['Name'].to_list())
         agent_names = set(agent.actions['Name'].to_list())
         new_names = agent_names - existing_names
-        
+
         if new_names:
             new_entries = pl.DataFrame({
                 'Name': list(new_names),
@@ -370,7 +370,7 @@ class SlMABPolicy(Policy):
         agent_data = agent.actions.select(['Name', 'Q']).rename({'Q': 'action_Q'})
         self.history = self.history.join(agent_data, on='Name', how='left')
         self.history = self.history.rename({'action_Q': 'Q'})
-        
+
         # Add R column (assuming R is a column in agent.actions, or set to 0 if not exists)
         if 'R' in agent.actions.columns:
             agent_r = agent.actions.select(['Name', 'R']).rename({'R': 'action_R'})
@@ -383,13 +383,19 @@ class SlMABPolicy(Policy):
         self.history = self.history.with_columns([
             (pl.lit(agent.t) - pl.col('Ti')).alias('DiffSelection')
         ])
-        
+
         self.history = self.history.with_columns([
-            (pl.col('T') * ((agent.window_size / (agent.window_size + pl.col('DiffSelection'))) + (1.0 / (pl.col('T') + 1)))).alias('T')
+            (pl.col('T') * (
+                (agent.window_size / (agent.window_size + pl.col('DiffSelection')))
+                + (1.0 / (pl.col('T') + 1))
+            )).alias('T')
         ])
-        
+
         self.history = self.history.with_columns([
-            (pl.col('Q') * ((agent.window_size / (agent.window_size + pl.col('DiffSelection'))) + pl.col('R') * (1.0 / (pl.col('T') + 1)))).alias('Q')
+            (pl.col('Q') * (
+                (agent.window_size / (agent.window_size + pl.col('DiffSelection')))
+                + pl.col('R') * (1.0 / (pl.col('T') + 1))
+            )).alias('Q')
         ])
 
 

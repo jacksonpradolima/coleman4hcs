@@ -65,7 +65,7 @@ def contextual_agent():
     """Fixture for creating a ContextualAgent with sample features."""
 
     # Define a reward function for simplicity
-    def reward_function(action, context):
+    def reward_function(action, context):  # pylint: disable=unused-argument
         return 1.0  # Fixed reward for simplicity in the test setup
 
     policy = Policy()  # Instantiate a generic policy for the agent
@@ -94,7 +94,7 @@ def sliding_window_contextual_agent():
     """Fixture for creating a SlidingWindowContextualAgent with sample features."""
 
     # Define a reward function for simplicity
-    def reward_function(action, context):
+    def reward_function(action, context):  # pylint: disable=unused-argument
         return 1.0  # Fixed reward for simplicity in the test setup
 
     policy = Policy()  # Instantiate a generic policy for the agent

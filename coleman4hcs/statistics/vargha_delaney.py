@@ -29,7 +29,6 @@ from typing import List
 
 import numpy as np
 import polars as pl
-import pandas as pd
 import scipy.stats as ss
 
 
@@ -75,21 +74,20 @@ def VD_A(treatment: List[float], control: List[float]):
 def VD_A_DF(data, val_col: str = None, group_col: str = None, sort=True):
     """
 
-    :param data: pandas DataFrame object
-        An array, any object exposing the array interface or a pandas DataFrame.
-        Array must be two-dimensional. Second dimension may vary,
-        i.e. groups may have different lengths.
+    :param data: polars DataFrame object
+        A polars DataFrame with two-dimensional data.
+        Second dimension may vary, i.e. groups may have different lengths.
     :param val_col: str, optional
-        Must be specified if `a` is a pandas DataFrame object.
+        Must be specified if `a` is a polars DataFrame object.
         Name of the column that contains values.
     :param group_col: str, optional
-        Must be specified if `a` is a pandas DataFrame object.
+        Must be specified if `a` is a polars DataFrame object.
         Name of the column that contains group names.
     :param sort : bool, optional
         Specifies whether to sort DataFrame by group_col or not. Recommended
         unless you sort your data manually.
 
-    :return: stats : pandas DataFrame of effect sizes
+    :return: stats : polars DataFrame of effect sizes
 
     Stats summary ::
     'A' : Name of first measurement
@@ -98,16 +96,8 @@ def VD_A_DF(data, val_col: str = None, group_col: str = None, sort=True):
     'magnitude' : magnitude
 
     """
+    x = data.clone()
 
-    # Handle both Pandas and Polars DataFrames
-    is_pandas = isinstance(data, pd.DataFrame)
-    
-    if is_pandas:
-        # Convert to Polars for processing
-        x = pl.from_pandas(data)
-    else:
-        x = data.clone()
-        
     if sort:
         x = x.with_columns([
             pl.col(group_col).cast(pl.Categorical)
@@ -121,28 +111,24 @@ def VD_A_DF(data, val_col: str = None, group_col: str = None, sort=True):
 
     # Compute effect size for each combination
     ef = np.array([VD_A(list(x.filter(pl.col(group_col) == groups_list[i])[val_col].to_list()),
-                        list(x.filter(pl.col(group_col) == groups_list[j])[val_col].to_list())) 
+                        list(x.filter(pl.col(group_col) == groups_list[j])[val_col].to_list()))
                    for i, j in zip(g1, g2)])
 
     groups_array = groups.to_numpy()
-    result = pl.DataFrame({
+    return pl.DataFrame({
         'base': groups_array[g1],
         'compared_with': groups_array[g2],
         'estimate': ef[:, 0],
         'magnitude': ef[:, 1]
     })
-    
-    # Return same type as input
-    if is_pandas:
-        return result.to_pandas()
-    return result
 
 
 def reduce(df, best, symbols=True):
     """
-    Reduce a pandas/polars DataFrame of effect sizes to compare only against to the best among the comparison (algorithm/item)
+    Reduce a polars DataFrame of effect sizes to compare only against the best
+    among the comparison (algorithm/item).
 
-    :param df: pandas or polars DataFrame object
+    :param df: polars DataFrame object
         A DataFrame of effect sizes
     :param best: str
         The name of the best sample, for instance, algorithm AAA
@@ -153,14 +139,6 @@ def reduce(df, best, symbols=True):
     # Effect Size
     magnitude = ["negligible", "small", "medium", "large"]
     symbols = ["$\\blacktriangledown$", "$\\triangledown$", "$\\vartriangle$", "$\\blacktriangle$"]
-
-    # Check if input is Polars DataFrame
-    is_polars = isinstance(df, pl.DataFrame)
-    
-    # Convert to Polars if it's Pandas
-    if not is_polars:
-        import pandas as pd
-        df = pl.from_pandas(df)
 
     # Get only the effect size magnitudes related with the best
     df = df.filter((pl.col('base') == best) | (pl.col('compared_with') == best))
@@ -179,27 +157,18 @@ def reduce(df, best, symbols=True):
         temp = row['temp']
         if temp == best:
             return "$\\bigstar$"
-        else:
-            # Find the magnitude for this temp value
-            mag_row = df.filter(pl.col('temp') == temp)
-            if mag_row.height > 0:
-                mag = mag_row['magnitude'][0]
-                return symbols[magnitude.index(mag)]
-            return ""
-    
+        # Find the magnitude for this temp value
+        mag_row = df.filter(pl.col('temp') == temp)
+        if mag_row.height > 0:
+            mag = mag_row['magnitude'][0]
+            return symbols[magnitude.index(mag)]
+        return ""
+
     # Apply symbol mapping
-    effect_symbols = []
-    for row in df.to_dicts():
-        effect_symbols.append(get_symbol(row))
-    
+    effect_symbols = [get_symbol(row) for row in df.to_dicts()]
+
     df = df.with_columns([
         pl.Series('effect_size_symbol', effect_symbols)
     ])
 
-    df = df.drop('temp')
-
-    # Convert back to pandas if input was pandas
-    if not is_polars:
-        df = df.to_pandas()
-
-    return df
+    return df.drop('temp')

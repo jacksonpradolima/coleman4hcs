@@ -159,7 +159,8 @@ class Environment:
 
             self.save_periodically(restore, t, experiment, bandit)
 
-    def run_prioritization(self, agent, bandit, bandit_duration, experiment, t, virtual_scenario):
+    def run_prioritization(  # pylint: disable=too-many-positional-arguments
+            self, agent, bandit, bandit_duration, experiment, t, virtual_scenario):
         """
         Run the prioritization process for a given agent and scenario.
 
@@ -202,8 +203,11 @@ class Environment:
         # Compute end time
         end = time.time()
 
-        logger.debug(f"Exp: {experiment} - Ep: {t} - Name: {exp_name} ({str(agent.get_reward_function())}) - " +
-                     f"NAPFD/APFDc: {metric.fitness:.4f}/{metric.cost:.4f}")
+        logger.debug(
+            "Exp: %s - Ep: %s - Name: %s (%s) - NAPFD/APFDc: %.4f/%.4f",
+            experiment, t, exp_name, str(agent.get_reward_function()),
+            metric.fitness, metric.cost
+        )
 
         # Collect the data during the experiment
         params = CollectParams(
@@ -224,17 +228,18 @@ class Environment:
 
         return action, end, exp_name, start
 
-    def run_prioritization_hcs(self,
-                               agent,
-                               action,
-                               avail_time_ratio,
-                               bandit_duration,
-                               end,
-                               exp_name,
-                               experiment,
-                               start,
-                               t,
-                               virtual_scenario):
+    def run_prioritization_hcs(  # pylint: disable=too-many-positional-arguments
+            self,
+            agent,
+            action,
+            avail_time_ratio,
+            bandit_duration,
+            end,
+            exp_name,
+            experiment,
+            start,
+            t,
+            virtual_scenario):
 
         """
         Run the prioritization process for a given agent and HCS scenario.
@@ -292,7 +297,8 @@ class Environment:
 
             self.variant_monitors[variant].collect(params)
 
-    def save_periodically(self, restore, t, experiment, bandit, interval=50000):
+    def save_periodically(  # pylint: disable=too-many-positional-arguments
+            self, restore, t, experiment, bandit, interval=50000):
         """
        Save the experiment periodically based on a predefined interval.
 
@@ -395,5 +401,5 @@ class Environment:
             with open(filename, "wb") as f:
                 pickle.dump([t, self.agents, self.monitor, self.variant_monitors, bandit], f)
         except Exception as e:
-            logger.error(f"Error saving the experiment: {e}")
+            logger.error("Error saving the experiment: %s", e)
             raise e

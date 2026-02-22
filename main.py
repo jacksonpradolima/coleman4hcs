@@ -27,15 +27,15 @@ Author:
     Jackson Antonio do Prado Lima - jacksonpradolima at gmail.com
 
 """
-import csv
 import logging
 import os
+import sys
 import time
 import warnings
-import polars as pl
 from multiprocessing import Pool
 from pathlib import Path
 
+import polars as pl
 from dotenv import load_dotenv
 
 import duckdb
@@ -57,21 +57,21 @@ from coleman4hcs.scenarios import (
     IndustrialDatasetContextScenarioProvider
 )
 from config.config import get_config
-import sys
 
 warnings.filterwarnings("ignore")
 
+
 # taken from https://stackoverflow.com/questions/641420/how-should-i-log-while-using-multiprocessing-in-python
 def create_logger(level):
+    """Create and configure a logger for multiprocessing-safe logging."""
     logger = logging.getLogger()
     logger.setLevel(level)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(formatter)
 
-    # this bit will make sure you won't have 
-    # duplicated messages in the output
-    if not len(logger.handlers): 
+    # this bit will make sure you won't have duplicated messages in the output
+    if not logger.handlers:
         logger.addHandler(handler)
     return logger
 
@@ -143,13 +143,14 @@ def create_agents(policy, rew_fun, window_sizes):
     return [RewardAgent(policy, rew_fun)]
 
 
-def get_scenario_provider(datasets_dir,
-                          dataset,
-                          sched_time_ratio,
-                          use_hcs,
-                          use_context,
-                          context_config,
-                          feature_groups):
+def get_scenario_provider(  # pylint: disable=too-many-positional-arguments
+        datasets_dir,
+        dataset,
+        sched_time_ratio,
+        use_hcs,
+        use_context,
+        context_config,
+        feature_groups):
     """
     Return the appropriate scenario provider based on the given configuration.
 
@@ -280,7 +281,7 @@ def store_experiments(csv_file, scenario):
     );
     """)
 
-    df = conn.read_csv(csv_file, delimiter=';', quotechar='"', header=True)
+    conn.read_csv(csv_file, delimiter=';', quotechar='"', header=True)
 
     # Insert the DataFrame into the 'experiments' table
     conn.execute("INSERT INTO experiments SELECT * FROM df;")
@@ -294,9 +295,12 @@ def store_experiments(csv_file, scenario):
             Path(name2).mkdir(parents=True, exist_ok=True)
 
             for variant in scenario.get_all_variants():
-                csv_file_variant = f"{name2}/{csv_file.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv"
-                conn.execute( f"COPY experiments FROM '{csv_file_variant}' (HEADER);")
-                df = conn.read_csv(csv_file, delimiter=';', quotechar='"', header=True)
+                csv_file_variant = (
+                    f"{name2}/{csv_file.split('/')[-1].split('@')[0]}"
+                    f"@{variant.replace('/', '-')}.csv"
+                )
+                conn.execute(f"COPY experiments FROM '{csv_file_variant}' (HEADER);")
+                conn.read_csv(csv_file, delimiter=';', quotechar='"', header=True)
 
                 # Insert the DataFrame into the 'experiments' table
                 conn.execute("INSERT INTO experiments SELECT * FROM df;")
@@ -421,11 +425,14 @@ if __name__ == '__main__':
             end = time.time()
 
             # Read and merge the independent executions
-            csv_file_names = [f"{experiment_directory}{str(env.scenario_provider)}_{i+1}.csv" for i in range(independent_executions)]
+            csv_file_names = [
+                f"{experiment_directory}{str(env.scenario_provider)}_{i+1}.csv"
+                for i in range(independent_executions)
+            ]
             csv_file = f"{experiment_directory}{str(env.scenario_provider)}.csv"
             merge_csv(csv_file_names, csv_file)
 
             # Store the results in the duckdb database
             store_experiments(csv_file, scenario)
 
-            logging.info(f"Time expend to run the experiments: {end - start}\n\n")
+            logging.info("Time expend to run the experiments: %s\n\n", end - start)

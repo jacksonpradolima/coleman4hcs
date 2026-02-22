@@ -58,13 +58,11 @@ class Agent:
         self.last_prioritization = None  # Last action (TC) chosen
         self.t = 0
 
+        # Define schema for the DataFrame
         # Name | Action name
         # ActionAttempts | Number of times action was chosen
         # ValueEstimates | Reward values of an action
         # Q | Q value used in the Policy (updated in the credit assignment)
-        self.col_names = ['Name', 'ActionAttempts', 'ValueEstimates', 'Q']
-
-        # Define schema for the DataFrame
         schema = {
             'Name': pl.Utf8,
             'ActionAttempts': pl.Float64,
@@ -181,10 +179,10 @@ class Agent:
         state_size = len(self.last_prioritization)
         weights = np.linspace(1.0, 1e-12, state_size)
         index_map = {name: idx for idx, name in enumerate(self.last_prioritization)}
-        
+
         # Create weight mapping
         weight_map = {name: weights[idx] for name, idx in index_map.items()}
-        
+
         # Update using replace for Polars 1.34.0
         self.actions = self.actions.with_columns([
             (pl.col('ActionAttempts') + pl.col('Name').replace(weight_map, default=0.0)).alias('ActionAttempts')
@@ -202,13 +200,13 @@ class Agent:
         for test_case, r in zip(self.last_prioritization, reward):
             # Get current values using filter
             row_data = self.actions.filter(pl.col('Name') == test_case)
-            
+
             if row_data.height > 0:
                 k = row_data['ActionAttempts'][0]
                 q = row_data['ValueEstimates'][0]
-                
+
                 alpha = 1.0 / k
-                
+
                 # Update Q value by keeping running average of rewards for each action
                 new_value = q + alpha * (r - q)
                 self.actions = self.actions.with_columns([
@@ -255,13 +253,13 @@ class RewardAgent(Agent):
         # Update value estimates (accumulative reward) - create mapping
         reward_map = {name: self.last_reward[self.last_prioritization.index(name)]
                      for name in self.actions['Name'].to_list() if name in self.last_prioritization}
-        
+
         # Update using with_columns
         current_estimates = self.actions['ValueEstimates'].to_list()
         name_list = self.actions['Name'].to_list()
-        new_estimates = [current_estimates[i] + reward_map.get(name_list[i], 0.0) 
+        new_estimates = [current_estimates[i] + reward_map.get(name_list[i], 0.0)
                         for i in range(len(name_list))]
-        
+
         self.actions = self.actions.with_columns([
             pl.Series('ValueEstimates', new_estimates)
         ])
@@ -367,12 +365,11 @@ class RewardSlidingWindowAgent(RewardAgent):
         super().__init__(policy, reward_function)
         self.window_size = window_size
 
+        # Define schema for history DataFrame
         # Name | Action name
         # ActionAttempts | Number of times action was chosen
         # ValueEstimates | Reward values of an action
         # T | Time of usage
-        self.hist_col_names = ['Name', 'ActionAttempts', 'ValueEstimates', 'Q', 'T']
-
         schema = {
             'Name': pl.Utf8,
             'ActionAttempts': pl.Float64,
@@ -394,15 +391,15 @@ class RewardSlidingWindowAgent(RewardAgent):
 
         # Get rewards for each test case
         self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
-        
+
         # Update value estimates - create mapping
-        reward_map = {name: self.last_reward[self.last_prioritization.index(name)] 
+        reward_map = {name: self.last_reward[self.last_prioritization.index(name)]
                      for name in self.actions['Name'].to_list() if name in self.last_prioritization}
-        
+
         # Update using with_columns
         name_list = self.actions['Name'].to_list()
         new_estimates = [reward_map.get(name, 0.0) for name in name_list]
-        
+
         self.actions = self.actions.with_columns([
             pl.Series('ValueEstimates', new_estimates)
         ])
@@ -449,12 +446,11 @@ class SlidingWindowContextualAgent(ContextualAgent):
         # List of features
         self.context_features = self.features = None
 
+        # Define schema for history DataFrame
         # Name | Action name
         # ActionAttempts | Number of times action was chosen
         # ValueEstimates | Reward values of an action
         # T | Time of usage
-        self.hist_col_names = ['Name', 'ActionAttempts', 'ValueEstimates', 'Q', 'T']
-
         schema = {
             'Name': pl.Utf8,
             'ActionAttempts': pl.Float64,
@@ -478,9 +474,9 @@ class SlidingWindowContextualAgent(ContextualAgent):
         self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
 
         # Update value estimates - create mapping
-        reward_map = {name: self.last_reward[self.last_prioritization.index(name)] 
+        reward_map = {name: self.last_reward[self.last_prioritization.index(name)]
                      for name in self.actions['Name'].to_list() if name in self.last_prioritization}
-        
+
         self.actions = self.actions.with_columns([
             pl.col('Name').replace(reward_map).alias('ValueEstimates')
         ])
