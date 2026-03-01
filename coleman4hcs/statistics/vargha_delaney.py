@@ -25,14 +25,14 @@ References:
 """
 import itertools as it
 from bisect import bisect_left
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import polars as pl
 import scipy.stats as ss
 
 
-def VD_A(treatment: List[float], control: List[float]):
+def VD_A(treatment: List[float], control: List[float]) -> Tuple[float, str]:
     """
     Computes Vargha and Delaney A index
     A. Vargha and H. D. Delaney.
@@ -71,7 +71,8 @@ def VD_A(treatment: List[float], control: List[float]):
     return estimate, magnitude
 
 
-def VD_A_DF(data, val_col: str = None, group_col: str = None, sort=True):
+def VD_A_DF(data: pl.DataFrame, val_col: str = None, group_col: str = None,
+            sort: bool = True) -> pl.DataFrame:
     """
 
     :param data: polars DataFrame object
@@ -123,7 +124,7 @@ def VD_A_DF(data, val_col: str = None, group_col: str = None, sort=True):
     })
 
 
-def reduce(df, best, symbols=True):
+def reduce(df: pl.DataFrame, best: str, symbols: bool = True) -> pl.DataFrame:
     """
     Reduce a polars DataFrame of effect sizes to compare only against the best
     among the comparison (algorithm/item).

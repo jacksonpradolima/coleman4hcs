@@ -495,8 +495,8 @@ def test_frrmab_choose_all_performance(dummy_agent, benchmark):
         'Name': reward_history['Name'].to_list(),
         'ActionAttempts': reward_history['ActionAttempts'].to_list(),
         'ValueEstimates': reward_history['ValueEstimates'].to_list(),
-        'T': reward_history['T'].to_list(),
-        'Q': reward_history['Q'].to_list()
+        'Q': reward_history['Q'].to_list(),
+        'T': reward_history['T'].to_list()
     })
 
     # Benchmark the `choose_all` method

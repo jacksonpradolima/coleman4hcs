@@ -39,6 +39,26 @@ import polars as pl
 from coleman4hcs.bandit import Bandit
 from coleman4hcs.evaluation import EvaluationMetric
 
+#: Schema for the actions DataFrame shared by all agents.
+#: Columns: Name (test-case id), ActionAttempts (weighted selection count),
+#: ValueEstimates (accumulated reward), Q (policy quality estimate).
+ACTIONS_SCHEMA: dict = {
+    'Name': pl.Utf8,
+    'ActionAttempts': pl.Float64,
+    'ValueEstimates': pl.Float64,
+    'Q': pl.Float64,
+}
+
+#: Schema for the sliding-window history DataFrame.
+#: Extends ACTIONS_SCHEMA with T (time / build step).
+HISTORY_SCHEMA: dict = {
+    'Name': pl.Utf8,
+    'ActionAttempts': pl.Float64,
+    'ValueEstimates': pl.Float64,
+    'Q': pl.Float64,
+    'T': pl.Int64,
+}
+
 
 class Agent:
     """
@@ -56,19 +76,7 @@ class Agent:
         self.bandit = bandit
         self.last_prioritization = None  # Last action (TC) chosen
         self.t = 0
-
-        # Define schema for the DataFrame
-        # Name | Action name
-        # ActionAttempts | Number of times action was chosen
-        # ValueEstimates | Reward values of an action
-        # Q | Q value used in the Policy (updated in the credit assignment)
-        schema = {
-            'Name': pl.Utf8,
-            'ActionAttempts': pl.Float64,
-            'ValueEstimates': pl.Float64,
-            'Q': pl.Float64
-        }
-        self.actions = pl.DataFrame(schema=schema)
+        self.actions = pl.DataFrame(schema=ACTIONS_SCHEMA)
 
         self.reset()
 
@@ -79,12 +87,11 @@ class Agent:
         """
         Resets the agent's memory to an initial state.
         """
-        if self.actions.height > 0:
-            self.actions = self.actions.with_columns([
-                pl.lit(0.0).alias('ValueEstimates'),
-                pl.lit(0.0).alias('ActionAttempts'),
-                pl.lit(0.0).alias('Q')
-            ])
+        self.actions = self.actions.with_columns([
+            pl.lit(0.0).alias('ValueEstimates'),
+            pl.lit(0.0).alias('ActionAttempts'),
+            pl.lit(0.0).alias('Q')
+        ])
 
         # Last action (TC) chosen
         self.last_prioritization = None
@@ -97,12 +104,10 @@ class Agent:
         Efficiently add a new action if it doesn't exist.
         """
         if action not in self.actions['Name'].to_list():
-            new_row = pl.DataFrame({
-                'Name': [action],
-                'ActionAttempts': [0.0],
-                'ValueEstimates': [0.0],
-                'Q': [0.0]
-            })
+            new_row = pl.DataFrame(
+                {'Name': [action], 'ActionAttempts': [0.0], 'ValueEstimates': [0.0], 'Q': [0.0]},
+                schema=ACTIONS_SCHEMA,
+            )
             self.actions = pl.concat([self.actions, new_row], how="vertical")
 
     def update_actions(self, actions):
@@ -127,12 +132,15 @@ class Agent:
 
         # Add new actions
         if new_actions:
-            new_actions_df = pl.DataFrame({
-                'Name': list(new_actions),
-                'ActionAttempts': [0.0] * len(new_actions),
-                'ValueEstimates': [0.0] * len(new_actions),
-                'Q': [0.0] * len(new_actions)
-            })
+            new_actions_df = pl.DataFrame(
+                {
+                    'Name': list(new_actions),
+                    'ActionAttempts': [0.0] * len(new_actions),
+                    'ValueEstimates': [0.0] * len(new_actions),
+                    'Q': [0.0] * len(new_actions),
+                },
+                schema=ACTIONS_SCHEMA,
+            )
             self.actions = pl.concat([self.actions, new_actions_df], how="vertical")
 
     def update_bandit(self, bandit):
@@ -182,9 +190,11 @@ class Agent:
         # Create weight mapping
         weight_map = {name: weights[idx] for name, idx in index_map.items()}
 
-        # Update using replace for Polars 1.34.0
+        # Build a Series of weight additions aligned with self.actions row order
+        name_list = self.actions['Name'].to_list()
+        additions = pl.Series('_w', [weight_map.get(name, 0.0) for name in name_list])
         self.actions = self.actions.with_columns([
-            (pl.col('ActionAttempts') + pl.col('Name').replace(weight_map, default=0.0)).alias('ActionAttempts')
+            (pl.col('ActionAttempts') + additions).alias('ActionAttempts')
         ])
 
     def observe(self, reward):
@@ -310,12 +320,15 @@ class ContextualAgent(RewardAgent):
         self.policy.update_actions(self, new_actions)
 
         if new_actions:
-            new_actions_df = pl.DataFrame({
-                'Name': new_actions,
-                'ValueEstimates': [0.0] * len(new_actions),
-                'ActionAttempts': [0.0] * len(new_actions),
-                'Q': [0.0] * len(new_actions)
-            })
+            new_actions_df = pl.DataFrame(
+                {
+                    'Name': new_actions,
+                    'ValueEstimates': [0.0] * len(new_actions),
+                    'ActionAttempts': [0.0] * len(new_actions),
+                    'Q': [0.0] * len(new_actions),
+                },
+                schema=ACTIONS_SCHEMA,
+            )
             self.actions = pl.concat([self.actions, new_actions_df], how="vertical")
 
     def update_bandit(self, bandit):
@@ -364,19 +377,7 @@ class RewardSlidingWindowAgent(RewardAgent):
         super().__init__(policy, reward_function)
         self.window_size = window_size
 
-        # Define schema for history DataFrame
-        # Name | Action name
-        # ActionAttempts | Number of times action was chosen
-        # ValueEstimates | Reward values of an action
-        # T | Time of usage
-        schema = {
-            'Name': pl.Utf8,
-            'ActionAttempts': pl.Float64,
-            'ValueEstimates': pl.Float64,
-            'Q': pl.Float64,
-            'T': pl.Int64
-        }
-        self.history = pl.DataFrame(schema=schema)
+        self.history = pl.DataFrame(schema=HISTORY_SCHEMA)
 
     def __str__(self):
         return f'{str(self.policy)}, SW={self.window_size})'
@@ -445,19 +446,7 @@ class SlidingWindowContextualAgent(ContextualAgent):
         # List of features
         self.context_features = self.features = None
 
-        # Define schema for history DataFrame
-        # Name | Action name
-        # ActionAttempts | Number of times action was chosen
-        # ValueEstimates | Reward values of an action
-        # T | Time of usage
-        schema = {
-            'Name': pl.Utf8,
-            'ActionAttempts': pl.Float64,
-            'ValueEstimates': pl.Float64,
-            'Q': pl.Float64,
-            'T': pl.Int64
-        }
-        self.history = pl.DataFrame(schema=schema)
+        self.history = pl.DataFrame(schema=HISTORY_SCHEMA)
 
     def __str__(self):
         return f'{str(self.policy)}, SW={self.window_size})'

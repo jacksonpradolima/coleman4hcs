@@ -40,7 +40,13 @@ References:
 import numpy as np
 import polars as pl
 
-from coleman4hcs.agent import Agent, RewardSlidingWindowAgent, ContextualAgent, SlidingWindowContextualAgent
+from coleman4hcs.agent import (
+    HISTORY_SCHEMA,
+    Agent,
+    ContextualAgent,
+    RewardSlidingWindowAgent,
+    SlidingWindowContextualAgent,
+)
 from coleman4hcs.exceptions import QException
 
 
@@ -222,22 +228,7 @@ class FRRMABPolicy(Policy):
     def __init__(self, c, decayed_factor=1):
         self.c = c
         self.decayed_factor = decayed_factor
-
-        # Name | Action name
-        # ActionAttempts | Number of times action was chosen
-        # ValueEstimates | Reward values of an action
-        # T | Time of usage
-        # Q | Quality estimate
-        self.hist_col_names = ['Name', 'ActionAttempts', 'ValueEstimates', 'T', 'Q']
-
-        schema = {
-            'Name': pl.Utf8,
-            'ActionAttempts': pl.Float64,
-            'ValueEstimates': pl.Float64,
-            'T': pl.Int64,
-            'Q': pl.Float64
-        }
-        self.history = pl.DataFrame(schema=schema)
+        self.history = pl.DataFrame(schema=HISTORY_SCHEMA)
 
     def __str__(self):
         # return f"FRRMAB (C={self.c}, D={self.decayed_factor})"
@@ -251,13 +242,16 @@ class FRRMABPolicy(Policy):
         new_names = agent_names - existing_names
 
         if new_names:
-            new_entries = pl.DataFrame({
-                'Name': list(new_names),
-                'ActionAttempts': [0.0] * len(new_names),
-                'ValueEstimates': [0.0] * len(new_names),
-                'T': [0] * len(new_names),
-                'Q': [0.0] * len(new_names)
-            })
+            new_entries = pl.DataFrame(
+                {
+                    'Name': list(new_names),
+                    'ActionAttempts': [0.0] * len(new_names),
+                    'ValueEstimates': [0.0] * len(new_names),
+                    'Q': [0.0] * len(new_names),
+                    'T': [0] * len(new_names),
+                },
+                schema=HISTORY_SCHEMA,
+            )
             self.history = pl.concat([self.history, new_entries], how="vertical")
 
         # Sort by Q values to determine priorities
@@ -312,6 +306,7 @@ class FRRMABPolicy(Policy):
                 (pl.col('frr') + self.c * pl.col('exploration')).alias('Q')
             )
             .drop(['frr', 'exploration'])
+            .select(list(HISTORY_SCHEMA.keys()))
         )
 
 
@@ -321,23 +316,9 @@ class SlMABPolicy(Policy):
     """
 
     def __init__(self):
-        # Name | Action name
-        # ActionAttempts | Number of times action was chosen
-        # ValueEstimates | Reward values of an action
-        # T | Time of usage
-        self.hist_col_names = ['Name', 'ActionAttempts', 'ValueEstimates', 'T', 'Q']
-
-        schema = {
-            'Name': pl.Utf8,
-            'ActionAttempts': pl.Float64,
-            'ValueEstimates': pl.Float64,
-            'T': pl.Int64,
-            'Q': pl.Float64
-        }
-        self.history = pl.DataFrame(schema=schema)
+        self.history = pl.DataFrame(schema=HISTORY_SCHEMA)
 
     def __str__(self):
-        # return f"SLMAB ("
         # leave with out ")" to agent put the window size
         return "SlMAB ("
 
@@ -348,13 +329,16 @@ class SlMABPolicy(Policy):
         new_names = agent_names - existing_names
 
         if new_names:
-            new_entries = pl.DataFrame({
-                'Name': list(new_names),
-                'ActionAttempts': [0.0] * len(new_names),
-                'ValueEstimates': [0.0] * len(new_names),
-                'T': [0] * len(new_names),
-                'Q': [0.0] * len(new_names)
-            })
+            new_entries = pl.DataFrame(
+                {
+                    'Name': list(new_names),
+                    'ActionAttempts': [0.0] * len(new_names),
+                    'ValueEstimates': [0.0] * len(new_names),
+                    'Q': [0.0] * len(new_names),
+                    'T': [0] * len(new_names),
+                },
+                schema=HISTORY_SCHEMA,
+            )
             self.history = pl.concat([self.history, new_entries], how="vertical")
 
         # Sort by Q values to determine priorities

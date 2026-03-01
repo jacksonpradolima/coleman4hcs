@@ -83,24 +83,13 @@ class MonitorCollector:
         This can boost our performance by around 10 to 170 times
         """
         if self.temp_rows:
-            # Convert list values to strings to match schema
-            processed_rows = []
-            for row in self.temp_rows:
-                processed_row = row.copy()
-                if 'prioritization_order' in processed_row and isinstance(processed_row['prioritization_order'], list):
-                    processed_row['prioritization_order'] = str(processed_row['prioritization_order'])
-                processed_rows.append(processed_row)
-
-            batch_df = pl.DataFrame(processed_rows, schema=self.df.schema)
-            # Explicitly check if batch_df contains valid rows
-            if batch_df.height > 0:
-                total_nulls = batch_df.null_count().sum_horizontal().to_list()[0]
-                if total_nulls < (batch_df.height * batch_df.width):
-                    if self.df.height == 0:
-                        self.df = batch_df
-                    else:
-                        self.df = pl.concat([self.df, batch_df], how="vertical")
-            # Clear temp_rows regardless of batch_df state
+            valid_rows = [row for row in self.temp_rows if row]
+            if valid_rows:
+                for row in valid_rows:
+                    if isinstance(row.get('prioritization_order'), list):
+                        row['prioritization_order'] = str(row['prioritization_order'])
+                batch_df = pl.DataFrame(valid_rows, schema=self.df.schema)
+                self.df = pl.concat([self.df, batch_df], how="vertical")
             self.temp_rows = []
 
     def collect(self, params: CollectParams):

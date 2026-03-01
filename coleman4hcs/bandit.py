@@ -25,6 +25,19 @@ import polars as pl
 
 from coleman4hcs.evaluation import EvaluationMetric
 
+#: Schema for the bandit arms DataFrame.
+#: Columns follow the standard test-case fieldnames used throughout the framework.
+BANDIT_SCHEMA: dict = {
+    'Name': pl.Utf8,
+    'Duration': pl.Float32,
+    'CalcPrio': pl.Int32,
+    'LastRun': pl.Utf8,
+    'NumRan': pl.Int64,
+    'NumErrors': pl.Int64,
+    'Verdict': pl.Int8,
+    'LastResults': pl.Utf8,
+}
+
 
 class Bandit(ABC):
     """
@@ -62,17 +75,7 @@ class Bandit(ABC):
         """
         Reset the arms.
         """
-        schema = {
-            'Name': pl.Utf8,
-            'Duration': pl.Float32,
-            'CalcPrio': pl.Int32,
-            'LastRun': pl.Utf8,
-            'NumRan': pl.Int64,
-            'NumErrors': pl.Int64,
-            'Verdict': pl.Int8,
-            'LastResults': pl.Utf8
-        }
-        self.arms = pl.DataFrame(schema=schema)
+        self.arms = pl.DataFrame(schema=BANDIT_SCHEMA)
 
     def get_arms(self) -> List[str]:
         """
@@ -89,15 +92,15 @@ class Bandit(ABC):
         :param arms: List of arms.
         """
         if arms:
-            # Convert list values to strings to match schema
-            processed_arms = []
-            for arm in arms:
-                processed_arm = arm.copy()
-                if 'LastResults' in processed_arm and isinstance(processed_arm['LastResults'], list):
-                    processed_arm['LastResults'] = str(processed_arm['LastResults'])
-                processed_arms.append(processed_arm)
-
-            new_arms = pl.DataFrame(processed_arms, schema=self.arms.schema)
+            last_results = [
+                str(arm.get('LastResults')) if isinstance(arm.get('LastResults'), list)
+                else (arm.get('LastResults') or '')
+                for arm in arms
+            ]
+            data = {field: [arm.get(field) for arm in arms] for field in BANDIT_SCHEMA
+                    if field != 'LastResults'}
+            data['LastResults'] = last_results
+            new_arms = pl.DataFrame(data, schema=BANDIT_SCHEMA)
             self.arms = pl.concat([self.arms, new_arms], how="vertical")
 
     @abstractmethod
