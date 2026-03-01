@@ -193,7 +193,7 @@ flowchart TD
 
     F --> J[Test prioritization per cycle]
     J --> K["Test execution outcomes (verdict, duration, rank)"]
-    K --> L["Evaluation Metricsm (e.g., NAPFD)"]
+    K --> L["Evaluation Metrics (e.g., NAPFD)"]
     L --> M[CSV experiment outputs]
     M --> N[DuckDB experiments.db]
 
