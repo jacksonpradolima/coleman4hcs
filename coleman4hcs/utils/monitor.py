@@ -6,10 +6,10 @@ the Coleman4HCS framework. The primary functionality revolves around the `Monito
 facilitates data collection during an experiment and provides methods for saving the collected data
 to a CSV file.
 """
-import csv
 import os
+import tempfile
 
-import pandas as pd
+import polars as pl
 
 from coleman4hcs.utils.monitor_params import CollectParams
 
@@ -21,56 +21,57 @@ class MonitorCollector:
 
     def __init__(self):
         """
-        Initializes the monitor collector with predefined column names and an empty dataframe.
+        Initializes the monitor collector with an empty dataframe using a predefined schema.
+
+        Schema columns:
+        - scenario: Experiment name (system under test)
+        - experiment: Experiment number
+        - step: Part number (Build) from scenario that is been analyzed
+        - policy: Policy name that is evaluating a part of the scenario
+        - reward_function: Reward function used by the agent to observe the environment
+        - sched_time: Percentage of time available (i.e., 50% of total for the Build)
+        - sched_time_duration: The time in number obtained from percentage.
+        - total_build_duration: Build Duration
+        - prioritization_time: Prioritization Time
+        - detected: Failures detected
+        - missed: Failures missed
+        - tests_ran: Number of tests executed
+        - tests_not_ran: Number of tests not executed
+        - ttf: Rank of the Time to Fail (Order of the first test case which failed)
+        - ttf_duration: Time spent until the first test case fail
+        - time_reduction: Time Reduction (Total Time for the Build - ttf_duration)
+        - fitness: Evaluation metric result (example, NAPFD)
+        - cost: Evaluation metric that considers cost, for instance, APFDc
+        - rewards: AVG Reward from the prioritized test set
+        - avg_precision: 1 - We found all failures, 123 - We did not found all failures
+        - prioritization_order: prioritized test set
         """
 
-        # scenario: Experiment name (system under test)
-        # experiment: Experiment number
-        # step: Part number (Build) from scenario that is been analyzed
-        # policy: Policy name that is evaluating a part of the scenario
-        # reward_function: Reward function used by the agent to observe the environment
-        # sched_time: Percentage of time available (i.e., 50% of total for the Build)
-        # sched_time_duration: The time in number obtained from percentage.
-        # total_build_duration: Build Duration
-        # prioritization_time: Prioritization Time
-        # detected: Failures detected
-        # missed: Failures missed
-        # tests_ran: Number of tests executed
-        # tests_ran_time: Time spent by the test cases executed
-        # tests_not_ran: Number of tests not executed
-        # ttf: Rank of the Time to Fail (Order of the first test case which failed)
-        # time_reduction: Time Reduction (Total Time for the Build - Time spent until the first test case fail)
-        # fitness: Evaluation metric result (example, NAPFD)
-        # cost: Evaluation metric that considers cost, for instance, APFDc
-        # rewards: AVG Reward from the prioritized test set
-        # recall: How much test cases we found (detected/total)
-        # avg_precision: 1 - We found all failures, 123 - We did not found all failures
-        # prioritization_order: prioritized test set
-        self.col_names = ['scenario',
-                          'experiment',
-                          'step',
-                          'policy',
-                          'reward_function',
-                          'sched_time',
-                          'sched_time_duration',
-                          'total_build_duration',
-                          'prioritization_time',
-                          'detected',
-                          'missed',
-                          'tests_ran',
-                          # 'tests_ran_time',
-                          'tests_not_ran',
-                          'ttf',
-                          'ttf_duration',
-                          'time_reduction',
-                          'fitness',
-                          'cost',
-                          'rewards',
-                          # 'recall',
-                          'avg_precision',
-                          'prioritization_order']
-
-        self.df = pd.DataFrame(columns=self.col_names)
+        # Define schema for the DataFrame
+        schema = {
+            'scenario': pl.Utf8,
+            'experiment': pl.Int64,
+            'step': pl.Int64,
+            'policy': pl.Utf8,
+            'reward_function': pl.Utf8,
+            'sched_time': pl.Float64,
+            'sched_time_duration': pl.Float64,
+            'total_build_duration': pl.Float64,
+            'prioritization_time': pl.Float64,
+            'detected': pl.Int64,
+            'missed': pl.Int64,
+            'tests_ran': pl.Int64,
+            'tests_not_ran': pl.Int64,
+            'ttf': pl.Float64,
+            'ttf_duration': pl.Float64,
+            'time_reduction': pl.Float64,
+            'fitness': pl.Float64,
+            'cost': pl.Float64,
+            'rewards': pl.Float64,
+            'avg_precision': pl.Float64,
+            'prioritization_order': pl.Utf8
+        }
+        self.df = pl.DataFrame(schema=schema)
 
         # the temp is used when we have more than 1000 records. This is used to improve the performance
         self.temp_rows = []
@@ -82,14 +83,13 @@ class MonitorCollector:
         This can boost our performance by around 10 to 170 times
         """
         if self.temp_rows:
-            batch_df = pd.DataFrame(self.temp_rows, columns=self.col_names)
-            # Explicitly check if batch_df contains valid rows
-            if not batch_df.empty and not batch_df.isna().all(axis=None):
-                if self.df.empty:
-                    self.df = batch_df
-                else:
-                    self.df = pd.concat([self.df, batch_df], ignore_index=True)
-            # Clear temp_rows regardless of batch_df state
+            valid_rows = [row for row in self.temp_rows if row]
+            if valid_rows:
+                for row in valid_rows:
+                    if isinstance(row.get('prioritization_order'), list):
+                        row['prioritization_order'] = str(row['prioritization_order'])
+                batch_df = pl.DataFrame(valid_rows, schema=self.df.schema)
+                self.df = pl.concat([self.df, batch_df], how="vertical")
             self.temp_rows = []
 
     def collect(self, params: CollectParams):
@@ -136,7 +136,7 @@ class MonitorCollector:
         # if the file not exist, we need to create the header
         if not os.path.isfile(name):
             with open(name, 'w', encoding='utf-8') as f:
-                f.write(";".join(self.col_names) + "\n")
+                f.write(";".join(self.df.columns) + "\n")
 
     def save(self, name):
         """
@@ -149,15 +149,25 @@ class MonitorCollector:
         # Determine if the file already exists
         write_header = not os.path.exists(name) or os.stat(name).st_size == 0  # Empty file means headers are missing
 
-        self.df.to_csv(name, mode='a+', sep=';', na_rep='[]',
-                       header=write_header,  # Write header only if the file is empty
-                       columns=self.col_names,
-                       index=False,
-                       quoting=csv.QUOTE_NONE)
+        # Polars write_csv doesn't have mode parameter, so we need to handle appending manually
+        if write_header or not os.path.exists(name):
+            self.df.write_csv(name, separator=';', null_value='[]')
+        else:
+            # For appending, we write to temp and then append manually
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv') as tmp:
+                tmp_name = tmp.name
+                self.df.write_csv(tmp_name, separator=';', null_value='[]', include_header=False)
+
+            # Append the content
+            with open(tmp_name, 'r', encoding='utf-8') as tmp_file:
+                content = tmp_file.read()
+            with open(name, 'a', encoding='utf-8') as f:
+                f.write(content)
+            os.unlink(tmp_name)
 
     def clear(self):
         """
         Clears the dataframe.
         """
-        self.df = pd.DataFrame(columns=self.col_names)
+        self.df = pl.DataFrame(schema=self.df.schema)
         self.temp_rows = []

@@ -27,6 +27,7 @@ import warnings
 from pathlib import Path
 
 import numpy as np
+import polars as pl
 
 from coleman4hcs.agent import ContextualAgent, SlidingWindowContextualAgent
 from coleman4hcs.bandit import EvaluationMetricBandit
@@ -158,7 +159,8 @@ class Environment:
 
             self.save_periodically(restore, t, experiment, bandit)
 
-    def run_prioritization(self, agent, bandit, bandit_duration, experiment, t, virtual_scenario):
+    def run_prioritization(  # pylint: disable=too-many-positional-arguments
+            self, agent, bandit, bandit_duration, experiment, t, virtual_scenario):
         """
         Run the prioritization process for a given agent and scenario.
 
@@ -201,8 +203,11 @@ class Environment:
         # Compute end time
         end = time.time()
 
-        logger.debug(f"Exp: {experiment} - Ep: {t} - Name: {exp_name} ({str(agent.get_reward_function())}) - " +
-                     f"NAPFD/APFDc: {metric.fitness:.4f}/{metric.cost:.4f}")
+        logger.debug(
+            "Exp: %s - Ep: %s - Name: %s (%s) - NAPFD/APFDc: %.4f/%.4f",
+            experiment, t, exp_name, str(agent.get_reward_function()),
+            metric.fitness, metric.cost
+        )
 
         # Collect the data during the experiment
         params = CollectParams(
@@ -223,17 +228,18 @@ class Environment:
 
         return action, end, exp_name, start
 
-    def run_prioritization_hcs(self,
-                               agent,
-                               action,
-                               avail_time_ratio,
-                               bandit_duration,
-                               end,
-                               exp_name,
-                               experiment,
-                               start,
-                               t,
-                               virtual_scenario):
+    def run_prioritization_hcs(  # pylint: disable=too-many-positional-arguments
+            self,
+            agent,
+            action,
+            avail_time_ratio,
+            bandit_duration,
+            end,
+            exp_name,
+            experiment,
+            start,
+            t,
+            virtual_scenario):
 
         """
         Run the prioritization process for a given agent and HCS scenario.
@@ -256,11 +262,14 @@ class Environment:
         # For each variant I will evaluate the impact of the main prioritization
         for variant in variants['Variant'].unique():
             # Get the data from current variant
-            df = variants[variants.Variant == variant]
+            df = variants.filter(pl.col('Variant') == variant)
 
             # Order by the test cases according to the main prioritization
-            df['CalcPrio'] = df['Name'].apply(lambda x: action.index(x) + 1)
-            df.sort_values(by=['CalcPrio'], inplace=True)
+            action_map = {name: idx + 1 for idx, name in enumerate(action)}
+            df = df.with_columns([
+                pl.col('Name').replace(action_map, default=0).alias('CalcPrio')
+            ])
+            df = df.sort('CalcPrio')
 
             total_build_duration = df['Duration'].sum()
             total_time = total_build_duration * avail_time_ratio
@@ -269,7 +278,7 @@ class Environment:
             self.evaluation_metric.update_available_time(total_time)
 
             # Submit prioritized test cases for evaluation step and get new measurements
-            self.evaluation_metric.evaluate(df.to_dict(orient='records'))
+            self.evaluation_metric.evaluate(df.to_dicts())
 
             # Save the information (collect the data)
             params = CollectParams(
@@ -283,12 +292,13 @@ class Environment:
                 total_build_duration=total_build_duration,
                 prioritization_time=(end - start) + bandit_duration,
                 rewards=0,
-                prioritization_order=df['Name'].tolist(),
+                prioritization_order=df['Name'].to_list(),
             )
 
             self.variant_monitors[variant].collect(params)
 
-    def save_periodically(self, restore, t, experiment, bandit, interval=50000):
+    def save_periodically(  # pylint: disable=too-many-positional-arguments
+            self, restore, t, experiment, bandit, interval=50000):
         """
        Save the experiment periodically based on a predefined interval.
 
@@ -391,5 +401,5 @@ class Environment:
             with open(filename, "wb") as f:
                 pickle.dump([t, self.agents, self.monitor, self.variant_monitors, bandit], f)
         except Exception as e:
-            logger.error(f"Error saving the experiment: {e}")
+            logger.error("Error saving the experiment: %s", e)
             raise e

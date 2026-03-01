@@ -34,7 +34,7 @@ Dependencies:
 from unittest.mock import MagicMock, patch, mock_open
 
 import numpy as np
-import pandas as pd
+import polars as pl
 import pytest
 
 from coleman4hcs.agent import ContextualAgent
@@ -313,7 +313,7 @@ def test_run_prioritization_hcs(environment):
     mock_virtual_scenario = MagicMock()
 
     # Create a mock DataFrame for variants
-    mock_variants = pd.DataFrame({
+    mock_variants = pl.DataFrame({
         "Variant": ["v1", "v1", "v2"],
         "Name": ["tc1", "tc2", "tc3"],
         "Duration": [1.0, 2.0, 3.0]

@@ -21,9 +21,22 @@ from abc import ABC, abstractmethod
 from typing import Dict, List
 
 import numpy as np
-import pandas as pd
+import polars as pl
 
 from coleman4hcs.evaluation import EvaluationMetric
+
+#: Schema for the bandit arms DataFrame.
+#: Columns follow the standard test-case fieldnames used throughout the framework.
+BANDIT_SCHEMA: dict = {
+    'Name': pl.Utf8,
+    'Duration': pl.Float32,
+    'CalcPrio': pl.Int32,
+    'LastRun': pl.Utf8,
+    'NumRan': pl.Int64,
+    'NumErrors': pl.Int64,
+    'Verdict': pl.Int8,
+    'LastResults': pl.Utf8,
+}
 
 
 class Bandit(ABC):
@@ -62,13 +75,7 @@ class Bandit(ABC):
         """
         Reset the arms.
         """
-        self.arms = pd.DataFrame(columns=self.tc_fieldnames)
-        self.arms = self.arms.astype({
-            'CalcPrio': 'int32',
-            'Duration': 'float32',
-            'Name': 'category',
-            'Verdict': 'int8'
-        })
+        self.arms = pl.DataFrame(schema=BANDIT_SCHEMA)
 
     def get_arms(self) -> List[str]:
         """
@@ -76,7 +83,7 @@ class Bandit(ABC):
 
         :return: List of arm names.
         """
-        return self.arms['Name'].tolist()
+        return self.arms['Name'].to_list()
 
     def add_arms(self, arms: List[Dict]):
         """
@@ -85,9 +92,16 @@ class Bandit(ABC):
         :param arms: List of arms.
         """
         if arms:
-            new_arms = pd.DataFrame(arms, columns=self.tc_fieldnames)
-            self.arms = pd.concat([self.arms, new_arms], ignore_index=True)
-            self.arms.reset_index(drop=True, inplace=True)  # Ensure index consistency
+            last_results = [
+                str(arm.get('LastResults')) if isinstance(arm.get('LastResults'), list)
+                else (arm.get('LastResults') or '')
+                for arm in arms
+            ]
+            data = {field: [arm.get(field) for arm in arms] for field in BANDIT_SCHEMA
+                    if field != 'LastResults'}
+            data['LastResults'] = last_results
+            new_arms = pl.DataFrame(data, schema=BANDIT_SCHEMA)
+            self.arms = pl.concat([self.arms, new_arms], how="vertical")
 
     @abstractmethod
     def pull(self, action):
@@ -103,7 +117,9 @@ class Bandit(ABC):
         """
         action_map = {name: priority for priority, name in enumerate(action, start=1)}
         priorities = np.vectorize(action_map.get)(self.arms['Name'].to_numpy())
-        self.arms['CalcPrio'] = priorities
+        self.arms = self.arms.with_columns([
+            pl.Series('CalcPrio', priorities, dtype=pl.Int32)
+        ])
 
 
 class DynamicBandit(Bandit, ABC):
@@ -153,8 +169,9 @@ class EvaluationMetricBandit(DynamicBandit):
 
         # After, we need to order the test cases based on the priorities
         # Sort tc by Prio ASC (for backwards scheduling)
-        self.arms = self.arms.iloc[self.arms['CalcPrio'].to_numpy().argsort(kind='stable')]
+        sorted_indices = self.arms['CalcPrio'].to_numpy().argsort(kind='stable')
+        self.arms = self.arms[[int(i) for i in sorted_indices]]
 
-        self.evaluation_metric.evaluate(self.arms.to_dict('records'))
+        self.evaluation_metric.evaluate(self.arms.to_dicts())
 
         return self.evaluation_metric
