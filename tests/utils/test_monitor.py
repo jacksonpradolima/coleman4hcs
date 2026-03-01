@@ -327,6 +327,56 @@ def test_save_with_empty_temp_rows(tmp_path, monitor_collector):
     assert saved_data['scenario'][0] == "TestScenario"
 
 
+def test_save_appends_to_existing_file(tmp_path, monitor_collector, mock_scenario_provider, mock_metric):
+    """
+    Test that saving to an already-existing non-empty file appends data (covering the
+    temp-file append path in MonitorCollector.save).
+    """
+    file_path = tmp_path / "test_append.csv"
+
+    # First save — creates the file with headers + 2 rows
+    for i in range(2):
+        params = CollectParams(
+            scenario_provider=mock_scenario_provider,
+            available_time=50,
+            experiment=i,
+            t=1,
+            policy="TestPolicy",
+            reward_function="TestReward",
+            metric=mock_metric,
+            total_build_duration=100,
+            prioritization_time=10,
+            rewards=0.9,
+            prioritization_order=['test1', 'test2']
+        )
+        monitor_collector.collect(params)
+    monitor_collector.save(file_path)
+
+    # Reset the in-memory df so we get a fresh set of rows on the second save
+    monitor_collector.clear()
+
+    # Second save — appends 1 more row to the existing file (hits lines 157-166)
+    params = CollectParams(
+        scenario_provider=mock_scenario_provider,
+        available_time=50,
+        experiment=99,
+        t=2,
+        policy="TestPolicy",
+        reward_function="TestReward",
+        metric=mock_metric,
+        total_build_duration=100,
+        prioritization_time=10,
+        rewards=0.9,
+        prioritization_order=['test1', 'test2']
+    )
+    monitor_collector.collect(params)
+    monitor_collector.save(file_path)
+
+    saved_data = pl.read_csv(file_path, separator=';')
+    assert len(saved_data) == 3, f"Expected 3 records after append, found {len(saved_data)}."
+    assert saved_data['experiment'][-1] == 99
+
+
 def test_save_with_non_empty_temp_rows(tmp_path, monitor_collector, mock_scenario_provider, mock_metric):
     """
     Test saving data to a CSV file when temp_rows has data.
