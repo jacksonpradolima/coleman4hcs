@@ -52,7 +52,7 @@ coleman4hcs = "main:__main__"
 
 [build-system]
 requires = ["hatchling"]
-build-backend = "hatchling.backends"
+build-backend = "hatchling.build"
 
 [tool.ruff]
 target-version = "py314"
