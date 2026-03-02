@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the article below."
+title: "Coleman4HCS"
+type: software
+authors:
+  - family-names: "Lima"
+    given-names: "Jackson A. Prado"
+  - family-names: "Vergilio"
+    given-names: "Silvia Regina"
+repository-code: "https://github.com/jacksonpradolima/coleman4hcs"
+license: MIT
+preferred-citation:
+  type: article
+  title: "A Multi-Armed Bandit Approach for Test Case Prioritization in Continuous Integration Environments"
+  authors:
+    - family-names: "Lima"
+      given-names: "Jackson A. Prado"
+    - family-names: "Vergilio"
+      given-names: "Silvia Regina"
+  journal: "IEEE Transactions on Software Engineering"
+  year: 2022
+  volume: 48
+  issue: 2
+  start: 453
+  end: 465
+  doi: "10.1109/TSE.2020.2992428"
+  keywords:
+    - "Test case prioritization"
+    - "Continuous integration"
+    - "Multi-armed bandit"

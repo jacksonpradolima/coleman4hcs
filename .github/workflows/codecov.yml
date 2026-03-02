@@ -13,16 +13,19 @@ jobs:
                 with:
                     fetch-depth: 0
 
-            -   name: Set up Python
-                uses: actions/setup-python@v6
-                with:
-                    python-version: 3.11
+            -   name: Install uv
+                run: |
+                    curl -Ls https://astral.sh/uv/install.sh | bash
+                    echo "${HOME}/.local/bin" >> $GITHUB_PATH
 
             -   name: Install dependencies
-                run: pip install -r requirements.txt
+                run: |
+                    uv venv .venv
+                    uv sync --extra dev
+                    uv pip install -e .
 
             -   name: Run tests
-                run: pytest --cov --cov-branch --junitxml=junit.xml -o junit_family=legacy
+                run: uv run pytest --cov --cov-branch --junitxml=junit.xml -o junit_family=legacy
 
             -   name: Upload coverage to Codecov
                 uses: codecov/codecov-action@v5

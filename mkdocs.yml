@@ -1,0 +1,66 @@
+site_name: Coleman4HCS
+site_description: Multi-Armed Bandit based test case prioritization for CI environments
+site_url: https://jacksonpradolima.github.io/coleman4hcs/
+repo_url: https://github.com/jacksonpradolima/coleman4hcs
+repo_name: jacksonpradolima/coleman4hcs
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - content.code.copy
+    - navigation.tabs
+    - navigation.sections
+    - search.highlight
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_source: true
+  - mkdocs-jupyter:
+      include: ["*.py"]
+      execute: false
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.snippets
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - API Reference:
+      - Agent: api/agent.md
+      - Bandit: api/bandit.md
+      - Environment: api/environment.md
+      - Evaluation: api/evaluation.md
+      - Policy: api/policy.md
+      - Reward: api/reward.md
+      - Scenarios: api/scenarios.md
+  - Notebooks:
+      - Analysis: notebooks/analysis.py

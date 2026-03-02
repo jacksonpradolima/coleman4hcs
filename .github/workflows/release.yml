@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    concurrency: release
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        run: |
+          curl -Ls https://astral.sh/uv/install.sh | bash
+          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv venv .venv
+          uv sync --extra release
+          uv pip install -e .
+
+      - name: Python Semantic Release
+        id: semrel
+        uses: python-semantic-release/python-semantic-release@c1bcfdbb994243ac7cf419365d5894d6f2dfc25a # v9.21.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build package
+        if: steps.semrel.outputs.released == 'true'
+        run: uv build
+
+      - name: Keep uv.lock fresh
+        if: steps.semrel.outputs.released == 'true'
+        run: |
+          uv lock
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add uv.lock
+          git diff --cached --quiet || git commit -m "chore: update uv.lock after release"
+          git push
+
+      - name: Install Syft
+        if: steps.semrel.outputs.released == 'true'
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: Generate SBOM
+        if: steps.semrel.outputs.released == 'true'
+        run: syft dir:. -o spdx-json=sbom.spdx.json
+
+      - name: Sign distributions with Sigstore
+        if: steps.semrel.outputs.released == 'true'
+        uses: sigstore/gh-action-sigstore-python@v3.0.0
+        with:
+          inputs: dist/*
+
+      - name: Create GitHub Release
+        if: steps.semrel.outputs.released == 'true'
+        uses: python-semantic-release/publish-action@v9.21.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ steps.semrel.outputs.tag }}

@@ -47,9 +47,6 @@ notebook = [
     "marimo",
 ]
 
-[project.scripts]
-coleman4hcs = "main:__main__"
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -68,6 +65,7 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "N", "D"]
 convention = "numpy"
 
 [tool.pyright]
+pythonVersion = "3.14"
 typeCheckingMode = "basic"
 
 [tool.pytest.ini_options]
