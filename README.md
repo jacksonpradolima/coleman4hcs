@@ -4,7 +4,7 @@
 
 # Coleman4HCS
 
-![](https://img.shields.io/badge/python-3.11.4+-blue.svg)
+![](https://img.shields.io/badge/python-3.14+-blue.svg)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=bugs)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
@@ -62,7 +62,8 @@ In order to use this `version`, use any Contextual-MAB available, for instance, 
 # Getting started
 
 - [Citation](#citation)
-- [Installation](#installing-required-dependencies)
+- [Installation](#installation)
+- [Development](#development)
 - [Datasets](#datasets)
 - [About the files input](#about-the-files-input)
 - [Using the tool](#using-the-tool)
@@ -102,46 +103,52 @@ If this tool contributes to a project which leads to a scientific publication, I
 
 # Installation
 
-
 To use this tool, follow these steps:
 
-1. Clone the repository: `git clone git@github.com:jacksonpradolima/coleman4hcs.git`
-2. Install pyenv for managing Python versions. Refer to the [pyenv documentation](https://github.com/pyenv/pyenv#installation) for installation instructions specific to your operating system.
-3. Install the required Python version for your project using pyenv. Run the following command in the project's root directory:
+1. Clone the repository:
 
 ```shell
-pyenv install 3.11.4
+git clone git@github.com:jacksonpradolima/coleman4hcs.git
+cd coleman4hcs
 ```
 
-4. Create a virtual environment for the project using pyenv. Run the following command:
+2. Install [UV](https://docs.astral.sh/uv/) – a fast Python package manager.
+
+3. Install dependencies:
 
 ```shell
-pyenv virtualenv 3.11.4 <env-name>
+uv sync
 ```
 
-Replace <env-name> with a name for your virtual environment.
-
-5. Activate the virtual environment:
+4. Install the project locally in editable mode:
 
 ```shell
-pyenv activate <env-name>
+uv pip install -e .
 ```
 
-6. Install the required dependencies using pip:
-
-```shell
-pip install -r requirements.txt
-```
-
-7. Copy the .env.example file to .env:
+5. Copy the `.env.example` file to `.env`:
 
 ```shell
 cp .env.example .env
 ```
 
-8. Edit the .env file and provide values for the following environment variables:
+6. Edit the `.env` file and provide values for the following environment variables:
 
--   `CONFIG_FILE`: The path to your configuration file (e.g., ./config.toml).
+-   `CONFIG_FILE`: The path to your configuration file (e.g., `./config.toml`).
+
+# Development
+
+This project uses a `Makefile` to streamline common development tasks. Run `make help` to see all available commands.
+
+| Command                  | Description                          |
+|--------------------------|--------------------------------------|
+| `make install`           | Full dev setup (all extras + editable install) |
+| `make pre-commit-install`| Install pre-commit hooks             |
+| `make test`              | Run tests with pytest                |
+| `make lint`              | Run the ruff linter                  |
+| `make format`            | Run the ruff formatter               |
+| `make docs`              | Build documentation with MkDocs      |
+| `make help`              | Show all available Make targets      |
 
 # Datasets
 
@@ -336,7 +343,7 @@ To execute **COLEMAN** for a non-HCS system, first update the variables in the p
 Subsequently, you can run the program with the following command:
 
 ```
-python main.py
+uv run python main.py
 ```
 
 ## Running for an HCS system
@@ -410,6 +417,10 @@ Data visualizations play a key role in our analysis, offering intuitive understa
 [![SPLC](https://img.youtube.com/vi/tT8Ygt8jCKg/0.jpg)](https://www.youtube.com/watch?v=tT8Ygt8jCKg)
 
 # Contributors
+
+Please see our [Contributing Guidelines](CONTRIBUTING.md) if you'd like to contribute.
+
+For vulnerability reports, refer to our [Security Policy](SECURITY.md).
 
 - 👨‍💻 Jackson Antonio do Prado Lima <a href="mailto:jacksonpradolima@gmail.com">:e-mail:</a>
 
