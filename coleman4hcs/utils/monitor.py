@@ -1,10 +1,15 @@
 """
-`coleman4hcs.utils.monitor` - Monitor Utilities
+coleman4hcs.utils.monitor - Monitor Utilities.
 
 This module provides tools for monitoring and collecting data during experiments related to
-the Coleman4HCS framework. The primary functionality revolves around the `MonitorCollector` class, which
-facilitates data collection during an experiment and provides methods for saving the collected data
-to a CSV file.
+the Coleman4HCS framework. The primary functionality revolves around the `MonitorCollector`
+class, which facilitates data collection during an experiment and provides methods for saving
+the collected data to a CSV file.
+
+Classes
+-------
+MonitorCollector
+    Collects data during an experiment and saves to CSV.
 """
 import os
 import tempfile
@@ -15,37 +20,20 @@ from coleman4hcs.utils.monitor_params import CollectParams
 
 
 class MonitorCollector:
-    """
-    Collects data during an experiment.
+    """Collect data during an experiment.
+
+    Attributes
+    ----------
+    df : polars.DataFrame
+        DataFrame storing collected experiment data.
+    temp_rows : list
+        Temporary buffer for rows before batch insertion.
+    temp_limit : int
+        Limit for batching temp data collection.
     """
 
     def __init__(self):
-        """
-        Initializes the monitor collector with an empty dataframe using a predefined schema.
-
-        Schema columns:
-        - scenario: Experiment name (system under test)
-        - experiment: Experiment number
-        - step: Part number (Build) from scenario that is been analyzed
-        - policy: Policy name that is evaluating a part of the scenario
-        - reward_function: Reward function used by the agent to observe the environment
-        - sched_time: Percentage of time available (i.e., 50% of total for the Build)
-        - sched_time_duration: The time in number obtained from percentage.
-        - total_build_duration: Build Duration
-        - prioritization_time: Prioritization Time
-        - detected: Failures detected
-        - missed: Failures missed
-        - tests_ran: Number of tests executed
-        - tests_not_ran: Number of tests not executed
-        - ttf: Rank of the Time to Fail (Order of the first test case which failed)
-        - ttf_duration: Time spent until the first test case fail
-        - time_reduction: Time Reduction (Total Time for the Build - ttf_duration)
-        - fitness: Evaluation metric result (example, NAPFD)
-        - cost: Evaluation metric that considers cost, for instance, APFDc
-        - rewards: AVG Reward from the prioritized test set
-        - avg_precision: 1 - We found all failures, 123 - We did not found all failures
-        - prioritization_order: prioritized test set
-        """
+        """Initialize the MonitorCollector with an empty dataframe."""
 
         # Define schema for the DataFrame
         schema = {
@@ -78,9 +66,10 @@ class MonitorCollector:
         self.temp_limit = 1000  # Limit for batching temp data collection
 
     def collect_from_temp(self):
-        """
-        Transfers data from the temporary rows to the main dataframe and clears the temporary rows.
-        This can boost our performance by around 10 to 170 times
+        """Transfer data from temporary rows to the main dataframe.
+
+        Clears the temporary rows after transfer. This batching approach can
+        boost performance by around 10 to 170 times.
         """
         if self.temp_rows:
             valid_rows = [row for row in self.temp_rows if row]
@@ -93,11 +82,12 @@ class MonitorCollector:
             self.temp_rows = []
 
     def collect(self, params: CollectParams):
-        """
-        This function collects the feedback of an analysis and stores in a dataframe.
-        In this way, i.e., I can export a BIG experiment to CSV
-        :param params: CollectParams object containing all input data.
-        :return:
+        """Collect the feedback of an analysis and store in a dataframe.
+
+        Parameters
+        ----------
+        params : CollectParams
+            CollectParams object containing all input data.
         """
         # Trigger flush when temp_limit is reached
         if len(self.temp_rows) >= self.temp_limit:
@@ -130,8 +120,12 @@ class MonitorCollector:
         self.temp_rows.append(records)
 
     def create_file(self, name):
-        """
-        Creates a CSV file with the column headers if it doesn't exist.
+        """Create a CSV file with the column headers if it does not exist.
+
+        Parameters
+        ----------
+        name : str
+            Path to the CSV file.
         """
         # if the file not exist, we need to create the header
         if not os.path.isfile(name):
@@ -139,8 +133,12 @@ class MonitorCollector:
                 f.write(";".join(self.df.columns) + "\n")
 
     def save(self, name):
-        """
-        Saves the collected data to a CSV file.
+        """Save the collected data to a CSV file.
+
+        Parameters
+        ----------
+        name : str
+            Path to the CSV file.
         """
         # Collect data remain
         if self.temp_rows:
@@ -166,8 +164,6 @@ class MonitorCollector:
             os.unlink(tmp_name)
 
     def clear(self):
-        """
-        Clears the dataframe.
-        """
+        """Clear the dataframe and temporary rows."""
         self.df = pl.DataFrame(schema=self.df.schema)
         self.temp_rows = []

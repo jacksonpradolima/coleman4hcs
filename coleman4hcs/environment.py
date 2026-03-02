@@ -2,9 +2,10 @@
 coleman4hcs.environment
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-This module contains the `Environment` class which simulates the agent's interactions and collects results
-during the reinforcement learning process. The environment provides a platform where agents learn from interactions
-with the bandit to make better decisions over time.
+This module contains the `Environment` class which simulates the agent's interactions and
+collects results during the reinforcement learning process. The environment provides a
+platform where agents learn from interactions with the bandit to make better decisions
+over time.
 
 The module also contains the following features:
 
@@ -16,8 +17,10 @@ The module also contains the following features:
 - Support for scenarios with variants, commonly found in Heterogeneous Computing Systems (HCS).
 - Helper methods for loading and saving experiment states for recovery purposes.
 
-Classes:
-    - Environment: Represents the learning environment where agents interact with bandits.
+Classes
+-------
+Environment
+    Represents the learning environment where agents interact with bandits.
 """
 import logging
 import os
@@ -43,11 +46,43 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 class Environment:
-    """
-    The environment class that simulates the agent's interactions and collects results.
+    """The environment class that simulates the agent's interactions and collects results.
+
+    Parameters
+    ----------
+    agents : list
+        List of agent instances participating in the simulation.
+    scenario_provider : object
+        The scenario provider supplying test case data.
+    evaluation_metric : EvaluationMetric
+        The evaluation metric used to assess prioritization performance.
+
+    Attributes
+    ----------
+    agents : list
+        List of agent instances.
+    scenario_provider : object
+        The scenario provider instance.
+    evaluation_metric : EvaluationMetric
+        The evaluation metric instance.
+    monitor : MonitorCollector or None
+        Monitor for collecting feedback during the process.
+    variant_monitors : dict
+        Dictionary of monitors for each variant.
     """
 
     def __init__(self, agents, scenario_provider, evaluation_metric):
+        """Initialize the Environment.
+
+        Parameters
+        ----------
+        agents : list
+            List of agent instances participating in the simulation.
+        scenario_provider : object
+            The scenario provider supplying test case data.
+        evaluation_metric : EvaluationMetric
+            The evaluation metric used to assess prioritization performance.
+        """
         self.agents = agents
         self.scenario_provider = scenario_provider
         self.evaluation_metric = evaluation_metric
@@ -56,9 +91,7 @@ class Environment:
         self.reset()
 
     def reset(self):
-        """
-        Reset the environment for a new simulation.
-        """
+        """Reset the environment for a new simulation."""
         self.reset_agents_memory()
         # Monitor saves the feedback during the process
         self.monitor = MonitorCollector()
@@ -70,9 +103,7 @@ class Environment:
                 self.variant_monitors[variant] = MonitorCollector()
 
     def reset_agents_memory(self):
-        """
-        Resets the agent's memory to an initial state.
-        """
+        """Reset all agents' memory to an initial state."""
         for agent in self.agents:
             agent.reset()
 
@@ -81,13 +112,18 @@ class Environment:
                    trials=100,
                    bandit_type=EvaluationMetricBandit,
                    restore=True):
-        """
-        Execute a single simulation experiment
+        """Execute a single simulation experiment.
 
-        :param experiment: Current Experiment
-        :param trials: The max number of scenarios that will be analyzed
-        :param bandit_type:
-        :param restore: restore the experiment if fail (i.e., energy down)
+        Parameters
+        ----------
+        experiment : int
+            Current experiment number.
+        trials : int, optional
+            The max number of scenarios that will be analyzed. Default is 100.
+        bandit_type : type, optional
+            The bandit class to use. Default is ``EvaluationMetricBandit``.
+        restore : bool, optional
+            Restore the experiment if it fails (e.g., energy down). Default is True.
         """
         # The agent need to learn from the beginning for each experiment
         self.reset_agents_memory()
@@ -161,17 +197,28 @@ class Environment:
 
     def run_prioritization(  # pylint: disable=too-many-positional-arguments
             self, agent, bandit, bandit_duration, experiment, t, virtual_scenario):
-        """
-        Run the prioritization process for a given agent and scenario.
+        """Run the prioritization process for a given agent and scenario.
 
-        :param agent: The agent that is being used for the prioritization.
-        :param bandit: The bandit mechanism used for choosing actions.
-        :param bandit_duration: Time taken by the bandit process.
-        :param experiment: The current experiment number.
-        :param t: The current step or iteration of the simulation.
-        :param virtual_scenario: The virtual scenario being considered.
-        :return: tuple containing the chosen action by the agent, the ending time of the process,
-                 the name of the experiment, and the starting time of the process.
+        Parameters
+        ----------
+        agent : Agent
+            The agent that is being used for the prioritization.
+        bandit : Bandit
+            The bandit mechanism used for choosing actions.
+        bandit_duration : float
+            Time taken by the bandit process.
+        experiment : int
+            The current experiment number.
+        t : int
+            The current step or iteration of the simulation.
+        virtual_scenario : VirtualScenario
+            The virtual scenario being considered.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the chosen action, the ending time, the
+            experiment name, and the starting time.
         """
         # MAB or CMAB
         if type(agent) in [ContextualAgent, SlidingWindowContextualAgent]:
@@ -241,19 +288,30 @@ class Environment:
             t,
             virtual_scenario):
 
-        """
-        Run the prioritization process for a given agent and HCS scenario.
+        """Run the prioritization process for a given agent and HCS scenario.
 
-        :param agent: The agent that is being used for the prioritization.
-        :param action: The chosen action by the agent.
-        :param avail_time_ratio: The available time ratio for the experiment.
-        :param bandit_duration: Time taken by the bandit process.
-        :param end: The ending time of the process.
-        :param exp_name: The name of the experiment.
-        :param experiment: The current experiment number.
-        :param start: The starting time of the process.
-        :param t: The current step or iteration of the simulation.
-        :param virtual_scenario: The virtual HCS scenario being considered.
+        Parameters
+        ----------
+        agent : Agent
+            The agent that is being used for the prioritization.
+        action : list of str
+            The chosen action by the agent.
+        avail_time_ratio : float
+            The available time ratio for the experiment.
+        bandit_duration : float
+            Time taken by the bandit process.
+        end : float
+            The ending time of the process.
+        exp_name : str
+            The name of the experiment.
+        experiment : int
+            The current experiment number.
+        start : float
+            The starting time of the process.
+        t : int
+            The current step or iteration of the simulation.
+        virtual_scenario : VirtualHCSScenario
+            The virtual HCS scenario being considered.
         """
 
         # Get the variants that exist in the current commit
@@ -299,29 +357,39 @@ class Environment:
 
     def save_periodically(  # pylint: disable=too-many-positional-arguments
             self, restore, t, experiment, bandit, interval=50000):
-        """
-       Save the experiment periodically based on a predefined interval.
+        """Save the experiment periodically based on a predefined interval.
 
-       :param restore: Flag to indicate if the experiment should be restored.
-       :param  t: The current step or iteration of the simulation.
-       :param  experiment: The current experiment number.
-       :param  bandit: The current bandit being used in the simulation.
-       :param  interval: The interval at which the experiment should be saved.
-       """
+        Parameters
+        ----------
+        restore : bool
+            Flag to indicate if the experiment should be restored.
+        t : int
+            The current step or iteration of the simulation.
+        experiment : int
+            The current experiment number.
+        bandit : Bandit
+            The current bandit being used in the simulation.
+        interval : int, optional
+            The interval at which the experiment should be saved. Default is 50000.
+        """
         # Save experiment each X builds
         if restore and t % interval == 0:
             self.save_experiment(experiment, t, bandit)
 
     def run(self, experiments=1, trials=100, bandit_type=EvaluationMetricBandit,
             restore=True):
-        """
-        Execute a simulation
+        """Execute a simulation over multiple experiments.
 
-        :param experiments: Number of experiments
-        :param trials: The max number of scenarios that will be analyzed
-        :param bandit_type:
-        :param restore: restore the experiment if fail (i.e., energy down)
-        :return:
+        Parameters
+        ----------
+        experiments : int, optional
+            Number of experiments. Default is 1.
+        trials : int, optional
+            The max number of scenarios that will be analyzed. Default is 100.
+        bandit_type : type, optional
+            The bandit class to use. Default is ``EvaluationMetricBandit``.
+        restore : bool, optional
+            Restore the experiment if it fails. Default is True.
         """
         self.reset()
 
@@ -329,10 +397,12 @@ class Environment:
             self.run_single(exp, trials, bandit_type, restore)
 
     def create_file(self, name):
-        """
-        Create a file to store the results obtained during the experiment
+        """Create a file to store the results obtained during the experiment.
 
-        :param name: The name of the file to store the results.
+        Parameters
+        ----------
+        name : str
+            The name of the file to store the results.
         """
         self.monitor.create_file(name)
 
@@ -350,10 +420,12 @@ class Environment:
                         f"{name}/{name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv")
 
     def store_experiment(self, csv_file_name):
-        """
-        Save the results obtained during the experiment
+        """Save the results obtained during the experiment.
 
-        :param csv_file_name: The name of the file to store the results.
+        Parameters
+        ----------
+        csv_file_name : str
+            The name of the file to store the results.
         """
         # Collect from temp and save a file (backup and easy sharing/auditing)
         self.monitor.save(csv_file_name)
@@ -375,10 +447,18 @@ class Environment:
         self.monitor.clear()
 
     def load_experiment(self, experiment):
-        """
-        Load the backup
+        """Load a backup of the experiment.
 
-        :param experiment: The current experiment number.
+        Parameters
+        ----------
+        experiment : int
+            The current experiment number.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the restore step, agents, monitor,
+            variant monitors, and bandit.
         """
         filename = f'backup/{str(self.scenario_provider)}_ex_{experiment}.p'
 
@@ -389,12 +469,21 @@ class Environment:
             return pickle.load(file)
 
     def save_experiment(self, experiment, t, bandit):
-        """
-        Save a backup for the experiment
+        """Save a backup for the experiment.
 
-        :param experiment: The current experiment number.
-        :param t: The current step or iteration of the simulation.
-        :param bandit: The current bandit being used in the simulation.
+        Parameters
+        ----------
+        experiment : int
+            The current experiment number.
+        t : int
+            The current step or iteration of the simulation.
+        bandit : Bandit
+            The current bandit being used in the simulation.
+
+        Raises
+        ------
+        Exception
+            If there is an error saving the experiment.
         """
         try:
             filename = f'backup/{str(self.scenario_provider)}_ex_{experiment}.p'
