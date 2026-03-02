@@ -1,0 +1,86 @@
+[project]
+name = "coleman4hcs"
+version = "0.0.0"
+description = "Multi-Armed Bandit based test case prioritization for continuous integration environments"
+license = "MIT"
+authors = [{ name = "Jackson Antonio do Prado Lima" }]
+requires-python = ">=3.14"
+readme = "README.md"
+dependencies = [
+    "duckdb",
+    "numpy",
+    "pandas",
+    "polars",
+    "pyarrow",
+    "python-dotenv",
+    "scipy",
+    "scikit-posthocs",
+    "toml",
+    "tomli",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pyright",
+    "ty",
+    "pre-commit",
+    "interrogate",
+    "numpydoc",
+    "pytest",
+    "pytest-benchmark",
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-profiling",
+    "pytest-xdist",
+]
+docs = [
+    "mkdocs-material",
+    "mkdocs-include-markdown-plugin",
+    "mkdocstrings[python]",
+    "mkdocs-jupyter",
+]
+release = [
+    "python-semantic-release",
+]
+notebook = [
+    "marimo",
+]
+
+[project.scripts]
+coleman4hcs = "main:__main__"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.backends"
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "N", "D"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D100", "D101", "D102", "D103", "D104", "D107"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.pyright]
+typeCheckingMode = "basic"
+
+[tool.pytest.ini_options]
+markers = [
+    "performance: Mark a test as a performance benchmark.",
+]
+
+[tool.interrogate]
+ignore-init-module = true
+fail-under = 80
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+branch = "master"
+commit_message = "chore(release): {version}"
+build_command = "uv build"
