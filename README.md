@@ -391,7 +391,7 @@ Further insights into the dataset are available in the [Datasets](#datasets) sec
 
 # Analysis of COLEMAN4HCS Performance
 
-As part of our ongoing effort to provide the state-of-the-art tool, Coleman4HCS, for TCPCI optimize COLEMAN4HCS, we've created examples to guide any researcher to understand the performance, effectiveness, and adaptability of our tool. The analysis, available in our Jupyter notebook (`analysis.ipynb`), leverages various libraries such as DuckDB, Pandas, Seaborn, and Matplotlib to process data and visualize the results.
+As part of our ongoing effort to provide the state-of-the-art tool, Coleman4HCS, for TCPCI optimize COLEMAN4HCS, we've created examples to guide any researcher to understand the performance, effectiveness, and adaptability of our tool. The analysis, available in our [marimo notebook](notebooks/analysis.py) (and the original [Jupyter notebook](notebooks/analysis.ipynb)), leverages various libraries such as DuckDB, Pandas, Seaborn, and Matplotlib to process data and visualize the results.
 
 ## Performance Metrics
 
