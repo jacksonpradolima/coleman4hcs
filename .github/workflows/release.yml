@@ -1,12 +1,15 @@
-name: Release
+name: Automated Release Management
 
 on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 permissions:
   contents: write
+  issues: write
+  pull-requests: write
   id-token: write
 
 jobs:
@@ -14,61 +17,108 @@ jobs:
     name: Semantic Release
     runs-on: ubuntu-latest
     concurrency: release
+    if: "github.event_name == 'workflow_dispatch' || (github.event.head_commit && !contains(github.event.head_commit.message, 'chore(release):'))"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          ref: ${{ github.ref }} # This ensures the workflow runs against the specific tag reference
           fetch-depth: 0
+          token: ${{ secrets.ORG_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
-      - name: Install uv
-        run: |
-          curl -Ls https://astral.sh/uv/install.sh | bash
-          echo "${HOME}/.local/bin" >> $GITHUB_PATH
-
-      - name: Install dependencies
-        run: |
-          uv venv .venv
-          uv sync --extra release
-          uv pip install -e .
-
-      - name: Python Semantic Release
-        id: semrel
-        uses: python-semantic-release/python-semantic-release@c1bcfdbb994243ac7cf419365d5894d6f2dfc25a # v9.21.1
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.0.0
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          python-version: "3.14"
 
-      - name: Build package
-        if: steps.semrel.outputs.released == 'true'
-        run: uv build
-
-      - name: Keep uv.lock fresh
-        if: steps.semrel.outputs.released == 'true'
+      - name: Install Python Semantic Release
         run: |
-          uv lock
+          python -m pip install --upgrade pip
+          pip install python-semantic-release==9.17.0 build uv
+
+      - name: Python Semantic Release (Version & Tag)
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.ORG_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add uv.lock
-          git diff --cached --quiet || git commit -m "chore: update uv.lock after release"
-          git push
+          
+          # Store current tag before running semantic-release
+          BEFORE_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+          
+          # Run semantic-release and handle potential failure
+          if semantic-release version; then
+            # Check if a new tag was created
+            AFTER_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+            
+            if [ "$BEFORE_TAG" != "$AFTER_TAG" ] && [ "$AFTER_TAG" != "none" ]; then
+              NEW_VERSION=$(echo "$AFTER_TAG" | sed 's/^v//')
+              echo "released=true" >> $GITHUB_OUTPUT
+              echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+              echo "New version released: $NEW_VERSION (was: $BEFORE_TAG)"
+            else
+              echo "released=false" >> $GITHUB_OUTPUT
+              echo "No new version to release (current tag: $AFTER_TAG)"
+            fi
+          else
+            echo "released=false" >> $GITHUB_OUTPUT
+            echo "semantic-release version command failed; no release created." >&2
+            exit 1
+          fi
+
+      - name: Update uv.lock
+        if: steps.release.outputs.released == 'true'
+        run: |
+          uv lock
+          if ! git diff --quiet uv.lock; then
+            git add uv.lock
+            git commit -m "chore: update uv.lock for version ${{ steps.release.outputs.version }}"
+            git push
+          else
+            echo "uv.lock is already up to date"
+          fi
+
+      - name: Build package
+        if: steps.release.outputs.released == 'true'
+        run: |
+          python -m build
 
       - name: Install Syft
-        if: steps.semrel.outputs.released == 'true'
-        uses: anchore/sbom-action/download-syft@v0
+        if: steps.release.outputs.released == 'true'
+        uses: anchore/sbom-action/download-syft@17ae1740179002c89186b61233e0f892c3118b11 # v0.23.0
 
-      - name: Generate SBOM
-        if: steps.semrel.outputs.released == 'true'
-        run: syft dir:. -o spdx-json=sbom.spdx.json
+      - name: Generate SBOM (CycloneDX)
+        if: steps.release.outputs.released == 'true'
+        run: syft packages dist -o cyclonedx-json=dist/sbom.json
 
       - name: Sign distributions with Sigstore
-        if: steps.semrel.outputs.released == 'true'
-        uses: sigstore/gh-action-sigstore-python@v3.0.0
+        if: steps.release.outputs.released == 'true'
+        uses: sigstore/gh-action-sigstore-python@f514d46b907ebcd5bedc05145c03b69c1edd8b46 # v3.0.0
         with:
-          inputs: dist/*
+          inputs: >-
+            dist/*.whl
+            dist/*.tar.gz
+
+      - name: Move Sigstore attestations and SBOM out of dist
+        if: steps.release.outputs.released == 'true'
+        run: |
+          mkdir -p attestations
+          if ls dist/*.sigstore.json 1> /dev/null 2>&1; then
+            mv dist/*.sigstore.json attestations/
+          fi
+          if [ -f dist/sbom.json ]; then
+            mv dist/sbom.json attestations/
+          fi
 
       - name: Create GitHub Release
-        if: steps.semrel.outputs.released == 'true'
-        uses: python-semantic-release/publish-action@v9.21.1
+        if: steps.release.outputs.released == 'true'
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.2.1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ steps.semrel.outputs.tag }}
+          tag_name: v${{ steps.release.outputs.version }}
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            attestations/*.sigstore.json
+            attestations/sbom.json
