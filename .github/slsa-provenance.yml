@@ -1,0 +1,66 @@
+name: SLSA provenance for releases
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build Python packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.x"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Build package
+        run: python -m build
+
+      - name: Generate subject
+        id: hash
+        run: |
+          cd dist
+          files=$(find . -maxdepth 1 -type f \( -name '*.whl' -o -name '*.tar.gz' \) -printf '%f\n' | sort)
+          if [ -z "$files" ]; then
+            echo "No Python package artifacts (*.whl, *.tar.gz) found in dist" >&2
+            exit 1
+          fi
+          HASHES=$(printf '%s\n' "$files" | xargs sha256sum | base64 -w0)
+          echo "hashes=$HASHES" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  provenance:
+    name: Generate SLSA provenance
+    needs: [build]
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+    with:
+      base64-subjects: "${{ needs.build.outputs.hashes }}"
+      provenance-name: gsppy-provenance.intoto.jsonl
+      upload-assets: true

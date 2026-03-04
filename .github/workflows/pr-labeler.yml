@@ -1,0 +1,392 @@
+name: PR Labeler
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]
+  pull_request_review_comment:
+    types: [created]
+  issue_comment:
+    types: [created]
+  schedule:
+    # Run every day at 00:00 UTC to check for stale PRs
+    - cron: '0 0 * * *'
+
+permissions: {}
+
+jobs:
+  label-by-files:
+    name: Label by Changed Files
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Label based on changed files
+        uses: actions/labeler@634933edcd8ababfe52f92936142cc22ac488b1b # v6.0.1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: false
+
+  label-by-size:
+    name: Label by PR Size
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Label PR by size
+        uses: codelytv/pr-size-labeler@4ec67706cd878fbc1c8db0a5dcd28b6bb412e85a # v1.10.3
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: 'size/XS'
+          xs_max_size: '10'
+          s_label: 'size/S'
+          s_max_size: '100'
+          m_label: 'size/M'
+          m_max_size: '500'
+          l_label: 'size/L'
+          l_max_size: '1000'
+          xl_label: 'size/XL'
+          fail_if_xl: 'false'
+          message_if_xl: >
+            This PR is very large. Consider splitting it into smaller PRs for easier review.
+          files_to_ignore: |
+            *.lock
+            *.md
+            uv.lock
+
+  label-pr-status:
+    name: Label PR Status
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check for merge conflicts
+        uses: eps1lon/actions-label-merge-conflict@1df065ebe6e3310545d4f4c4e862e43bdca146f0 # v3.0.3
+        with:
+          dirtyLabel: 'status/conflicts'
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Label draft PRs
+        if: github.event.pull_request.draft == true
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['status/draft']
+            });
+
+      - name: Remove draft label when ready
+        if: github.event.pull_request.draft == false && github.event.action == 'ready_for_review'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'status/draft'
+              });
+            } catch (error) {
+              // Label might not exist, ignore error
+              console.log('Draft label not found or already removed');
+            }
+
+  label-stale-prs:
+    name: Label Stale PRs
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Mark stale PRs
+        uses: actions/stale@b5d41d4e1d5dceea10e7104786b73624c18a190f # v10.2.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-pr-message: |
+            This pull request has been automatically marked as stale because it has not had
+            recent activity. It will be closed if no further activity occurs within the next 7 days.
+            Please comment if this PR is still relevant and should remain open.
+          stale-pr-label: 'status/stale'
+          days-before-stale: 30
+          days-before-close: 7
+          exempt-pr-labels: 'status/on-hold,status/blocked,priority/critical'
+          exempt-draft-pr: true
+          operations-per-run: 100
+          remove-stale-when-updated: true
+          close-pr-message: |
+            This pull request has been automatically closed due to inactivity.
+            If you would like to continue working on this, please reopen the PR or create a new one.
+
+  check-blocked-status:
+    name: Check for Blocked Status
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    if: github.event_name == 'pull_request' || github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment'
+    steps:
+      - name: Check for blocked keywords in comments
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const blockedKeywords = [
+              'blocked',
+              'blocking',
+              'waiting for',
+              'depends on',
+              'blocked by',
+              'do not merge',
+              'dnm'
+            ];
+
+            const onHoldKeywords = [
+              'on hold',
+              'place on hold',
+              'waiting for decision',
+              'needs discussion',
+              'awaiting decision'
+            ];
+
+            let pullNumber;
+
+            // Get the PR number depending on the event type
+            if (context.eventName === 'pull_request') {
+              pullNumber = context.payload.pull_request.number;
+            } else if (context.eventName === 'issue_comment' && context.payload.issue.pull_request) {
+              pullNumber = context.payload.issue.number;
+            } else if (context.eventName === 'pull_request_review_comment') {
+              pullNumber = context.payload.pull_request.number;
+            } else {
+              console.log('Not a pull request event, skipping');
+              return;
+            }
+
+            // Get all comments on the PR (issue comments) with pagination
+            let allComments = [];
+            let page = 1;
+            let hasMore = true;
+            while (hasMore) {
+              const comments = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pullNumber,
+                per_page: 100,
+                page: page
+              });
+              allComments = allComments.concat(comments.data);
+              hasMore = comments.data.length === 100;
+              page++;
+            }
+
+            // Get review comments with pagination
+            let allReviewComments = [];
+            page = 1;
+            hasMore = true;
+            while (hasMore) {
+              const reviewComments = await github.rest.pulls.listReviewComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pullNumber,
+                per_page: 100,
+                page: page
+              });
+              allReviewComments = allReviewComments.concat(reviewComments.data);
+              hasMore = reviewComments.data.length === 100;
+              page++;
+            }
+
+            // Get PR details for body and title
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullNumber
+            });
+
+            // Check title, body, issue comments, and review comments for blocked keywords
+            const allText = [
+              pr.data.title.toLowerCase(),
+              pr.data.body?.toLowerCase() || '',
+              ...allComments.map(c => c.body?.toLowerCase() || ''),
+              ...allReviewComments.map(c => c.body?.toLowerCase() || '')
+            ].join(' ');
+
+            // Helper function to escape regex special characters
+            function escapeRegExp(str) {
+              return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
+            // Check with word boundaries to avoid false positives
+            const isBlocked = blockedKeywords.some(keyword => {
+              const pattern = new RegExp(`\\b${escapeRegExp(keyword)}\\b`, 'i');
+              return pattern.test(allText);
+            });
+
+            const isOnHold = onHoldKeywords.some(keyword => {
+              const pattern = new RegExp(`\\b${escapeRegExp(keyword)}\\b`, 'i');
+              return pattern.test(allText);
+            });
+
+            // Get current labels
+            const currentLabels = pr.data.labels.map(l => l.name);
+
+            // Add blocked label if detected
+            if (isBlocked && !currentLabels.includes('status/blocked')) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pullNumber,
+                labels: ['status/blocked']
+              });
+              console.log('Added status/blocked label');
+            }
+
+            // Add on-hold label if detected
+            if (isOnHold && !currentLabels.includes('status/on-hold')) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pullNumber,
+                labels: ['status/on-hold']
+              });
+              console.log('Added status/on-hold label');
+            }
+
+            // Remove blocked label if no longer blocked
+            if (!isBlocked && currentLabels.includes('status/blocked')) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pullNumber,
+                  name: 'status/blocked'
+                });
+                console.log('Removed status/blocked label');
+              } catch (error) {
+                console.log('Failed to remove status/blocked label');
+              }
+            }
+
+            // Remove on-hold label if no longer on hold
+            if (!isOnHold && currentLabels.includes('status/on-hold')) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pullNumber,
+                  name: 'status/on-hold'
+                });
+                console.log('Removed status/on-hold label');
+              } catch (error) {
+                console.log('Failed to remove status/on-hold label');
+              }
+            }
+
+  check-needs-review:
+    name: Check Needs Review Status
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Label PRs needing review
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            // Skip draft PRs
+            if (pr.draft) {
+              console.log('PR is draft, skipping review check');
+              return;
+            }
+
+            // Get reviews
+            const reviews = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+
+            // Get the latest review per reviewer, excluding dismissed reviews
+            const latestReviewsByUser = {};
+            const activeReviews = reviews.data.filter(review => review.state !== 'DISMISSED');
+            
+            for (const review of activeReviews) {
+              const userId = review.user.id;
+              if (!latestReviewsByUser[userId] || 
+                  new Date(review.submitted_at) > new Date(latestReviewsByUser[userId].submitted_at)) {
+                latestReviewsByUser[userId] = review;
+              }
+            }
+
+            const latestReviews = Object.values(latestReviewsByUser);
+
+            // Check latest review states
+            const hasApproval = latestReviews.some(review => review.state === 'APPROVED');
+            const hasChangesRequested = latestReviews.some(review => review.state === 'CHANGES_REQUESTED');
+
+            // Get current labels
+            const currentLabels = pr.labels.map(l => l.name);
+
+            // Add needs-review if no reviews and not already labeled
+            if (latestReviews.length === 0 && !currentLabels.includes('status/needs-review')) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                labels: ['status/needs-review']
+              });
+              console.log('Added status/needs-review label');
+            }
+
+            // Add changes-requested if changes were requested
+            if (hasChangesRequested && !currentLabels.includes('status/changes-requested')) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                labels: ['status/changes-requested']
+              });
+              console.log('Added status/changes-requested label');
+            }
+
+            // Remove needs-review if there are reviews
+            if (latestReviews.length > 0 && currentLabels.includes('status/needs-review')) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  name: 'status/needs-review'
+                });
+                console.log('Removed status/needs-review label');
+              } catch (error) {
+                console.log('Failed to remove status/needs-review label');
+              }
+            }
+
+            // Remove changes-requested if approved or changes addressed
+            if (hasApproval && currentLabels.includes('status/changes-requested')) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  name: 'status/changes-requested'
+                });
+                console.log('Removed status/changes-requested label');
+              } catch (error) {
+                console.log('Failed to remove status/changes-requested label');
+              }
+            }
