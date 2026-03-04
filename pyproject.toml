@@ -1,9 +1,9 @@
 [project]
 name = "coleman4hcs"
-version = "0.0.0"
+version = "2.3.0"
 description = "Multi-Armed Bandit based test case prioritization for continuous integration environments"
 license = "MIT"
-authors = [{ name = "Jackson Antonio do Prado Lima" }]
+authors = [{ name = "Jackson Antonio do Prado Lima", email = "jacksonpradolima@gmail.com" }]
 requires-python = ">=3.14"
 readme = "README.md"
 dependencies = [
@@ -46,6 +46,10 @@ release = [
 notebook = [
     "marimo",
 ]
+
+[project.urls]
+homepage = "https://github.com/jacksonpradolima/coleman4hcs"
+repository = "https://github.com/jacksonpradolima/coleman4hcs"
 
 [build-system]
 requires = ["hatchling"]

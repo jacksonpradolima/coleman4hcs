@@ -3,8 +3,8 @@ message: "If you use this software, please cite the article below."
 title: "Coleman4HCS"
 type: software
 authors:
-  - family-names: "Lima"
-    given-names: "Jackson A. Prado"
+  - family-names: "Prado Lima"
+    given-names: "Jackson A."
   - family-names: "Vergilio"
     given-names: "Silvia Regina"
 repository-code: "https://github.com/jacksonpradolima/coleman4hcs"
@@ -13,8 +13,8 @@ preferred-citation:
   type: article
   title: "A Multi-Armed Bandit Approach for Test Case Prioritization in Continuous Integration Environments"
   authors:
-    - family-names: "Lima"
-      given-names: "Jackson A. Prado"
+    - family-names: "Prado Lima"
+      given-names: "Jackson A."
     - family-names: "Vergilio"
       given-names: "Silvia Regina"
   journal: "IEEE Transactions on Software Engineering"

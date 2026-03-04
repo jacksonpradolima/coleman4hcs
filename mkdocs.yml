@@ -4,6 +4,22 @@ site_url: https://jacksonpradolima.github.io/coleman4hcs/
 repo_url: https://github.com/jacksonpradolima/coleman4hcs
 repo_name: jacksonpradolima/coleman4hcs
 
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - API Reference:
+      - Agent: api/agent.md
+      - Bandit: api/bandit.md
+      - Environment: api/environment.md
+      - Evaluation: api/evaluation.md
+      - Policy: api/policy.md
+      - Reward: api/reward.md
+      - Scenarios: api/scenarios.md
+  # - Notebooks:
+  #     - Analysis: notebooks/analysis.py
+
+
 theme:
   name: material
   palette:
@@ -28,14 +44,23 @@ theme:
 plugins:
   - search
   - mkdocstrings:
+      default_handler: python
       handlers:
         python:
           options:
             docstring_style: numpy
-            show_source: true
+            show_root_heading: true
+            heading_level: 2
+            separate_signature: true
+            show_source: false
   - mkdocs-jupyter:
       include: ["*.py"]
       execute: false
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/jacksonpradolima/coleman4hcs
 
 markdown_extensions:
   - admonition
@@ -50,17 +75,3 @@ markdown_extensions:
   - pymdownx.snippets
   - toc:
       permalink: true
-
-nav:
-  - Home: index.md
-  - Getting Started: getting-started.md
-  - API Reference:
-      - Agent: api/agent.md
-      - Bandit: api/bandit.md
-      - Environment: api/environment.md
-      - Evaluation: api/evaluation.md
-      - Policy: api/policy.md
-      - Reward: api/reward.md
-      - Scenarios: api/scenarios.md
-  - Notebooks:
-      - Analysis: notebooks/analysis.py

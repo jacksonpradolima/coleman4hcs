@@ -1,9 +1,6 @@
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/pradolima)
-[![YouTube Badge](https://img.shields.io/badge/Presentations-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white)](https://github.com/jacksonpradolima/coleman4hcs#references)
-[![SonarCloud](https://sonarcloud.io/images/project_badges/sonarcloud-white.svg)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
-
 # Coleman4HCS
 
+[![Docs](https://img.shields.io/badge/Docs-Coleman4HCS%20Site-3D9970?style=flat-square)](https://jacksonpradolima.github.io/coleman4hcs/)
 ![](https://img.shields.io/badge/python-3.14+-blue.svg)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=bugs)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
@@ -61,20 +58,27 @@ In order to use this `version`, use any Contextual-MAB available, for instance, 
 
 # Getting started
 
+- [Coleman4HCS](#coleman4hcs)
+    - [Solving the Test Case Prioritization using Multi-Armed Bandit Algorithms](#solving-the-test-case-prioritization-using-multi-armed-bandit-algorithms)
+- [Getting started](#getting-started)
 - [Citation](#citation)
 - [Installation](#installation)
 - [Development](#development)
 - [Datasets](#datasets)
 - [About the files input](#about-the-files-input)
 - [Using the tool](#using-the-tool)
-    - [MAB Policies Available](#mab-policies-available)
-	- [Running for a system non HCS](#running-for-a-system-non-hcs)
-	- [Running for an HCS system](#running-for-an-hcs-system)
-	  - [Whole Test Set Strategy](#whole-test-set-strategy)
-	  - [Variant Test Set Strategy](#variant-test-set-strategy)
+  - [How data flows through Coleman4HCS](#how-data-flows-through-coleman4hcs)
+  - [MAB Policies Available](#mab-policies-available)
+  - [Running for Non-HCS System](#running-for-non-hcs-system)
+  - [Running for an HCS system](#running-for-an-hcs-system)
+    - [Whole Test Set Strategy](#whole-test-set-strategy)
+    - [Variant Test Set Strategy](#variant-test-set-strategy)
 - [Analysis of COLEMAN4HCS Performance](#analysis-of-coleman4hcs-performance)
+  - [Performance Metrics](#performance-metrics)
+  - [Methodologies](#methodologies)
+  - [Visualizations](#visualizations)
 - [References](#references)
-- [Contributors](#Contributors)
+- [Contributors](#contributors)
 ----------------------------------
 
 
