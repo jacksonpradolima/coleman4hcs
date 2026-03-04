@@ -151,7 +151,7 @@ This project uses a `Makefile` to streamline common development tasks. Run `make
 | `make test`              | Run tests with pytest                |
 | `make lint`              | Run the ruff linter                  |
 | `make format`            | Run the ruff formatter               |
-| `make docs`              | Build documentation with MkDocs      |
+| `make docs`              | Build documentation with Zensical    |
 | `make help`              | Show all available Make targets      |
 
 # Datasets

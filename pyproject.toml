@@ -35,8 +35,7 @@ dev = [
     "pytest-xdist",
 ]
 docs = [
-    "mkdocs-material",
-    "mkdocs-include-markdown-plugin",
+    "zensical",
     "mkdocstrings[python]",
     "mkdocs-jupyter",
 ]

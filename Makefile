@@ -85,11 +85,11 @@ test-cov: ensure-uv install ## Run tests with coverage report in parallel if xdi
 
 # ——— Documentation ————————————————————————————————————————
 
-docs: ensure-uv ## Build documentation with MkDocs
-	$(UV) run mkdocs build --strict
+docs: ensure-uv ## Build documentation with Zensical
+	$(UV) run zensical build --strict
 
 docs-serve: ensure-uv ## Serve documentation locally
-	$(UV) run mkdocs serve
+	$(UV) run zensical serve
 
 # ——— Build ————————————————————————————————————————————————
 

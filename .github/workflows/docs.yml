@@ -30,7 +30,7 @@ jobs:
           uv pip install -e .
 
       - name: Build docs
-        run: uv run mkdocs build --strict
+        run: uv run zensical build --strict
 
       - name: Upload Pages artifact
         if: (github.event_name == 'push' && github.ref == 'refs/heads/master') || github.event_name == 'workflow_dispatch'
