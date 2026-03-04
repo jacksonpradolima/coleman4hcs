@@ -1,0 +1,60 @@
+[project]
+
+# Project information
+site_name = "Coleman4HCS"
+site_description = "Solving the Test Case Prioritization using Multi-Armed Bandit Algorithms for Highly-Configurable Systems"
+site_author = "Jackson Antonio do Prado Lima"
+site_url = "https://jacksonpradolima.github.io/coleman4hcs/"
+copyright = "Copyright &copy; 2024 Jackson Antonio do Prado Lima"
+
+# Repository
+repo_name = "jacksonpradolima/coleman4hcs"
+repo_url = "https://github.com/jacksonpradolima/coleman4hcs"
+
+# Navigation
+nav = [
+  { "Home" = "index.md" },
+  { "Getting Started" = "getting-started.md" },
+  { "Configuration" = "configuration.md" },
+  { "API Reference" = "api-reference.md" },
+]
+
+# ----------------------------------------------------------------------------
+# Theme configuration
+# ----------------------------------------------------------------------------
+[project.theme]
+language = "en"
+features = [
+    "content.code.annotate",
+    "content.code.copy",
+    "navigation.footer",
+    "navigation.indexes",
+    "navigation.instant",
+    "navigation.instant.prefetch",
+    "navigation.path",
+    "navigation.sections",
+    "navigation.top",
+    "navigation.tracking",
+    "search.highlight",
+]
+
+[[project.theme.palette]]
+scheme = "default"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+primary = "indigo"
+accent = "orange"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+# ----------------------------------------------------------------------------
+# Social links
+# ----------------------------------------------------------------------------
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/jacksonpradolima"
