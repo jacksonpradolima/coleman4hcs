@@ -11,9 +11,14 @@
         "charliermarsh.ruff",
         "ms-python.python",
         "ms-python.vscode-pylance",
+        "astral-sh.ruff",
         "GitHub.copilot",
         "tamasfe.even-better-toml",
-        "yzhang.markdown-all-in-one"
+        "yzhang.markdown-all-in-one",
+        "ms-pyright.pyright",
+        "ms-toolsai.jupyter",
+        "astral-sh.ty",
+        "marimo-team.vscode-marimo"
       ],
       "settings": {
         "python.defaultInterpreterPath": ".venv/bin/python",
