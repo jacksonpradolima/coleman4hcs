@@ -185,9 +185,6 @@ dmypy.json
 # Ruff
 .ruff_cache/
 
-# uv
-uv.lock
-
 # Ignore extremely large files
 data/square@okhttp/features-engineered.csv
 
