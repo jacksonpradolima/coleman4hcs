@@ -8,10 +8,16 @@ structured approach to managing data during experiment execution.
 """
 
 from dataclasses import dataclass
-from typing import List, Union
+
 from coleman4hcs.evaluation import EvaluationMetric
-from coleman4hcs.scenarios import VirtualScenario, VirtualHCSScenario, VirtualContextScenario, \
-    IndustrialDatasetScenarioProvider, IndustrialDatasetHCSScenarioProvider, IndustrialDatasetContextScenarioProvider
+from coleman4hcs.scenarios import (
+    IndustrialDatasetContextScenarioProvider,
+    IndustrialDatasetHCSScenarioProvider,
+    IndustrialDatasetScenarioProvider,
+    VirtualContextScenario,
+    VirtualHCSScenario,
+    VirtualScenario,
+)
 
 
 @dataclass
@@ -20,7 +26,9 @@ class CollectParams:
 
     Parameters
     ----------
-    scenario_provider : Union[VirtualScenario, VirtualHCSScenario, VirtualContextScenario, IndustrialDatasetScenarioProvider, IndustrialDatasetHCSScenarioProvider, IndustrialDatasetContextScenarioProvider]
+    scenario_provider : Union[VirtualScenario, VirtualHCSScenario, VirtualContextScenario, \
+IndustrialDatasetScenarioProvider, IndustrialDatasetHCSScenarioProvider, \
+IndustrialDatasetContextScenarioProvider]
         The scenario being analyzed, which provides context or settings for
         the experiment.
     available_time : float
@@ -44,14 +52,15 @@ class CollectParams:
     prioritization_order : list
         The order of prioritized test cases.
     """
-    scenario_provider: Union[
-        VirtualScenario,
-        VirtualHCSScenario,
-        VirtualContextScenario,
-        IndustrialDatasetScenarioProvider,
-        IndustrialDatasetHCSScenarioProvider,
-        IndustrialDatasetContextScenarioProvider,
-    ]
+
+    scenario_provider: (
+        VirtualScenario
+        | VirtualHCSScenario
+        | VirtualContextScenario
+        | IndustrialDatasetScenarioProvider
+        | IndustrialDatasetHCSScenarioProvider
+        | IndustrialDatasetContextScenarioProvider
+    )
     available_time: float
     experiment: int
     t: int
@@ -61,4 +70,4 @@ class CollectParams:
     total_build_duration: int
     prioritization_time: int
     rewards: float
-    prioritization_order: List[any]
+    prioritization_order: list[any]

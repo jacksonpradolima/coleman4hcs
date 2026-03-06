@@ -1,6 +1,4 @@
-"""
-coleman4hcs.environment
-~~~~~~~~~~~~~~~~~~~~~~~
+"""Environment for agent-bandit interactions in Coleman4HCS.
 
 This module contains the `Environment` class which simulates the agent's interactions and
 collects results during the reinforcement learning process. The environment provides a
@@ -34,7 +32,7 @@ import polars as pl
 
 from coleman4hcs.agent import ContextualAgent, SlidingWindowContextualAgent
 from coleman4hcs.bandit import EvaluationMetricBandit
-from coleman4hcs.scenarios import VirtualHCSScenario, IndustrialDatasetHCSScenarioProvider
+from coleman4hcs.scenarios import IndustrialDatasetHCSScenarioProvider, VirtualHCSScenario
 from coleman4hcs.utils.monitor import MonitorCollector
 from coleman4hcs.utils.monitor_params import CollectParams
 
@@ -287,7 +285,6 @@ class Environment:
             start,
             t,
             virtual_scenario):
-
         """Run the prioritization process for a given agent and HCS scenario.
 
         Parameters
@@ -313,7 +310,6 @@ class Environment:
         virtual_scenario : VirtualHCSScenario
             The virtual HCS scenario being considered.
         """
-
         # Get the variants that exist in the current commit
         variants = virtual_scenario.get_variants()
 
@@ -407,17 +403,19 @@ class Environment:
         self.monitor.create_file(name)
 
         # If we are working with HCS scenario, we create a file for each variant in a specific directory
-        if isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider):
-            if self.scenario_provider.get_total_variants() > 0:
-                # Ignore the extension
-                name = name.split(".csv")[0]
-                name = f"{name}_variants"
+        if (
+            isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider)
+            and self.scenario_provider.get_total_variants() > 0
+        ):
+            # Ignore the extension
+            name = name.split(".csv")[0]
+            name = f"{name}_variants"
 
-                Path(name).mkdir(parents=True, exist_ok=True)
+            Path(name).mkdir(parents=True, exist_ok=True)
 
-                for variant in self.scenario_provider.get_all_variants():
-                    self.variant_monitors[variant].create_file(
-                        f"{name}/{name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv")
+            for variant in self.scenario_provider.get_all_variants():
+                self.variant_monitors[variant].create_file(
+                    f"{name}/{name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv")
 
     def store_experiment(self, csv_file_name):
         """Save the results obtained during the experiment.
@@ -430,18 +428,20 @@ class Environment:
         # Collect from temp and save a file (backup and easy sharing/auditing)
         self.monitor.save(csv_file_name)
 
-        if isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider):
-            if self.scenario_provider.get_total_variants() > 0:
-                # Ignore the extension
-                name2 = csv_file_name.split(".csv")[0]
-                name2 = f"{name2}_variants"
+        if (
+            isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider)
+            and self.scenario_provider.get_total_variants() > 0
+        ):
+            # Ignore the extension
+            name2 = csv_file_name.split(".csv")[0]
+            name2 = f"{name2}_variants"
 
-                Path(name2).mkdir(parents=True, exist_ok=True)
+            Path(name2).mkdir(parents=True, exist_ok=True)
 
-                for variant in self.scenario_provider.get_all_variants():
-                    # Collect from temp and save a file (backup and easy sharing/auditing)
-                    self.variant_monitors[variant].save(
-                        f"{name2}/{csv_file_name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv")
+            for variant in self.scenario_provider.get_all_variants():
+                # Collect from temp and save a file (backup and easy sharing/auditing)
+                self.variant_monitors[variant].save(
+                    f"{name2}/{csv_file_name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv")
 
         # Clear experiment
         self.monitor.clear()

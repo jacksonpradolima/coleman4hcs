@@ -240,7 +240,7 @@ class NAPFDMetric(EvaluationMetric):
         self.fitness = p - self.detected_failures / (total_failure_count * no_testcases) + p / (2 * no_testcases)
 
         # APFDc
-        self.cost = sum((sum(costs[i - 1:]) - 0.5 * costs[i - 1] for i in self.detection_ranks)) / (
+        self.cost = sum(sum(costs[i - 1:]) - 0.5 * costs[i - 1] for i in self.detection_ranks) / (
             sum(costs) * total_failed_tests)
 
 
@@ -303,5 +303,5 @@ class NAPFDVerdictMetric(EvaluationMetric):
             2 * no_testcases)
 
         # APFDc
-        self.cost = sum((sum(costs[i - 1:]) - 0.5 * costs[i - 1] for i in self.detection_ranks)) / (
+        self.cost = sum(sum(costs[i - 1:]) - 0.5 * costs[i - 1] for i in self.detection_ranks) / (
             sum(costs) * total_failure_count)

@@ -23,14 +23,13 @@ References
 """
 import itertools as it
 from bisect import bisect_left
-from typing import List, Tuple
 
 import numpy as np
 import polars as pl
 import scipy.stats as ss
 
 
-def VD_A(treatment: List[float], control: List[float]) -> Tuple[float, str]:
+def VD_A(treatment: list[float], control: list[float]) -> tuple[float, str]:
     """Compute Vargha and Delaney A index.
 
     The formula to compute A has been transformed to minimize accuracy errors.
@@ -121,7 +120,7 @@ def VD_A_DF(data: pl.DataFrame, val_col: str = None, group_col: str = None,
     # Compute effect size for each combination
     ef = np.array([VD_A(list(x.filter(pl.col(group_col) == groups_list[i])[val_col].to_list()),
                         list(x.filter(pl.col(group_col) == groups_list[j])[val_col].to_list()))
-                   for i, j in zip(g1, g2)])
+                   for i, j in zip(g1, g2, strict=False)])
 
     groups_array = groups.to_numpy()
     return pl.DataFrame({

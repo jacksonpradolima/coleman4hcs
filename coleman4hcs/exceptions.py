@@ -1,8 +1,4 @@
-"""
-coleman4hcs.exceptions
-----------------------
-
-Defines custom exceptions used in the Coleman4HCS framework.
+"""Custom exceptions for the Coleman4HCS framework.
 
 Classes
 -------

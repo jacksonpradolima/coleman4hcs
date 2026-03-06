@@ -40,7 +40,7 @@ def get_config() -> dict:
     if config_path is None:
         raise FileNotFoundError("Environment variable CONFIG_FILE is not set.")
 
-    with open(config_path, "r", encoding='utf-8') as file:
+    with open(config_path, encoding='utf-8') as file:
         config = toml.load(file)
 
     return config

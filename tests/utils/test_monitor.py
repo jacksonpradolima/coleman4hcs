@@ -115,7 +115,7 @@ def test_create_file(tmp_path, monitor_collector):
     monitor_collector.create_file(file_path)
 
     assert os.path.exists(file_path)
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, encoding='utf-8') as f:
         header = f.readline().strip()
         assert header == ";".join(monitor_collector.df.columns)
 
@@ -296,7 +296,7 @@ def test_create_file_existing_file(tmp_path, monitor_collector):
     monitor_collector.create_file(file_path)
 
     # Read back the file and ensure it retains the original content
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, encoding='utf-8') as f:
         content = f.read()
 
     assert content == "existing_header\n", "File content was unexpectedly overwritten."

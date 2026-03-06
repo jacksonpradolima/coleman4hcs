@@ -22,7 +22,6 @@ IndustrialDatasetContextScenarioProvider
     Extends IndustrialDatasetScenarioProvider to handle context scenarios.
 """
 import os
-from typing import List, Dict, Optional
 
 import polars as pl
 
@@ -53,7 +52,7 @@ class VirtualScenario:
         The total duration of the build.
     """
 
-    def __init__(self, available_time: float, testcases: List[Dict], build_id: int, total_build_duration: float):
+    def __init__(self, available_time: float, testcases: list[dict], build_id: int, total_build_duration: float):
         """Initialize the VirtualScenario.
 
         Parameters
@@ -89,7 +88,7 @@ class VirtualScenario:
         """
         return self.available_time
 
-    def get_testcases(self) -> List[Dict]:
+    def get_testcases(self) -> list[dict]:
         """Return the test cases for the scenario.
 
         Returns
@@ -174,7 +173,7 @@ class VirtualContextScenario(VirtualScenario):
         self,
         *args,
         feature_group: str,
-        features: List[str],
+        features: list[str],
         context_features: pl.DataFrame,
         **kwargs
     ):
@@ -193,7 +192,7 @@ class VirtualContextScenario(VirtualScenario):
         """
         return self.feature_group
 
-    def get_features(self) -> List[str]:
+    def get_features(self) -> list[str]:
         """Return the features associated with the scenario.
 
         Returns
@@ -265,7 +264,7 @@ class IndustrialDatasetScenarioProvider:
         self.avail_time_ratio = sched_time_ratio
         self.current_build = 0
         self.total_build_duration = 0
-        self.scenario: Optional[VirtualScenario] = None
+        self.scenario: VirtualScenario | None = None
 
         self.tcdf = self._read_testcases(tcfile)
         self.max_builds = self.tcdf["BuildId"].max()
@@ -313,7 +312,7 @@ class IndustrialDatasetScenarioProvider:
         """
         self.current_build = build
 
-    def get(self) -> Optional[VirtualScenario]:
+    def get(self) -> VirtualScenario | None:
         """Get the next virtual scenario.
 
         Called by ``__next__``. Separates data by builds and returns each
@@ -525,8 +524,8 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         self,
         tcfile: str,
         feature_group_name: str,
-        feature_group_values: List[str],
-        previous_build: List[str],
+        feature_group_values: list[str],
+        previous_build: list[str],
         sched_time_ratio: float = 0.5,
     ):
         """Initialize the context-aware scenario provider.

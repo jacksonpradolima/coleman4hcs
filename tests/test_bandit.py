@@ -266,6 +266,7 @@ def test_bandit_subclass_with_pull():
 
     class CompleteBandit(Bandit):
         """Complete bandit subclass with pull method for testing."""
+
         def pull(self, action):
             return action
 

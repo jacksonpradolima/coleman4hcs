@@ -52,25 +52,23 @@ Test Structure:
 
 """
 import logging
-from unittest.mock import Mock, patch, call
+from unittest.mock import Mock, call, patch
 
 import pytest
 
 import coleman4hcs.policy
-
-from coleman4hcs.agent import RewardSlidingWindowAgent, ContextualAgent
+from coleman4hcs.agent import ContextualAgent, RewardSlidingWindowAgent
 from coleman4hcs.policy import FRRMABPolicy, SWLinUCBPolicy
 from coleman4hcs.scenarios import IndustrialDatasetHCSScenarioProvider, IndustrialDatasetScenarioProvider
 from main import (
+    create_agents,
     create_logger,
     exp_run_industrial_dataset,
-    load_class_from_module,
-    create_agents,
     get_scenario_provider,
+    load_class_from_module,
     merge_csv,
-    store_experiments
+    store_experiments,
 )
-
 
 # ------------------------
 # Unit Tests

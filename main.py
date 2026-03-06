@@ -30,26 +30,20 @@ import warnings
 from multiprocessing import Pool
 from pathlib import Path
 
+import duckdb
 import polars as pl
 from dotenv import load_dotenv
 
-import duckdb
-
 import coleman4hcs.policy
 import coleman4hcs.reward
-from coleman4hcs.agent import (
-    RewardAgent,
-    RewardSlidingWindowAgent,
-    ContextualAgent,
-    SlidingWindowContextualAgent
-)
+from coleman4hcs.agent import ContextualAgent, RewardAgent, RewardSlidingWindowAgent, SlidingWindowContextualAgent
 from coleman4hcs.environment import Environment
 from coleman4hcs.evaluation import NAPFDVerdictMetric
-from coleman4hcs.policy import FRRMABPolicy, SWLinUCBPolicy, LinUCBPolicy
+from coleman4hcs.policy import FRRMABPolicy, LinUCBPolicy, SWLinUCBPolicy
 from coleman4hcs.scenarios import (
+    IndustrialDatasetContextScenarioProvider,
     IndustrialDatasetHCSScenarioProvider,
     IndustrialDatasetScenarioProvider,
-    IndustrialDatasetContextScenarioProvider
 )
 from config.config import get_config
 
@@ -125,7 +119,6 @@ def load_class_from_module(module, class_name: str):
     ValueError
         If the class is not found in the provided module.
     """
-
     if hasattr(module, class_name):
         return getattr(module, class_name)
     raise ValueError(f"Class '{class_name}' not found in {module.__name__}!")
@@ -149,7 +142,6 @@ def create_agents(policy, rew_fun, window_sizes):
     list
         A list of agent instances.
     """
-
     if isinstance(policy, FRRMABPolicy):
         return [RewardSlidingWindowAgent(policy, rew_fun, w) for w in window_sizes]
 
@@ -196,7 +188,8 @@ def get_scenario_provider(  # pylint: disable=too-many-positional-arguments
 
     Returns
     -------
-    IndustrialDatasetScenarioProvider or IndustrialDatasetHCSScenarioProvider or IndustrialDatasetContextScenarioProvider
+    IndustrialDatasetScenarioProvider or IndustrialDatasetHCSScenarioProvider \
+or IndustrialDatasetContextScenarioProvider
         An instance of the scenario provider based on the given configuration.
     """
     base_args = [f"{datasets_dir}/{dataset}/features-engineered.csv", sched_time_ratio]
@@ -295,28 +288,27 @@ def store_experiments(csv_file, scenario):
     );
     """)
 
-    df = conn.read_csv(csv_file, delimiter=';', quotechar='"', header=True)  # pylint: disable=unused-variable
+    df = conn.read_csv(csv_file, delimiter=';', quotechar='"', header=True)  # noqa: F841
 
     # Insert the DataFrame into the 'experiments' table
     conn.execute("INSERT INTO experiments SELECT * FROM df;")
 
-    if isinstance(scenario, IndustrialDatasetHCSScenarioProvider):
-        if scenario.get_total_variants() > 0:
-            # Ignore the extension
-            name2 = csv_file.split(".csv")[0]
-            name2 = f"{name2}_variants"
+    if isinstance(scenario, IndustrialDatasetHCSScenarioProvider) and scenario.get_total_variants() > 0:
+        # Ignore the extension
+        name2 = csv_file.split(".csv")[0]
+        name2 = f"{name2}_variants"
 
-            Path(name2).mkdir(parents=True, exist_ok=True)
+        Path(name2).mkdir(parents=True, exist_ok=True)
 
-            for variant in scenario.get_all_variants():
-                csv_file_variant = (
-                    f"{name2}/{csv_file.split('/')[-1].split('@')[0]}"
-                    f"@{variant.replace('/', '-')}.csv"
-                )
-                df = conn.read_csv(csv_file_variant, delimiter=';', quotechar='"', header=True)
+        for variant in scenario.get_all_variants():
+            csv_file_variant = (
+                f"{name2}/{csv_file.split('/')[-1].split('@')[0]}"
+                f"@{variant.replace('/', '-')}.csv"
+            )
+            df = conn.read_csv(csv_file_variant, delimiter=';', quotechar='"', header=True)  # noqa: F841
 
-                # Insert the DataFrame into the 'experiments' table
-                conn.execute("INSERT INTO experiments SELECT * FROM df;")
+            # Insert the DataFrame into the 'experiments' table
+            conn.execute("INSERT INTO experiments SELECT * FROM df;")
 
 
 

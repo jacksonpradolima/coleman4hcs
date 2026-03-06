@@ -11,13 +11,14 @@ app = marimo.App(width="medium")
 
 with app.setup:
     """Import libraries and configure plotting."""
+    from enum import Enum
+
     import duckdb
     import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
     import scikit_posthocs as posthocs
     import seaborn as sns
-    from enum import Enum
     from scipy.stats import kruskal
 
     from coleman4hcs.statistics import vargha_delaney

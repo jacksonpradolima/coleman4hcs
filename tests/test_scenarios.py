@@ -1,15 +1,15 @@
 """Tests for the monitor utility module."""
 import polars as pl
 import pytest
-from coleman4hcs.scenarios import (
-    VirtualScenario,
-    VirtualHCSScenario,
-    VirtualContextScenario,
-    IndustrialDatasetScenarioProvider,
-    IndustrialDatasetHCSScenarioProvider,
-    IndustrialDatasetContextScenarioProvider,
-)
 
+from coleman4hcs.scenarios import (
+    IndustrialDatasetContextScenarioProvider,
+    IndustrialDatasetHCSScenarioProvider,
+    IndustrialDatasetScenarioProvider,
+    VirtualContextScenario,
+    VirtualHCSScenario,
+    VirtualScenario,
+)
 
 # ------------------------ Fixtures for Mock Data ------------------------
 

@@ -33,8 +33,34 @@ class MonitorCollector:
     """
 
     def __init__(self):
-        """Initialize the MonitorCollector with an empty dataframe."""
+        """Initialize the MonitorCollector with an empty dataframe.
 
+        Notes
+        -----
+        Schema columns:
+
+        - ``scenario``: Experiment name (system under test).
+        - ``experiment``: Experiment number.
+        - ``step``: Part number (Build) from scenario that is being analyzed.
+        - ``policy``: Policy name that is evaluating a part of the scenario.
+        - ``reward_function``: Reward function used by the agent to observe the environment.
+        - ``sched_time``: Percentage of time available (i.e., 50 % of total for the Build).
+        - ``sched_time_duration``: The time in number obtained from percentage.
+        - ``total_build_duration``: Build Duration.
+        - ``prioritization_time``: Prioritization Time.
+        - ``detected``: Failures detected.
+        - ``missed``: Failures missed.
+        - ``tests_ran``: Number of tests executed.
+        - ``tests_not_ran``: Number of tests not executed.
+        - ``ttf``: Rank of the Time to Fail (Order of the first test case which failed).
+        - ``ttf_duration``: Time spent until the first test case fail.
+        - ``time_reduction``: Time Reduction (Total Time for the Build - ttf_duration).
+        - ``fitness``: Evaluation metric result (example, NAPFD).
+        - ``cost``: Evaluation metric that considers cost, for instance, APFDc.
+        - ``rewards``: AVG Reward from the prioritized test set.
+        - ``avg_precision``: 1 - We found all failures, 123 - We did not find all failures.
+        - ``prioritization_order``: Prioritized test set.
+        """
         # Define schema for the DataFrame
         schema = {
             'scenario': pl.Utf8,
@@ -157,7 +183,7 @@ class MonitorCollector:
                 self.df.write_csv(tmp_name, separator=';', null_value='[]', include_header=False)
 
             # Append the content
-            with open(tmp_name, 'r', encoding='utf-8') as tmp_file:
+            with open(tmp_name, encoding='utf-8') as tmp_file:
                 content = tmp_file.read()
             with open(name, 'a', encoding='utf-8') as f:
                 f.write(content)

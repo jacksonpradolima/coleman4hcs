@@ -1,6 +1,4 @@
-"""
-coleman4hcs.policy
-~~~~~~~~~~~~~~~~~~
+"""Policies for multi-armed bandit and contextual bandit action selection.
 
 This module provides a collection of policies that are designed to operate
 with multi-armed bandits and contextual bandits. Each policy dictates how an
@@ -518,10 +516,13 @@ class SlMABPolicy(Policy):
     def __str__(self):
         """Return a string representation of the policy.
 
+        The closing parenthesis is intentionally omitted so the agent can
+        append the window size when constructing the full label.
+
         Returns
         -------
         str
-            The policy name.
+            The policy name without closing parenthesis.
         """
         return "SlMAB ("
 
@@ -724,13 +725,12 @@ class LinUCBPolicy(Policy):
         QException
             If Q computation results in unexpected shape.
         """
-
         features = self.context_features.select(self.features).to_numpy()  # Shape: (num_actions, context_dim)
         actions = self.context_features['Name'].to_list()
 
         # Batch processing for theta and confidence bounds
         q_values = []
-        for a, x in zip(actions, features):
+        for a, x in zip(actions, features, strict=False):
             # Get the specific features from te current test case (action)
             x_i = x.reshape(-1, 1)
 
@@ -767,7 +767,7 @@ class LinUCBPolicy(Policy):
 
         features = self.context_features.select(self.features).to_numpy()
         actions_data = actions.select(['Name', 'ValueEstimates']).to_numpy()
-        for a, x in zip(actions_data, features):
+        for a, x in zip(actions_data, features, strict=False):
             x_i = x.reshape(-1, 1)
             act = a[0]
             reward = a[1]  # ValueEstimates
@@ -816,7 +816,6 @@ class SWLinUCBPolicy(LinUCBPolicy):
         QException
             If Q computation results in unexpected shape.
         """
-
         features = self.context_features.select(self.features).to_numpy()  # Shape: (num_actions, context_dim)
         actions = self.context_features['Name'].to_list()
 
@@ -826,7 +825,7 @@ class SWLinUCBPolicy(LinUCBPolicy):
         history_counts_dict = {item['Name']: item['count'] for item in history_counts}  # Convert to dict
 
         q_values = []
-        for a, x in zip(actions, features):
+        for a, x in zip(actions, features, strict=False):
             # Get the specific features from te current test case (action)
             x_i = x.reshape(-1, 1)
 

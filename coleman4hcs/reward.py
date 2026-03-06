@@ -1,6 +1,4 @@
-"""
-coleman4hcs.reward
-------------------
+"""Reward functions for bandit-based test case prioritization.
 
 Defines reward functions for agents in a multi-armed bandit framework in the context of
 software testing. These reward functions help agents to prioritize software test cases
@@ -27,7 +25,6 @@ Ensure that the evaluation metric provides necessary details like detection rank
 reward functions to work correctly.
 """
 from abc import ABC, abstractmethod
-from typing import List
 
 import numpy as np
 
@@ -52,7 +49,7 @@ class Reward(ABC):
         return NotImplementedError
 
     @abstractmethod
-    def evaluate(self, reward: EvaluationMetric, last_prioritization: List[str]):
+    def evaluate(self, reward: EvaluationMetric, last_prioritization: list[str]):
         """Evaluate a bandit result and return a reward.
 
         Parameters
@@ -173,7 +170,7 @@ class RNFailReward(Reward):
         """
         return 'RNFail'
 
-    def evaluate(self, reward: EvaluationMetric, last_prioritization: List[str]):
+    def evaluate(self, reward: EvaluationMetric, last_prioritization: list[str]):
         """Evaluate rewards based on failures.
 
         Parameters

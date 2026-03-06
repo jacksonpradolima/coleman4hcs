@@ -1,6 +1,4 @@
-"""
-coleman4hcs.agent
------------------
+"""Agent classes for the Coleman4HCS framework.
 
 This module provides an abstract representation of an agent in the Coleman4HCS framework.
 
@@ -38,7 +36,6 @@ Common attributes across agent types:
 - ``history``: (For sliding window agents) Maintains a history of actions taken by the agent.
 - ``window_size``: (For sliding window agents) Determines the size of the sliding window.
 """
-from typing import List
 
 import numpy as np
 import polars as pl
@@ -200,7 +197,7 @@ class Agent:
         self.bandit = bandit
         self.update_actions(self.bandit.get_arms())
 
-    def choose(self) -> List[str]:
+    def choose(self) -> list[str]:
         """Choose an action using the agent's policy.
 
         An action is the prioritized test suite.
@@ -258,7 +255,7 @@ class Agent:
         """
         self.update_action_attempts()
 
-        for test_case, r in zip(self.last_prioritization, reward):
+        for test_case, r in zip(self.last_prioritization, reward, strict=False):
             # Get current values using filter
             row_data = self.actions.filter(pl.col('Name') == test_case)
 
@@ -401,7 +398,7 @@ class ContextualAgent(RewardAgent):
         """
         return f'{str(self.policy)}'
 
-    def choose(self) -> List[str]:
+    def choose(self) -> list[str]:
         """Choose an action using the agent's policy.
 
         An action is the prioritized test suite.

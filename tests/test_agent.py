@@ -31,10 +31,10 @@ import pytest
 
 from coleman4hcs.agent import (
     Agent,
-    RewardAgent,
     ContextualAgent,
+    RewardAgent,
     RewardSlidingWindowAgent,
-    SlidingWindowContextualAgent
+    SlidingWindowContextualAgent,
 )
 from coleman4hcs.bandit import Bandit
 from coleman4hcs.evaluation import EvaluationMetric

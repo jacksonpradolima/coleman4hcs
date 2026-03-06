@@ -23,7 +23,6 @@ prioritization strategies that can react to changes in the testing environment o
 under test.
 """
 from abc import ABC, abstractmethod
-from typing import Dict, List
 
 import numpy as np
 import polars as pl
@@ -61,7 +60,7 @@ class Bandit(ABC):
         DataFrame containing the current arms of the bandit.
     """
 
-    def __init__(self, arms: List[Dict]):
+    def __init__(self, arms: list[dict]):
         """Initialize a Bandit with its arms.
 
         Parameters
@@ -95,7 +94,7 @@ class Bandit(ABC):
         """Reset the arms to an empty DataFrame."""
         self.arms = pl.DataFrame(schema=BANDIT_SCHEMA)
 
-    def get_arms(self) -> List[str]:
+    def get_arms(self) -> list[str]:
         """Retrieve the list of arm names currently associated with the bandit.
 
         Returns
@@ -105,7 +104,7 @@ class Bandit(ABC):
         """
         return self.arms['Name'].to_list()
 
-    def add_arms(self, arms: List[Dict]):
+    def add_arms(self, arms: list[dict]):
         """Add one or multiple arms to the bandit.
 
         Parameters
@@ -159,7 +158,7 @@ class DynamicBandit(Bandit, ABC):
     Extends the base Bandit to support updating the set of arms at runtime.
     """
 
-    def update_arms(self, arms: List[Dict]):
+    def update_arms(self, arms: list[dict]):
         """Update the arms of the bandit.
 
         Parameters
@@ -191,7 +190,7 @@ class EvaluationMetricBandit(DynamicBandit):
         The evaluation metric instance.
     """
 
-    def __init__(self, arms: List[Dict], evaluation_metric: EvaluationMetric):
+    def __init__(self, arms: list[dict], evaluation_metric: EvaluationMetric):
         """Initialize the EvaluationMetricBandit.
 
         Parameters
