@@ -6,12 +6,10 @@ Includes performance metrics, visualizations, and statistical tests.
 
 import marimo
 
-__generated_with = "0.10.0"
+__generated_with = "0.20.4"
 app = marimo.App(width="medium")
 
-
-@app.cell
-def setup():
+with app.setup:
     """Import libraries and configure plotting."""
     import duckdb
     import matplotlib.pyplot as plt
@@ -20,7 +18,6 @@ def setup():
     import scikit_posthocs as posthocs
     import seaborn as sns
     from enum import Enum
-    from typing import List, Optional
     from scipy.stats import kruskal
 
     from coleman4hcs.statistics import vargha_delaney
@@ -33,11 +30,9 @@ def setup():
     pd.set_option("display.max_columns", None)
     pd.set_option("display.max_colwidth", None)
 
-    return Enum, List, Optional, duckdb, kruskal, np, pd, plt, posthocs, sns, vargha_delaney
-
 
 @app.cell
-def connect_db(duckdb):
+def connect_db():
     """Connect to the DuckDB experiments database."""
     conn = duckdb.connect("experiments.db")
     conn.execute("""
@@ -69,7 +64,7 @@ def connect_db(duckdb):
 
 
 @app.cell
-def preprocess(conn, pd):
+def preprocess(conn):
     """Filter and preprocess experiment data."""
     conn.execute("""
     CREATE OR REPLACE TABLE filtered_data AS
@@ -103,11 +98,11 @@ def preprocess(conn, pd):
     scenarios = main_data["scenario"].unique()
     policies = main_data["policy"].unique()
     sched_times = main_data["sched_time"].unique()
-    return main_data, policies, scenarios, sched_times
+    return (sched_times,)
 
 
 @app.cell
-def reward_enum(Enum):
+def reward_enum():
     """Define the RewardFunction enum."""
 
     class RewardFunction(Enum):
@@ -142,7 +137,7 @@ def helpers():
 
 
 @app.cell
-def accumulative_data(conn, pd):
+def accumulative_data(conn):
     """Compute accumulative fitness and cost data."""
     acc_data = conn.execute("""
     SELECT step, scenario, policy, sched_time, reward_function,
@@ -155,7 +150,7 @@ def accumulative_data(conn, pd):
 
 
 @app.cell
-def plot_acc_fn(acc_data, get_metric_ylabel, plt, sched_times):
+def plot_acc_fn(acc_data, get_metric_ylabel, sched_times):
     """Define accumulative plot function."""
 
     def plot_accumulative(column, scenarios=None, reward_function=None):
@@ -223,7 +218,7 @@ def variation_data(conn):
 
 
 @app.cell
-def plot_var_fn(get_metric_ylabel, plt, variation_data):
+def plot_var_fn(get_metric_ylabel, variation_data):
     """Define variation plot function."""
 
     def plot_metric_variation(
@@ -290,7 +285,7 @@ def ntr_data(conn):
 
 
 @app.cell
-def plot_ntr_fn(ntr_by_policy, plt, sns):
+def plot_ntr_fn(ntr_by_policy):
     """Define normalized time reduction plot function."""
 
     def plot_normalize_time_reduction(scenarios=None, reward_function=None):
@@ -345,7 +340,7 @@ def mean_dist_data(conn):
 
 
 @app.cell
-def plot_dist_fn(get_metric_ylabel, mean_distribution, plt, sched_times, sns):
+def plot_dist_fn(get_metric_ylabel, mean_distribution, sched_times):
     """Define distribution plot function."""
 
     def plot_distribution(column, scenarios=None, reward_function=None):
@@ -411,7 +406,7 @@ def show_dist_cost(RewardFunction, plot_distribution):
 
 
 @app.cell
-def stat_test_fns(kruskal, np, pd, posthocs, vargha_delaney):
+def stat_test_fns():
     """Define statistical test functions."""
 
     def perform_statistical_test(dataframe, group_column, value_column, alpha=0.05):
@@ -537,13 +532,7 @@ def stat_test_fns(kruskal, np, pd, posthocs, vargha_delaney):
         df_stats["Metric"] = column
         return df_stats
 
-    return (
-        calculate_policy_statistics,
-        determine_effect_size_symbol,
-        generate_latex_configuration,
-        perform_statistical_test,
-        statistical_test_procedure,
-    )
+    return (statistical_test_procedure,)
 
 
 @app.cell
@@ -552,24 +541,21 @@ def run_stat_ptime(mean_distribution, statistical_test_procedure):
     df_stats_ptime = statistical_test_procedure(
         mean_distribution, "avg_prioritization_time"
     )
-    df_stats_ptime
-    return (df_stats_ptime,)
+    return
 
 
 @app.cell
 def run_stat_napfd(mean_distribution, statistical_test_procedure):
     """Statistical test: NAPFD."""
     df_stats_napfd = statistical_test_procedure(mean_distribution, "avg_fitness_time")
-    df_stats_napfd
-    return (df_stats_napfd,)
+    return
 
 
 @app.cell
 def run_stat_cost(mean_distribution, statistical_test_procedure):
     """Statistical test: APFDc."""
     df_stats_cost = statistical_test_procedure(mean_distribution, "avg_cost_time")
-    df_stats_cost
-    return (df_stats_cost,)
+    return
 
 
 if __name__ == "__main__":
