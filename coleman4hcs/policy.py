@@ -1,40 +1,53 @@
-"""
-coleman4hcs.policy
-~~~~~~~~~~~~~~~~~~
+"""Policies for multi-armed bandit and contextual bandit action selection.
 
 This module provides a collection of policies that are designed to operate
 with multi-armed bandits and contextual bandits. Each policy dictates how an
 agent will select its actions based on prior knowledge, current context, or
 exploration strategies.
 
-Classes:
-    - Policy: Basic policy class that prescribes actions based on the memory of an agent.
-    - EpsilonGreedyPolicy: Chooses either the best apparent action or a random one based on a probability epsilon.
-    - GreedyPolicy: Always chooses the best apparent action.
-    - RandomPolicy: Always chooses a random action.
-    - UCBPolicyBase: Base class for Upper Confidence Bound policies.
-    - UCB1Policy: Implementation of the UCB1 algorithm.
-    - UCBPolicy: A variation of the UCB algorithm with a scaling factor.
-    - FRRMABPolicy: Fitness-Rate-Rank based Multi-Armed Bandit policy.
-    - SlMABPolicy: Sliding window-based Multi-Armed Bandit policy.
-    - LinUCBPolicy: Contextual bandit policy using linear upper confidence bounds.
-    - SWLinUCBPolicy: Variation of LinUCBPolicy using a sliding window approach.
+Classes
+-------
+Policy
+    Basic policy class that prescribes actions based on the memory of an agent.
+EpsilonGreedyPolicy
+    Chooses either the best apparent action or a random one based on a probability epsilon.
+GreedyPolicy
+    Always chooses the best apparent action.
+RandomPolicy
+    Always chooses a random action.
+UCBPolicyBase
+    Base class for Upper Confidence Bound policies.
+UCB1Policy
+    Implementation of the UCB1 algorithm.
+UCBPolicy
+    A variation of the UCB algorithm with a scaling factor.
+FRRMABPolicy
+    Fitness-Rate-Rank based Multi-Armed Bandit policy.
+SlMABPolicy
+    Sliding window-based Multi-Armed Bandit policy.
+LinUCBPolicy
+    Contextual bandit policy using linear upper confidence bounds.
+SWLinUCBPolicy
+    Variation of LinUCBPolicy using a sliding window approach.
 
-Notes:
-    - UCB (Upper Confidence Bound) policies are designed to balance exploration and exploitation by considering
-      both the estimated reward of an action and the uncertainty around that reward.
-    - EpsilonGreedy and its variations (Greedy, Random) are simpler strategies that either exploit the best-known
-      action or explore random actions based on a fixed probability.
-    - LinUCB and SWLinUCB are contextual bandits. They choose actions not just based on past rewards, but also
-      considering the current context. SWLinUCB adds a sliding window mechanism to LinUCB, giving more weight to
-      recent actions.
+Notes
+-----
+- UCB (Upper Confidence Bound) policies are designed to balance exploration and exploitation by
+  considering both the estimated reward of an action and the uncertainty around that reward.
+- EpsilonGreedy and its variations (Greedy, Random) are simpler strategies that either exploit
+  the best-known action or explore random actions based on a fixed probability.
+- LinUCB and SWLinUCB are contextual bandits. They choose actions not just based on past rewards,
+  but also considering the current context. SWLinUCB adds a sliding window mechanism to LinUCB,
+  giving more weight to recent actions.
 
-References:
-    - Lihong Li, et al. "A Contextual-Bandit Approach to Personalized News Article Recommendation."
-      In Proceedings of the 19th International Conference on World Wide Web (WWW), 2010.
-    - Nicolas Gutowski, Tassadit Amghar, Olivier Camp, and Fabien Chhel. "Global Versus Individual Accuracy in
-      Contextual Multi-Armed Bandit." In Proceedings of the 34th ACM/SIGAPP Symposium on Applied Computing (SAC ’19),
-      April 8–12, 2019, Limassol, Cyprus.
+References
+----------
+.. [1] Lihong Li, et al. "A Contextual-Bandit Approach to Personalized News Article
+   Recommendation." In Proceedings of the 19th International Conference on World Wide
+   Web (WWW), 2010.
+.. [2] Nicolas Gutowski, Tassadit Amghar, Olivier Camp, and Fabien Chhel. "Global Versus
+   Individual Accuracy in Contextual Multi-Armed Bandit." In Proceedings of the 34th
+   ACM/SIGAPP Symposium on Applied Computing (SAC '19), April 8-12, 2019, Limassol, Cyprus.
 """
 
 import numpy as np
@@ -51,37 +64,52 @@ from coleman4hcs.exceptions import QException
 
 
 class Policy:
-    """
-    A policy prescribes an action to be taken based on the memory of an agent.
-    """
+    """A policy prescribes an action to be taken based on the memory of an agent."""
 
     def __str__(self):
+        """Return a string representation of the policy.
+
+        Returns
+        -------
+        str
+            The policy name.
+        """
         return 'Untreat'
 
     def choose_all(self, agent: Agent):
-        """
-        By default, a policy returns untreated actions.
+        """Return all actions in their default (untreated) order.
+
+        Parameters
+        ----------
+        agent : Agent
+            The agent whose actions are to be returned.
+
+        Returns
+        -------
+        list of str
+            List of action names.
         """
         return agent.actions['Name'].to_list()
 
     def credit_assignment(self, agent):
+        """Assign credit to actions based on their outcomes.
+
+        The credit assignment method calculates the value estimates for each
+        action based on the rewards observed. The specific implementation of
+        how credit is assigned depends on the policy in use.
+
+        Parameters
+        ----------
+        agent : Agent
+            The agent for which credit assignment is to be performed.
+
+        Notes
+        -----
+        This is a base method and should be overridden in derived classes to
+        provide specific credit assignment logic. The method modifies the
+        agent's state, updating the value estimates for each action based on
+        the outcomes observed.
         """
-       Assigns credit to actions based on their outcomes.
-
-       The credit assignment method calculates the value estimates for
-       each action based on the rewards observed. The specific implementation
-       of how credit is assigned depends on the policy in use.
-
-       :param agent: The agent for which credit assignment is to be performed.
-                     The agent can have a history of actions and their outcomes.
-       :type agent: Agent
-
-       .. note:: This is a base method and should be overridden in derived classes
-                 to provide specific credit assignment logic.
-
-       .. note:: The method modifies the agent's state, updating the value estimates
-                 for each action based on the outcomes observed.
-       """
         action_attempts = agent.actions['ActionAttempts'].to_numpy()
         value_estimates = agent.actions['ValueEstimates'].to_numpy()
 
@@ -95,20 +123,56 @@ class Policy:
 
 
 class EpsilonGreedyPolicy(Policy):
-    """
-    The Epsilon-Greedy policy will choose a random action with probability
-    epsilon and take the best apparent approach with probability 1-epsilon. If
-    multiple actions are tied for best choice, then a random action from that
-    subset is selected.
+    """Epsilon-Greedy policy for action selection.
+
+    Chooses a random action with probability epsilon and takes the best
+    apparent approach with probability 1-epsilon. If multiple actions are tied
+    for best choice, then a random action from that subset is selected.
+
+    Parameters
+    ----------
+    epsilon : float
+        Probability of choosing a random action.
+
+    Attributes
+    ----------
+    epsilon : float
+        Probability of choosing a random action.
     """
 
     def __init__(self, epsilon):
+        """Initialize the EpsilonGreedyPolicy.
+
+        Parameters
+        ----------
+        epsilon : float
+            Probability of choosing a random action.
+        """
         self.epsilon = epsilon
 
     def __str__(self):
+        """Return a string representation of the policy.
+
+        Returns
+        -------
+        str
+            The policy name with epsilon value.
+        """
         return f'\u03B5-greedy (\u03B5={self.epsilon})'
 
     def choose_all(self, agent: Agent):
+        """Choose all actions using the epsilon-greedy strategy.
+
+        Parameters
+        ----------
+        agent : Agent
+            The agent whose actions are to be prioritized.
+
+        Returns
+        -------
+        list of str
+            List of action names ordered by the epsilon-greedy strategy.
+        """
         # Copy the actions and add a random mask column
         actions = agent.actions.clone()
         actions = actions.with_columns([
@@ -123,58 +187,128 @@ class EpsilonGreedyPolicy(Policy):
 
 
 class GreedyPolicy(EpsilonGreedyPolicy):
-    """
-    The Greedy policy only takes the best apparent action, with ties broken by
-    random selection. This can be seen as a special case of EpsilonGreedy where
-    epsilon = 0 i.e. always exploit.
+    """Greedy policy that always takes the best apparent action.
+
+    Ties are broken by random selection. This is a special case of
+    EpsilonGreedy where epsilon = 0 (always exploit).
     """
 
     def __init__(self):
+        """Initialize the GreedyPolicy with epsilon = 0."""
         super().__init__(0)
 
     def __str__(self):
+        """Return a string representation of the policy.
+
+        Returns
+        -------
+        str
+            The policy name.
+        """
         return 'Greedy'
 
 
 class RandomPolicy(Policy):
-    """
-    The Random policy randomly selects from all available actions with no
-    consideration to which is apparently best. This can be seen as a special
-    case of EpsilonGreedy where epsilon = 1 i.e. always explore.
+    """Random policy that randomly selects from all available actions.
+
+    No consideration is given to which action is apparently best. This is a
+    special case of EpsilonGreedy where epsilon = 1 (always explore).
     """
 
     def __str__(self):
+        """Return a string representation of the policy.
+
+        Returns
+        -------
+        str
+            The policy name.
+        """
         return 'Random'
 
     def choose_all(self, agent: Agent):
+        """Choose all actions randomly.
+
+        Parameters
+        ----------
+        agent : Agent
+            The agent whose actions are to be shuffled.
+
+        Returns
+        -------
+        list of str
+            Randomly ordered list of action names.
+        """
         actions = agent.actions['Name'].to_numpy()
         np.random.shuffle(actions)
         return actions.tolist()
 
 
 class UCBPolicyBase(Policy):
-    """
-    Base class for Upper Confidence Bound (UCB) policies.
+    """Base class for Upper Confidence Bound (UCB) policies.
+
+    Parameters
+    ----------
+    c : float
+        Exploration parameter controlling the width of the confidence bound.
+
+    Attributes
+    ----------
+    c : float
+        Exploration parameter.
     """
 
     def __init__(self, c: float):
+        """Initialize the UCBPolicyBase.
+
+        Parameters
+        ----------
+        c : float
+            Exploration parameter controlling the width of the confidence bound.
+        """
         self.c = c
 
     def choose_all(self, agent: Agent) -> list:
+        """Choose all actions sorted by Q value in descending order.
+
+        Parameters
+        ----------
+        agent : Agent
+            The agent whose actions are to be prioritized.
+
+        Returns
+        -------
+        list of str
+            List of action names sorted by Q value.
+        """
         return agent.actions.sort('Q', descending=True)['Name'].to_list()
 
 
 class UCB1Policy(UCBPolicyBase):
-    """
-    The Upper Confidence Bound algorithm (UCB1). It applies an exploration
-    factor to the expected value of each arm which can influence a greedy
-    selection strategy to more intelligently explore less confident options.
+    """Upper Confidence Bound algorithm (UCB1).
+
+    Applies an exploration factor to the expected value of each arm which can
+    influence a greedy selection strategy to more intelligently explore less
+    confident options.
     """
 
     def __str__(self):
+        """Return a string representation of the policy.
+
+        Returns
+        -------
+        str
+            The policy name with C value.
+        """
         return f'UCB1 (C={self.c})'
 
     def credit_assignment(self, agent: Agent):
+        """Assign credit using the UCB1 formula.
+
+        Parameters
+        ----------
+        agent : Agent
+            The agent for which credit assignment is to be performed.
+        """
         # Compute the average of rewards
         super().credit_assignment(agent)
 
@@ -193,14 +327,26 @@ class UCB1Policy(UCBPolicyBase):
 
 
 class UCBPolicy(UCBPolicyBase):
-    """
-    The Upper Confidence Bound algorithm (UCB) with scaling factor.
-    """
+    """Upper Confidence Bound algorithm (UCB) with scaling factor."""
 
     def __str__(self):
+        """Return a string representation of the policy.
+
+        Returns
+        -------
+        str
+            The policy name with C value.
+        """
         return f'UCB (C={self.c})'
 
     def credit_assignment(self, agent: Agent):
+        """Assign credit using the UCB formula with scaling factor.
+
+        Parameters
+        ----------
+        agent : Agent
+            The agent for which credit assignment is to be performed.
+        """
         # Compute the average of rewards
         super().credit_assignment(agent)
 
@@ -221,21 +367,62 @@ class UCBPolicy(UCBPolicyBase):
 
 
 class FRRMABPolicy(Policy):
-    """
-    The Fitness-Rate-Rank based Multi-Armed Bandit (FRRMAB).
+    """Fitness-Rate-Rank based Multi-Armed Bandit (FRRMAB) policy.
+
+    Parameters
+    ----------
+    c : float
+        Exploration parameter.
+    decayed_factor : float, optional
+        Decay factor for ranking. Default is 1.
+
+    Attributes
+    ----------
+    c : float
+        Exploration parameter.
+    decayed_factor : float
+        Decay factor for ranking.
+    history : polars.DataFrame
+        History of actions and their outcomes.
     """
 
     def __init__(self, c, decayed_factor=1):
+        """Initialize the FRRMABPolicy.
+
+        Parameters
+        ----------
+        c : float
+            Exploration parameter.
+        decayed_factor : float, optional
+            Decay factor for ranking. Default is 1.
+        """
         self.c = c
         self.decayed_factor = decayed_factor
         self.history = pl.DataFrame(schema=HISTORY_SCHEMA)
 
     def __str__(self):
-        # return f"FRRMAB (C={self.c}, D={self.decayed_factor})"
-        # leave without ")" to agent put the window size
+        """Return a string representation of the policy.
+
+        Returns
+        -------
+        str
+            The policy name with C and D values.
+        """
         return f"FRRMAB (C={self.c}, D={self.decayed_factor}"
 
     def choose_all(self, agent: RewardSlidingWindowAgent):
+        """Choose all actions based on Q values from the FRRMAB history.
+
+        Parameters
+        ----------
+        agent : RewardSlidingWindowAgent
+            The agent whose actions are to be prioritized.
+
+        Returns
+        -------
+        list of str
+            List of action names sorted by Q value.
+        """
         # Identify new test cases
         existing_names = set(self.history['Name'].to_list())
         agent_names = set(agent.actions['Name'].to_list())
@@ -258,9 +445,12 @@ class FRRMABPolicy(Policy):
         return self.history.sort('Q', descending=True)['Name'].to_list()
 
     def credit_assignment(self, agent: RewardSlidingWindowAgent):
-        """
-        Fitness-Rate-Rank Credit assignment
-        :return: FRR, Selected Times, and Sum Applications for all arms
+        """Assign credit using the Fitness-Rate-Rank method.
+
+        Parameters
+        ----------
+        agent : RewardSlidingWindowAgent
+            The agent for which credit assignment is to be performed.
         """
         # We must calculate the sum of the rewards (FIRs, Fitness Improvement Rates) by each arm in the sliding window
         self.history = agent.history.group_by('Name').agg([
@@ -311,18 +501,44 @@ class FRRMABPolicy(Policy):
 
 
 class SlMABPolicy(Policy):
-    """
-    The Sliding Multi-Armed Bandit.
+    """Sliding Multi-Armed Bandit policy.
+
+    Attributes
+    ----------
+    history : polars.DataFrame
+        History of actions and their outcomes.
     """
 
     def __init__(self):
+        """Initialize the SlMABPolicy."""
         self.history = pl.DataFrame(schema=HISTORY_SCHEMA)
 
     def __str__(self):
-        # leave with out ")" to agent put the window size
+        """Return a string representation of the policy.
+
+        The closing parenthesis is intentionally omitted so the agent can
+        append the window size when constructing the full label.
+
+        Returns
+        -------
+        str
+            The policy name without closing parenthesis.
+        """
         return "SlMAB ("
 
     def choose_all(self, agent: RewardSlidingWindowAgent):
+        """Choose all actions based on Q values from the SlMAB history.
+
+        Parameters
+        ----------
+        agent : RewardSlidingWindowAgent
+            The agent whose actions are to be prioritized.
+
+        Returns
+        -------
+        list of str
+            List of action names sorted by Q value.
+        """
         # Identify new test cases
         existing_names = set(self.history['Name'].to_list())
         agent_names = set(agent.actions['Name'].to_list())
@@ -345,9 +561,12 @@ class SlMABPolicy(Policy):
         return self.history.sort('Q', descending=True)['Name'].to_list()
 
     def credit_assignment(self, agent: RewardSlidingWindowAgent):
-        """
-        Credit assignment for SlMAB
-        :return: FRR, Selected Times, and Sum Applications for all arms
+        """Assign credit using the SlMAB method.
+
+        Parameters
+        ----------
+        agent : RewardSlidingWindowAgent
+            The agent for which credit assignment is to be performed.
         """
         # Compute the average of rewards (and save in Q column)
         super().credit_assignment(agent)
@@ -392,21 +611,41 @@ class SlMABPolicy(Policy):
 
 
 class LinUCBPolicy(Policy):
-    """
-    LinUCB with Disjoint Linear Models
+    """LinUCB with Disjoint Linear Models.
+
+    Parameters
+    ----------
+    alpha : float, optional
+        The constant that determines the width of the upper confidence bound.
+        Default is 0.5.
+
+    Attributes
+    ----------
+    alpha : float
+        The exploration parameter.
+    context : dict
+        Dictionary containing A matrices, their inverses, and b vectors for
+        each action.
+    context_features : object or None
+        Current context features.
+    features : object or None
+        Feature names.
 
     References
     ----------
-    [1]  Lihong Li, et al. "A Contextual-Bandit Approach to Personalized
-         News Article Recommendation." In Proceedings of the 19th
-         International Conference on World Wide Web (WWW), 2010.
+    .. [1] Lihong Li, et al. "A Contextual-Bandit Approach to Personalized
+       News Article Recommendation." In Proceedings of the 19th
+       International Conference on World Wide Web (WWW), 2010.
     """
 
     def __init__(self, alpha=0.5):
-        """
-        Initialize LinUCBPolicy.
+        """Initialize LinUCBPolicy.
 
-        :param alpha: The constant determines the width of the upper confidence bound.
+        Parameters
+        ----------
+        alpha : float, optional
+            The constant that determines the width of the upper confidence
+            bound. Default is 0.5.
         """
         self.alpha = alpha
 
@@ -426,11 +665,22 @@ class LinUCBPolicy(Policy):
         self.context_features = self.features = None
 
     def __str__(self):
+        """Return a string representation of the policy.
+
+        Returns
+        -------
+        str
+            The policy name with alpha value.
+        """
         return f"LinUCB (Alpha={self.alpha})"
 
     def add_action(self, action_id):
-        """
-        Add an action to the policy's context.
+        """Add an action to the policy's context.
+
+        Parameters
+        ----------
+        action_id : str
+            The identifier of the action to add.
         """
         context_dimension = len(self.features)
         a = np.identity(context_dimension)
@@ -440,8 +690,14 @@ class LinUCBPolicy(Policy):
         self.context['b'][action_id] = np.zeros((context_dimension, 1))
 
     def update_actions(self, agent: ContextualAgent, new_actions):
-        """
-        Update actions based on the agent's context.
+        """Update actions based on the agent's context.
+
+        Parameters
+        ----------
+        agent : ContextualAgent
+            The contextual agent providing context information.
+        new_actions : list of str
+            List of new action identifiers to add.
         """
         # Update the current context given by the agent
         self.context_features = agent.context_features.sort('Name')
@@ -452,16 +708,29 @@ class LinUCBPolicy(Policy):
             self.add_action(a)
 
     def choose_all(self, agent: Agent):
-        """
-        Choose all actions based on the policy.
-        """
+        """Choose all actions based on the LinUCB policy.
 
+        Parameters
+        ----------
+        agent : Agent
+            The agent whose actions are to be prioritized.
+
+        Returns
+        -------
+        list of str
+            List of action names sorted by Q value in descending order.
+
+        Raises
+        ------
+        QException
+            If Q computation results in unexpected shape.
+        """
         features = self.context_features.select(self.features).to_numpy()  # Shape: (num_actions, context_dim)
         actions = self.context_features['Name'].to_list()
 
         # Batch processing for theta and confidence bounds
         q_values = []
-        for a, x in zip(actions, features):
+        for a, x in zip(actions, features, strict=False):
             # Get the specific features from te current test case (action)
             x_i = x.reshape(-1, 1)
 
@@ -483,9 +752,13 @@ class LinUCBPolicy(Policy):
         return [action for action, _ in sorted(q_values, key=lambda x: x[1], reverse=True)]
 
     def credit_assignment(self, agent):
+        """Assign credit based on the agent's actions and rewards.
+
+        Parameters
+        ----------
+        agent : Agent
+            The agent for which credit assignment is to be performed.
         """
-       Assign credit based on the agent's actions and rewards.
-       """
         # We always have the same test case set
         assert len(set(agent.actions['Name'].to_list()) - set(self.context_features['Name'].to_list())) == 0
 
@@ -494,7 +767,7 @@ class LinUCBPolicy(Policy):
 
         features = self.context_features.select(self.features).to_numpy()
         actions_data = actions.select(['Name', 'ValueEstimates']).to_numpy()
-        for a, x in zip(actions_data, features):
+        for a, x in zip(actions_data, features, strict=False):
             x_i = x.reshape(-1, 1)
             act = a[0]
             reward = a[1]  # ValueEstimates
@@ -505,28 +778,44 @@ class LinUCBPolicy(Policy):
 
 
 class SWLinUCBPolicy(LinUCBPolicy):
-    """
-    LinUCB with Disjoint Linear Models and Sliding Window
+    """LinUCB with Disjoint Linear Models and Sliding Window.
 
     References
     ----------
-    [1]  Nicolas Gutowski, Tassadit Amghar, Olivier Camp, and Fabien Chhel. 2019.
-         "Global Versus Individual Accuracy in Contextual Multi-Armed Bandit."
-         In Proceedings of the 34th ACM/SIGAPP Symposium on Applied Computing (SAC ’19),
-         April 8–12, 2019, Limassol, Cyprus. ACM, Limassol, Cyprus, 8 pages.
-         https://doi. org/10.1145/3297280.3297440
+    .. [1] Nicolas Gutowski, Tassadit Amghar, Olivier Camp, and Fabien Chhel.
+       "Global Versus Individual Accuracy in Contextual Multi-Armed Bandit."
+       In Proceedings of the 34th ACM/SIGAPP Symposium on Applied Computing
+       (SAC '19), April 8-12, 2019, Limassol, Cyprus. ACM, 8 pages.
     """
 
     def __str__(self):
-        # return f"SWLinUCB (Alpha={self.alpha}"
-        # leave without ")" to agent put the window size
+        """Return a string representation of the policy.
+
+        Returns
+        -------
+        str
+            The policy name with alpha value.
+        """
         return f"SWLinUCB (Alpha={self.alpha}"
 
     def choose_all(self, agent: SlidingWindowContextualAgent):
-        """
-        Choose all actions based on the sliding window policy.
-        """
+        """Choose all actions based on the sliding window policy.
 
+        Parameters
+        ----------
+        agent : SlidingWindowContextualAgent
+            The agent whose actions are to be prioritized.
+
+        Returns
+        -------
+        list of str
+            List of action names sorted by Q value in descending order.
+
+        Raises
+        ------
+        QException
+            If Q computation results in unexpected shape.
+        """
         features = self.context_features.select(self.features).to_numpy()  # Shape: (num_actions, context_dim)
         actions = self.context_features['Name'].to_list()
 
@@ -536,7 +825,7 @@ class SWLinUCBPolicy(LinUCBPolicy):
         history_counts_dict = {item['Name']: item['count'] for item in history_counts}  # Convert to dict
 
         q_values = []
-        for a, x in zip(actions, features):
+        for a, x in zip(actions, features, strict=False):
             # Get the specific features from te current test case (action)
             x_i = x.reshape(-1, 1)
 

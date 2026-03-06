@@ -29,7 +29,8 @@ Usage:
 Run the tests using pytest to verify the functionality of evaluation metrics.
 """
 import pytest
-from coleman4hcs.evaluation import NAPFDMetric, NAPFDVerdictMetric, EvaluationMetric
+
+from coleman4hcs.evaluation import EvaluationMetric, NAPFDMetric, NAPFDVerdictMetric
 
 # Constants for error messages
 NAPFD_FITNESS_NON_NEGATIVE = "NAPFD fitness should be non-negative."

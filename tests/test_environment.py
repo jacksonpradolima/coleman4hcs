@@ -31,7 +31,7 @@ Dependencies:
 - Core components (`Environment`, `ContextualAgent`, etc.) from the `coleman4hcs` package.
 
 """
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, mock_open, patch
 
 import numpy as np
 import polars as pl
@@ -239,9 +239,8 @@ def test_exception_handling_in_save(environment):
     """
     Test exception handling for the save_experiment method.
     """
-    with patch("builtins.open", side_effect=Exception("File error")):
-        with pytest.raises(Exception, match="File error"):
-            environment.save_experiment("exp1", 1, None)
+    with patch("builtins.open", side_effect=Exception("File error")), pytest.raises(Exception, match="File error"):
+        environment.save_experiment("exp1", 1, None)
 
 
 def test_run_with_multiple_experiments(environment, mocker):

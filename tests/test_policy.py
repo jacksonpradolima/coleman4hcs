@@ -23,21 +23,22 @@ Test Plan:
 4. Ensure exceptions (e.g., `QException`) are properly raised when needed.
 """
 
-import pytest
-import polars as pl
 import numpy as np
+import polars as pl
+import pytest
+
+from coleman4hcs.agent import Agent, ContextualAgent, SlidingWindowContextualAgent
 from coleman4hcs.policy import (
-    Policy,
     EpsilonGreedyPolicy,
+    FRRMABPolicy,
     GreedyPolicy,
+    LinUCBPolicy,
+    Policy,
     RandomPolicy,
+    SWLinUCBPolicy,
     UCB1Policy,
     UCBPolicy,
-    FRRMABPolicy,
-    LinUCBPolicy,
-    SWLinUCBPolicy,
 )
-from coleman4hcs.agent import Agent, ContextualAgent, SlidingWindowContextualAgent
 
 # Set a fixed random seed for reproducibility
 seed = 42

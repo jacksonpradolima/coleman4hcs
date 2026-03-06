@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 
 from coleman4hcs.evaluation import EvaluationMetric
-from coleman4hcs.reward import TimeRankReward, RNFailReward
+from coleman4hcs.reward import RNFailReward, TimeRankReward
 
 
 @pytest.fixture

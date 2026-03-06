@@ -1,52 +1,63 @@
 """
-Effect Size Computation for Statistical Analysis
+Effect Size Computation for Statistical Analysis.
 
 This module implements methods for computing and analyzing effect sizes, specifically
 Vargha and Delaney's A index, which measures the probability that one random observation
-from a treatment group is larger than a random observation from a control group. The A index
-is widely used in educational and behavioral statistics.
+from a treatment group is larger than a random observation from a control group.
 
-Functions:
-- VD_A: Computes the Vargha and Delaney A index for two groups.
-- VD_A_DF: Computes pairwise A index comparisons for multiple groups in a Polars DataFrame.
-- reduce: Filters and annotates effect sizes for comparisons against a specified best group.
+Functions
+---------
+VD_A
+    Computes the Vargha and Delaney A index for two groups.
+VD_A_DF
+    Computes pairwise A index comparisons for multiple groups in a Polars DataFrame.
+reduce
+    Filters and annotates effect sizes for comparisons against a specified best group.
 
-Key Features:
-- Accurate computation of the A index using a formula that minimizes numerical errors.
-- Categorization of effect sizes into magnitudes (negligible, small, medium, large).
-- Flexible handling of data through Polars DataFrame operations for group comparisons.
-- Latex-compatible symbols for presenting effect sizes in reports or visualizations.
-
-References:
-- A. Vargha and H. D. Delaney, "A critique and improvement of the CL common language
-  effect size statistics of McGraw and Wong," Journal of Educational and Behavioral
-  Statistics, vol. 25, no. 2, pp. 101–132, 2000.
-- Hess and Kromrey, 2004, for thresholds of effect size magnitudes.
+References
+----------
+.. [1] A. Vargha and H. D. Delaney, "A critique and improvement of the CL common
+   language effect size statistics of McGraw and Wong," Journal of Educational and
+   Behavioral Statistics, vol. 25, no. 2, pp. 101-132, 2000.
+.. [2] Hess and Kromrey, 2004, for thresholds of effect size magnitudes.
 """
 import itertools as it
 from bisect import bisect_left
-from typing import List, Tuple
 
 import numpy as np
 import polars as pl
 import scipy.stats as ss
 
 
-def VD_A(treatment: List[float], control: List[float]) -> Tuple[float, str]:
-    """
-    Computes Vargha and Delaney A index
-    A. Vargha and H. D. Delaney.
-    A critique and improvement of the CL common language
-    effect size statistics of McGraw and Wong.
-    Journal of Educational and Behavioral Statistics, 25(2):101-132, 2000
+def VD_A(treatment: list[float], control: list[float]) -> tuple[float, str]:
+    """Compute Vargha and Delaney A index.
 
-    The formula to compute A has been transformed to minimize accuracy errors
-    See: http://mtorchiano.wordpress.com/2014/05/19/effect-size-of-r-precision/
+    The formula to compute A has been transformed to minimize accuracy errors.
 
-    :param treatment: a numeric list
-    :param control: another numeric list
+    Parameters
+    ----------
+    treatment : list of float
+        A numeric list representing the treatment group.
+    control : list of float
+        A numeric list representing the control group.
 
-    :returns the value estimate and the magnitude
+    Returns
+    -------
+    estimate : float
+        The A index value estimate.
+    magnitude : str
+        The effect size magnitude (negligible, small, medium, or large).
+
+    Raises
+    ------
+    ValueError
+        If treatment and control lists have different lengths.
+
+    References
+    ----------
+    .. [1] A. Vargha and H. D. Delaney. "A critique and improvement of the CL
+       common language effect size statistics of McGraw and Wong." Journal of
+       Educational and Behavioral Statistics, 25(2):101-132, 2000.
     """
     m = len(treatment)
     n = len(control)
@@ -73,29 +84,25 @@ def VD_A(treatment: List[float], control: List[float]) -> Tuple[float, str]:
 
 def VD_A_DF(data: pl.DataFrame, val_col: str = None, group_col: str = None,
             sort: bool = True) -> pl.DataFrame:
-    """
+    """Compute pairwise Vargha and Delaney A index for groups in a DataFrame.
 
-    :param data: polars DataFrame object
-        A polars DataFrame with two-dimensional data.
-        Second dimension may vary, i.e. groups may have different lengths.
-    :param val_col: str, optional
-        Must be specified if `a` is a polars DataFrame object.
+    Parameters
+    ----------
+    data : polars.DataFrame
+        A polars DataFrame with two-dimensional data. Second dimension may
+        vary, i.e. groups may have different lengths.
+    val_col : str, optional
         Name of the column that contains values.
-    :param group_col: str, optional
-        Must be specified if `a` is a polars DataFrame object.
+    group_col : str, optional
         Name of the column that contains group names.
-    :param sort : bool, optional
-        Specifies whether to sort DataFrame by group_col or not. Recommended
-        unless you sort your data manually.
+    sort : bool, optional
+        Whether to sort the DataFrame by group_col. Default is True.
 
-    :return: stats : polars DataFrame of effect sizes
-
-    Stats summary ::
-    'A' : Name of first measurement
-    'B' : Name of second measurement
-    'estimate' : effect sizes
-    'magnitude' : magnitude
-
+    Returns
+    -------
+    polars.DataFrame
+        DataFrame of effect sizes with columns: 'base', 'compared_with',
+        'estimate', and 'magnitude'.
     """
     x = data.clone()
 
@@ -113,7 +120,7 @@ def VD_A_DF(data: pl.DataFrame, val_col: str = None, group_col: str = None,
     # Compute effect size for each combination
     ef = np.array([VD_A(list(x.filter(pl.col(group_col) == groups_list[i])[val_col].to_list()),
                         list(x.filter(pl.col(group_col) == groups_list[j])[val_col].to_list()))
-                   for i, j in zip(g1, g2)])
+                   for i, j in zip(g1, g2, strict=False)])
 
     groups_array = groups.to_numpy()
     return pl.DataFrame({
@@ -125,17 +132,22 @@ def VD_A_DF(data: pl.DataFrame, val_col: str = None, group_col: str = None,
 
 
 def reduce(df: pl.DataFrame, best: str, symbols: bool = True) -> pl.DataFrame:
-    """
-    Reduce a polars DataFrame of effect sizes to compare only against the best
-    among the comparison (algorithm/item).
+    """Reduce a DataFrame of effect sizes to compare only against the best.
 
-    :param df: polars DataFrame object
-        A DataFrame of effect sizes
-    :param best: str
-        The name of the best sample, for instance, algorithm AAA
-    :param symbols: bool, optional
-        Specifies whether to use symbols from LaTeX to represent the magnitudes
-    :return:
+    Parameters
+    ----------
+    df : polars.DataFrame
+        A DataFrame of effect sizes.
+    best : str
+        The name of the best sample, for instance, algorithm AAA.
+    symbols : bool, optional
+        Whether to use LaTeX symbols to represent the magnitudes.
+        Default is True.
+
+    Returns
+    -------
+    polars.DataFrame
+        Filtered DataFrame with an additional 'effect_size_symbol' column.
     """
     # Effect Size
     magnitude = ["negligible", "small", "medium", "large"]

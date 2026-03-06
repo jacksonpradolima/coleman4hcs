@@ -6,6 +6,7 @@ including its inheritance from the base Exception class, and its behavior
 when raised with or without a custom message.
 """
 import pytest
+
 from coleman4hcs.exceptions import QException
 
 
