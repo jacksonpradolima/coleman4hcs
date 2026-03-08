@@ -64,7 +64,7 @@ def vd_a(treatment: list[float], control: list[float]) -> tuple[float, str]:
     n = len(control)
 
     if m != n:
-        raise ValueError("Data d and f must have the same length")
+        raise ValueError(f"treatment and control must have the same length, got {m} and {n}")
 
     r = ss.rankdata(treatment + control)
     r1 = sum(r[0:m])
@@ -93,8 +93,8 @@ def vd_a_df(
     Parameters
     ----------
     data : polars.DataFrame
-        A polars DataFrame with two-dimensional data. Second dimension may
-        vary, i.e. groups may have different lengths.
+        A polars DataFrame with two-dimensional data. Each pair of groups
+        must have the same number of observations (equal-length groups).
     val_col : str, optional
         Name of the column that contains values.
     group_col : str, optional

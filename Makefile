@@ -64,7 +64,7 @@ test: ensure-uv install ## Run tests with pytest in parallel if xdist is availab
 	@if $(UV) run --python $(PYTHON) --no-project python -c 'import xdist' >/dev/null 2>&1; then \
 	  $(UV) run --python $(PYTHON) --no-project pytest -n auto; \
 	else \
-	  echo "pytest-xdist não encontrado; executando em série..."; \
+	  echo "pytest-xdist not found; running tests serially..."; \
 	  $(UV) run --python $(PYTHON) --no-project pytest; \
 	fi
 
