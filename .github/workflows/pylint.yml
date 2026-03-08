@@ -10,8 +10,9 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Retrieve full commit history for proper diff.
       - name: Install uv
         run: |
           curl -Ls https://astral.sh/uv/install.sh | bash
