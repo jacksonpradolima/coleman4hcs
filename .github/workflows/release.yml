@@ -95,7 +95,7 @@ jobs:
 
       - name: Sign distributions with Sigstore
         if: steps.release.outputs.released == 'true'
-        uses: sigstore/gh-action-sigstore-python@f514d46b907ebcd5bedc05145c03b69c1edd8b46 # v3.0.0
+        uses: sigstore/gh-action-sigstore-python@a5caf349bc536fbef3668a10ed7f5cd309a4b53d # v3.2.0
         with:
           inputs: >-
             dist/*.whl
