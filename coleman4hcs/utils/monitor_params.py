@@ -26,11 +26,9 @@ class CollectParams:
 
     Parameters
     ----------
-    scenario_provider : Union[VirtualScenario, VirtualHCSScenario, VirtualContextScenario, \
-IndustrialDatasetScenarioProvider, IndustrialDatasetHCSScenarioProvider, \
-IndustrialDatasetContextScenarioProvider]
-        The scenario being analyzed, which provides context or settings for
-        the experiment.
+    scenario_provider : ScenarioProviderLike
+        Any object satisfying the ``ScenarioProviderLike`` protocol (must
+        expose ``name: str`` and ``avail_time_ratio: float``).
     available_time : float
         The time available for scheduling or execution.
     experiment : int

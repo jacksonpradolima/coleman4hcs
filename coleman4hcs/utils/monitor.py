@@ -179,7 +179,7 @@ class MonitorCollector:
             self.df.write_csv(name, separator=";", null_value="[]")
         else:
             # For appending, we write to temp and then append manually
-            with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv") as tmp:
+            with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv", encoding="utf-8") as tmp:
                 tmp_name = tmp.name
                 self.df.write_csv(tmp_name, separator=";", null_value="[]", include_header=False)
 

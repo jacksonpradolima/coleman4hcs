@@ -164,6 +164,9 @@ def reduce(df: pl.DataFrame, best: str, symbols: bool = True) -> pl.DataFrame:
     # Get only the effect size magnitudes related with the best
     df = df.filter((pl.col("base") == best) | (pl.col("compared_with") == best))
 
+    if not symbols:
+        return df
+
     # Create a new column to compare against the other policies
     df = df.with_columns(
         [pl.when(pl.col("base") == best).then(pl.col("compared_with")).otherwise(pl.col("base")).alias("temp")]
