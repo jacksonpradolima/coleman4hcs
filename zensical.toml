@@ -2,10 +2,10 @@
 
 # Project information
 site_name = "Coleman4HCS"
-site_description = "Solving the Test Case Prioritization using Multi-Armed Bandit Algorithms for Highly-Configurable Systems"
+site_description = "Multi-Armed Bandit based test case prioritization for CI environments"
 site_author = "Jackson Antonio do Prado Lima"
 site_url = "https://jacksonpradolima.github.io/coleman4hcs/"
-copyright = "Copyright &copy; 2024 Jackson Antonio do Prado Lima"
+copyright = "Copyright &copy; 2026 Jackson Antonio do Prado Lima"
 
 # Repository
 repo_name = "jacksonpradolima/coleman4hcs"
@@ -16,7 +16,7 @@ nav = [
   { "Home" = "index.md" },
   { "Getting Started" = "getting-started.md" },
   { "Configuration" = "configuration.md" },
-  { "API Reference" = "api-reference.md" },
+  { "API Reference" = [{ "Agent" = "api/agent.md" }, { "Bandit" = "api/bandit.md" }, { "Environment" = "api/environment.md" }, { "Evaluation" = "api/evaluation.md" }, { "Policy" = "api/policy.md" }, { "Reward" = "api/reward.md" }, { "Scenarios" = "api/scenarios.md" }] }
 ]
 
 # ----------------------------------------------------------------------------
@@ -27,6 +27,7 @@ language = "en"
 features = [
     "content.code.annotate",
     "content.code.copy",
+    "navigation.tabs",
     "navigation.footer",
     "navigation.indexes",
     "navigation.instant",
@@ -58,3 +59,41 @@ toggle.name = "Switch to light mode"
 [[project.extra.social]]
 icon = "fontawesome/brands/github"
 link = "https://github.com/jacksonpradolima"
+
+# ----------------------------------------------------------------------------
+# Plugins
+# ----------------------------------------------------------------------------
+[project.plugins.search]
+
+[project.plugins.mkdocstrings]
+default_handler = "python"
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "numpy"
+show_root_heading = true
+heading_level = 2
+separate_signature = true
+show_source = false
+
+[project.plugins.mkdocs-jupyter]
+include = ["*.py"]
+execute = false
+
+# ----------------------------------------------------------------------------
+# Markdown extensions
+# ----------------------------------------------------------------------------
+[project.markdown_extensions]
+admonition = {}
+"pymdownx.details" = {}
+"pymdownx.snippets" = {}
+
+[project.markdown_extensions."pymdownx.superfences"]
+custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" }
+]
+
+[project.markdown_extensions."pymdownx.highlight"]
+anchor_linenums = true
+
+[project.markdown_extensions.toc]
+permalink = true
