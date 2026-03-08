@@ -1,10 +1,12 @@
-"""
-coleman4hcs.exceptions
-------------------
-Defines the exceptions in the framework
+"""Custom exceptions for the Coleman4HCS framework.
+
+Classes
+-------
+QException
+    Exception raised for Q-value computation errors in contextual
+    multi-armed bandit (CMAB) policies.
 """
 
+
 class QException(Exception):
-    """
-    Q Exception for CMAB
-    """
+    """Exception raised for Q-value computation errors in CMAB policies."""

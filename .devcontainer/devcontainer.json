@@ -1,0 +1,35 @@
+{
+  "name": "coleman4hcs",
+  "image": "mcr.microsoft.com/devcontainers/python:3",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {}
+  },
+  "postCreateCommand": "make install && make pre-commit-install",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "astral-sh.ruff",
+        "GitHub.copilot",
+        "tamasfe.even-better-toml",
+        "yzhang.markdown-all-in-one",
+        "ms-pyright.pyright",
+        "ms-toolsai.jupyter",
+        "astral-sh.ty",
+        "marimo-team.vscode-marimo"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": ".venv/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": [],
+        "ruff.enable": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true
+        }
+      }
+    }
+  }
+}

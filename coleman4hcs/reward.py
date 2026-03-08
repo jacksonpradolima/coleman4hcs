@@ -1,28 +1,31 @@
+"""Reward functions for bandit-based test case prioritization.
+
+Defines reward functions for agents in a multi-armed bandit framework in the context of
+software testing. These reward functions help agents to prioritize software test cases
+based on various strategies.
+
+The module provides an abstract base class `Reward` that serves as a blueprint for all
+reward functions. Derived classes implement specific reward strategies based on the number
+of failures and the order of test cases.
+
+Classes
+-------
+Reward
+    An abstract base class that defines the structure and interface of a reward function.
+TimeRankReward
+    A reward function that considers the order of test cases and the number of failures.
+RNFailReward
+    A reward function that rewards based on the number of failures associated with test cases.
+
+Notes
+-----
+Reward functions are essential components of the bandit-based test case prioritization
+framework. They guide agents to make better decisions about which test cases to prioritize.
+Ensure that the evaluation metric provides necessary details like detection ranks for the
+reward functions to work correctly.
 """
-coleman4hcs.reward
-------------------
 
-Defines reward functions for agents in a multi-armed bandit framework in the context of software testing.
-These reward functions help agents to prioritize software test cases based on various strategies.
-
-The module provides an abstract base class `Reward` that serves as a blueprint for all reward functions.
-Derived classes implement specific reward strategies based on the number of failures and the order
-of test cases.
-
-Classes:
-    - Reward: An abstract base class that defines the structure and interface of a reward function.
-    - TimeRankReward: A reward function that considers the order of test cases and the number of failures.
-      It rewards each test case based on its rank in the test schedule and its pass/fail status.
-    - RNFailReward: A reward function that rewards based on the number of failures associated with test cases.
-
-Notes:
-    - Reward functions are essential components of the bandit-based test case prioritization framework.
-      They guide agents to make better decisions about which test cases to prioritize.
-    - Ensure that the evaluation metric provides necessary details like detection ranks for the
-      reward functions to work correctly.
-"""
 from abc import ABC, abstractmethod
-from typing import List
 
 import numpy as np
 
@@ -30,56 +33,89 @@ from coleman4hcs.evaluation import EvaluationMetric
 
 
 class Reward(ABC):
-    """
-    A reward function is used by the agent in the observe method
+    """Abstract base class for reward functions.
+
+    A reward function is used by the agent in the observe method to evaluate
+    bandit results and return a reward.
     """
 
     def get_name(self):
-        """
-        Retrieve the name or identifier of the reward function.
+        """Retrieve the name or identifier of the reward function.
 
-        The name is used for identification purposes, such as logging or display in results.
-
-        :return: The name or identifier of the reward function.
-        :rtype: str
+        Returns
+        -------
+        str
+            The name or identifier of the reward function.
         """
-        return NotImplementedError
+        raise NotImplementedError
 
     @abstractmethod
-    def evaluate(self, reward: EvaluationMetric, last_prioritization: List[str]):
+    def evaluate(self, reward: EvaluationMetric, last_prioritization: list[str]):
+        """Evaluate a bandit result and return a reward.
+
+        Parameters
+        ----------
+        reward : EvaluationMetric
+            The evaluation metric result.
+        last_prioritization : list of str
+            The last prioritized test suite list.
+
+        Returns
+        -------
+        list of float
+            The computed rewards for each test case.
         """
-        The reward function evaluate a bandit result and return a reward
-        """
-        return NotImplementedError
+        raise NotImplementedError
 
 
 class TimeRankReward(Reward):
-    """
-    Time-ranked Reward (TimeRank)
+    """Time-ranked Reward (TimeRank).
 
-    This reward function explicitly includes the order of test cases and rewards each test case
-    based on its rank in the test schedule and whether it failed.
-    As a good schedule executes failing test cases early,
-    every passed test case reduces the schedule's quality if it precedes a failing test case.
-    Each test cases is rewarded by the total number of failed test cases,
-    for failed test cases it is the same as reward function 'RNFailReward'.
-    For passed test cases, the reward is further decreased by the number of failed test cases ranked
-    after the passed test case to penalize scheduling passing test cases early.
+    This reward function explicitly includes the order of test cases and rewards
+    each test case based on its rank in the test schedule and whether it failed.
+    As a good schedule executes failing test cases early, every passed test case
+    reduces the schedule's quality if it precedes a failing test case. Each test
+    case is rewarded by the total number of failed test cases; for failed test
+    cases it is the same as reward function 'RNFailReward'. For passed test
+    cases, the reward is further decreased by the number of failed test cases
+    ranked after the passed test case to penalize scheduling passing test cases
+    early.
     """
 
     def __str__(self):
-        return 'Time-ranked Reward'
+        """Return a string representation of the reward function.
+
+        Returns
+        -------
+        str
+            The reward function name.
+        """
+        return "Time-ranked Reward"
 
     def get_name(self):
-        return 'timerank'
+        """Return the identifier of the reward function.
+
+        Returns
+        -------
+        str
+            The reward function identifier.
+        """
+        return "timerank"
 
     def evaluate(self, reward: EvaluationMetric, last_prioritization: list):
-        """
-        Evaluate rewards based on the prioritization rank of test cases.
+        """Evaluate rewards based on the prioritization rank of test cases.
 
-        :param reward: The evaluation metric containing detection ranks and scheduled test cases.
-        :param last_prioritization: The list of test case names in the prioritization order.
-        :return: A list of rewards for each test case in the prioritization.
+        Parameters
+        ----------
+        reward : EvaluationMetric
+            The evaluation metric containing detection ranks and scheduled test cases.
+        last_prioritization : list of str
+            The list of test case names in the prioritization order.
+
+        Returns
+        -------
+        list of float
+            A list of rewards for each test case in the prioritization.
         """
         # Total number of failing test cases
         num_failing_tests = len(reward.detection_ranks)
@@ -101,7 +137,8 @@ class TimeRankReward(Reward):
         # aligning with the equation's intent to penalize non-failing test cases scheduled before failing ones.
         normalized_rewards = [
             rewards[reward.scheduled_testcases.index(tc)] / num_failing_tests
-            if tc in reward.scheduled_testcases else 0.0
+            if tc in reward.scheduled_testcases
+            else 0.0
             for tc in last_prioritization
         ]
 
@@ -109,26 +146,46 @@ class TimeRankReward(Reward):
 
 
 class RNFailReward(Reward):
-    """
-    Reward Based on Failures (RNFail)
+    """Reward Based on Failures (RNFail).
 
-    This reward function is based on the number of failures associated with test cases t' in T':
-    1 if t' failed; 0 otherwise
+    This reward function is based on the number of failures associated with
+    test cases t' in T': 1 if t' failed; 0 otherwise.
     """
 
     def __str__(self):
-        return 'Reward Based on Failures'
+        """Return a string representation of the reward function.
+
+        Returns
+        -------
+        str
+            The reward function name.
+        """
+        return "Reward Based on Failures"
 
     def get_name(self):
-        return 'RNFail'
+        """Return the identifier of the reward function.
 
-    def evaluate(self, reward: EvaluationMetric, last_prioritization: List[str]):
+        Returns
+        -------
+        str
+            The reward function identifier.
         """
-        Evaluate rewards based on failures.
+        return "RNFail"
 
-        :param reward: Evaluation metric containing detection ranks and scheduled test cases.
-        :param last_prioritization: Test case names in prioritization order.
-        :return: List of rewards for each test case in the prioritization.
+    def evaluate(self, reward: EvaluationMetric, last_prioritization: list[str]):
+        """Evaluate rewards based on failures.
+
+        Parameters
+        ----------
+        reward : EvaluationMetric
+            Evaluation metric containing detection ranks and scheduled test cases.
+        last_prioritization : list of str
+            Test case names in prioritization order.
+
+        Returns
+        -------
+        list of float
+            List of rewards for each test case in the prioritization.
         """
         if not reward.detection_ranks:
             # No failing test cases: All rewards are 0
@@ -138,8 +195,5 @@ class RNFailReward(Reward):
         failing_indices = set(reward.detection_ranks)
 
         # Assign rewards: 1 for failing test cases, 0 otherwise
-        rewards = [
-            1.0 if i + 1 in failing_indices else 0.0
-            for i, tc in enumerate(last_prioritization)
-        ]
+        rewards = [1.0 if i + 1 in failing_indices else 0.0 for i, tc in enumerate(last_prioritization)]
         return rewards

@@ -4,6 +4,7 @@ Test cases for the MonitorCollector utility in the coleman4hcs package.
 These tests cover functionality including data collection, handling of temporary
 buffers, and performance benchmarks.
 """
+
 import os
 from unittest.mock import MagicMock
 
@@ -23,8 +24,8 @@ def mock_metric():
     metric = MagicMock(spec=EvaluationMetric)
     metric.detected_failures = 5
     metric.undetected_failures = 3
-    metric.scheduled_testcases = ['test1', 'test2', 'test3']
-    metric.unscheduled_testcases = ['test4', 'test5']
+    metric.scheduled_testcases = ["test1", "test2", "test3"]
+    metric.unscheduled_testcases = ["test4", "test5"]
     metric.ttf = 2
     metric.ttf_duration = 10
     metric.fitness = 0.8
@@ -67,18 +68,18 @@ def test_collect_single_record(monitor_collector, mock_scenario_provider, mock_m
         total_build_duration=100,
         prioritization_time=10,
         rewards=0.9,
-        prioritization_order=['test1', 'test2']
+        prioritization_order=["test1", "test2"],
     )
     monitor_collector.collect(params)
 
     assert len(monitor_collector.temp_rows) == 1
     record = monitor_collector.temp_rows[0]
-    assert record['scenario'] == "TestScenario"
-    assert record['experiment'] == 1
-    assert record['policy'] == "TestPolicy"
+    assert record["scenario"] == "TestScenario"
+    assert record["experiment"] == 1
+    assert record["policy"] == "TestPolicy"
     # Use pytest.approx for floating-point comparisons
-    assert record['fitness'] == pytest.approx(0.8, rel=1e-6)
-    assert record['cost'] == pytest.approx(0.6, rel=1e-6)
+    assert record["fitness"] == pytest.approx(0.8, rel=1e-6)
+    assert record["cost"] == pytest.approx(0.6, rel=1e-6)
 
 
 def test_collect_from_temp(monitor_collector, mock_scenario_provider, mock_metric):
@@ -97,7 +98,7 @@ def test_collect_from_temp(monitor_collector, mock_scenario_provider, mock_metri
             total_build_duration=100,
             prioritization_time=10,
             rewards=0.9,
-            prioritization_order=['test1', 'test2']
+            prioritization_order=["test1", "test2"],
         )
         monitor_collector.collect(params)
 
@@ -115,7 +116,7 @@ def test_create_file(tmp_path, monitor_collector):
     monitor_collector.create_file(file_path)
 
     assert os.path.exists(file_path)
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, encoding="utf-8") as f:
         header = f.readline().strip()
         assert header == ";".join(monitor_collector.df.columns)
 
@@ -138,25 +139,25 @@ def test_save_to_file(tmp_path, monitor_collector, mock_scenario_provider, mock_
             total_build_duration=100,
             prioritization_time=10,
             rewards=0.9,
-            prioritization_order=['test1', 'test2']
+            prioritization_order=["test1", "test2"],
         )
         monitor_collector.collect(params)
 
     monitor_collector.save(file_path)
 
     assert os.path.exists(file_path)
-    saved_data = pl.read_csv(file_path, separator=';')
+    saved_data = pl.read_csv(file_path, separator=";")
     assert len(saved_data) == 3, f"Expected 3 records, found {len(saved_data)}"
-    assert 'scenario' in saved_data.columns
-    assert saved_data['scenario'][0] == "TestScenario"
+    assert "scenario" in saved_data.columns
+    assert saved_data["scenario"][0] == "TestScenario"
 
 
 def test_clear(monitor_collector):
     """
     Test clearing the dataframe.
     """
-    monitor_collector.df = pl.DataFrame({'a': [1, 2, 3]})
-    monitor_collector.temp_rows = [{'b': 4}, {'b': 5}, {'b': 6}]
+    monitor_collector.df = pl.DataFrame({"a": [1, 2, 3]})
+    monitor_collector.temp_rows = [{"b": 4}, {"b": 5}, {"b": 6}]
 
     monitor_collector.clear()
 
@@ -182,13 +183,14 @@ def test_temp_limit_trigger(monitor_collector, mock_scenario_provider, mock_metr
             total_build_duration=100,
             prioritization_time=10,
             rewards=0.9,
-            prioritization_order=['test1', 'test2']
+            prioritization_order=["test1", "test2"],
         )
         monitor_collector.collect(params)
 
     # After exceeding the limit, temp_rows should only contain the last record
-    assert len(
-        monitor_collector.temp_rows) == 1, f"Expected 1 record in temp_rows, found {len(monitor_collector.temp_rows)}"
+    assert len(monitor_collector.temp_rows) == 1, (
+        f"Expected 1 record in temp_rows, found {len(monitor_collector.temp_rows)}"
+    )
 
     # The main df should have the flushed records
     assert len(monitor_collector.df) == 5, f"Expected 5 records in df, found {len(monitor_collector.df)}"
@@ -233,7 +235,7 @@ def test_temp_limit_exceeded():
             total_build_duration=100,
             prioritization_time=10,
             rewards=0.95,
-            prioritization_order=[1, 2, 3]
+            prioritization_order=[1, 2, 3],
         )
         collector.collect(params)
 
@@ -249,8 +251,7 @@ def test_temp_limit_exceeded():
 
     # Validate the structure of the DataFrame
     expected_columns = list(collector.df.schema.keys())
-    assert all(col in collector.df.columns for col in expected_columns), \
-        "DataFrame structure is incorrect."
+    assert all(col in collector.df.columns for col in expected_columns), "DataFrame structure is incorrect."
 
 
 def test_collect_from_temp_empty_temp_rows(monitor_collector):
@@ -277,9 +278,7 @@ def test_collect_from_temp_empty_batch_df(monitor_collector):
         f"Expected df to remain empty when batch_df is empty. Found: {monitor_collector.df}"
     )
     # Assert that temp_rows is cleared
-    assert not monitor_collector.temp_rows, (
-        f"Expected temp_rows to be cleared but found: {monitor_collector.temp_rows}"
-    )
+    assert not monitor_collector.temp_rows, f"Expected temp_rows to be cleared but found: {monitor_collector.temp_rows}"
 
 
 def test_create_file_existing_file(tmp_path, monitor_collector):
@@ -289,14 +288,14 @@ def test_create_file_existing_file(tmp_path, monitor_collector):
     file_path = tmp_path / "test_existing_file.csv"
 
     # Create a file manually
-    with open(file_path, 'w', encoding='utf-8') as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         f.write("existing_header\n")
 
     # Call create_file and verify it does not overwrite
     monitor_collector.create_file(file_path)
 
     # Read back the file and ensure it retains the original content
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, encoding="utf-8") as f:
         content = f.read()
 
     assert content == "existing_header\n", "File content was unexpectedly overwritten."
@@ -313,8 +312,8 @@ def test_save_with_empty_temp_rows(tmp_path, monitor_collector):
 
     # Add some data to df directly
     monitor_collector.df = pl.DataFrame(
-        [{'scenario': 'TestScenario', 'experiment': 1, 'step': 1, 'policy': 'PolicyA'}],
-        schema=monitor_collector.df.schema
+        [{"scenario": "TestScenario", "experiment": 1, "step": 1, "policy": "PolicyA"}],
+        schema=monitor_collector.df.schema,
     )
 
     # Call save and ensure no errors occur
@@ -322,9 +321,9 @@ def test_save_with_empty_temp_rows(tmp_path, monitor_collector):
 
     # Verify that the file is created and has the data from df
     assert os.path.exists(file_path), "File was not created."
-    saved_data = pl.read_csv(file_path, separator=';')
+    saved_data = pl.read_csv(file_path, separator=";")
     assert len(saved_data) == 1, f"Expected 1 record, found {len(saved_data)}."
-    assert saved_data['scenario'][0] == "TestScenario"
+    assert saved_data["scenario"][0] == "TestScenario"
 
 
 def test_save_appends_to_existing_file(tmp_path, monitor_collector, mock_scenario_provider, mock_metric):
@@ -347,7 +346,7 @@ def test_save_appends_to_existing_file(tmp_path, monitor_collector, mock_scenari
             total_build_duration=100,
             prioritization_time=10,
             rewards=0.9,
-            prioritization_order=['test1', 'test2']
+            prioritization_order=["test1", "test2"],
         )
         monitor_collector.collect(params)
     monitor_collector.save(file_path)
@@ -367,14 +366,14 @@ def test_save_appends_to_existing_file(tmp_path, monitor_collector, mock_scenari
         total_build_duration=100,
         prioritization_time=10,
         rewards=0.9,
-        prioritization_order=['test1', 'test2']
+        prioritization_order=["test1", "test2"],
     )
     monitor_collector.collect(params)
     monitor_collector.save(file_path)
 
-    saved_data = pl.read_csv(file_path, separator=';')
+    saved_data = pl.read_csv(file_path, separator=";")
     assert len(saved_data) == 3, f"Expected 3 records after append, found {len(saved_data)}."
-    assert saved_data['experiment'][-1] == 99
+    assert saved_data["experiment"][-1] == 99
 
 
 def test_save_with_non_empty_temp_rows(tmp_path, monitor_collector, mock_scenario_provider, mock_metric):
@@ -396,7 +395,7 @@ def test_save_with_non_empty_temp_rows(tmp_path, monitor_collector, mock_scenari
             total_build_duration=100,
             prioritization_time=10,
             rewards=0.9,
-            prioritization_order=['test1', 'test2']
+            prioritization_order=["test1", "test2"],
         )
         monitor_collector.collect(params)
 
@@ -405,7 +404,7 @@ def test_save_with_non_empty_temp_rows(tmp_path, monitor_collector, mock_scenari
 
     # Verify that the file is created and has the data from temp_rows
     assert os.path.exists(file_path), "File was not created."
-    saved_data = pl.read_csv(file_path, separator=';')
+    saved_data = pl.read_csv(file_path, separator=";")
     assert len(saved_data) == 3, f"Expected 3 records, found {len(saved_data)}."
 
     # Verify that temp_rows is empty
@@ -455,7 +454,7 @@ def test_temp_limit_performance(benchmark, num_records):
                 total_build_duration=100,
                 prioritization_time=10,
                 rewards=0.95,
-                prioritization_order=[1, 2, 3]
+                prioritization_order=[1, 2, 3],
             )
             collector.collect(params)
         collector.collect_from_temp()

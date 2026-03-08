@@ -9,13 +9,14 @@ The tests cover the following aspects:
 - Handling of edge cases such as no detections.
 - Proper representation and naming of reward classes
 """
+
 from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
 from coleman4hcs.evaluation import EvaluationMetric
-from coleman4hcs.reward import TimeRankReward, RNFailReward
+from coleman4hcs.reward import RNFailReward, TimeRankReward
 
 
 @pytest.fixture
@@ -71,11 +72,14 @@ def test_time_rank_reward_evaluation(mock_evaluation_metric, sample_prioritizati
     assert np.allclose(results, [1.0, 0.3333333333, 1.0, 0.6666666667, 1.0])
 
 
-@pytest.mark.parametrize("detection_ranks, expected", [
-    ([1, 2], [1.0, 1.0, 1.0, 1.0, 1.0]),  # Updated expectation for cumulative logic
-    ([3], [0.0, 0.0, 1.0, 1.0, 1.0]),  # Adjusted expectation
-    ([], [0.0, 0.0, 0.0, 0.0, 0.0])  # No detections result in zero rewards
-])
+@pytest.mark.parametrize(
+    "detection_ranks, expected",
+    [
+        ([1, 2], [1.0, 1.0, 1.0, 1.0, 1.0]),  # Updated expectation for cumulative logic
+        ([3], [0.0, 0.0, 1.0, 1.0, 1.0]),  # Adjusted expectation
+        ([], [0.0, 0.0, 0.0, 0.0, 0.0]),  # No detections result in zero rewards
+    ],
+)
 def test_time_rank_reward_varied_detections(detection_ranks, expected, sample_prioritization):
     """
     Test TimeRankReward with varied detection ranks.

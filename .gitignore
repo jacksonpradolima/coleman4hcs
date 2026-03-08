@@ -182,6 +182,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Ruff
+.ruff_cache/
+
 # Ignore extremely large files
 data/square@okhttp/features-engineered.csv
 
