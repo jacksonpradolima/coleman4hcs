@@ -62,6 +62,8 @@ from coleman4hcs.agent import (
 )
 from coleman4hcs.exceptions import QException
 
+_rng = np.random.default_rng()
+
 
 class Policy:
     """A policy prescribes an action to be taken based on the memory of an agent."""
@@ -173,7 +175,7 @@ class EpsilonGreedyPolicy(Policy):
         """
         # Copy the actions and add a random mask column
         actions = agent.actions.clone()
-        actions = actions.with_columns([pl.Series("is_random", np.random.random(len(actions)) < self.epsilon)])
+        actions = actions.with_columns([pl.Series("is_random", _rng.random(len(actions)) < self.epsilon)])
 
         # Use sorting to prioritize best actions for exploitation (high Q) and exploration (random actions)
         actions = actions.sort(["is_random", "Q"], descending=[True, True])
@@ -235,7 +237,7 @@ class RandomPolicy(Policy):
             Randomly ordered list of action names.
         """
         actions = agent.actions["Name"].to_numpy()
-        np.random.shuffle(actions)
+        _rng.shuffle(actions)
         return actions.tolist()
 
 
@@ -726,11 +728,12 @@ class LinUCBPolicy(Policy):
             # Get the specific features from te current test case (action)
             x_i = x.reshape(-1, 1)
 
-            A_inv = self.context["A_inv"][a]
-            theta_a = A_inv.dot(self.context["b"][a])
+            # Inverse of the design matrix for action `a` (A_inv = A^{-1})
+            a_inv = self.context["A_inv"][a]
+            theta_a = a_inv.dot(self.context["b"][a])
 
             # Confidence bound for all actions
-            p_t = theta_a.T.dot(x_i) + self.alpha * np.sqrt(x_i.T.dot(A_inv).dot(x_i))
+            p_t = theta_a.T.dot(x_i) + self.alpha * np.sqrt(x_i.T.dot(a_inv).dot(x_i))
 
             if len(p_t) > 1:
                 raise QException("[LinUCB] q is more than 1: {q}")

@@ -30,24 +30,24 @@ import numpy as np
 import polars as pl
 import pytest
 
-from coleman4hcs.statistics.vargha_delaney import VD_A, VD_A_DF, reduce
+from coleman4hcs.statistics.vargha_delaney import reduce, vd_a, vd_a_df
 
 
 def test_vd_a():
     """
-    Test VD_A function for computing Vargha and Delaney's A index.
+    Test vd_a function for computing Vargha and Delaney's A index.
     """
     group_a = [0.8236, 0.7967, 0.9236, 0.8197, 0.7108]
     group_b = [0.8053, 0.8172, 0.8322, 0.7836, 0.8142]
 
-    estimate, magnitude = VD_A(group_a, group_b)
+    estimate, magnitude = vd_a(group_a, group_b)
     assert 0.44 <= estimate <= 0.56, "Expected negligible effect size"
     assert magnitude == "negligible", f"Expected 'negligible', got {magnitude}"
 
 
 def test_vd_a_df():
     """
-    Test VD_A_DF function for pairwise comparisons.
+    Test vd_a_df function for pairwise comparisons.
     """
     data = pl.DataFrame(
         {
@@ -56,7 +56,7 @@ def test_vd_a_df():
         }
     )
 
-    result = VD_A_DF(data, val_col="values", group_col="group")
+    result = vd_a_df(data, val_col="values", group_col="group")
 
     # Verify output structure
     assert "base" in result.columns
@@ -92,21 +92,21 @@ def test_reduce():
 
 def test_vd_a_negligible():
     """
-    Test VD_A function for negligible effect size.
+    Test vd_a function for negligible effect size.
 
     This test uses two groups, group_f and group_g, with almost equal distributions.
     The expected result is a negligible effect size with the magnitude 'negligible'.
     """
     group_f = [0.8236, 0.7967, 0.9236, 0.8197, 0.7108]
     group_g = [0.8053, 0.8172, 0.8322, 0.7836, 0.8142]
-    result, magnitude = VD_A(group_g, group_f)
+    result, magnitude = vd_a(group_g, group_f)
     assert 0.44 <= result <= 0.55, "Expected negligible effect size"
     assert magnitude == "negligible", f"Expected 'negligible', got {magnitude}"
 
 
 def test_vd_a_small():
     """
-    Test VD_A function for small effect size.
+    Test vd_a function for small effect size.
 
     This test uses two groups, group_a and group_b, where group_a slightly outperforms group_b.
     The expected result is a small effect size with the magnitude 'small'.
@@ -175,56 +175,56 @@ def test_vd_a_small():
         0.4639,
         0.4307,
     ]
-    result, magnitude = VD_A(group_a, group_b)
+    result, magnitude = vd_a(group_a, group_b)
     assert 0.55 <= result <= 0.65, "Expected small effect size"
     assert magnitude == "small", f"Expected 'small', got {magnitude}"
 
 
 def test_vd_a_medium():
     """
-    Test VD_A function for medium effect size.
+    Test vd_a function for medium effect size.
 
     This test uses two groups, group_c and group_e, where group_c moderately outperforms group_e.
     The expected result is a medium effect size with the magnitude 'medium'.
     """
     group_c = [0.9108, 0.8756, 0.9003, 0.9275, 0.8778]
     group_e = [0.8664, 0.8803, 0.7817, 0.8378, 0.9306]
-    result, magnitude = VD_A(group_c, group_e)
+    result, magnitude = vd_a(group_c, group_e)
     assert 0.65 <= result <= 0.75, "Expected medium effect size"
     assert magnitude == "medium", f"Expected 'medium', got {magnitude}"
 
 
 def test_vd_a_large():
     """
-    Test VD_A function for large effect size.
+    Test vd_a function for large effect size.
 
     This test uses two groups, group_c and group_d, where group_c significantly outperforms group_d.
     The expected result is a large effect size with the magnitude 'large'.
     """
     group_c = [0.9108, 0.8756, 0.9003, 0.9275, 0.8778]
     group_d = [0.7203, 0.7700, 0.8544, 0.7947, 0.7578]
-    result, magnitude = VD_A(group_c, group_d)
+    result, magnitude = vd_a(group_c, group_d)
     assert result > 0.75, "Expected large effect size"
     assert magnitude == "large", f"Expected 'large', got {magnitude}"
 
 
 def test_vd_a_invalid_input():
     """
-    Test VD_A function for invalid inputs.
+    Test vd_a function for invalid inputs.
 
     This test validates that the function raises appropriate errors for invalid inputs such as:
     - An empty list
     - Non-list inputs
     """
     with pytest.raises(ValueError):
-        VD_A([], [1, 2, 3])  # Empty list
+        vd_a([], [1, 2, 3])  # Empty list
     with pytest.raises(ValueError):
-        VD_A([1, 2, 3], cast(Any, "invalid"))  # Non-list input
+        vd_a([1, 2, 3], cast(Any, "invalid"))  # Non-list input
 
 
 def test_vd_a_distribution_comparisons():
     """
-    Test VD_A function with values sampled from uniform and normal distributions.
+    Test vd_a function with values sampled from uniform and normal distributions.
     Validates that the A value and magnitude are meaningful when comparing different distributions.
     """
     rng = np.random.default_rng(2)
@@ -232,7 +232,7 @@ def test_vd_a_distribution_comparisons():
     # Uniform distribution with distinct ranges
     a_uniform = rng.uniform(0.5, 0.75, 10)
     b_uniform = rng.uniform(0.8, 1, 10)
-    estimate_uniform, magnitude_uniform = VD_A(cast(list[float], a_uniform), cast(list[float], b_uniform))
+    estimate_uniform, magnitude_uniform = vd_a(cast(list[float], a_uniform), cast(list[float], b_uniform))
     print(f"Uniform a & b: {estimate_uniform}, {magnitude_uniform}")
 
     # Allow A value of 0.0 if control dominates treatment
@@ -242,7 +242,7 @@ def test_vd_a_distribution_comparisons():
     # Normal distribution
     a_normal = rng.normal(62.8125, 134, 10)
     b_normal = rng.normal(10.3199, 1.124, 10)
-    estimate_normal, magnitude_normal = VD_A(cast(list[float], a_normal), cast(list[float], b_normal))
+    estimate_normal, magnitude_normal = vd_a(cast(list[float], a_normal), cast(list[float], b_normal))
     print(f"Normal a & b: {estimate_normal}, {magnitude_normal}")
 
     # Allow A value of 0.0 if control dominates treatment

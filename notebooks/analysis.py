@@ -387,7 +387,7 @@ def stat_test_fns():
         posthoc_result = None
         if not all_equivalent:
             posthoc_result = posthocs.posthoc_nemenyi(dataframe, val_col=value_column, group_col=group_column)
-        vda_result = vargha_delaney.VD_A_DF(dataframe, val_col=value_column, group_col=group_column)
+        vda_result = vargha_delaney.vd_a_df(dataframe, val_col=value_column, group_col=group_column)
         return {
             "kruskal_stat": stat,
             "kruskal_pvalue": p_value,
