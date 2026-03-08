@@ -28,8 +28,10 @@ Coverage:
 Usage:
 Run the tests using pytest to verify the functionality of evaluation metrics.
 """
+
 import pytest
-from coleman4hcs.evaluation import NAPFDMetric, NAPFDVerdictMetric, EvaluationMetric
+
+from coleman4hcs.evaluation import EvaluationMetric, NAPFDMetric, NAPFDVerdictMetric
 
 # Constants for error messages
 NAPFD_FITNESS_NON_NEGATIVE = "NAPFD fitness should be non-negative."
@@ -43,15 +45,15 @@ def sample_records():
     Provide sample test records for evaluation metrics.
     """
     return [
-        {'Name': 8, 'Duration': 0.001, 'NumRan': 1, 'NumErrors': 3, 'Verdict': 1},
-        {'Name': 9, 'Duration': 0.497, 'NumRan': 1, 'NumErrors': 1, 'Verdict': 1},
-        {'Name': 4, 'Duration': 0.188, 'NumRan': 3, 'NumErrors': 2, 'Verdict': 1},
-        {'Name': 6, 'Duration': 0.006, 'NumRan': 1, 'NumErrors': 0, 'Verdict': 0},
-        {'Name': 3, 'Duration': 0.006, 'NumRan': 1, 'NumErrors': 0, 'Verdict': 0},
-        {'Name': 1, 'Duration': 0.235, 'NumRan': 2, 'NumErrors': 0, 'Verdict': 0},
-        {'Name': 2, 'Duration': 5.704, 'NumRan': 1, 'NumErrors': 0, 'Verdict': 0},
-        {'Name': 5, 'Duration': 3.172, 'NumRan': 1, 'NumErrors': 0, 'Verdict': 0},
-        {'Name': 7, 'Duration': 0.034, 'NumRan': 1, 'NumErrors': 5, 'Verdict': 1}
+        {"Name": 8, "Duration": 0.001, "NumRan": 1, "NumErrors": 3, "Verdict": 1},
+        {"Name": 9, "Duration": 0.497, "NumRan": 1, "NumErrors": 1, "Verdict": 1},
+        {"Name": 4, "Duration": 0.188, "NumRan": 3, "NumErrors": 2, "Verdict": 1},
+        {"Name": 6, "Duration": 0.006, "NumRan": 1, "NumErrors": 0, "Verdict": 0},
+        {"Name": 3, "Duration": 0.006, "NumRan": 1, "NumErrors": 0, "Verdict": 0},
+        {"Name": 1, "Duration": 0.235, "NumRan": 2, "NumErrors": 0, "Verdict": 0},
+        {"Name": 2, "Duration": 5.704, "NumRan": 1, "NumErrors": 0, "Verdict": 0},
+        {"Name": 5, "Duration": 3.172, "NumRan": 1, "NumErrors": 0, "Verdict": 0},
+        {"Name": 7, "Duration": 0.034, "NumRan": 1, "NumErrors": 5, "Verdict": 1},
     ]
 
 
@@ -60,7 +62,7 @@ def available_time(sample_records):
     """
     Calculate total available time from sample records.
     """
-    return sum(item['Duration'] for item in sample_records)
+    return sum(item["Duration"] for item in sample_records)
 
 
 def test_evaluation_metric_not_implemented():
@@ -125,9 +127,7 @@ def test_napfd_verdict_metric_no_failures(available_time):
     """
     Test NAPFDVerdictMetric with no failures to ensure default metrics are set.
     """
-    no_failure_records = [
-        {'Name': i, 'Duration': 1, 'NumRan': 1, 'NumErrors': 0, 'Verdict': 0} for i in range(1, 10)
-    ]
+    no_failure_records = [{"Name": i, "Duration": 1, "NumRan": 1, "NumErrors": 0, "Verdict": 0} for i in range(1, 10)]
 
     napfd_v = NAPFDVerdictMetric()
     napfd_v.update_available_time(available_time * 0.5)
@@ -155,7 +155,7 @@ def test_identical_durations(available_time):
     Test metrics with records having identical durations.
     """
     identical_records = [
-        {'Name': i, 'Duration': 1, 'NumRan': 1, 'NumErrors': i % 2, 'Verdict': i % 2} for i in range(1, 10)
+        {"Name": i, "Duration": 1, "NumRan": 1, "NumErrors": i % 2, "Verdict": i % 2} for i in range(1, 10)
     ]
     _common_test_napfd(identical_records, available_time)
 
@@ -165,7 +165,7 @@ def test_identical_cost_and_results(available_time):
     Test metrics where all records have the same cost and results.
     """
     identical_cost_records = [
-        {'Name': i, 'Duration': 1, 'NumRan': 1, 'NumErrors': 0, 'Verdict': 1} for i in range(1, 10)
+        {"Name": i, "Duration": 1, "NumRan": 1, "NumErrors": 0, "Verdict": 1} for i in range(1, 10)
     ]
     _common_test_napfd(identical_cost_records, available_time)
 

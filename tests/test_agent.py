@@ -26,15 +26,15 @@ Performance Benchmark Results
 import random
 from unittest.mock import MagicMock
 
-import pandas as pd
+import polars as pl
 import pytest
 
 from coleman4hcs.agent import (
     Agent,
-    RewardAgent,
     ContextualAgent,
+    RewardAgent,
     RewardSlidingWindowAgent,
-    SlidingWindowContextualAgent
+    SlidingWindowContextualAgent,
 )
 from coleman4hcs.bandit import Bandit
 from coleman4hcs.evaluation import EvaluationMetric
@@ -80,7 +80,7 @@ def test_agent_initialization(mock_policy, mock_bandit):
     assert agent.policy == mock_policy
     assert agent.bandit == mock_bandit
     assert agent.t == 0
-    assert isinstance(agent.actions, pd.DataFrame)
+    assert isinstance(agent.actions, pl.DataFrame)
 
 
 def test_agent_add_action():
@@ -89,7 +89,7 @@ def test_agent_add_action():
     """
     agent = Agent(MagicMock())
     agent.add_action("Test1")
-    assert "Test1" in agent.actions["Name"].values
+    assert "Test1" in agent.actions["Name"].to_list()
 
 
 def test_agent_update_actions():
@@ -98,7 +98,7 @@ def test_agent_update_actions():
     """
     agent = Agent(MagicMock())
     agent.update_actions(["Test1", "Test2"])
-    assert all(name in agent.actions["Name"].values for name in ["Test1", "Test2"])
+    assert all(name in agent.actions["Name"].to_list() for name in ["Test1", "Test2"])
 
 
 def test_agent_choose(mock_policy, mock_bandit):
@@ -136,9 +136,9 @@ def test_contextual_agent_context_update():
     Test the context update functionality of ContextualAgent.
     """
     agent = ContextualAgent(MagicMock(), MagicMock())
-    context_features = {"feature1": 1, "feature2": 2}
+    context_features = pl.DataFrame({"Name": ["tc1"], "feature1": [1], "feature2": [2]})
     agent.update_context(context_features)
-    assert agent.context_features == context_features
+    assert agent.context_features.equals(context_features)
 
 
 def test_reward_sliding_window_agent_observe(mock_policy, mock_bandit, mock_evaluation_metric):
@@ -162,13 +162,15 @@ def test_sliding_window_contextual_agent_history_truncation():
     Test the history truncation logic of SlidingWindowContextualAgent.
     """
     agent = SlidingWindowContextualAgent(MagicMock(), MagicMock(), window_size=2)
-    agent.history = pd.DataFrame({
-        "Name": ["Test1", "Test2", "Test3"],
-        "ActionAttempts": [1, 1, 1],
-        "ValueEstimates": [0.1, 0.2, 0.3],
-        "Q": [0.1, 0.2, 0.3],
-        "T": [1, 2, 3],
-    })
+    agent.history = pl.DataFrame(
+        {
+            "Name": ["Test1", "Test2", "Test3"],
+            "ActionAttempts": [1.0, 1.0, 1.0],
+            "ValueEstimates": [0.1, 0.2, 0.3],
+            "Q": [0.1, 0.2, 0.3],
+            "T": [1, 2, 3],
+        }
+    )
 
     agent.update_history()
     assert len(agent.history) == 2

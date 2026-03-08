@@ -1,0 +1,124 @@
+name: Automated Release Management
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    concurrency: release
+    if: "github.event_name == 'workflow_dispatch' || (github.event.head_commit && !contains(github.event.head_commit.message, 'chore(release):'))"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.ref }} # This ensures the workflow runs against the specific tag reference
+          fetch-depth: 0
+          token: ${{ secrets.ORG_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Install Python Semantic Release
+        run: |
+          python -m pip install --upgrade pip
+          pip install python-semantic-release==9.17.0 build uv
+
+      - name: Python Semantic Release (Version & Tag)
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.ORG_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Store current tag before running semantic-release
+          BEFORE_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+          
+          # Run semantic-release and handle potential failure
+          if semantic-release version; then
+            # Check if a new tag was created
+            AFTER_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+            
+            if [ "$BEFORE_TAG" != "$AFTER_TAG" ] && [ "$AFTER_TAG" != "none" ]; then
+              NEW_VERSION=$(echo "$AFTER_TAG" | sed 's/^v//')
+              echo "released=true" >> $GITHUB_OUTPUT
+              echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+              echo "New version released: $NEW_VERSION (was: $BEFORE_TAG)"
+            else
+              echo "released=false" >> $GITHUB_OUTPUT
+              echo "No new version to release (current tag: $AFTER_TAG)"
+            fi
+          else
+            echo "released=false" >> $GITHUB_OUTPUT
+            echo "semantic-release version command failed; no release created." >&2
+            exit 1
+          fi
+
+      - name: Update uv.lock
+        if: steps.release.outputs.released == 'true'
+        run: |
+          uv lock
+          if ! git diff --quiet uv.lock; then
+            git add uv.lock
+            git commit -m "chore: update uv.lock for version ${{ steps.release.outputs.version }}"
+            git push
+          else
+            echo "uv.lock is already up to date"
+          fi
+
+      - name: Build package
+        if: steps.release.outputs.released == 'true'
+        run: |
+          python -m build
+
+      - name: Install Syft
+        if: steps.release.outputs.released == 'true'
+        uses: anchore/sbom-action/download-syft@17ae1740179002c89186b61233e0f892c3118b11 # v0.23.0
+
+      - name: Generate SBOM (CycloneDX)
+        if: steps.release.outputs.released == 'true'
+        run: syft packages dist -o cyclonedx-json=dist/sbom.json
+
+      - name: Sign distributions with Sigstore
+        if: steps.release.outputs.released == 'true'
+        uses: sigstore/gh-action-sigstore-python@a5caf349bc536fbef3668a10ed7f5cd309a4b53d # v3.2.0
+        with:
+          inputs: >-
+            dist/*.whl
+            dist/*.tar.gz
+
+      - name: Move Sigstore attestations and SBOM out of dist
+        if: steps.release.outputs.released == 'true'
+        run: |
+          mkdir -p attestations
+          if ls dist/*.sigstore.json 1> /dev/null 2>&1; then
+            mv dist/*.sigstore.json attestations/
+          fi
+          if [ -f dist/sbom.json ]; then
+            mv dist/sbom.json attestations/
+          fi
+
+      - name: Create GitHub Release
+        if: steps.release.outputs.released == 'true'
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.2.1
+        with:
+          tag_name: v${{ steps.release.outputs.version }}
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            attestations/*.sigstore.json
+            attestations/sbom.json

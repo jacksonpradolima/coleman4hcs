@@ -1,11 +1,11 @@
-name: Pylint
+name: Lint
 
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited, ready_for_review]
 
 jobs:
-  pylint:
+  ruff:
     runs-on: ubuntu-latest
 
     steps:
@@ -13,42 +13,18 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Retrieve full commit history for proper diff.
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: 3.11
+      - name: Install uv
+        run: |
+          curl -Ls https://astral.sh/uv/install.sh | bash
+          echo "${HOME}/.local/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
-        run: python -m pip install pylint
-
-      - name: Create Pylintrc file
         run: |
-          echo "[MASTER]" > .pylintrc
-          echo "max-line-length=120" >> .pylintrc
-          echo "disable=" >> .pylintrc
-          echo "    C0103, # variable naming style" >> .pylintrc
-          echo "    logging-format-interpolation, # prefer % formatting" >> .pylintrc
-          echo "    broad-except, # catch all exceptions" >> .pylintrc
-          echo "    too-many-locals, # relax constraints" >> .pylintrc
-          echo "    too-few-public-methods," >> .pylintrc
-          echo "    too-many-instance-attributes," >> .pylintrc
-          echo "    too-many-arguments," >> .pylintrc
-          echo "    import-error," >> .pylintrc
-          echo "    attribute-defined-outside-init," >> .pylintrc
-          echo "    redefined-outer-name" >> .pylintrc
+          uv venv .venv
+          uv sync --extra dev
 
-      - name: Get Python changed files
-        id: changed-py-files
-        uses: tj-actions/changed-files@v47
-        with:
-          files: |
-            *.py
-            **/*.py
+      - name: Run ruff linter
+        run: uv run ruff check .
 
-      - name: Run pylint if Python files changed
-        if: steps.changed-py-files.outputs.any_changed == 'true'
-        run: |
-          echo "One or more Python files have changed."
-          echo "List of changed files: ${{ steps.changed-py-files.outputs.all_changed_files }}"
-          python -m pylint --rcfile=.pylintrc ${{ steps.changed-py-files.outputs.all_changed_files }}
+      - name: Run ruff formatter check
+        run: uv run ruff format --check .

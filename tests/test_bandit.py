@@ -11,7 +11,8 @@ the `Bandit`, `DynamicBandit`, and `EvaluationMetricBandit` classes, including:
 - Validation of actions and error handling for invalid input.
 - Performance benchmarking for core operations like adding arms and updating priorities.
 
-The test suite uses mock classes (`MockBandit` and `MockDynamicBandit`) to simulate behavior for the abstract base classes.
+The test suite uses mock classes (`MockBandit` and
+`MockDynamicBandit`) to simulate behavior for the abstract base classes.
 
 Fixtures:
 - `sample_arms`: Provides a sample set of test cases with attributes such as `Name`, `Duration`, and `Verdict`.
@@ -32,7 +33,7 @@ Performance Tests:
 
 from unittest.mock import MagicMock
 
-import pandas as pd
+import polars as pl
 import pytest
 
 from coleman4hcs.bandit import Bandit, DynamicBandit, EvaluationMetricBandit
@@ -45,10 +46,7 @@ class MockBandit(Bandit):
     """
 
     def pull(self, action):
-        """
-        Mock implementation of the abstract pull method.
-        """
-        pass
+        """Mock implementation of the abstract pull method."""
 
 
 class MockDynamicBandit(DynamicBandit):
@@ -57,10 +55,7 @@ class MockDynamicBandit(DynamicBandit):
     """
 
     def pull(self, action):
-        """
-        Mock implementation of the abstract pull method.
-        """
-        pass
+        """Mock implementation of the abstract pull method."""
 
 
 @pytest.fixture
@@ -69,12 +64,36 @@ def sample_arms():
     Provides a sample set of test cases for the bandit.
     """
     return [
-        {'Name': 'Test1', 'Duration': 10, 'CalcPrio': 0, 'LastRun': '2023-01-01 10:00', 'NumRan': 3,
-         'NumErrors': 1, 'Verdict': 1, 'LastResults': [1, 0, 0]},
-        {'Name': 'Test2', 'Duration': 20, 'CalcPrio': 0, 'LastRun': '2023-01-02 11:00', 'NumRan': 2,
-         'NumErrors': 2, 'Verdict': 0, 'LastResults': [0, 0]},
-        {'Name': 'Test3', 'Duration': 15, 'CalcPrio': 0, 'LastRun': '2023-01-03 12:00', 'NumRan': 4,
-         'NumErrors': 0, 'Verdict': 1, 'LastResults': [1, 1, 1, 0]},
+        {
+            "Name": "Test1",
+            "Duration": 10,
+            "CalcPrio": 0,
+            "LastRun": "2023-01-01 10:00",
+            "NumRan": 3,
+            "NumErrors": 1,
+            "Verdict": 1,
+            "LastResults": [1, 0, 0],
+        },
+        {
+            "Name": "Test2",
+            "Duration": 20,
+            "CalcPrio": 0,
+            "LastRun": "2023-01-02 11:00",
+            "NumRan": 2,
+            "NumErrors": 2,
+            "Verdict": 0,
+            "LastResults": [0, 0],
+        },
+        {
+            "Name": "Test3",
+            "Duration": 15,
+            "CalcPrio": 0,
+            "LastRun": "2023-01-03 12:00",
+            "NumRan": 4,
+            "NumErrors": 0,
+            "Verdict": 1,
+            "LastResults": [1, 1, 1, 0],
+        },
     ]
 
 
@@ -102,7 +121,7 @@ def test_bandit_initialization(sample_arms):
     Test that the Bandit initializes correctly with the provided arms.
     """
     bandit = MockBandit(sample_arms)
-    assert isinstance(bandit.arms, pd.DataFrame)
+    assert isinstance(bandit.arms, pl.DataFrame)
     assert len(bandit.arms) == len(sample_arms)
     assert set(bandit.arms.columns) == set(bandit.tc_fieldnames)
 
@@ -113,7 +132,7 @@ def test_bandit_reset(sample_arms):
     """
     bandit = MockBandit(sample_arms)
     bandit.reset()
-    assert bandit.arms.empty
+    assert bandit.arms.height == 0
 
 
 def test_bandit_add_arms(sample_arms):
@@ -123,7 +142,7 @@ def test_bandit_add_arms(sample_arms):
     bandit = MockBandit([])
     bandit.add_arms(sample_arms)
     assert len(bandit.arms) == len(sample_arms)
-    assert set(bandit.arms['Name']) == {'Test1', 'Test2', 'Test3'}
+    assert set(bandit.arms["Name"]) == {"Test1", "Test2", "Test3"}
 
 
 def test_bandit_get_arms(sample_arms):
@@ -132,7 +151,7 @@ def test_bandit_get_arms(sample_arms):
     """
     bandit = MockBandit(sample_arms)
     arms = bandit.get_arms()
-    assert arms == ['Test1', 'Test2', 'Test3']
+    assert arms == ["Test1", "Test2", "Test3"]
 
 
 def test_bandit_update_priority(sample_arms):
@@ -140,11 +159,11 @@ def test_bandit_update_priority(sample_arms):
     Test that update_priority correctly updates priorities based on the action order.
     """
     bandit = MockBandit(sample_arms)
-    action = ['Test3', 'Test1', 'Test2']
+    action = ["Test3", "Test1", "Test2"]
     bandit.update_priority(action)
-    assert bandit.arms.loc[bandit.arms['Name'] == 'Test3', 'CalcPrio'].iloc[0] == 1
-    assert bandit.arms.loc[bandit.arms['Name'] == 'Test1', 'CalcPrio'].iloc[0] == 2
-    assert bandit.arms.loc[bandit.arms['Name'] == 'Test2', 'CalcPrio'].iloc[0] == 3
+    assert bandit.arms.filter(pl.col("Name") == "Test3")["CalcPrio"][0] == 1
+    assert bandit.arms.filter(pl.col("Name") == "Test1")["CalcPrio"][0] == 2
+    assert bandit.arms.filter(pl.col("Name") == "Test2")["CalcPrio"][0] == 3
 
 
 def test_dynamic_bandit_update_arms(sample_arms):
@@ -153,12 +172,20 @@ def test_dynamic_bandit_update_arms(sample_arms):
     """
     bandit = MockDynamicBandit(sample_arms)
     new_arms = [
-        {'Name': 'Test4', 'Duration': 30, 'CalcPrio': 0, 'LastRun': '2023-01-04 13:00', 'NumRan': 1,
-         'NumErrors': 3, 'Verdict': 1, 'LastResults': [1]},
+        {
+            "Name": "Test4",
+            "Duration": 30,
+            "CalcPrio": 0,
+            "LastRun": "2023-01-04 13:00",
+            "NumRan": 1,
+            "NumErrors": 3,
+            "Verdict": 1,
+            "LastResults": [1],
+        },
     ]
     bandit.update_arms(new_arms)
     assert len(bandit.arms) == 1
-    assert bandit.arms['Name'].iloc[0] == 'Test4'
+    assert bandit.arms["Name"][0] == "Test4"
 
 
 def test_evaluation_metric_bandit_initialization(sample_arms, mock_evaluation_metric):
@@ -174,7 +201,7 @@ def test_evaluation_metric_bandit_pull(sample_arms, mock_evaluation_metric):
     Test that pull evaluates the prioritized test suite.
     """
     bandit = EvaluationMetricBandit(sample_arms, mock_evaluation_metric)
-    action = ['Test2', 'Test1', 'Test3']
+    action = ["Test2", "Test1", "Test3"]
     result = bandit.pull(action)
     mock_evaluation_metric.evaluate.assert_called_once()
     assert result == mock_evaluation_metric
@@ -185,10 +212,10 @@ def test_evaluation_metric_bandit_sort_order(sample_arms, mock_evaluation_metric
     Test that pull sorts arms by priority before evaluation.
     """
     bandit = EvaluationMetricBandit(sample_arms, mock_evaluation_metric)
-    action = ['Test3', 'Test1', 'Test2']
+    action = ["Test3", "Test1", "Test2"]
     bandit.pull(action)
-    sorted_names = bandit.arms['Name'].tolist()
-    assert sorted_names == ['Test3', 'Test1', 'Test2']
+    sorted_names = bandit.arms["Name"].to_list()
+    assert sorted_names == ["Test3", "Test1", "Test2"]
 
 
 def test_bandit_allow_duplicate_arms(sample_arms):
@@ -205,16 +232,33 @@ def test_bandit_update_priority_with_duplicates():
     Test that update_priority correctly updates priorities for duplicate arms.
     """
     sample_arms = [
-        {'Name': 'Test1', 'Duration': 10, 'CalcPrio': 0, 'LastRun': '2023-01-01 10:00', 'NumRan': 3,
-         'NumErrors': 1, 'Verdict': 1, 'LastResults': [1, 0, 0]},
-        {'Name': 'Test1', 'Duration': 20, 'CalcPrio': 0, 'LastRun': '2023-01-01 11:00', 'NumRan': 2,
-         'NumErrors': 2, 'Verdict': 0, 'LastResults': [0, 0]},
+        {
+            "Name": "Test1",
+            "Duration": 10,
+            "CalcPrio": 0,
+            "LastRun": "2023-01-01 10:00",
+            "NumRan": 3,
+            "NumErrors": 1,
+            "Verdict": 1,
+            "LastResults": [1, 0, 0],
+        },
+        {
+            "Name": "Test1",
+            "Duration": 20,
+            "CalcPrio": 0,
+            "LastRun": "2023-01-01 11:00",
+            "NumRan": 2,
+            "NumErrors": 2,
+            "Verdict": 0,
+            "LastResults": [0, 0],
+        },
     ]
     bandit = MockBandit(sample_arms)
-    action = ['Test1']
+    action = ["Test1"]
     bandit.update_priority(action)
-    assert (bandit.arms.loc[bandit.arms['Name'] == 'Test1', 'CalcPrio'] > 0).all(), \
+    assert bandit.arms.filter(pl.col("Name") == "Test1")["CalcPrio"][0] > 0, (
         "All duplicates of 'Test1' should have updated priorities."
+    )
 
 
 def test_dynamic_bandit_reset_after_update(sample_arms):
@@ -223,7 +267,7 @@ def test_dynamic_bandit_reset_after_update(sample_arms):
     """
     bandit = MockDynamicBandit(sample_arms)
     bandit.update_arms([])
-    assert bandit.arms.empty
+    assert bandit.arms.height == 0
 
 
 def test_evaluation_metric_bandit_with_empty_action(sample_arms, mock_evaluation_metric):
@@ -240,10 +284,11 @@ def test_bandit_abstract_method():
     Test that the Bandit class cannot be instantiated due to its abstract pull method.
     """
     with pytest.raises(TypeError) as excinfo:
-        Bandit([])
+        Bandit([])  # pylint: disable=abstract-class-instantiated
     exception_message = str(excinfo.value)
     assert "Can't instantiate abstract class Bandit" in exception_message
-    assert "with abstract method pull" in exception_message
+    # Python 3.12+ uses "abstract method pull" while older versions use "abstract method 'pull'"
+    assert "abstract method pull" in exception_message or "abstract method 'pull'" in exception_message
 
 
 def test_bandit_subclass_without_pull():
@@ -251,15 +296,16 @@ def test_bandit_subclass_without_pull():
     Test that a subclass of Bandit without implementing the pull method cannot be instantiated.
     """
 
-    class IncompleteBandit(Bandit):
-        pass
+    class IncompleteBandit(Bandit):  # pylint: disable=abstract-class-instantiated
+        """Incomplete bandit subclass without pull method for testing."""
 
     with pytest.raises(TypeError) as excinfo:
-        IncompleteBandit([])
+        IncompleteBandit([])  # pylint: disable=abstract-class-instantiated
 
     exception_message = str(excinfo.value)
     assert "Can't instantiate abstract class IncompleteBandit" in exception_message
-    assert "with abstract method pull" in exception_message
+    # Python 3.12+ uses "abstract method pull" while older versions use "abstract method 'pull'"
+    assert "abstract method pull" in exception_message or "abstract method 'pull'" in exception_message
 
 
 def test_bandit_subclass_with_pull():
@@ -268,6 +314,8 @@ def test_bandit_subclass_with_pull():
     """
 
     class CompleteBandit(Bandit):
+        """Complete bandit subclass with pull method for testing."""
+
         def pull(self, action):
             return action
 
@@ -296,7 +344,7 @@ def test_bandit_update_priority_performance(benchmark, sample_arms):
     """
     large_arms = sample_arms * 1000  # Create a large dataset
     bandit = MockBandit(large_arms)
-    action = [arm['Name'] for arm in large_arms]  # Generate an action list with all arm names
+    action = [arm["Name"] for arm in large_arms]  # Generate an action list with all arm names
 
     def update_priority():
         bandit.update_priority(action)
@@ -311,7 +359,7 @@ def test_evaluation_metric_bandit_pull_performance(benchmark, sample_arms, mock_
     """
     large_arms = sample_arms * 1000  # Create a large dataset
     bandit = EvaluationMetricBandit(large_arms, mock_evaluation_metric)
-    action = [arm['Name'] for arm in large_arms]  # Generate an action list with all arm names
+    action = [arm["Name"] for arm in large_arms]  # Generate an action list with all arm names
 
     def pull_action():
         bandit.pull(action)

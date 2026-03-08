@@ -22,7 +22,9 @@ Tested Functionalities:
    - `load_class_from_module`: Ensures classes are correctly loaded dynamically from modules.
 
 4. **Agent Creation**:
-   - `create_agents`: Verifies the creation of different agent types (e.g., `RewardSlidingWindowAgent`, `ContextualAgent`) based on the provided policies and window sizes.
+   - `create_agents`: Verifies the creation of different agent types
+     (e.g., `RewardSlidingWindowAgent`, `ContextualAgent`) based on the
+     provided policies and window sizes.
 
 5. **Scenario Setup**:
    - `get_scenario_provider`: Tests the initialization of different scenario providers.
@@ -49,31 +51,35 @@ Test Structure:
   Examples: `test_end_to_end_execution`.
 
 """
-import csv
+
 import logging
-from unittest.mock import Mock, patch, call
+from typing import cast
+from unittest.mock import Mock, call, patch
 
 import pytest
 
-from coleman4hcs.agent import RewardSlidingWindowAgent, ContextualAgent
+import coleman4hcs.policy
+from coleman4hcs.agent import ContextualAgent, RewardSlidingWindowAgent
+from coleman4hcs.environment import Environment
 from coleman4hcs.policy import FRRMABPolicy, SWLinUCBPolicy
 from coleman4hcs.scenarios import IndustrialDatasetHCSScenarioProvider, IndustrialDatasetScenarioProvider
 from main import (
+    create_agents,
     create_logger,
     exp_run_industrial_dataset,
-    load_class_from_module,
-    create_agents,
     get_scenario_provider,
+    load_class_from_module,
     merge_csv,
-    store_experiments
+    store_experiments,
 )
-
 
 # ------------------------
 # Unit Tests
 # ------------------------
 
+
 def test_create_logger():
+    """Test that a logger is created with the correct level and handler."""
     # Cleanup global handlers to isolate the logger for this test
     root_logger = logging.getLogger()
     root_logger.handlers.clear()
@@ -90,9 +96,11 @@ def test_create_logger():
     # Cleanup: Remove all handlers from the logger to avoid reuse issues
     logger.handlers.clear()
 
+
 @patch("main.create_logger")
 @patch("main.Environment")
 def test_exp_run_industrial_dataset(mock_environment, mock_create_logger, tmpdir):
+    """Test that a single experiment run executes the expected environment methods."""
     mock_env = mock_environment.return_value
     mock_logger = mock_create_logger.return_value
     mock_env.scenario_provider = Mock()
@@ -101,9 +109,9 @@ def test_exp_run_industrial_dataset(mock_environment, mock_create_logger, tmpdir
     exp_run_industrial_dataset(
         iteration=1,
         trials=10,
-        env=mock_env,
+        env=cast(Environment, mock_env),
         experiment_directory=str(tmpdir),
-        level=20
+        level=20,
     )
 
     mock_env.create_file.assert_called_once()
@@ -112,18 +120,19 @@ def test_exp_run_industrial_dataset(mock_environment, mock_create_logger, tmpdir
 
 
 def test_load_class_from_module_valid():
-    import coleman4hcs.policy
+    """Test that a valid class is loaded correctly from a module."""
     policy_class = load_class_from_module(coleman4hcs.policy, "FRRMABPolicy")
     assert policy_class.__name__ == "FRRMABPolicy"
 
 
 def test_load_class_from_module_invalid():
-    import coleman4hcs.policy
+    """Test that a ValueError is raised when an invalid class name is provided."""
     with pytest.raises(ValueError, match="Class 'InvalidPolicy' not found"):
         load_class_from_module(coleman4hcs.policy, "InvalidPolicy")
 
 
 def test_create_agents_frrmab():
+    """Test that create_agents returns RewardSlidingWindowAgent instances for FRRMABPolicy."""
     policy = Mock(spec=FRRMABPolicy)
     reward_fun = Mock()
     window_sizes = [5, 10]
@@ -134,6 +143,7 @@ def test_create_agents_frrmab():
 
 
 def test_create_agents_swlinucb():
+    """Test that create_agents returns ContextualAgent instances for SWLinUCBPolicy."""
     policy = Mock(spec=SWLinUCBPolicy)
     reward_fun = Mock()
     window_sizes = [5, 10]
@@ -144,6 +154,7 @@ def test_create_agents_swlinucb():
 
 
 def test_get_scenario_provider_basic():
+    """Test that get_scenario_provider returns an IndustrialDatasetScenarioProvider instance."""
     datasets_dir = "examples"
     dataset = "fakedata"
     sched_time_ratio = 0.5
@@ -160,9 +171,10 @@ def test_get_scenario_provider_basic():
 
 
 @patch("main.os.remove")
-@patch("main.pd.read_csv")
-@patch("main.pd.concat")
+@patch("main.pl.read_csv")
+@patch("main.pl.concat")
 def test_merge_csv(mock_concat, mock_read_csv, mock_remove, tmpdir):
+    """Test that merge_csv correctly merges files and cleans up temporary files."""
     # Mocked return values
     df_merged = Mock()
     mock_concat.return_value = df_merged
@@ -175,17 +187,18 @@ def test_merge_csv(mock_concat, mock_read_csv, mock_remove, tmpdir):
     merge_csv(temp_files, output_file)
 
     # Ensure files were merged
-    mock_read_csv.assert_has_calls([call(file, sep=";") for file in temp_files])
+    mock_read_csv.assert_has_calls([call(file, separator=";") for file in temp_files])
     mock_concat.assert_called_once()
-    df_merged.to_csv.assert_called_once_with(output_file, index=False, sep=";", quoting=csv.QUOTE_NONE)
+    df_merged.write_csv.assert_called_once_with(output_file, separator=";", quote_style="never")
 
     # Ensure temp files were deleted
     mock_remove.assert_has_calls([call(file) for file in temp_files])
 
 
 @patch("main.duckdb.connect")
-@patch("main.pd.read_csv")
+@patch("main.pl.read_csv")
 def test_store_experiments(mock_read_csv, mock_duckdb_connect, tmpdir):
+    """Test that store_experiments inserts data into DuckDB correctly."""
     # Mock database connection and DataFrame
     mock_conn = mock_duckdb_connect.return_value
     mock_df = Mock()
@@ -208,9 +221,11 @@ def test_store_experiments(mock_read_csv, mock_duckdb_connect, tmpdir):
 # Integration Tests
 # ------------------------
 
+
 @patch("main.create_logger")
 @patch("main.Environment")
 def test_end_to_end_execution(mock_environment, mock_create_logger, tmpdir):
+    """Test end-to-end execution using mocked environment and logger."""
     # Mock environment and logger creation
     mock_env = mock_environment.return_value
     mock_env.scenario_provider = Mock()
@@ -223,13 +238,12 @@ def test_end_to_end_execution(mock_environment, mock_create_logger, tmpdir):
     # Parameters
     independent_executions = 3
     parameters = [
-        (i + 1, 10, mock_env, experiment_directory, 20)
-        for i in range(independent_executions)
+        (i + 1, 10, cast(Environment, mock_env), str(experiment_directory), 20) for i in range(independent_executions)
     ]
 
     # Parallel pool size test (single-threaded for simplicity)
-    for param in parameters:
-        exp_run_industrial_dataset(*param)
+    for iteration, trials, env, exp_dir, level in parameters:
+        exp_run_industrial_dataset(iteration, trials, env, exp_dir, level)
 
     # Check that required environment methods were called
     assert mock_env.create_file.call_count == independent_executions
