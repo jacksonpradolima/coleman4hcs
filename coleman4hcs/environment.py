@@ -20,6 +20,7 @@ Classes
 Environment
     Represents the learning environment where agents interact with bandits.
 """
+
 import logging
 import os
 import pickle
@@ -40,7 +41,7 @@ Path("backup").mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
 
-warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
 class Environment:
@@ -84,8 +85,8 @@ class Environment:
         self.agents = agents
         self.scenario_provider = scenario_provider
         self.evaluation_metric = evaluation_metric
-        self.monitor = None
-        self.variant_monitors = {}
+        self.monitor: MonitorCollector = MonitorCollector()
+        self.variant_monitors: dict[str, MonitorCollector] = {}
         self.reset()
 
     def reset(self):
@@ -95,8 +96,10 @@ class Environment:
         self.monitor = MonitorCollector()
         self.variant_monitors = {}
 
-        if isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider) and \
-            self.scenario_provider.get_total_variants() > 0:
+        if (
+            isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider)
+            and self.scenario_provider.get_total_variants() > 0
+        ):
             for variant in self.scenario_provider.get_all_variants():
                 self.variant_monitors[variant] = MonitorCollector()
 
@@ -105,11 +108,7 @@ class Environment:
         for agent in self.agents:
             agent.reset()
 
-    def run_single(self,
-                   experiment,
-                   trials=100,
-                   bandit_type=EvaluationMetricBandit,
-                   restore=True):
+    def run_single(self, experiment, trials=100, bandit_type=EvaluationMetricBandit, restore=True):
         """Execute a single simulation experiment.
 
         Parameters
@@ -171,30 +170,30 @@ class Environment:
                 # each variant has its own test budget size, that is, different from the whole system
                 self.evaluation_metric.update_available_time(available_time)
 
-                action, end, exp_name, start = self.run_prioritization(agent,
-                                                                       bandit,
-                                                                       bandit_duration,
-                                                                       experiment,
-                                                                       t,
-                                                                       virtual_scenario)
+                action, end, exp_name, start = self.run_prioritization(
+                    agent, bandit, bandit_duration, experiment, t, virtual_scenario
+                )
 
                 # If we are working with HCS scenario and there are variants
                 if isinstance(virtual_scenario, VirtualHCSScenario) and len(virtual_scenario.get_variants()) > 0:
-                    self.run_prioritization_hcs(agent,
-                                                action,
-                                                avail_time_ratio,
-                                                bandit_duration,
-                                                end,
-                                                exp_name,
-                                                experiment,
-                                                start,
-                                                t,
-                                                virtual_scenario)
+                    self.run_prioritization_hcs(
+                        agent,
+                        action,
+                        avail_time_ratio,
+                        bandit_duration,
+                        end,
+                        exp_name,
+                        experiment,
+                        start,
+                        t,
+                        virtual_scenario,
+                    )
 
             self.save_periodically(restore, t, experiment, bandit)
 
     def run_prioritization(  # pylint: disable=too-many-positional-arguments
-            self, agent, bandit, bandit_duration, experiment, t, virtual_scenario):
+        self, agent, bandit, bandit_duration, experiment, t, virtual_scenario
+    ):
         """Run the prioritization process for a given agent and scenario.
 
         Parameters
@@ -250,8 +249,12 @@ class Environment:
 
         logger.debug(
             "Exp: %s - Ep: %s - Name: %s (%s) - NAPFD/APFDc: %.4f/%.4f",
-            experiment, t, exp_name, str(agent.get_reward_function()),
-            metric.fitness, metric.cost
+            experiment,
+            t,
+            exp_name,
+            str(agent.get_reward_function()),
+            metric.fitness,
+            metric.cost,
         )
 
         # Collect the data during the experiment
@@ -274,17 +277,8 @@ class Environment:
         return action, end, exp_name, start
 
     def run_prioritization_hcs(  # pylint: disable=too-many-positional-arguments
-            self,
-            agent,
-            action,
-            avail_time_ratio,
-            bandit_duration,
-            end,
-            exp_name,
-            experiment,
-            start,
-            t,
-            virtual_scenario):
+        self, agent, action, avail_time_ratio, bandit_duration, end, exp_name, experiment, start, t, virtual_scenario
+    ):
         """Run the prioritization process for a given agent and HCS scenario.
 
         Parameters
@@ -314,18 +308,16 @@ class Environment:
         variants = virtual_scenario.get_variants()
 
         # For each variant I will evaluate the impact of the main prioritization
-        for variant in variants['Variant'].unique():
+        for variant in variants["Variant"].unique():
             # Get the data from current variant
-            df = variants.filter(pl.col('Variant') == variant)
+            df = variants.filter(pl.col("Variant") == variant)
 
             # Order by the test cases according to the main prioritization
             action_map = {name: idx + 1 for idx, name in enumerate(action)}
-            df = df.with_columns([
-                pl.col('Name').replace(action_map, default=0).alias('CalcPrio')
-            ])
-            df = df.sort('CalcPrio')
+            df = df.with_columns([pl.col("Name").replace_strict(action_map, default=0).alias("CalcPrio")])
+            df = df.sort("CalcPrio")
 
-            total_build_duration = df['Duration'].sum()
+            total_build_duration = df["Duration"].sum()
             total_time = total_build_duration * avail_time_ratio
 
             # Update the available time concerning the variant build duration
@@ -346,13 +338,14 @@ class Environment:
                 total_build_duration=total_build_duration,
                 prioritization_time=(end - start) + bandit_duration,
                 rewards=0,
-                prioritization_order=df['Name'].to_list(),
+                prioritization_order=df["Name"].to_list(),
             )
 
             self.variant_monitors[variant].collect(params)
 
     def save_periodically(  # pylint: disable=too-many-positional-arguments
-            self, restore, t, experiment, bandit, interval=50000):
+        self, restore, t, experiment, bandit, interval=50000
+    ):
         """Save the experiment periodically based on a predefined interval.
 
         Parameters
@@ -372,8 +365,7 @@ class Environment:
         if restore and t % interval == 0:
             self.save_experiment(experiment, t, bandit)
 
-    def run(self, experiments=1, trials=100, bandit_type=EvaluationMetricBandit,
-            restore=True):
+    def run(self, experiments=1, trials=100, bandit_type=EvaluationMetricBandit, restore=True):
         """Execute a simulation over multiple experiments.
 
         Parameters
@@ -415,7 +407,8 @@ class Environment:
 
             for variant in self.scenario_provider.get_all_variants():
                 self.variant_monitors[variant].create_file(
-                    f"{name}/{name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv")
+                    f"{name}/{name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv"
+                )
 
     def store_experiment(self, csv_file_name):
         """Save the results obtained during the experiment.
@@ -441,7 +434,8 @@ class Environment:
             for variant in self.scenario_provider.get_all_variants():
                 # Collect from temp and save a file (backup and easy sharing/auditing)
                 self.variant_monitors[variant].save(
-                    f"{name2}/{csv_file_name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv")
+                    f"{name2}/{csv_file_name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv"
+                )
 
         # Clear experiment
         self.monitor.clear()
@@ -460,7 +454,7 @@ class Environment:
             A tuple containing the restore step, agents, monitor,
             variant monitors, and bandit.
         """
-        filename = f'backup/{str(self.scenario_provider)}_ex_{experiment}.p'
+        filename = f"backup/{str(self.scenario_provider)}_ex_{experiment}.p"
 
         if not os.path.exists(filename):
             return 0, self.agents, self.monitor, self.variant_monitors, None
@@ -486,7 +480,7 @@ class Environment:
             If there is an error saving the experiment.
         """
         try:
-            filename = f'backup/{str(self.scenario_provider)}_ex_{experiment}.p'
+            filename = f"backup/{str(self.scenario_provider)}_ex_{experiment}.p"
             with open(filename, "wb") as f:
                 pickle.dump([t, self.agents, self.monitor, self.variant_monitors, bandit], f)
         except Exception as e:

@@ -22,6 +22,7 @@ scenarios. By integrating feedback from evaluation metrics, it allows for adapti
 prioritization strategies that can react to changes in the testing environment or system
 under test.
 """
+
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -32,14 +33,14 @@ from coleman4hcs.evaluation import EvaluationMetric
 #: Schema for the bandit arms DataFrame.
 #: Columns follow the standard test-case fieldnames used throughout the framework.
 BANDIT_SCHEMA: dict = {
-    'Name': pl.Utf8,
-    'Duration': pl.Float32,
-    'CalcPrio': pl.Int32,
-    'LastRun': pl.Utf8,
-    'NumRan': pl.Int64,
-    'NumErrors': pl.Int64,
-    'Verdict': pl.Int8,
-    'LastResults': pl.Utf8,
+    "Name": pl.Utf8,
+    "Duration": pl.Float32,
+    "CalcPrio": pl.Int32,
+    "LastRun": pl.Utf8,
+    "NumRan": pl.Int64,
+    "NumErrors": pl.Int64,
+    "Verdict": pl.Int8,
+    "LastResults": pl.Utf8,
 }
 
 
@@ -77,16 +78,18 @@ class Bandit(ABC):
         # NumRan | Test runs
         # NumErrors | Test errors revealed
         # LastResults | List of previous test results(Failed: 1, Passed: 0), ordered by ascending age
-        self.tc_fieldnames = ['Name',
-                              'Duration',
-                              'CalcPrio',
-                              'LastRun',
-                              'NumRan',
-                              'NumErrors',
-                              'Verdict',
-                              'LastResults']
+        self.tc_fieldnames = [
+            "Name",
+            "Duration",
+            "CalcPrio",
+            "LastRun",
+            "NumRan",
+            "NumErrors",
+            "Verdict",
+            "LastResults",
+        ]
 
-        self.arms = None
+        self.arms: pl.DataFrame = pl.DataFrame(schema=BANDIT_SCHEMA)
         self.reset()
         self.add_arms(arms)
 
@@ -102,7 +105,7 @@ class Bandit(ABC):
         list of str
             List of arm names (test cases).
         """
-        return self.arms['Name'].to_list()
+        return self.arms["Name"].to_list()
 
     def add_arms(self, arms: list[dict]):
         """Add one or multiple arms to the bandit.
@@ -114,13 +117,13 @@ class Bandit(ABC):
         """
         if arms:
             last_results = [
-                str(arm.get('LastResults')) if isinstance(arm.get('LastResults'), list)
-                else (arm.get('LastResults') or '')
+                str(arm.get("LastResults"))
+                if isinstance(arm.get("LastResults"), list)
+                else (arm.get("LastResults") or "")
                 for arm in arms
             ]
-            data = {field: [arm.get(field) for arm in arms] for field in BANDIT_SCHEMA
-                    if field != 'LastResults'}
-            data['LastResults'] = last_results
+            data = {field: [arm.get(field) for arm in arms] for field in BANDIT_SCHEMA if field != "LastResults"}
+            data["LastResults"] = last_results
             new_arms = pl.DataFrame(data, schema=BANDIT_SCHEMA)
             self.arms = pl.concat([self.arms, new_arms], how="vertical")
 
@@ -135,7 +138,7 @@ class Bandit(ABC):
         action : list
             The action (prioritized test suite) to pull.
         """
-        return NotImplementedError('You must to implemented this function')
+        return NotImplementedError("You must to implemented this function")
 
     def update_priority(self, action):
         """Update the Priority column with the priorities.
@@ -146,10 +149,8 @@ class Bandit(ABC):
             List of test cases in order of prioritization.
         """
         action_map = {name: priority for priority, name in enumerate(action, start=1)}
-        priorities = np.vectorize(action_map.get)(self.arms['Name'].to_numpy())
-        self.arms = self.arms.with_columns([
-            pl.Series('CalcPrio', priorities, dtype=pl.Int32)
-        ])
+        priorities = np.vectorize(action_map.get)(self.arms["Name"].to_numpy())
+        self.arms = self.arms.with_columns([pl.Series("CalcPrio", priorities, dtype=pl.Int32)])
 
 
 class DynamicBandit(Bandit, ABC):
@@ -238,7 +239,7 @@ class EvaluationMetricBandit(DynamicBandit):
 
         # After, we need to order the test cases based on the priorities
         # Sort tc by Prio ASC (for backwards scheduling)
-        sorted_indices = self.arms['CalcPrio'].to_numpy().argsort(kind='stable')
+        sorted_indices = self.arms["CalcPrio"].to_numpy().argsort(kind="stable")
         self.arms = self.arms[[int(i) for i in sorted_indices]]
 
         self.evaluation_metric.evaluate(self.arms.to_dicts())

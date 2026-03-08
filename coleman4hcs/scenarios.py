@@ -21,7 +21,9 @@ IndustrialDatasetHCSScenarioProvider
 IndustrialDatasetContextScenarioProvider
     Extends IndustrialDatasetScenarioProvider to handle context scenarios.
 """
+
 import os
+from typing import cast
 
 import polars as pl
 
@@ -76,7 +78,7 @@ class VirtualScenario:
         """Reset the priorities for all test cases in the scenario."""
         # Reset the priorities
         for testcase in self.testcases:
-            testcase['CalcPrio'] = 0
+            testcase["CalcPrio"] = 0
 
     def get_available_time(self) -> float:
         """Return the available time to execute the tests.
@@ -169,14 +171,7 @@ class VirtualContextScenario(VirtualScenario):
         DataFrame containing context features.
     """
 
-    def __init__(
-        self,
-        *args,
-        feature_group: str,
-        features: list[str],
-        context_features: pl.DataFrame,
-        **kwargs
-    ):
+    def __init__(self, *args, feature_group: str, features: list[str], context_features: pl.DataFrame, **kwargs):
         super().__init__(*args, **kwargs)
         self.feature_group = feature_group
         self.features = features
@@ -248,7 +243,7 @@ class IndustrialDatasetScenarioProvider:
     # LastRun | Previous last execution of the test case as date - time - string(Format: `YYYY - MM - DD HH: ii`)
     # LastResults | List of previous test results (Failed: 1, Passed: 0), ordered by ascending age
     # Verdict | Test Case result (Failed: 1, Passed: 0)
-    REQUIRED_COLUMNS = ['Name', 'Duration', 'CalcPrio', 'LastRun', 'Verdict']
+    REQUIRED_COLUMNS = ["Name", "Duration", "CalcPrio", "LastRun", "Verdict"]
 
     def __init__(self, tcfile: str, sched_time_ratio: float = 0.5) -> None:
         """Initialize the IndustrialDatasetScenarioProvider.
@@ -263,11 +258,12 @@ class IndustrialDatasetScenarioProvider:
         self.name = os.path.split(os.path.dirname(tcfile))[1]
         self.avail_time_ratio = sched_time_ratio
         self.current_build = 0
-        self.total_build_duration = 0
+        self.total_build_duration = 0.0
         self.scenario: VirtualScenario | None = None
 
         self.tcdf = self._read_testcases(tcfile)
-        self.max_builds = self.tcdf["BuildId"].max()
+        max_builds = cast(int | None, self.tcdf["BuildId"].max())
+        self.max_builds = max_builds if max_builds is not None else 0
 
     def _read_testcases(self, tcfile: str) -> pl.DataFrame:
         """Read the test cases from a provided CSV file.
@@ -283,12 +279,10 @@ class IndustrialDatasetScenarioProvider:
             DataFrame containing the test case data.
         """
         # We use ';' separated values to avoid issues with thousands
-        df = pl.read_csv(tcfile, separator=';', try_parse_dates=True)
+        df = pl.read_csv(tcfile, separator=";", try_parse_dates=True)
 
         # Handle Duration column - convert to numeric and fill nulls
-        df = df.with_columns([
-            pl.col("Duration").cast(pl.Float64, strict=False).fill_null(0.0)
-        ])
+        df = df.with_columns([pl.col("Duration").cast(pl.Float64, strict=False).fill_null(0.0)])
 
         return df
 
@@ -335,7 +329,7 @@ class IndustrialDatasetScenarioProvider:
         # Convert the solutions to a list of dict
         testcases = build_df.select(self.REQUIRED_COLUMNS).to_dicts()
 
-        self.total_build_duration = build_df['Duration'].sum()
+        self.total_build_duration = build_df["Duration"].sum()
         available_time = self.total_build_duration * self.avail_time_ratio
 
         # This test set is a "scenario" that must be evaluated.
@@ -343,7 +337,8 @@ class IndustrialDatasetScenarioProvider:
             available_time=available_time,
             testcases=testcases,
             build_id=self.current_build,
-            total_build_duration=self.total_build_duration)
+            total_build_duration=self.total_build_duration,
+        )
 
         return self.scenario
 
@@ -438,12 +433,10 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
             DataFrame containing variant data.
         """
         # Read the variants (additional file)
-        df = pl.read_csv(variantsfile, separator=';', try_parse_dates=True)
+        df = pl.read_csv(variantsfile, separator=";", try_parse_dates=True)
 
         # We remove weird characters
-        df = df.with_columns([
-            pl.col("Variant").str.replace_all(r'[!#$%^&*()\[\]{};:,.<>?|`~=+]', '_')
-        ])
+        df = df.with_columns([pl.col("Variant").str.replace_all(r"[!#$%^&*()\[\]{};:,.<>?|`~=+]", "_")])
 
         return df
 
@@ -455,7 +448,7 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
         int
             The number of unique variants.
         """
-        return self.variants['Variant'].n_unique()
+        return self.variants["Variant"].n_unique()
 
     def get_all_variants(self):
         """Return all unique variant names as a list.
@@ -465,9 +458,9 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
         list of str
             List of unique variant names.
         """
-        return self.variants['Variant'].unique().to_list()
+        return self.variants["Variant"].unique().to_list()
 
-    def get(self):
+    def get(self) -> VirtualHCSScenario | None:
         """Get the next virtual HCS scenario.
 
         Called by ``__next__``. Separates data by builds and returns each
@@ -486,12 +479,16 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
         # Match variants to the current build
         variants = self.variants.filter(pl.col("BuildId") == self.current_build)
 
-        self.scenario = VirtualHCSScenario(
-            **base_scenario.__dict__,
-            variants=variants
-        )
+        self.scenario = VirtualHCSScenario(**base_scenario.__dict__, variants=variants)
 
         return self.scenario
+
+    def __next__(self) -> VirtualHCSScenario:
+        """Return the next HCS scenario."""
+        sc = self.get()
+        if sc is None:
+            raise StopIteration()
+        return sc
 
 
 class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider):
@@ -599,9 +596,7 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
             fill_exprs = []
             for feature in previous_features:
                 mean_val = feature_means_df[feature][0] if feature_means_df.height > 0 else 0.0
-                fill_exprs.append(
-                    pl.col(feature).fill_null(mean_val).alias(feature)
-                )
+                fill_exprs.append(pl.col(feature).fill_null(mean_val).alias(feature))
             if fill_exprs:
                 merged_df = merged_df.with_columns(fill_exprs)
 
@@ -623,12 +618,12 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         polars.DataFrame
             DataFrame with default feature values for the first build.
         """
-        result = build_df.select(['Name'])
+        result = build_df.select(["Name"])
         for feature in self.features:
             result = result.with_columns([pl.lit(1).alias(feature)])
         return result
 
-    def get(self):
+    def get(self) -> VirtualContextScenario | None:
         """Get the next virtual context scenario.
 
         Called by ``__next__``. Separates data by builds and returns each
@@ -652,7 +647,14 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
             **base_scenario.__dict__,
             feature_group=self.feature_group,
             features=self.features,
-            context_features=context_features
+            context_features=context_features,
         )
 
         return self.scenario
+
+    def __next__(self) -> VirtualContextScenario:
+        """Return the next contextual scenario."""
+        sc = self.get()
+        if sc is None:
+            raise StopIteration()
+        return sc

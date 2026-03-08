@@ -5,6 +5,7 @@ These tests check the behavior of the custom exception class QException,
 including its inheritance from the base Exception class, and its behavior
 when raised with or without a custom message.
 """
+
 import pytest
 
 from coleman4hcs.exceptions import QException

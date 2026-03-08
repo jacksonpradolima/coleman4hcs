@@ -53,7 +53,7 @@ format: ensure-uv ## Run ruff formatter
 typecheck: ensure-uv ## Run pyright and ty type checkers
 	# Run both static type checkers
 	$(UV) run --python $(PYTHON) --no-project pyright coleman4hcs
-	$(UV) run --python $(PYTHON) --no-project ty check .
+	$(UV) run --python $(PYTHON) --no-project ty check coleman4hcs main.py tests
 
 interrogate: ensure-uv ## Check docstring coverage with interrogate
 	$(UV) run interrogate coleman4hcs/ -v

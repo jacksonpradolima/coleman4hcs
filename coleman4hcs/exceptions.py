@@ -7,5 +7,6 @@ QException
     multi-armed bandit (CMAB) policies.
 """
 
+
 class QException(Exception):
     """Exception raised for Q-value computation errors in CMAB policies."""

@@ -23,6 +23,9 @@ Constants:
 - NAPFD_FITNESS_NOT_EXCEED_ONE: Ensures that fitness does not exceed 1.
 - NAPFD_COST_NON_NEGATIVE: Ensures that cost is non-negative.
 """
+
+from typing import Any, cast
+
 import numpy as np
 import polars as pl
 import pytest
@@ -46,18 +49,20 @@ def test_vd_a_df():
     """
     Test VD_A_DF function for pairwise comparisons.
     """
-    data = pl.DataFrame({
-        'values': [1, 2, 3, 4, 5, 6],
-        'group': ['A', 'A', 'B', 'B', 'C', 'C']  # Equal sizes for all groups
-    })
+    data = pl.DataFrame(
+        {
+            "values": [1, 2, 3, 4, 5, 6],
+            "group": ["A", "A", "B", "B", "C", "C"],  # Equal sizes for all groups
+        }
+    )
 
-    result = VD_A_DF(data, val_col='values', group_col='group')
+    result = VD_A_DF(data, val_col="values", group_col="group")
 
     # Verify output structure
-    assert 'base' in result.columns
-    assert 'compared_with' in result.columns
-    assert 'estimate' in result.columns
-    assert 'magnitude' in result.columns
+    assert "base" in result.columns
+    assert "compared_with" in result.columns
+    assert "estimate" in result.columns
+    assert "magnitude" in result.columns
 
     # Check the number of pairwise comparisons (3 choose 2 = 3)
     assert len(result) == 3, "Expected 3 pairwise comparisons"
@@ -67,19 +72,22 @@ def test_reduce():
     """
     Test reduce function for filtering DataFrame against the best group.
     """
-    data = pl.DataFrame({
-        'base': ['A', 'A', 'B', 'B'],
-        'compared_with': ['B', 'C', 'A', 'C'],
-        'estimate': [0.6, 0.8, 0.4, 0.3],
-        'magnitude': ['medium', 'large', 'small', 'negligible']
-    })
+    data = pl.DataFrame(
+        {
+            "base": ["A", "A", "B", "B"],
+            "compared_with": ["B", "C", "A", "C"],
+            "estimate": [0.6, 0.8, 0.4, 0.3],
+            "magnitude": ["medium", "large", "small", "negligible"],
+        }
+    )
 
-    reduced_data = reduce(data, best='A', symbols=True)
+    reduced_data = reduce(data, best="A", symbols=True)
 
     # Verify that only comparisons with 'A' remain
-    assert all((reduced_data['base'] == 'A') | (
-        reduced_data['compared_with'] == 'A')), "Expected only comparisons involving 'A'"
-    assert 'effect_size_symbol' in reduced_data.columns
+    assert all(
+        (reduced_data["base"] == "A") | (reduced_data["compared_with"] == "A")
+    ), "Expected only comparisons involving 'A'"
+    assert "effect_size_symbol" in reduced_data.columns
 
 
 def test_vd_a_negligible():
@@ -103,14 +111,70 @@ def test_vd_a_small():
     This test uses two groups, group_a and group_b, where group_a slightly outperforms group_b.
     The expected result is a small effect size with the magnitude 'small'.
     """
-    group_a = [0.4785, 0.4639, 0.4639, 0.4697, 0.4639, 0.4746, 0.4814, 0.4814,
-               0.4697, 0.4814, 0.4746, 0.4834, 0.4844, 0.4492, 0.4746, 0.4844,
-               0.4814, 0.4639, 0.4844, 0.4785, 0.4785, 0.4570, 0.4844, 0.4199,
-               0.4834, 0.4785, 0.4697, 0.4844, 0.4785, 0.4639]
-    group_b = [0.4814, 0.4785, 0.4492, 0.4814, 0.4639, 0.4785, 0.4746, 0.4639,
-               0.4746, 0.4492, 0.4746, 0.4785, 0.4785, 0.4746, 0.4697, 0.4746,
-               0.4570, 0.4697, 0.4785, 0.4697, 0.4697, 0.4844, 0.4570, 0.4746,
-               0.4746, 0.4639, 0.4570, 0.4746, 0.4639, 0.4307]
+    group_a = [
+        0.4785,
+        0.4639,
+        0.4639,
+        0.4697,
+        0.4639,
+        0.4746,
+        0.4814,
+        0.4814,
+        0.4697,
+        0.4814,
+        0.4746,
+        0.4834,
+        0.4844,
+        0.4492,
+        0.4746,
+        0.4844,
+        0.4814,
+        0.4639,
+        0.4844,
+        0.4785,
+        0.4785,
+        0.4570,
+        0.4844,
+        0.4199,
+        0.4834,
+        0.4785,
+        0.4697,
+        0.4844,
+        0.4785,
+        0.4639,
+    ]
+    group_b = [
+        0.4814,
+        0.4785,
+        0.4492,
+        0.4814,
+        0.4639,
+        0.4785,
+        0.4746,
+        0.4639,
+        0.4746,
+        0.4492,
+        0.4746,
+        0.4785,
+        0.4785,
+        0.4746,
+        0.4697,
+        0.4746,
+        0.4570,
+        0.4697,
+        0.4785,
+        0.4697,
+        0.4697,
+        0.4844,
+        0.4570,
+        0.4746,
+        0.4746,
+        0.4639,
+        0.4570,
+        0.4746,
+        0.4639,
+        0.4307,
+    ]
     result, magnitude = VD_A(group_a, group_b)
     assert 0.55 <= result <= 0.65, "Expected small effect size"
     assert magnitude == "small", f"Expected 'small', got {magnitude}"
@@ -155,7 +219,7 @@ def test_vd_a_invalid_input():
     with pytest.raises(ValueError):
         VD_A([], [1, 2, 3])  # Empty list
     with pytest.raises(ValueError):
-        VD_A([1, 2, 3], "invalid")  # Non-list input
+        VD_A([1, 2, 3], cast(Any, "invalid"))  # Non-list input
 
 
 def test_vd_a_distribution_comparisons():
@@ -168,7 +232,7 @@ def test_vd_a_distribution_comparisons():
     # Uniform distribution with distinct ranges
     a_uniform = rng.uniform(0.5, 0.75, 10)
     b_uniform = rng.uniform(0.8, 1, 10)
-    estimate_uniform, magnitude_uniform = VD_A(a_uniform, b_uniform)
+    estimate_uniform, magnitude_uniform = VD_A(cast(list[float], a_uniform), cast(list[float], b_uniform))
     print(f"Uniform a & b: {estimate_uniform}, {magnitude_uniform}")
 
     # Allow A value of 0.0 if control dominates treatment
@@ -178,7 +242,7 @@ def test_vd_a_distribution_comparisons():
     # Normal distribution
     a_normal = rng.normal(62.8125, 134, 10)
     b_normal = rng.normal(10.3199, 1.124, 10)
-    estimate_normal, magnitude_normal = VD_A(a_normal, b_normal)
+    estimate_normal, magnitude_normal = VD_A(cast(list[float], a_normal), cast(list[float], b_normal))
     print(f"Normal a & b: {estimate_normal}, {magnitude_normal}")
 
     # Allow A value of 0.0 if control dominates treatment

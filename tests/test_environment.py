@@ -31,6 +31,7 @@ Dependencies:
 - Core components (`Environment`, `ContextualAgent`, etc.) from the `coleman4hcs` package.
 
 """
+
 from unittest.mock import MagicMock, mock_open, patch
 
 import numpy as np
@@ -70,9 +71,7 @@ def mock_evaluation_metric():
 def environment(mock_agent, mock_scenario_provider, mock_evaluation_metric):
     """Fixture for creating an instance of Environment."""
     return Environment(
-        agents=[mock_agent],
-        scenario_provider=mock_scenario_provider,
-        evaluation_metric=mock_evaluation_metric
+        agents=[mock_agent], scenario_provider=mock_scenario_provider, evaluation_metric=mock_evaluation_metric
     )
 
 
@@ -312,11 +311,9 @@ def test_run_prioritization_hcs(environment):
     mock_virtual_scenario = MagicMock()
 
     # Create a mock DataFrame for variants
-    mock_variants = pl.DataFrame({
-        "Variant": ["v1", "v1", "v2"],
-        "Name": ["tc1", "tc2", "tc3"],
-        "Duration": [1.0, 2.0, 3.0]
-    })
+    mock_variants = pl.DataFrame(
+        {"Variant": ["v1", "v1", "v2"], "Name": ["tc1", "tc2", "tc3"], "Duration": [1.0, 2.0, 3.0]}
+    )
     mock_virtual_scenario.get_variants.return_value = mock_variants
     environment.scenario_provider = MagicMock()
 

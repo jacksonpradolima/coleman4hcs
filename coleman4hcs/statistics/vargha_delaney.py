@@ -21,6 +21,7 @@ References
    Behavioral Statistics, vol. 25, no. 2, pp. 101-132, 2000.
 .. [2] Hess and Kromrey, 2004, for thresholds of effect size magnitudes.
 """
+
 import itertools as it
 from bisect import bisect_left
 
@@ -82,8 +83,12 @@ def VD_A(treatment: list[float], control: list[float]) -> tuple[float, str]:
     return estimate, magnitude
 
 
-def VD_A_DF(data: pl.DataFrame, val_col: str = None, group_col: str = None,
-            sort: bool = True) -> pl.DataFrame:
+def VD_A_DF(
+    data: pl.DataFrame,
+    val_col: str | None = None,
+    group_col: str | None = None,
+    sort: bool = True,
+) -> pl.DataFrame:
     """Compute pairwise Vargha and Delaney A index for groups in a DataFrame.
 
     Parameters
@@ -106,10 +111,11 @@ def VD_A_DF(data: pl.DataFrame, val_col: str = None, group_col: str = None,
     """
     x = data.clone()
 
+    if val_col is None or group_col is None:
+        raise ValueError("Both val_col and group_col must be provided")
+
     if sort:
-        x = x.with_columns([
-            pl.col(group_col).cast(pl.Categorical)
-        ]).sort([group_col, val_col])
+        x = x.with_columns([pl.col(group_col).cast(pl.Categorical)]).sort([group_col, val_col])
 
     groups = x[group_col].unique()
     groups_list = groups.to_list()
@@ -118,17 +124,20 @@ def VD_A_DF(data: pl.DataFrame, val_col: str = None, group_col: str = None,
     g1, g2 = np.array(list(it.combinations(np.arange(len(groups_list)), 2))).T
 
     # Compute effect size for each combination
-    ef = np.array([VD_A(list(x.filter(pl.col(group_col) == groups_list[i])[val_col].to_list()),
-                        list(x.filter(pl.col(group_col) == groups_list[j])[val_col].to_list()))
-                   for i, j in zip(g1, g2, strict=False)])
+    ef = np.array(
+        [
+            VD_A(
+                list(x.filter(pl.col(group_col) == groups_list[i])[val_col].to_list()),
+                list(x.filter(pl.col(group_col) == groups_list[j])[val_col].to_list()),
+            )
+            for i, j in zip(g1, g2, strict=False)
+        ]
+    )
 
     groups_array = groups.to_numpy()
-    return pl.DataFrame({
-        'base': groups_array[g1],
-        'compared_with': groups_array[g2],
-        'estimate': ef[:, 0],
-        'magnitude': ef[:, 1]
-    })
+    return pl.DataFrame(
+        {"base": groups_array[g1], "compared_with": groups_array[g2], "estimate": ef[:, 0], "magnitude": ef[:, 1]}
+    )
 
 
 def reduce(df: pl.DataFrame, best: str, symbols: bool = True) -> pl.DataFrame:
@@ -151,37 +160,32 @@ def reduce(df: pl.DataFrame, best: str, symbols: bool = True) -> pl.DataFrame:
     """
     # Effect Size
     magnitude = ["negligible", "small", "medium", "large"]
-    symbols = ["$\\blacktriangledown$", "$\\triangledown$", "$\\vartriangle$", "$\\blacktriangle$"]
+    symbol_map = ["$\\blacktriangledown$", "$\\triangledown$", "$\\vartriangle$", "$\\blacktriangle$"]
 
     # Get only the effect size magnitudes related with the best
-    df = df.filter((pl.col('base') == best) | (pl.col('compared_with') == best))
+    df = df.filter((pl.col("base") == best) | (pl.col("compared_with") == best))
 
     # Create a new column to compare against the other policies
-    df = df.with_columns([
-        pl.when(pl.col('base') == best)
-        .then(pl.col('compared_with'))
-        .otherwise(pl.col('base'))
-        .alias('temp')
-    ])
+    df = df.with_columns(
+        [pl.when(pl.col("base") == best).then(pl.col("compared_with")).otherwise(pl.col("base")).alias("temp")]
+    )
 
     # Get magnitude symbol (in latex) for each comparison
     # The best has the bigstar symbol
     def get_symbol(row):
-        temp = row['temp']
+        temp = row["temp"]
         if temp == best:
             return "$\\bigstar$"
         # Find the magnitude for this temp value
-        mag_row = df.filter(pl.col('temp') == temp)
+        mag_row = df.filter(pl.col("temp") == temp)
         if mag_row.height > 0:
-            mag = mag_row['magnitude'][0]
-            return symbols[magnitude.index(mag)]
+            mag = mag_row["magnitude"][0]
+            return symbol_map[magnitude.index(mag)]
         return ""
 
     # Apply symbol mapping
     effect_symbols = [get_symbol(row) for row in df.to_dicts()]
 
-    df = df.with_columns([
-        pl.Series('effect_size_symbol', effect_symbols)
-    ])
+    df = df.with_columns([pl.Series("effect_size_symbol", effect_symbols)])
 
-    return df.drop('temp')
+    return df.drop("temp")

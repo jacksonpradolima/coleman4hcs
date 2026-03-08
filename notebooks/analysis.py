@@ -93,9 +93,7 @@ def preprocess(conn):
         WHEN reward_function LIKE 'Reward Based on Failures' THEN 'RNFail'
     END
     """)
-    main_data = conn.execute(
-        "SELECT DISTINCT scenario, policy, sched_time FROM filtered_data"
-    ).fetchdf()
+    main_data = conn.execute("SELECT DISTINCT scenario, policy, sched_time FROM filtered_data").fetchdf()
     scenarios = main_data["scenario"].unique()
     policies = main_data["policy"].unique()
     sched_times = main_data["sched_time"].unique()
@@ -155,16 +153,10 @@ def plot_acc_fn(acc_data, get_metric_ylabel, sched_times):
     """Define accumulative plot function."""
 
     def plot_accumulative(column, scenarios=None, reward_function=None):
-        df_filtered = (
-            acc_data[acc_data["scenario"].isin(scenarios)] if scenarios else acc_data
-        )
+        df_filtered = acc_data[acc_data["scenario"].isin(scenarios)] if scenarios else acc_data
         if reward_function:
-            df_filtered = df_filtered[
-                df_filtered["reward_function"] == reward_function.name
-            ]
-        fig, axes = plt.subplots(
-            nrows=1, ncols=len(sched_times), sharey=True, figsize=(15, 5)
-        )
+            df_filtered = df_filtered[df_filtered["reward_function"] == reward_function.name]
+        fig, axes = plt.subplots(nrows=1, ncols=len(sched_times), sharey=True, figsize=(15, 5))
         if len(sched_times) == 1:
             axes = [axes]
         metric, _ = get_metric_ylabel(column)
@@ -222,18 +214,10 @@ def variation_data(conn):
 def plot_var_fn(get_metric_ylabel, variation_data):
     """Define variation plot function."""
 
-    def plot_metric_variation(
-        column, title=None, scenarios=None, reward_function=None
-    ):
-        df_filtered = (
-            variation_data[variation_data["scenario"].isin(scenarios)]
-            if scenarios
-            else variation_data
-        )
+    def plot_metric_variation(column, title=None, scenarios=None, reward_function=None):
+        df_filtered = variation_data[variation_data["scenario"].isin(scenarios)] if scenarios else variation_data
         if reward_function:
-            df_filtered = df_filtered[
-                df_filtered["reward_function"] == reward_function.name
-            ]
+            df_filtered = df_filtered[df_filtered["reward_function"] == reward_function.name]
         metric, _ = get_metric_ylabel(column)
         pivot_df = df_filtered.pivot(index="step", columns="policy", values=column)
         fig, ax = plt.subplots(figsize=(15, 5))
@@ -290,15 +274,9 @@ def plot_ntr_fn(ntr_by_policy):
     """Define normalized time reduction plot function."""
 
     def plot_normalize_time_reduction(scenarios=None, reward_function=None):
-        df_filtered = (
-            ntr_by_policy[ntr_by_policy["scenario"].isin(scenarios)]
-            if scenarios
-            else ntr_by_policy
-        )
+        df_filtered = ntr_by_policy[ntr_by_policy["scenario"].isin(scenarios)] if scenarios else ntr_by_policy
         if reward_function:
-            df_filtered = df_filtered[
-                df_filtered["reward_function"] == reward_function.name
-            ]
+            df_filtered = df_filtered[df_filtered["reward_function"] == reward_function.name]
         st = df_filtered["sched_time"].unique()
         fig, axes = plt.subplots(nrows=1, ncols=len(st), sharey=True, figsize=(15, 5))
         if len(st) == 1:
@@ -319,9 +297,7 @@ def plot_ntr_fn(ntr_by_policy):
 @app.cell
 def show_ntr(RewardFunction, plot_normalize_time_reduction):
     """Plot normalized time reduction."""
-    plot_normalize_time_reduction(
-        scenarios=["alibaba@druid"], reward_function=RewardFunction.TimeRank
-    )
+    plot_normalize_time_reduction(scenarios=["alibaba@druid"], reward_function=RewardFunction.TimeRank)
     return
 
 
@@ -346,17 +322,11 @@ def plot_dist_fn(get_metric_ylabel, mean_distribution, sched_times):
 
     def plot_distribution(column, scenarios=None, reward_function=None):
         df_filtered = (
-            mean_distribution[mean_distribution["scenario"].isin(scenarios)]
-            if scenarios
-            else mean_distribution
+            mean_distribution[mean_distribution["scenario"].isin(scenarios)] if scenarios else mean_distribution
         )
         if reward_function:
-            df_filtered = df_filtered[
-                df_filtered["reward_function"] == reward_function.name
-            ]
-        fig, axes = plt.subplots(
-            nrows=1, ncols=len(sched_times), sharey=True, figsize=(15, 5)
-        )
+            df_filtered = df_filtered[df_filtered["reward_function"] == reward_function.name]
+        fig, axes = plt.subplots(nrows=1, ncols=len(sched_times), sharey=True, figsize=(15, 5))
         if len(sched_times) == 1:
             axes = [axes]
         metric, _ = get_metric_ylabel(column)
@@ -416,12 +386,8 @@ def stat_test_fns():
         all_equivalent = p_value >= alpha
         posthoc_result = None
         if not all_equivalent:
-            posthoc_result = posthocs.posthoc_nemenyi(
-                dataframe, val_col=value_column, group_col=group_column
-            )
-        vda_result = vargha_delaney.VD_A_DF(
-            dataframe, val_col=value_column, group_col=group_column
-        )
+            posthoc_result = posthocs.posthoc_nemenyi(dataframe, val_col=value_column, group_col=group_column)
+        vda_result = vargha_delaney.VD_A_DF(dataframe, val_col=value_column, group_col=group_column)
         return {
             "kruskal_stat": stat,
             "kruskal_pvalue": p_value,
@@ -431,9 +397,7 @@ def stat_test_fns():
         }
 
     def calculate_policy_statistics(df, column, direction="max"):
-        stats = df.groupby(["policy"], as_index=False).agg(
-            {column: ["mean", "std", "max", "min"]}
-        )
+        stats = df.groupby(["policy"], as_index=False).agg({column: ["mean", "std", "max", "min"]})
         stats.columns = ["policy", "mean", "std", "max", "min"]
         stats = stats.round({"mean": 4, "std": 3, "max": 4, "min": 4})
         best_policy = stats.loc[
@@ -445,14 +409,10 @@ def stat_test_fns():
     def determine_effect_size_symbol(policy, best_policy, effect_size_df):
         if policy == best_policy:
             return "$\\bigstar$"
-        vals = effect_size_df.loc[
-            effect_size_df.compared_with == policy, "effect_size_symbol"
-        ].values
+        vals = effect_size_df.loc[effect_size_df.compared_with == policy, "effect_size_symbol"].values
         if vals.size > 0:
             return vals[0]
-        return effect_size_df.loc[
-            effect_size_df.base == policy, "effect_size_symbol"
-        ].values[0]
+        return effect_size_df.loc[effect_size_df.base == policy, "effect_size_symbol"].values[0]
 
     def generate_latex_configuration(row, best_policy, posthoc_df, all_equivalent):
         current_policy = row["policy"]
@@ -474,11 +434,7 @@ def stat_test_fns():
                 and not np.isnan(posthoc_df.loc[best_policy][current_policy])
             ):
                 is_equivalent = posthoc_df.loc[best_policy][current_policy] >= 0.05
-        return (
-            f"\\cellgray{{{row['avg_std_effect']}}}"
-            if is_equivalent
-            else row["avg_std_effect"]
-        )
+        return f"\\cellgray{{{row['avg_std_effect']}}}" if is_equivalent else row["avg_std_effect"]
 
     def statistical_test_procedure(dataframe, column, use_latex=False):
         sched_times_local = dataframe["sched_time"].unique()
@@ -489,14 +445,10 @@ def stat_test_fns():
             df_st = dataframe[dataframe["sched_time"] == sched_time]
             statistical_results = perform_statistical_test(df_st, "policy", column)
             stats, best_policy = calculate_policy_statistics(df_st, column)
-            df_reduced = vargha_delaney.reduce(
-                statistical_results["vda_result"], best_policy
-            )
+            df_reduced = vargha_delaney.reduce(statistical_results["vda_result"], best_policy)
             if use_latex:
                 stats["eff_symbol"] = stats.apply(
-                    lambda x: determine_effect_size_symbol(
-                        x["policy"], best_policy, df_reduced
-                    ),
+                    lambda x: determine_effect_size_symbol(x["policy"], best_policy, df_reduced),
                     axis=1,
                 )
                 stats["avg_std_effect"] = stats.apply(
@@ -512,11 +464,7 @@ def stat_test_fns():
                     ),
                     axis=1,
                 )
-            stats_trans = (
-                stats[["policy", "latex_format"]].copy()
-                if use_latex
-                else stats[["policy", "mean"]].copy()
-            )
+            stats_trans = stats[["policy", "latex_format"]].copy() if use_latex else stats[["policy", "mean"]].copy()
             stats_trans.index = stats["policy"]
             stats_trans = stats_trans.transpose().drop(stats_trans.index[0])
             row_vals = np.insert(stats_trans.values[0], 0, sched_time)
@@ -539,9 +487,7 @@ def stat_test_fns():
 @app.cell
 def run_stat_ptime(mean_distribution, statistical_test_procedure):
     """Statistical test: Prioritization Time."""
-    df_stats_ptime = statistical_test_procedure(
-        mean_distribution, "avg_prioritization_time"
-    )
+    df_stats_ptime = statistical_test_procedure(mean_distribution, "avg_prioritization_time")
     return
 
 

@@ -47,20 +47,20 @@ from coleman4hcs.evaluation import EvaluationMetric
 #: Columns: Name (test-case id), ActionAttempts (weighted selection count),
 #: ValueEstimates (accumulated reward), Q (policy quality estimate).
 ACTIONS_SCHEMA: dict = {
-    'Name': pl.Utf8,
-    'ActionAttempts': pl.Float64,
-    'ValueEstimates': pl.Float64,
-    'Q': pl.Float64,
+    "Name": pl.Utf8,
+    "ActionAttempts": pl.Float64,
+    "ValueEstimates": pl.Float64,
+    "Q": pl.Float64,
 }
 
 #: Schema for the sliding-window history DataFrame.
 #: Extends ACTIONS_SCHEMA with T (time / build step).
 HISTORY_SCHEMA: dict = {
-    'Name': pl.Utf8,
-    'ActionAttempts': pl.Float64,
-    'ValueEstimates': pl.Float64,
-    'Q': pl.Float64,
-    'T': pl.Int64,
+    "Name": pl.Utf8,
+    "ActionAttempts": pl.Float64,
+    "ValueEstimates": pl.Float64,
+    "Q": pl.Float64,
+    "T": pl.Int64,
 }
 
 
@@ -91,7 +91,7 @@ class Agent:
         A DataFrame tracking the agent's actions and their respective outcomes.
     """
 
-    def __init__(self, policy, bandit: Bandit = None):
+    def __init__(self, policy, bandit: Bandit | None = None):
         """Initialize the Agent.
 
         Parameters
@@ -102,8 +102,8 @@ class Agent:
             The bandit instance the agent interacts with.
         """
         self.policy = policy
-        self.bandit = bandit
-        self.last_prioritization = None  # Last action (TC) chosen
+        self.bandit: Bandit | None = bandit
+        self.last_prioritization: list[str] = []  # Last action (TC) chosen
         self.t = 0
         self.actions = pl.DataFrame(schema=ACTIONS_SCHEMA)
 
@@ -121,14 +121,12 @@ class Agent:
 
     def reset(self):
         """Reset the agent's memory to an initial state."""
-        self.actions = self.actions.with_columns([
-            pl.lit(0.0).alias('ValueEstimates'),
-            pl.lit(0.0).alias('ActionAttempts'),
-            pl.lit(0.0).alias('Q')
-        ])
+        self.actions = self.actions.with_columns(
+            [pl.lit(0.0).alias("ValueEstimates"), pl.lit(0.0).alias("ActionAttempts"), pl.lit(0.0).alias("Q")]
+        )
 
         # Last action (TC) chosen
-        self.last_prioritization = None
+        self.last_prioritization = []
 
         # Time of usage
         self.t = 0
@@ -141,9 +139,9 @@ class Agent:
         action : str
             The name of the action (test case) to add.
         """
-        if action not in self.actions['Name'].to_list():
+        if action not in self.actions["Name"].to_list():
             new_row = pl.DataFrame(
-                {'Name': [action], 'ActionAttempts': [0.0], 'ValueEstimates': [0.0], 'Q': [0.0]},
+                {"Name": [action], "ActionAttempts": [0.0], "ValueEstimates": [0.0], "Q": [0.0]},
                 schema=ACTIONS_SCHEMA,
             )
             self.actions = pl.concat([self.actions, new_row], how="vertical")
@@ -161,22 +159,22 @@ class Agent:
         actions : list of str
             List of available actions.
         """
-        current_actions = set(self.actions['Name'].to_list())
+        current_actions = set(self.actions["Name"].to_list())
         new_actions = set(actions) - current_actions
         obsolete_actions = current_actions - set(actions)
 
         # Remove obsolete actions
         if obsolete_actions:
-            self.actions = self.actions.filter(~pl.col('Name').is_in(list(obsolete_actions)))
+            self.actions = self.actions.filter(~pl.col("Name").is_in(list(obsolete_actions)))
 
         # Add new actions
         if new_actions:
             new_actions_df = pl.DataFrame(
                 {
-                    'Name': list(new_actions),
-                    'ActionAttempts': [0.0] * len(new_actions),
-                    'ValueEstimates': [0.0] * len(new_actions),
-                    'Q': [0.0] * len(new_actions),
+                    "Name": list(new_actions),
+                    "ActionAttempts": [0.0] * len(new_actions),
+                    "ValueEstimates": [0.0] * len(new_actions),
+                    "Q": [0.0] * len(new_actions),
                 },
                 schema=ACTIONS_SCHEMA,
             )
@@ -195,7 +193,7 @@ class Agent:
             The new bandit instance to be associated with the agent.
         """
         self.bandit = bandit
-        self.update_actions(self.bandit.get_arms())
+        self.update_actions(bandit.get_arms())
 
     def choose(self) -> list[str]:
         """Choose an action using the agent's policy.
@@ -210,12 +208,10 @@ class Agent:
         # If is the first time that the agent has been used, we don't have a "history" (rewards).
         # So, we can choose randomly
         if self.t == 0:
-            self.last_prioritization = self.actions['Name'].shuffle().to_list()
+            self.last_prioritization = self.actions["Name"].shuffle().to_list()
         else:
             # To avoid arms non-applied yet
-            self.actions = self.actions.with_columns([
-                pl.col('Q').fill_null(0.0)
-            ])
+            self.actions = self.actions.with_columns([pl.col("Q").fill_null(0.0)])
             self.last_prioritization = self.policy.choose_all(self)
 
         # Return the Prioritized Test Suite
@@ -237,11 +233,9 @@ class Agent:
         weight_map = {name: weights[idx] for name, idx in index_map.items()}
 
         # Build a Series of weight additions aligned with self.actions row order
-        name_list = self.actions['Name'].to_list()
-        additions = pl.Series('_w', [weight_map.get(name, 0.0) for name in name_list])
-        self.actions = self.actions.with_columns([
-            (pl.col('ActionAttempts') + additions).alias('ActionAttempts')
-        ])
+        name_list = self.actions["Name"].to_list()
+        additions = pl.Series("_w", [weight_map.get(name, 0.0) for name in name_list])
+        self.actions = self.actions.with_columns([(pl.col("ActionAttempts") + additions).alias("ActionAttempts")])
 
     def observe(self, reward):
         """Update Q action-value estimates.
@@ -257,22 +251,24 @@ class Agent:
 
         for test_case, r in zip(self.last_prioritization, reward, strict=False):
             # Get current values using filter
-            row_data = self.actions.filter(pl.col('Name') == test_case)
+            row_data = self.actions.filter(pl.col("Name") == test_case)
 
             if row_data.height > 0:
-                k = row_data['ActionAttempts'][0]
-                q = row_data['ValueEstimates'][0]
+                k = row_data["ActionAttempts"][0]
+                q = row_data["ValueEstimates"][0]
 
                 alpha = 1.0 / k
 
                 # Update Q value by keeping running average of rewards for each action
                 new_value = q + alpha * (r - q)
-                self.actions = self.actions.with_columns([
-                    pl.when(pl.col('Name') == test_case)
-                      .then(new_value)
-                      .otherwise(pl.col('ValueEstimates'))
-                      .alias('ValueEstimates')
-                ])
+                self.actions = self.actions.with_columns(
+                    [
+                        pl.when(pl.col("Name") == test_case)
+                        .then(new_value)
+                        .otherwise(pl.col("ValueEstimates"))
+                        .alias("ValueEstimates")
+                    ]
+                )
 
         self.t += 1
 
@@ -333,18 +329,18 @@ class RewardAgent(Agent):
         self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
 
         # Update value estimates (accumulative reward) - create mapping
-        reward_map = {name: self.last_reward[self.last_prioritization.index(name)]
-                     for name in self.actions['Name'].to_list() if name in self.last_prioritization}
+        reward_map = {
+            name: self.last_reward[self.last_prioritization.index(name)]
+            for name in self.actions["Name"].to_list()
+            if name in self.last_prioritization
+        }
 
         # Update using with_columns
-        current_estimates = self.actions['ValueEstimates'].to_list()
-        name_list = self.actions['Name'].to_list()
-        new_estimates = [current_estimates[i] + reward_map.get(name_list[i], 0.0)
-                        for i in range(len(name_list))]
+        current_estimates = self.actions["ValueEstimates"].to_list()
+        name_list = self.actions["Name"].to_list()
+        new_estimates = [current_estimates[i] + reward_map.get(name_list[i], 0.0) for i in range(len(name_list))]
 
-        self.actions = self.actions.with_columns([
-            pl.Series('ValueEstimates', new_estimates)
-        ])
+        self.actions = self.actions.with_columns([pl.Series("ValueEstimates", new_estimates)])
 
         self.t += 1
 
@@ -386,7 +382,8 @@ class ContextualAgent(RewardAgent):
         super().__init__(policy, reward_function)
 
         # List of features
-        self.context_features = self.features = None
+        self.context_features: pl.DataFrame = pl.DataFrame()
+        self.features: list[str] = []
 
     def __str__(self):
         """Return a string representation of the contextual agent.
@@ -396,7 +393,7 @@ class ContextualAgent(RewardAgent):
         str
             String representation of the agent's policy.
         """
-        return f'{str(self.policy)}'
+        return f"{str(self.policy)}"
 
     def choose(self) -> list[str]:
         """Choose an action using the agent's policy.
@@ -426,10 +423,10 @@ class ContextualAgent(RewardAgent):
             List of available action names.
         """
         # Preserve the actual actions and remove the unnecessary
-        self.actions = self.actions.filter(pl.col('Name').is_in(actions))
+        self.actions = self.actions.filter(pl.col("Name").is_in(actions))
 
         # Find the new actions (they are not in the actions that already exists)
-        new_actions = [action for action in actions if action not in self.actions['Name'].to_list()]
+        new_actions = [action for action in actions if action not in self.actions["Name"].to_list()]
 
         # Update the information about the arms in the policy
         self.policy.update_actions(self, new_actions)
@@ -437,10 +434,10 @@ class ContextualAgent(RewardAgent):
         if new_actions:
             new_actions_df = pl.DataFrame(
                 {
-                    'Name': new_actions,
-                    'ValueEstimates': [0.0] * len(new_actions),
-                    'ActionAttempts': [0.0] * len(new_actions),
-                    'Q': [0.0] * len(new_actions),
+                    "Name": new_actions,
+                    "ValueEstimates": [0.0] * len(new_actions),
+                    "ActionAttempts": [0.0] * len(new_actions),
+                    "Q": [0.0] * len(new_actions),
                 },
                 schema=ACTIONS_SCHEMA,
             )
@@ -459,9 +456,9 @@ class ContextualAgent(RewardAgent):
             The new bandit instance to be used by the agent.
         """
         self.bandit = bandit
-        self.update_actions(self.bandit.get_arms())
+        self.update_actions(bandit.get_arms())
 
-    def update_context(self, context_features):
+    def update_context(self, context_features: pl.DataFrame):
         """Update the agent's current context information.
 
         The context provides additional information that can help the agent in
@@ -475,7 +472,7 @@ class ContextualAgent(RewardAgent):
         """
         self.context_features = context_features
 
-    def update_features(self, features):
+    def update_features(self, features: list[str]):
         """Update the features used by the agent for decision-making.
 
         Features represent specific characteristics or properties of data that
@@ -534,7 +531,7 @@ class RewardSlidingWindowAgent(RewardAgent):
         str
             String representation including policy and window size.
         """
-        return f'{str(self.policy)}, SW={self.window_size})'
+        return f"{str(self.policy)}, SW={self.window_size})"
 
     def observe(self, reward: EvaluationMetric):
         """Observe the reward and update value estimates using the sliding window.
@@ -550,16 +547,17 @@ class RewardSlidingWindowAgent(RewardAgent):
         self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
 
         # Update value estimates - create mapping
-        reward_map = {name: self.last_reward[self.last_prioritization.index(name)]
-                     for name in self.actions['Name'].to_list() if name in self.last_prioritization}
+        reward_map = {
+            name: self.last_reward[self.last_prioritization.index(name)]
+            for name in self.actions["Name"].to_list()
+            if name in self.last_prioritization
+        }
 
         # Update using with_columns
-        name_list = self.actions['Name'].to_list()
+        name_list = self.actions["Name"].to_list()
         new_estimates = [reward_map.get(name, 0.0) for name in name_list]
 
-        self.actions = self.actions.with_columns([
-            pl.Series('ValueEstimates', new_estimates)
-        ])
+        self.actions = self.actions.with_columns([pl.Series("ValueEstimates", new_estimates)])
 
         self.t += 1
         self.update_history()
@@ -573,19 +571,17 @@ class RewardSlidingWindowAgent(RewardAgent):
         entries are removed to maintain the specified window size.
         """
         temp_hist = self.actions.clone()
-        temp_hist = temp_hist.with_columns([
-            pl.lit(self.t, dtype=pl.Int64).alias('T')
-        ])
+        temp_hist = temp_hist.with_columns([pl.lit(self.t, dtype=pl.Int64).alias("T")])
 
         self.history = pl.concat([self.history, temp_hist], how="vertical")
 
         # Truncate
-        unique_t = self.history['T'].unique().to_list()
+        unique_t = self.history["T"].unique().to_list()
 
         if len(unique_t) > self.window_size:
             # Remove older
             min_t = max(unique_t) - self.window_size
-            self.history = self.history.filter(pl.col('T') > min_t)
+            self.history = self.history.filter(pl.col("T") > min_t)
 
 
 class SlidingWindowContextualAgent(ContextualAgent):
@@ -631,7 +627,8 @@ class SlidingWindowContextualAgent(ContextualAgent):
         self.window_size = window_size
 
         # List of features
-        self.context_features = self.features = None
+        self.context_features: pl.DataFrame = pl.DataFrame()
+        self.features: list[str] = []
 
         self.history = pl.DataFrame(schema=HISTORY_SCHEMA)
 
@@ -643,7 +640,7 @@ class SlidingWindowContextualAgent(ContextualAgent):
         str
             String representation including policy and window size.
         """
-        return f'{str(self.policy)}, SW={self.window_size})'
+        return f"{str(self.policy)}, SW={self.window_size})"
 
     def observe(self, reward: EvaluationMetric):
         """Observe the reward and update value estimates using the sliding window.
@@ -659,15 +656,16 @@ class SlidingWindowContextualAgent(ContextualAgent):
         self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
 
         # Update value estimates - create mapping
-        reward_map = {name: self.last_reward[self.last_prioritization.index(name)]
-                     for name in self.actions['Name'].to_list() if name in self.last_prioritization}
+        reward_map = {
+            name: self.last_reward[self.last_prioritization.index(name)]
+            for name in self.actions["Name"].to_list()
+            if name in self.last_prioritization
+        }
 
-        name_list = self.actions['Name'].to_list()
+        name_list = self.actions["Name"].to_list()
         new_estimates = [reward_map.get(name, 0.0) for name in name_list]
 
-        self.actions = self.actions.with_columns([
-            pl.Series('ValueEstimates', new_estimates)
-        ])
+        self.actions = self.actions.with_columns([pl.Series("ValueEstimates", new_estimates)])
 
         self.t += 1
         self.update_history()
@@ -681,16 +679,14 @@ class SlidingWindowContextualAgent(ContextualAgent):
         entries are removed to maintain the specified window size.
         """
         temp_hist = self.actions.clone()
-        temp_hist = temp_hist.with_columns([
-            pl.lit(self.t, dtype=pl.Int64).alias('T')
-        ])
+        temp_hist = temp_hist.with_columns([pl.lit(self.t, dtype=pl.Int64).alias("T")])
 
         self.history = pl.concat([self.history, temp_hist], how="vertical")
 
         # Truncate
-        unique_t = self.history['T'].unique().to_list()
+        unique_t = self.history["T"].unique().to_list()
 
         if len(unique_t) > self.window_size:
             # Remove older
             min_t = max(unique_t) - self.window_size
-            self.history = self.history.filter(pl.col('T') > min_t)
+            self.history = self.history.filter(pl.col("T") > min_t)

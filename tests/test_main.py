@@ -51,13 +51,16 @@ Test Structure:
   Examples: `test_end_to_end_execution`.
 
 """
+
 import logging
+from typing import cast
 from unittest.mock import Mock, call, patch
 
 import pytest
 
 import coleman4hcs.policy
 from coleman4hcs.agent import ContextualAgent, RewardSlidingWindowAgent
+from coleman4hcs.environment import Environment
 from coleman4hcs.policy import FRRMABPolicy, SWLinUCBPolicy
 from coleman4hcs.scenarios import IndustrialDatasetHCSScenarioProvider, IndustrialDatasetScenarioProvider
 from main import (
@@ -73,6 +76,7 @@ from main import (
 # ------------------------
 # Unit Tests
 # ------------------------
+
 
 def test_create_logger():
     """Test that a logger is created with the correct level and handler."""
@@ -92,6 +96,7 @@ def test_create_logger():
     # Cleanup: Remove all handlers from the logger to avoid reuse issues
     logger.handlers.clear()
 
+
 @patch("main.create_logger")
 @patch("main.Environment")
 def test_exp_run_industrial_dataset(mock_environment, mock_create_logger, tmpdir):
@@ -104,9 +109,9 @@ def test_exp_run_industrial_dataset(mock_environment, mock_create_logger, tmpdir
     exp_run_industrial_dataset(
         iteration=1,
         trials=10,
-        env=mock_env,
+        env=cast(Environment, mock_env),
         experiment_directory=str(tmpdir),
-        level=20
+        level=20,
     )
 
     mock_env.create_file.assert_called_once()
@@ -216,6 +221,7 @@ def test_store_experiments(mock_read_csv, mock_duckdb_connect, tmpdir):
 # Integration Tests
 # ------------------------
 
+
 @patch("main.create_logger")
 @patch("main.Environment")
 def test_end_to_end_execution(mock_environment, mock_create_logger, tmpdir):
@@ -232,13 +238,12 @@ def test_end_to_end_execution(mock_environment, mock_create_logger, tmpdir):
     # Parameters
     independent_executions = 3
     parameters = [
-        (i + 1, 10, mock_env, experiment_directory, 20)
-        for i in range(independent_executions)
+        (i + 1, 10, cast(Environment, mock_env), str(experiment_directory), 20) for i in range(independent_executions)
     ]
 
     # Parallel pool size test (single-threaded for simplicity)
-    for param in parameters:
-        exp_run_industrial_dataset(*param)
+    for iteration, trials, env, exp_dir, level in parameters:
+        exp_run_industrial_dataset(iteration, trials, env, exp_dir, level)
 
     # Check that required environment methods were called
     assert mock_env.create_file.call_count == independent_executions

@@ -81,12 +81,11 @@ class EvaluationMetric:
         self.detection_ranks = []
         self.detection_ranks_time = []
         self.detection_ranks_failures = []
-        self.ttf = self.ttf_duration = 0 # Time to Fail (rank value)
-        self.fitness = 0 # APFD or NAPFD value
-        self.cost = 0 # APFDc (to compute at same time, for instance, with NAPFD)
+        self.ttf = self.ttf_duration = 0  # Time to Fail (rank value)
+        self.fitness = 0  # APFD or NAPFD value
+        self.cost = 0  # APFDc (to compute at same time, for instance, with NAPFD)
         self.detected_failures = self.undetected_failures = 0
         self.recall = self.avg_precision = 0
-
 
     def process_test_suite(self, test_suite, error_key):
         """Process the test suite and return the costs and total failure count.
@@ -116,14 +115,14 @@ class EvaluationMetric:
         for test_case in test_suite:
             failure_count = test_case[error_key]
             total_failure_count += failure_count
-            total_failed_tests += test_case['Verdict']
-            costs.append(test_case['Duration'])
+            total_failed_tests += test_case["Verdict"]
+            costs.append(test_case["Duration"])
 
             # Time spent to fail
             if not self.detection_ranks_time:
-                self.ttf_duration += test_case['Duration']
+                self.ttf_duration += test_case["Duration"]
 
-            if scheduled_time + test_case['Duration'] <= self.available_time:
+            if scheduled_time + test_case["Duration"] <= self.available_time:
                 # If the Verdict is "Failed"
                 if failure_count:
                     self.detected_failures += failure_count * rank_counter
@@ -131,13 +130,13 @@ class EvaluationMetric:
 
                     # Individual information
                     self.detection_ranks_failures.append(failure_count)
-                    self.detection_ranks_time.append(test_case['Duration'])
+                    self.detection_ranks_time.append(test_case["Duration"])
 
-                scheduled_time += test_case['Duration']
-                self.scheduled_testcases.append(test_case['Name'])
+                scheduled_time += test_case["Duration"]
+                self.scheduled_testcases.append(test_case["Name"])
                 rank_counter += 1
             else:
-                self.unscheduled_testcases.append(test_case['Name'])
+                self.unscheduled_testcases.append(test_case["Name"])
                 self.undetected_failures += failure_count
 
         # Update detected failures if verdict-based
@@ -193,7 +192,7 @@ class NAPFDMetric(EvaluationMetric):
         str
             The metric name.
         """
-        return 'NAPFD'
+        return "NAPFD"
 
     def evaluate(self, test_suite):
         """Evaluate the test suite using the NAPFD metric.
@@ -204,7 +203,7 @@ class NAPFDMetric(EvaluationMetric):
             Test suite to evaluate.
         """
         self.reset()
-        costs, total_failure_count, total_failed_tests = self.process_test_suite(test_suite, 'NumErrors')
+        costs, total_failure_count, total_failed_tests = self.process_test_suite(test_suite, "NumErrors")
 
         if total_failure_count > 0:
             self.compute_metrics(costs, total_failure_count, total_failed_tests, len(test_suite))
@@ -240,8 +239,9 @@ class NAPFDMetric(EvaluationMetric):
         self.fitness = p - self.detected_failures / (total_failure_count * no_testcases) + p / (2 * no_testcases)
 
         # APFDc
-        self.cost = sum(sum(costs[i - 1:]) - 0.5 * costs[i - 1] for i in self.detection_ranks) / (
-            sum(costs) * total_failed_tests)
+        self.cost = sum(sum(costs[i - 1 :]) - 0.5 * costs[i - 1] for i in self.detection_ranks) / (
+            sum(costs) * total_failed_tests
+        )
 
 
 class NAPFDVerdictMetric(EvaluationMetric):
@@ -255,7 +255,7 @@ class NAPFDVerdictMetric(EvaluationMetric):
         str
             The metric name.
         """
-        return 'NAPFDVerdict'
+        return "NAPFDVerdict"
 
     def evaluate(self, test_suite):
         """Evaluate the test suite using the NAPFD Verdict metric.
@@ -266,7 +266,7 @@ class NAPFDVerdictMetric(EvaluationMetric):
             Test suite to evaluate.
         """
         self.reset()
-        costs, total_failure_count, _ = self.process_test_suite(test_suite, 'Verdict')
+        costs, total_failure_count, _ = self.process_test_suite(test_suite, "Verdict")
 
         assert self.undetected_failures + self.detected_failures == total_failure_count
 
@@ -299,9 +299,9 @@ class NAPFDVerdictMetric(EvaluationMetric):
         p = self.recall if self.undetected_failures > 0 else 1
 
         # NAPFD
-        self.fitness = p - sum(self.detection_ranks) / (total_failure_count * no_testcases) + p / (
-            2 * no_testcases)
+        self.fitness = p - sum(self.detection_ranks) / (total_failure_count * no_testcases) + p / (2 * no_testcases)
 
         # APFDc
-        self.cost = sum(sum(costs[i - 1:]) - 0.5 * costs[i - 1] for i in self.detection_ranks) / (
-            sum(costs) * total_failure_count)
+        self.cost = sum(sum(costs[i - 1 :]) - 0.5 * costs[i - 1] for i in self.detection_ranks) / (
+            sum(costs) * total_failure_count
+        )

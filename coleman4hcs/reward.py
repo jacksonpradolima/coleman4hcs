@@ -24,6 +24,7 @@ framework. They guide agents to make better decisions about which test cases to 
 Ensure that the evaluation metric provides necessary details like detection ranks for the
 reward functions to work correctly.
 """
+
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -89,7 +90,7 @@ class TimeRankReward(Reward):
         str
             The reward function name.
         """
-        return 'Time-ranked Reward'
+        return "Time-ranked Reward"
 
     def get_name(self):
         """Return the identifier of the reward function.
@@ -99,7 +100,7 @@ class TimeRankReward(Reward):
         str
             The reward function identifier.
         """
-        return 'timerank'
+        return "timerank"
 
     def evaluate(self, reward: EvaluationMetric, last_prioritization: list):
         """Evaluate rewards based on the prioritization rank of test cases.
@@ -136,7 +137,8 @@ class TimeRankReward(Reward):
         # aligning with the equation's intent to penalize non-failing test cases scheduled before failing ones.
         normalized_rewards = [
             rewards[reward.scheduled_testcases.index(tc)] / num_failing_tests
-            if tc in reward.scheduled_testcases else 0.0
+            if tc in reward.scheduled_testcases
+            else 0.0
             for tc in last_prioritization
         ]
 
@@ -158,7 +160,7 @@ class RNFailReward(Reward):
         str
             The reward function name.
         """
-        return 'Reward Based on Failures'
+        return "Reward Based on Failures"
 
     def get_name(self):
         """Return the identifier of the reward function.
@@ -168,7 +170,7 @@ class RNFailReward(Reward):
         str
             The reward function identifier.
         """
-        return 'RNFail'
+        return "RNFail"
 
     def evaluate(self, reward: EvaluationMetric, last_prioritization: list[str]):
         """Evaluate rewards based on failures.
@@ -193,8 +195,5 @@ class RNFailReward(Reward):
         failing_indices = set(reward.detection_ranks)
 
         # Assign rewards: 1 for failing test cases, 0 otherwise
-        rewards = [
-            1.0 if i + 1 in failing_indices else 0.0
-            for i, tc in enumerate(last_prioritization)
-        ]
+        rewards = [1.0 if i + 1 in failing_indices else 0.0 for i, tc in enumerate(last_prioritization)]
         return rewards

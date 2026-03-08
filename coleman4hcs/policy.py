@@ -74,7 +74,7 @@ class Policy:
         str
             The policy name.
         """
-        return 'Untreat'
+        return "Untreat"
 
     def choose_all(self, agent: Agent):
         """Return all actions in their default (untreated) order.
@@ -89,7 +89,7 @@ class Policy:
         list of str
             List of action names.
         """
-        return agent.actions['Name'].to_list()
+        return agent.actions["Name"].to_list()
 
     def credit_assignment(self, agent):
         """Assign credit to actions based on their outcomes.
@@ -110,16 +110,14 @@ class Policy:
         agent's state, updating the value estimates for each action based on
         the outcomes observed.
         """
-        action_attempts = agent.actions['ActionAttempts'].to_numpy()
-        value_estimates = agent.actions['ValueEstimates'].to_numpy()
+        action_attempts = agent.actions["ActionAttempts"].to_numpy()
+        value_estimates = agent.actions["ValueEstimates"].to_numpy()
 
         # Prevent division by zero
-        with np.errstate(divide='ignore', invalid='ignore'):
+        with np.errstate(divide="ignore", invalid="ignore"):
             # Quality estimate: average of reward
             q_values = np.where(action_attempts > 0, value_estimates / action_attempts, 0)
-            agent.actions = agent.actions.with_columns([
-                pl.Series('Q', q_values)
-            ])
+            agent.actions = agent.actions.with_columns([pl.Series("Q", q_values)])
 
 
 class EpsilonGreedyPolicy(Policy):
@@ -158,7 +156,7 @@ class EpsilonGreedyPolicy(Policy):
         str
             The policy name with epsilon value.
         """
-        return f'\u03B5-greedy (\u03B5={self.epsilon})'
+        return f"\u03b5-greedy (\u03b5={self.epsilon})"
 
     def choose_all(self, agent: Agent):
         """Choose all actions using the epsilon-greedy strategy.
@@ -175,15 +173,13 @@ class EpsilonGreedyPolicy(Policy):
         """
         # Copy the actions and add a random mask column
         actions = agent.actions.clone()
-        actions = actions.with_columns([
-            pl.Series('is_random', np.random.random(len(actions)) < self.epsilon)
-        ])
+        actions = actions.with_columns([pl.Series("is_random", np.random.random(len(actions)) < self.epsilon)])
 
         # Use sorting to prioritize best actions for exploitation (high Q) and exploration (random actions)
-        actions = actions.sort(['is_random', 'Q'], descending=[True, True])
+        actions = actions.sort(["is_random", "Q"], descending=[True, True])
 
         # Return the ordered list of action names
-        return actions['Name'].to_list()
+        return actions["Name"].to_list()
 
 
 class GreedyPolicy(EpsilonGreedyPolicy):
@@ -205,7 +201,7 @@ class GreedyPolicy(EpsilonGreedyPolicy):
         str
             The policy name.
         """
-        return 'Greedy'
+        return "Greedy"
 
 
 class RandomPolicy(Policy):
@@ -223,7 +219,7 @@ class RandomPolicy(Policy):
         str
             The policy name.
         """
-        return 'Random'
+        return "Random"
 
     def choose_all(self, agent: Agent):
         """Choose all actions randomly.
@@ -238,7 +234,7 @@ class RandomPolicy(Policy):
         list of str
             Randomly ordered list of action names.
         """
-        actions = agent.actions['Name'].to_numpy()
+        actions = agent.actions["Name"].to_numpy()
         np.random.shuffle(actions)
         return actions.tolist()
 
@@ -280,7 +276,7 @@ class UCBPolicyBase(Policy):
         list of str
             List of action names sorted by Q value.
         """
-        return agent.actions.sort('Q', descending=True)['Name'].to_list()
+        return agent.actions.sort("Q", descending=True)["Name"].to_list()
 
 
 class UCB1Policy(UCBPolicyBase):
@@ -299,7 +295,7 @@ class UCB1Policy(UCBPolicyBase):
         str
             The policy name with C value.
         """
-        return f'UCB1 (C={self.c})'
+        return f"UCB1 (C={self.c})"
 
     def credit_assignment(self, agent: Agent):
         """Assign credit using the UCB1 formula.
@@ -312,8 +308,8 @@ class UCB1Policy(UCBPolicyBase):
         # Compute the average of rewards
         super().credit_assignment(agent)
 
-        action_attempts = agent.actions['ActionAttempts'].to_numpy()
-        quality_estimates = agent.actions['Q'].to_numpy()
+        action_attempts = agent.actions["ActionAttempts"].to_numpy()
+        quality_estimates = agent.actions["Q"].to_numpy()
 
         # Exploration term with precomputed logarithm
         exploration = np.log1p(agent.t) / action_attempts
@@ -321,9 +317,7 @@ class UCB1Policy(UCBPolicyBase):
         exploration = np.power(exploration, 1 / self.c)
 
         q_values = quality_estimates + exploration
-        agent.actions = agent.actions.with_columns([
-            pl.Series('Q', q_values)
-        ])
+        agent.actions = agent.actions.with_columns([pl.Series("Q", q_values)])
 
 
 class UCBPolicy(UCBPolicyBase):
@@ -337,7 +331,7 @@ class UCBPolicy(UCBPolicyBase):
         str
             The policy name with C value.
         """
-        return f'UCB (C={self.c})'
+        return f"UCB (C={self.c})"
 
     def credit_assignment(self, agent: Agent):
         """Assign credit using the UCB formula with scaling factor.
@@ -350,8 +344,8 @@ class UCBPolicy(UCBPolicyBase):
         # Compute the average of rewards
         super().credit_assignment(agent)
 
-        action_attempts = agent.actions['ActionAttempts'].to_numpy()
-        quality_estimates = agent.actions['Q'].to_numpy()
+        action_attempts = agent.actions["ActionAttempts"].to_numpy()
+        quality_estimates = agent.actions["Q"].to_numpy()
 
         # Precompute log(sum of action attempts)
         log_sum_attempts = np.log1p(action_attempts.sum())
@@ -361,9 +355,7 @@ class UCBPolicy(UCBPolicyBase):
 
         # Update Q values directly
         q_values = quality_estimates + self.c * exploration
-        agent.actions = agent.actions.with_columns([
-            pl.Series('Q', q_values)
-        ])
+        agent.actions = agent.actions.with_columns([pl.Series("Q", q_values)])
 
 
 class FRRMABPolicy(Policy):
@@ -410,12 +402,12 @@ class FRRMABPolicy(Policy):
         """
         return f"FRRMAB (C={self.c}, D={self.decayed_factor}"
 
-    def choose_all(self, agent: RewardSlidingWindowAgent):
+    def choose_all(self, agent: Agent):
         """Choose all actions based on Q values from the FRRMAB history.
 
         Parameters
         ----------
-        agent : RewardSlidingWindowAgent
+        agent : Agent
             The agent whose actions are to be prioritized.
 
         Returns
@@ -424,25 +416,25 @@ class FRRMABPolicy(Policy):
             List of action names sorted by Q value.
         """
         # Identify new test cases
-        existing_names = set(self.history['Name'].to_list())
-        agent_names = set(agent.actions['Name'].to_list())
+        existing_names = set(self.history["Name"].to_list())
+        agent_names = set(agent.actions["Name"].to_list())
         new_names = agent_names - existing_names
 
         if new_names:
             new_entries = pl.DataFrame(
                 {
-                    'Name': list(new_names),
-                    'ActionAttempts': [0.0] * len(new_names),
-                    'ValueEstimates': [0.0] * len(new_names),
-                    'Q': [0.0] * len(new_names),
-                    'T': [0] * len(new_names),
+                    "Name": list(new_names),
+                    "ActionAttempts": [0.0] * len(new_names),
+                    "ValueEstimates": [0.0] * len(new_names),
+                    "Q": [0.0] * len(new_names),
+                    "T": [0] * len(new_names),
                 },
                 schema=HISTORY_SCHEMA,
             )
             self.history = pl.concat([self.history, new_entries], how="vertical")
 
         # Sort by Q values to determine priorities
-        return self.history.sort('Q', descending=True)['Name'].to_list()
+        return self.history.sort("Q", descending=True)["Name"].to_list()
 
     def credit_assignment(self, agent: RewardSlidingWindowAgent):
         """Assign credit using the Fitness-Rate-Rank method.
@@ -453,15 +445,13 @@ class FRRMABPolicy(Policy):
             The agent for which credit assignment is to be performed.
         """
         # We must calculate the sum of the rewards (FIRs, Fitness Improvement Rates) by each arm in the sliding window
-        self.history = agent.history.group_by('Name').agg([
-            pl.col('ActionAttempts').sum(),
-            pl.col('ValueEstimates').sum(),
-            pl.col('T').count().alias('T')
-        ])
+        self.history = agent.history.group_by("Name").agg(
+            [pl.col("ActionAttempts").sum(), pl.col("ValueEstimates").sum(), pl.col("T").count().alias("T")]
+        )
 
         # Find rank of each arm
-        self.history = self.history.sort('ValueEstimates', descending=True)
-        reward_arm = self.history['ValueEstimates'].to_numpy()
+        self.history = self.history.sort("ValueEstimates", descending=True)
+        reward_arm = self.history["ValueEstimates"].to_numpy()
         ranking = np.arange(1, len(reward_arm) + 1)
 
         # Compute decay values
@@ -479,7 +469,7 @@ class FRRMABPolicy(Policy):
 
         # Compute Q
         # T column contains the count of usage for each "arm"
-        selected_times = self.history['T'].to_numpy()
+        selected_times = self.history["T"].to_numpy()
 
         # Precompute log(sum of selected times)
         log_selected_times = np.log1p(selected_times.sum())
@@ -487,15 +477,12 @@ class FRRMABPolicy(Policy):
         exploration = np.sqrt((2 * log_selected_times) / selected_times)
         exploration = np.nan_to_num(exploration, nan=0.0, posinf=0.0, neginf=0.0)
         self.history = self.history.with_columns(
-            pl.Series('frr', frr),
-            pl.Series('exploration', exploration),
+            pl.Series("frr", frr),
+            pl.Series("exploration", exploration),
         )
         self.history = (
-            self.history
-            .with_columns(
-                (pl.col('frr') + self.c * pl.col('exploration')).alias('Q')
-            )
-            .drop(['frr', 'exploration'])
+            self.history.with_columns((pl.col("frr") + self.c * pl.col("exploration")).alias("Q"))
+            .drop(["frr", "exploration"])
             .select(list(HISTORY_SCHEMA.keys()))
         )
 
@@ -526,12 +513,12 @@ class SlMABPolicy(Policy):
         """
         return "SlMAB ("
 
-    def choose_all(self, agent: RewardSlidingWindowAgent):
+    def choose_all(self, agent: Agent):
         """Choose all actions based on Q values from the SlMAB history.
 
         Parameters
         ----------
-        agent : RewardSlidingWindowAgent
+        agent : Agent
             The agent whose actions are to be prioritized.
 
         Returns
@@ -540,25 +527,25 @@ class SlMABPolicy(Policy):
             List of action names sorted by Q value.
         """
         # Identify new test cases
-        existing_names = set(self.history['Name'].to_list())
-        agent_names = set(agent.actions['Name'].to_list())
+        existing_names = set(self.history["Name"].to_list())
+        agent_names = set(agent.actions["Name"].to_list())
         new_names = agent_names - existing_names
 
         if new_names:
             new_entries = pl.DataFrame(
                 {
-                    'Name': list(new_names),
-                    'ActionAttempts': [0.0] * len(new_names),
-                    'ValueEstimates': [0.0] * len(new_names),
-                    'Q': [0.0] * len(new_names),
-                    'T': [0] * len(new_names),
+                    "Name": list(new_names),
+                    "ActionAttempts": [0.0] * len(new_names),
+                    "ValueEstimates": [0.0] * len(new_names),
+                    "Q": [0.0] * len(new_names),
+                    "T": [0] * len(new_names),
                 },
                 schema=HISTORY_SCHEMA,
             )
             self.history = pl.concat([self.history, new_entries], how="vertical")
 
         # Sort by Q values to determine priorities
-        return self.history.sort('Q', descending=True)['Name'].to_list()
+        return self.history.sort("Q", descending=True)["Name"].to_list()
 
     def credit_assignment(self, agent: RewardSlidingWindowAgent):
         """Assign credit using the SlMAB method.
@@ -572,42 +559,46 @@ class SlMABPolicy(Policy):
         super().credit_assignment(agent)
 
         # Group by Name and aggregate T column
-        self.history = agent.history.group_by(['Name']).agg([
-            pl.col('T').count().alias('T'),
-            pl.col('T').max().alias('Ti')
-        ])
+        self.history = agent.history.group_by(["Name"]).agg(
+            [pl.col("T").count().alias("T"), pl.col("T").max().alias("Ti")]
+        )
 
         # Get Q and R values from agent.actions by joining on Name
-        agent_data = agent.actions.select(['Name', 'Q']).rename({'Q': 'action_Q'})
-        self.history = self.history.join(agent_data, on='Name', how='left')
-        self.history = self.history.rename({'action_Q': 'Q'})
+        agent_data = agent.actions.select(["Name", "Q"]).rename({"Q": "action_Q"})
+        self.history = self.history.join(agent_data, on="Name", how="left")
+        self.history = self.history.rename({"action_Q": "Q"})
 
         # Add R column (assuming R is a column in agent.actions, or set to 0 if not exists)
-        if 'R' in agent.actions.columns:
-            agent_r = agent.actions.select(['Name', 'R']).rename({'R': 'action_R'})
-            self.history = self.history.join(agent_r, on='Name', how='left')
-            self.history = self.history.rename({'action_R': 'R'})
+        if "R" in agent.actions.columns:
+            agent_r = agent.actions.select(["Name", "R"]).rename({"R": "action_R"})
+            self.history = self.history.join(agent_r, on="Name", how="left")
+            self.history = self.history.rename({"action_R": "R"})
         else:
-            self.history = self.history.with_columns([pl.lit(0.0).alias('R')])
+            self.history = self.history.with_columns([pl.lit(0.0).alias("R")])
 
         # Compute DiffSelection, T, and Q using with_columns
-        self.history = self.history.with_columns([
-            (pl.lit(agent.t) - pl.col('Ti')).alias('DiffSelection')
-        ])
+        self.history = self.history.with_columns([(pl.lit(agent.t) - pl.col("Ti")).alias("DiffSelection")])
 
-        self.history = self.history.with_columns([
-            (pl.col('T') * (
-                (agent.window_size / (agent.window_size + pl.col('DiffSelection')))
-                + (1.0 / (pl.col('T') + 1))
-            )).alias('T')
-        ])
+        self.history = self.history.with_columns(
+            [
+                (
+                    pl.col("T")
+                    * ((agent.window_size / (agent.window_size + pl.col("DiffSelection"))) + (1.0 / (pl.col("T") + 1)))
+                ).alias("T")
+            ]
+        )
 
-        self.history = self.history.with_columns([
-            (pl.col('Q') * (
-                (agent.window_size / (agent.window_size + pl.col('DiffSelection')))
-                + pl.col('R') * (1.0 / (pl.col('T') + 1))
-            )).alias('Q')
-        ])
+        self.history = self.history.with_columns(
+            [
+                (
+                    pl.col("Q")
+                    * (
+                        (agent.window_size / (agent.window_size + pl.col("DiffSelection")))
+                        + pl.col("R") * (1.0 / (pl.col("T") + 1))
+                    )
+                ).alias("Q")
+            ]
+        )
 
 
 class LinUCBPolicy(Policy):
@@ -653,16 +644,17 @@ class LinUCBPolicy(Policy):
         self.context = {
             # dictionary - For any action "a" in actions,
             # A[a] = (DaT*Da + I) the ridge reg solution
-            'A': {},
+            "A": {},
             # Inverse
-            'A_inv': {},
+            "A_inv": {},
             # dictionary - The cumulative return of action "a", given the
             # context xt.
-            'b': {},
+            "b": {},
         }
 
         # The context is given by the agent (see choose_all function)
-        self.context_features = self.features = None
+        self.context_features: pl.DataFrame = pl.DataFrame()
+        self.features: list[str] = []
 
     def __str__(self):
         """Return a string representation of the policy.
@@ -685,9 +677,9 @@ class LinUCBPolicy(Policy):
         context_dimension = len(self.features)
         a = np.identity(context_dimension)
 
-        self.context['A'][action_id] = a
-        self.context['A_inv'][action_id] = np.linalg.inv(a)
-        self.context['b'][action_id] = np.zeros((context_dimension, 1))
+        self.context["A"][action_id] = a
+        self.context["A_inv"][action_id] = np.linalg.inv(a)
+        self.context["b"][action_id] = np.zeros((context_dimension, 1))
 
     def update_actions(self, agent: ContextualAgent, new_actions):
         """Update actions based on the agent's context.
@@ -700,7 +692,7 @@ class LinUCBPolicy(Policy):
             List of new action identifiers to add.
         """
         # Update the current context given by the agent
-        self.context_features = agent.context_features.sort('Name')
+        self.context_features = agent.context_features.sort("Name")
         self.features = agent.features
 
         # Add new actions
@@ -726,7 +718,7 @@ class LinUCBPolicy(Policy):
             If Q computation results in unexpected shape.
         """
         features = self.context_features.select(self.features).to_numpy()  # Shape: (num_actions, context_dim)
-        actions = self.context_features['Name'].to_list()
+        actions = self.context_features["Name"].to_list()
 
         # Batch processing for theta and confidence bounds
         q_values = []
@@ -734,8 +726,8 @@ class LinUCBPolicy(Policy):
             # Get the specific features from te current test case (action)
             x_i = x.reshape(-1, 1)
 
-            A_inv = self.context['A_inv'][a]
-            theta_a = A_inv.dot(self.context['b'][a])
+            A_inv = self.context["A_inv"][a]
+            theta_a = A_inv.dot(self.context["b"][a])
 
             # Confidence bound for all actions
             p_t = theta_a.T.dot(x_i) + self.alpha * np.sqrt(x_i.T.dot(A_inv).dot(x_i))
@@ -760,21 +752,21 @@ class LinUCBPolicy(Policy):
             The agent for which credit assignment is to be performed.
         """
         # We always have the same test case set
-        assert len(set(agent.actions['Name'].to_list()) - set(self.context_features['Name'].to_list())) == 0
+        assert len(set(agent.actions["Name"].to_list()) - set(self.context_features["Name"].to_list())) == 0
 
         actions = agent.actions.clone()
-        actions = actions.sort('Name')
+        actions = actions.sort("Name")
 
         features = self.context_features.select(self.features).to_numpy()
-        actions_data = actions.select(['Name', 'ValueEstimates']).to_numpy()
+        actions_data = actions.select(["Name", "ValueEstimates"]).to_numpy()
         for a, x in zip(actions_data, features, strict=False):
             x_i = x.reshape(-1, 1)
             act = a[0]
             reward = a[1]  # ValueEstimates
 
-            self.context['A'][act] += x_i.dot(x_i.T)
-            self.context['A_inv'][act] = np.linalg.inv(self.context['A'][act])
-            self.context['b'][act] += reward * x_i
+            self.context["A"][act] += x_i.dot(x_i.T)
+            self.context["A_inv"][act] = np.linalg.inv(self.context["A"][act])
+            self.context["b"][act] += reward * x_i
 
 
 class SWLinUCBPolicy(LinUCBPolicy):
@@ -798,12 +790,12 @@ class SWLinUCBPolicy(LinUCBPolicy):
         """
         return f"SWLinUCB (Alpha={self.alpha}"
 
-    def choose_all(self, agent: SlidingWindowContextualAgent):
+    def choose_all(self, agent: Agent):
         """Choose all actions based on the sliding window policy.
 
         Parameters
         ----------
-        agent : SlidingWindowContextualAgent
+        agent : Agent
             The agent whose actions are to be prioritized.
 
         Returns
@@ -816,21 +808,24 @@ class SWLinUCBPolicy(LinUCBPolicy):
         QException
             If Q computation results in unexpected shape.
         """
+        if not isinstance(agent, SlidingWindowContextualAgent):
+            raise TypeError("SWLinUCBPolicy requires a SlidingWindowContextualAgent")
+
         features = self.context_features.select(self.features).to_numpy()  # Shape: (num_actions, context_dim)
-        actions = self.context_features['Name'].to_list()
+        actions = self.context_features["Name"].to_list()
 
         # Precompute sliding window factors
-        history_names = set(agent.history['Name'].unique().to_list())  # Faster membership check
-        history_counts = agent.history['Name'].value_counts().to_dicts()  # List of dicts
-        history_counts_dict = {item['Name']: item['count'] for item in history_counts}  # Convert to dict
+        history_names = set(agent.history["Name"].unique().to_list())  # Faster membership check
+        history_counts = agent.history["Name"].value_counts().to_dicts()  # List of dicts
+        history_counts_dict = {item["Name"]: item["count"] for item in history_counts}  # Convert to dict
 
         q_values = []
         for a, x in zip(actions, features, strict=False):
             # Get the specific features from te current test case (action)
             x_i = x.reshape(-1, 1)
 
-            a_inv = self.context['A_inv'][a]
-            theta_a = a_inv.dot(self.context['b'][a])
+            a_inv = self.context["A_inv"][a]
+            theta_a = a_inv.dot(self.context["b"][a])
             q = theta_a.T.dot(x_i) + self.alpha * np.sqrt(x_i.T.dot(a_inv).dot(x_i))
 
             # This part is applied only when the iteration reaches the sliding window size
@@ -839,7 +834,7 @@ class SWLinUCBPolicy(LinUCBPolicy):
             if agent.t > agent.window_size and a in history_names:
                 occ = history_counts_dict.get(a, 0)  # Get count or 0 if not present
 
-            q *= (1 - occ / agent.window_size)
+            q *= 1 - occ / agent.window_size
 
             if len(q) > 1:
                 raise QException(f"[SWLinUCB] Q computation resulted in unexpected shape: {q.shape}")

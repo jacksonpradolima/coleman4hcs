@@ -8,16 +8,16 @@ structured approach to managing data during experiment execution.
 """
 
 from dataclasses import dataclass
+from typing import Any, Protocol
 
 from coleman4hcs.evaluation import EvaluationMetric
-from coleman4hcs.scenarios import (
-    IndustrialDatasetContextScenarioProvider,
-    IndustrialDatasetHCSScenarioProvider,
-    IndustrialDatasetScenarioProvider,
-    VirtualContextScenario,
-    VirtualHCSScenario,
-    VirtualScenario,
-)
+
+
+class ScenarioProviderLike(Protocol):
+    """Minimum interface needed by MonitorCollector during collection."""
+
+    name: str
+    avail_time_ratio: float
 
 
 @dataclass
@@ -53,14 +53,7 @@ IndustrialDatasetContextScenarioProvider]
         The order of prioritized test cases.
     """
 
-    scenario_provider: (
-        VirtualScenario
-        | VirtualHCSScenario
-        | VirtualContextScenario
-        | IndustrialDatasetScenarioProvider
-        | IndustrialDatasetHCSScenarioProvider
-        | IndustrialDatasetContextScenarioProvider
-    )
+    scenario_provider: ScenarioProviderLike
     available_time: float
     experiment: int
     t: int
@@ -70,4 +63,4 @@ IndustrialDatasetContextScenarioProvider]
     total_build_duration: int
     prioritization_time: int
     rewards: float
-    prioritization_order: list[any]
+    prioritization_order: list[Any]

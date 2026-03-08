@@ -22,6 +22,7 @@ Notes
 - This module uses environment variables, loaded through ``dotenv``, to obtain
   specific configuration details.
 """
+
 import logging
 import os
 import sys
@@ -29,6 +30,7 @@ import time
 import warnings
 from multiprocessing import Pool
 from pathlib import Path
+from typing import Any
 
 import duckdb
 import polars as pl
@@ -66,7 +68,7 @@ def create_logger(level):
     """
     logger = logging.getLogger()
     logger.setLevel(level)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(formatter)
 
@@ -76,7 +78,13 @@ def create_logger(level):
     return logger
 
 
-def exp_run_industrial_dataset(iteration, trials, env: Environment, experiment_directory, level):
+def exp_run_industrial_dataset(
+    iteration: int,
+    trials: int,
+    env: Environment,
+    experiment_directory: str,
+    level: int,
+) -> None:
     """Execute a single run of the industrial dataset experiment.
 
     Parameters
@@ -93,7 +101,8 @@ def exp_run_industrial_dataset(iteration, trials, env: Environment, experiment_d
         The logging level.
     """
     csv_file_name = f"{experiment_directory}{str(env.scenario_provider)}_{iteration}.csv"
-    env.logger = create_logger(level)
+    # Initialize logging for worker processes without mutating Environment state.
+    create_logger(level)
     env.create_file(csv_file_name)
     env.run_single(iteration, trials)
     env.store_experiment(csv_file_name)
@@ -155,13 +164,16 @@ def create_agents(policy, rew_fun, window_sizes):
 
 
 def get_scenario_provider(  # pylint: disable=too-many-positional-arguments
-        datasets_dir,
-        dataset,
-        sched_time_ratio,
-        use_hcs,
-        use_context,
-        context_config,
-        feature_groups):
+    datasets_dir: str,
+    dataset: str,
+    sched_time_ratio: float,
+    use_hcs: bool,
+    use_context: bool,
+    context_config: dict[str, Any],
+    feature_groups: dict[str, Any],
+) -> (
+    IndustrialDatasetScenarioProvider | IndustrialDatasetHCSScenarioProvider | IndustrialDatasetContextScenarioProvider
+):
     """Return the appropriate scenario provider based on the given configuration.
 
     The function selects the scenario provider based on whether the
@@ -192,23 +204,40 @@ def get_scenario_provider(  # pylint: disable=too-many-positional-arguments
 or IndustrialDatasetContextScenarioProvider
         An instance of the scenario provider based on the given configuration.
     """
-    base_args = [f"{datasets_dir}/{dataset}/features-engineered.csv", sched_time_ratio]
+    base_tcfile = f"{datasets_dir}/{dataset}/features-engineered.csv"
 
     if use_hcs and not use_context:
-        scenario_cls = IndustrialDatasetHCSScenarioProvider
-        base_args.insert(1, f"{datasets_dir}/{dataset}/data-variants.csv")
-    elif not use_hcs and use_context:
-        scenario_cls = IndustrialDatasetContextScenarioProvider
-        base_args[0] = f"{datasets_dir}/{dataset}/features-engineered-contextual.csv"
-        base_args.insert(1, feature_groups['feature_group_name'])
-        base_args.insert(2, feature_groups['feature_group_values'])
-        base_args.insert(3, context_config['previous_build'])
-    elif use_hcs and use_context:
-        raise NotImplementedError
-    else:
-        scenario_cls = IndustrialDatasetScenarioProvider
+        variants_file = f"{datasets_dir}/{dataset}/data-variants.csv"
+        return IndustrialDatasetHCSScenarioProvider(base_tcfile, variants_file, sched_time_ratio)
 
-    return scenario_cls(*base_args)
+    if use_hcs and use_context:
+        raise NotImplementedError
+
+    if use_context:
+        contextual_tcfile = f"{datasets_dir}/{dataset}/features-engineered-contextual.csv"
+        feature_group_name = str(feature_groups["feature_group_name"])
+
+        feature_group_values_raw = feature_groups["feature_group_values"]
+        previous_build_raw = context_config["previous_build"]
+
+        if not isinstance(feature_group_values_raw, list) or not all(
+            isinstance(value, str) for value in feature_group_values_raw
+        ):
+            raise TypeError("feature_group_values must be a list[str]")
+
+        if not isinstance(previous_build_raw, list) or not all(isinstance(value, str) for value in previous_build_raw):
+            raise TypeError("previous_build must be a list[str]")
+
+        return IndustrialDatasetContextScenarioProvider(
+            contextual_tcfile,
+            feature_group_name,
+            feature_group_values_raw,
+            previous_build_raw,
+            sched_time_ratio,
+        )
+
+    return IndustrialDatasetScenarioProvider(base_tcfile, sched_time_ratio)
+
 
 def merge_csv(files, output_file):
     """Merge multiple CSV files into a single CSV file.
@@ -226,15 +255,16 @@ def merge_csv(files, output_file):
         saved.
     """
     # Merge all CSV files into one DataFrame
-    dfs = [pl.read_csv(file, separator=';') for file in files]
+    dfs = [pl.read_csv(file, separator=";") for file in files]
     df = pl.concat(dfs, how="vertical")
 
     # Save the merged DataFrame to CSV
-    df.write_csv(output_file, separator=';', quote_style="never")
+    df.write_csv(output_file, separator=";", quote_style="never")
 
     # Optionally, clean up temporary files
     for file in files:
         os.remove(file)
+
 
 def store_experiments(csv_file, scenario):
     """Store experiment results from a CSV file into a DuckDB database.
@@ -259,7 +289,7 @@ def store_experiments(csv_file, scenario):
     delimiter.
     """
     # Create/Open a database to store the results
-    conn = duckdb.connect('experiments.db')
+    conn = duckdb.connect("experiments.db")
 
     # Ensure the tables exist with the appropriate schema
     conn.execute("""
@@ -288,7 +318,7 @@ def store_experiments(csv_file, scenario):
     );
     """)
 
-    df = conn.read_csv(csv_file, delimiter=';', quotechar='"', header=True)  # noqa: F841
+    df = conn.read_csv(csv_file, delimiter=";", quotechar='"', header=True)  # noqa: F841
 
     # Insert the DataFrame into the 'experiments' table
     conn.execute("INSERT INTO experiments SELECT * FROM df;")
@@ -301,63 +331,36 @@ def store_experiments(csv_file, scenario):
         Path(name2).mkdir(parents=True, exist_ok=True)
 
         for variant in scenario.get_all_variants():
-            csv_file_variant = (
-                f"{name2}/{csv_file.split('/')[-1].split('@')[0]}"
-                f"@{variant.replace('/', '-')}.csv"
-            )
-            df = conn.read_csv(csv_file_variant, delimiter=';', quotechar='"', header=True)  # noqa: F841
+            csv_file_variant = f"{name2}/{csv_file.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv"
+            df = conn.read_csv(csv_file_variant, delimiter=";", quotechar='"', header=True)  # noqa: F841
 
             # Insert the DataFrame into the 'experiments' table
             conn.execute("INSERT INTO experiments SELECT * FROM df;")
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     load_dotenv()
     config = get_config()
 
     # Execution configuration
-    (
-        parallel_pool_size,
-        independent_executions,
-        verbose
-    ) = map(config['execution'].get, [
-        'parallel_pool_size',
-        'independent_executions',
-        'verbose'
-    ])
+    (parallel_pool_size, independent_executions, verbose) = map(
+        config["execution"].get, ["parallel_pool_size", "independent_executions", "verbose"]
+    )
 
     # Experiment Configuration
-    (
-        sched_time_ratio,
-        datasets_dir,
-        datasets,
-        experiment_dir,
-        rewards_names,
-        policy_names
-    ) = map(config['experiment'].get, [
-        'scheduled_time_ratio',
-        'datasets_dir',
-        'datasets',
-        'experiment_dir',
-        'rewards',
-        'policies'
-    ])
+    (sched_time_ratio, datasets_dir, datasets, experiment_dir, rewards_names, policy_names) = map(
+        config["experiment"].get,
+        ["scheduled_time_ratio", "datasets_dir", "datasets", "experiment_dir", "rewards", "policies"],
+    )
 
     # Algorithms Configuration
-    algorithm_configs = config['algorithm']
+    algorithm_configs = config["algorithm"]
 
     # HCS Configuration
-    use_hcs = config.get('hcs_configuration', False).get('wts_strategy', False)
+    use_hcs = config.get("hcs_configuration", False).get("wts_strategy", False)
 
     # Contextual Information
-    (
-        context_config,
-        feature_groups
-    ) = map(config['contextual_information'].get, [
-        'config',
-        'feature_group'
-    ])
+    (context_config, feature_groups) = map(config["contextual_information"].get, ["config", "feature_group"])
 
     # Load policy objects along with the target reward functions
     policies = {
@@ -378,7 +381,7 @@ if __name__ == '__main__':
         for agent in create_agents(
             policy,
             load_class_from_module(coleman4hcs.reward, reward_name + "Reward")(),
-            algorithm_configs.get(policy_name.lower(), {}).get('window_sizes', [])
+            algorithm_configs.get(policy_name.lower(), {}).get("window_sizes", []),
         )
     ]
 
@@ -406,8 +409,9 @@ if __name__ == '__main__':
         Path(experiment_directory).mkdir(parents=True, exist_ok=True)
 
         for dataset in datasets:
-            scenario = get_scenario_provider(datasets_dir, dataset, tr, use_hcs, use_context, context_config,
-                                             feature_groups)
+            scenario = get_scenario_provider(
+                datasets_dir, dataset, tr, use_hcs, use_context, context_config, feature_groups
+            )
 
             # Stop conditional
             trials = scenario.max_builds
@@ -415,7 +419,9 @@ if __name__ == '__main__':
             # Prepare the experiment
             env = Environment(agents, scenario, evaluation_metric)
 
-            parameters = [(i + 1, trials, env, experiment_directory, level) for i in range(independent_executions)]
+            parameters: list[tuple[int, int, Environment, str, int]] = [
+                (i + 1, trials, env, experiment_directory, level) for i in range(independent_executions)
+            ]
 
             # Compute time
             start = time.time()
@@ -431,8 +437,7 @@ if __name__ == '__main__':
 
             # Read and merge the independent executions
             csv_file_names = [
-                f"{experiment_directory}{str(env.scenario_provider)}_{i+1}.csv"
-                for i in range(independent_executions)
+                f"{experiment_directory}{str(env.scenario_provider)}_{i + 1}.csv" for i in range(independent_executions)
             ]
             csv_file = f"{experiment_directory}{str(env.scenario_provider)}.csv"
             merge_csv(csv_file_names, csv_file)
