@@ -188,9 +188,9 @@ def test_temp_limit_trigger(monitor_collector, mock_scenario_provider, mock_metr
         monitor_collector.collect(params)
 
     # After exceeding the limit, temp_rows should only contain the last record
-    assert (
-        len(monitor_collector.temp_rows) == 1
-    ), f"Expected 1 record in temp_rows, found {len(monitor_collector.temp_rows)}"
+    assert len(monitor_collector.temp_rows) == 1, (
+        f"Expected 1 record in temp_rows, found {len(monitor_collector.temp_rows)}"
+    )
 
     # The main df should have the flushed records
     assert len(monitor_collector.df) == 5, f"Expected 5 records in df, found {len(monitor_collector.df)}"
@@ -274,9 +274,9 @@ def test_collect_from_temp_empty_batch_df(monitor_collector):
     monitor_collector.collect_from_temp()
 
     # Assert that df remains empty
-    assert (
-        monitor_collector.df.height == 0
-    ), f"Expected df to remain empty when batch_df is empty. Found: {monitor_collector.df}"
+    assert monitor_collector.df.height == 0, (
+        f"Expected df to remain empty when batch_df is empty. Found: {monitor_collector.df}"
+    )
     # Assert that temp_rows is cleared
     assert not monitor_collector.temp_rows, f"Expected temp_rows to be cleared but found: {monitor_collector.temp_rows}"
 

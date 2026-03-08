@@ -256,9 +256,9 @@ def test_bandit_update_priority_with_duplicates():
     bandit = MockBandit(sample_arms)
     action = ["Test1"]
     bandit.update_priority(action)
-    assert (
-        bandit.arms.filter(pl.col("Name") == "Test1")["CalcPrio"][0] > 0
-    ), "All duplicates of 'Test1' should have updated priorities."
+    assert bandit.arms.filter(pl.col("Name") == "Test1")["CalcPrio"][0] > 0, (
+        "All duplicates of 'Test1' should have updated priorities."
+    )
 
 
 def test_dynamic_bandit_reset_after_update(sample_arms):

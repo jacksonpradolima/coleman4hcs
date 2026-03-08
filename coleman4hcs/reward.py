@@ -47,7 +47,7 @@ class Reward(ABC):
         str
             The name or identifier of the reward function.
         """
-        return NotImplementedError
+        raise NotImplementedError
 
     @abstractmethod
     def evaluate(self, reward: EvaluationMetric, last_prioritization: list[str]):
@@ -65,7 +65,7 @@ class Reward(ABC):
         list of float
             The computed rewards for each test case.
         """
-        return NotImplementedError
+        raise NotImplementedError
 
 
 class TimeRankReward(Reward):

@@ -138,7 +138,7 @@ class Bandit(ABC):
         action : list
             The action (prioritized test suite) to pull.
         """
-        return NotImplementedError("You must to implemented this function")
+        raise NotImplementedError("You must implement this function")
 
     def update_priority(self, action):
         """Update the Priority column with the priorities.

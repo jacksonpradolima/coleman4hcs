@@ -48,7 +48,7 @@ lint: ensure-uv ## Run ruff linter
 	$(UV) run ruff check .
 
 format: ensure-uv ## Run ruff formatter
-	$(UV) run ruff check --fix .
+	$(UV) run ruff format .
 
 typecheck: ensure-uv ## Run pyright and ty type checkers
 	# Run both static type checkers
