@@ -70,15 +70,14 @@ def vd_a(treatment: list[float], control: list[float]) -> tuple[float, str]:
     r1 = sum(r[0:m])
 
     # Compute the measure
-    # a_estimate = (r1/m - (m+1)/2)/n # formula (14) in Vargha and Delaney, 2000
-    a_estimate = (2 * r1 - m * (m + 1)) / (2 * n * m)  # equivalent formula to avoid accuracy errors
+    # estimate = (r1/m - (m+1)/2)/n # formula (14) in Vargha and Delaney, 2000
+    estimate = (2 * r1 - m * (m + 1)) / (2 * n * m)  # equivalent formula to avoid accuracy errors
 
     levels = [0.147, 0.33, 0.474]  # effect sizes from Hess and Kromrey, 2004
     magnitude = ["negligible", "small", "medium", "large"]
-    scaled_a = (a_estimate - 0.5) * 2
+    scaled_a = (estimate - 0.5) * 2
 
     magnitude = magnitude[bisect_left(levels, abs(scaled_a))]
-    estimate = a_estimate
 
     return estimate, magnitude
 
