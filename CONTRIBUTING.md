@@ -76,11 +76,11 @@ refactor: simplify reward evaluation logic
 
 ## Pull Request Process
 
-1. **Fork** the repository and create a feature branch from `master`.
+1. **Fork** the repository and create a feature branch from `main`.
 2. Make your changes following the code style guidelines above.
 3. Add or update tests to cover your changes.
 4. Ensure all checks pass: `make check-precommit`.
-5. Open a pull request against `master`.
+5. Open a pull request against `main`.
 6. A maintainer will review your PR. Please be responsive to feedback.
 
 ## Reporting Bugs
