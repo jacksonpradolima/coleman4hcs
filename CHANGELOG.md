@@ -1,6 +1,127 @@
 # CHANGELOG
 
 
+## v1.1.0 (2026-03-09)
+
+### Chores
+
+- Remove mkdocs.yml and add api-reference.md to nav
+  ([`2968abe`](https://github.com/jacksonpradolima/coleman4hcs/commit/2968abe5ea3f17c20a271e6239ac0481116cfa27))
+
+- Delete mkdocs.yml since zensical.toml is now the authoritative config - Add api-reference.md as
+  Overview entry in the API Reference nav section
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Update uv.lock for version 1.0.0
+  ([`f730368`](https://github.com/jacksonpradolima/coleman4hcs/commit/f730368e1eb5687d9a0b6e94c0f3668fdc8fdf8e))
+
+- **deps**: Bump actions/checkout from 4 to 6 in /.github/workflows
+  ([`8e16b07`](https://github.com/jacksonpradolima/coleman4hcs/commit/8e16b072fc13db3b30fe441bf38dcfcc965a4682))
+
+chore(deps): bump actions/checkout from 4 to 6 in /.github/workflows
+
+- **deps**: Bump marimo from 0.20.3 to 0.20.4
+  ([`de23fb9`](https://github.com/jacksonpradolima/coleman4hcs/commit/de23fb982f958cf32ced2a5eb5bb5212137717b8))
+
+chore(deps): bump marimo from 0.20.3 to 0.20.4
+
+- **deps**: Bump marimo from 0.20.3 to 0.20.4
+  ([`d881448`](https://github.com/jacksonpradolima/coleman4hcs/commit/d8814489828650fd30d6b7c036a0882ec020cc1e))
+
+Bumps [marimo](https://github.com/marimo-team/marimo) from 0.20.3 to 0.20.4. - [Release
+  notes](https://github.com/marimo-team/marimo/releases) -
+  [Commits](https://github.com/marimo-team/marimo/compare/0.20.3...0.20.4)
+
+--- updated-dependencies: - dependency-name: marimo dependency-version: 0.20.4
+
+dependency-type: direct:production
+
+update-type: version-update:semver-patch
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump ruff from 0.15.4 to 0.15.5
+  ([`d19498f`](https://github.com/jacksonpradolima/coleman4hcs/commit/d19498f6fc6f948639d61554f88db4def2899ef7))
+
+chore(deps): bump ruff from 0.15.4 to 0.15.5
+
+- **deps**: Bump ruff from 0.15.4 to 0.15.5
+  ([`3b4a1bc`](https://github.com/jacksonpradolima/coleman4hcs/commit/3b4a1bc3f0d38a8779e21ec05b12bf56bd7506cf))
+
+Bumps [ruff](https://github.com/astral-sh/ruff) from 0.15.4 to 0.15.5. - [Release
+  notes](https://github.com/astral-sh/ruff/releases) -
+  [Changelog](https://github.com/astral-sh/ruff/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/astral-sh/ruff/compare/0.15.4...0.15.5)
+
+--- updated-dependencies: - dependency-name: ruff dependency-version: 0.15.5
+
+dependency-type: direct:production
+
+update-type: version-update:semver-patch
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump sigstore/gh-action-sigstore-python
+  ([`c5e36a4`](https://github.com/jacksonpradolima/coleman4hcs/commit/c5e36a41316f7a379d100c03df4cdb671948e180))
+
+Bumps [sigstore/gh-action-sigstore-python](https://github.com/sigstore/gh-action-sigstore-python)
+  from 3.0.0 to 3.2.0. - [Release
+  notes](https://github.com/sigstore/gh-action-sigstore-python/releases) -
+  [Changelog](https://github.com/sigstore/gh-action-sigstore-python/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/sigstore/gh-action-sigstore-python/compare/f514d46b907ebcd5bedc05145c03b69c1edd8b46...a5caf349bc536fbef3668a10ed7f5cd309a4b53d)
+
+--- updated-dependencies: - dependency-name: sigstore/gh-action-sigstore-python dependency-version:
+  3.2.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump sigstore/gh-action-sigstore-python from 3.0.0 to 3.2.0 in /.github/workflows
+  ([`fa36c28`](https://github.com/jacksonpradolima/coleman4hcs/commit/fa36c289a9d6c8ecfe39515f86969a16a94fd52a))
+
+chore(deps): bump sigstore/gh-action-sigstore-python from 3.0.0 to 3.2.0 in /.github/workflows
+
+- **deps**: Bump ty from 0.0.20 to 0.0.21
+  ([`ae9cd9b`](https://github.com/jacksonpradolima/coleman4hcs/commit/ae9cd9be3d1e2e2835f101cd048351452797abee))
+
+chore(deps): bump ty from 0.0.20 to 0.0.21
+
+- **deps**: Bump ty from 0.0.20 to 0.0.21
+  ([`f067251`](https://github.com/jacksonpradolima/coleman4hcs/commit/f0672512164c4cc1b5258541c60578f21e74a8d2))
+
+Bumps [ty](https://github.com/astral-sh/ty) from 0.0.20 to 0.0.21. - [Release
+  notes](https://github.com/astral-sh/ty/releases) -
+  [Changelog](https://github.com/astral-sh/ty/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/astral-sh/ty/compare/0.0.20...0.0.21)
+
+--- updated-dependencies: - dependency-name: ty dependency-version: 0.0.21
+
+dependency-type: direct:production
+
+update-type: version-update:semver-patch
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+### Features
+
+- Add zensical.toml configuration for project documentation
+  ([`b2114e8`](https://github.com/jacksonpradolima/coleman4hcs/commit/b2114e887ae589bc6b4aebe6cc0c0ecf9738e66c))
+
+feat: add zensical.toml configuration for project documentation
+
+
 ## v1.0.0 (2026-03-08)
 
 ### Bug Fixes
@@ -103,6 +224,24 @@ Bumps [actions/checkout](https://github.com/actions/checkout) from 3 to 4. - [Re
   [Commits](https://github.com/actions/checkout/compare/v3...v4)
 
 --- updated-dependencies: - dependency-name: actions/checkout dependency-type: direct:production
+
+update-type: version-update:semver-major
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump actions/checkout from 4 to 6 in /.github/workflows
+  ([`24bdbbb`](https://github.com/jacksonpradolima/coleman4hcs/commit/24bdbbb7f87d497729a6213c195b5caad401a9e9))
+
+Bumps [actions/checkout](https://github.com/actions/checkout) from 4 to 6. - [Release
+  notes](https://github.com/actions/checkout/releases) -
+  [Changelog](https://github.com/actions/checkout/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/actions/checkout/compare/v4...v6)
+
+--- updated-dependencies: - dependency-name: actions/checkout dependency-version: '6'
+
+dependency-type: direct:production
 
 update-type: version-update:semver-major
 
