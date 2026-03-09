@@ -45,6 +45,14 @@ release = [
 notebook = [
     "marimo",
 ]
+telemetry = [
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp-proto-http",
+]
+clickhouse = [
+    "clickhouse-connect",
+]
 
 [project.urls]
 homepage = "https://github.com/jacksonpradolima/coleman4hcs"
@@ -65,6 +73,7 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "N", "D"]
 "tests/**" = ["D100", "D101", "D102", "D103", "D104", "D107", "D200", "D205", "D400", "D401"]
 "notebooks/**" = ["D", "E501", "F821", "F841", "B023", "B905", "N", "UP", "SIM", "W"]
 "coleman4hcs/exceptions.py" = ["N818"]
+"examples/**" = ["D", "E501"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"

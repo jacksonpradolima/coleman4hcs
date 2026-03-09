@@ -1,0 +1,94 @@
+# Setup & Architecture
+
+## Default run (no Docker required)
+
+Coleman4HCS is framework-first: the default installation works without any
+external services.
+
+```bash
+pip install coleman4hcs
+python main.py
+```
+
+Results are written as **partitioned Parquet files** (zstd compressed) under
+`./runs/` by default.  You can query them directly with DuckDB or Polars
+without loading everything into RAM.
+
+## Architecture overview
+
+Coleman4HCS separates three concerns:
+
+| Layer | Purpose | Default | Optional |
+|-------|---------|---------|----------|
+| **Results** | Persist experiment facts (NAPFD, APFDc, …) | Partitioned Parquet | ClickHouse sink |
+| **Checkpoints** | Crash-safe resume | Local filesystem (pickle + progress.json) | — |
+| **Telemetry** | Observability (latency, throughput) | Disabled (NoOp) | OpenTelemetry + Collector |
+
+### Null adapters
+
+When a layer is disabled its module resolves to a **Null implementation**
+with near-zero overhead:
+
+* `NullSink` — discards result rows
+* `NullCheckpointStore` — never saves/loads checkpoints
+* `NoOpTelemetry` — all instrument calls are instant no-ops
+
+## Configuration
+
+All settings live in `config.toml`:
+
+```toml
+[results]
+enabled = true
+sink = "parquet"
+out_dir = "./runs"
+batch_size = 1000
+top_k_prioritization = 0  # 0 = hash only
+
+[checkpoint]
+enabled = true
+interval = 50000
+base_dir = "checkpoints"
+
+[telemetry]
+enabled = false
+otlp_endpoint = "http://localhost:4318"
+service_name = "coleman4hcs"
+```
+
+## Optional extras
+
+```bash
+# Telemetry (OpenTelemetry SDK)
+pip install coleman4hcs[telemetry]
+
+# ClickHouse sink
+pip install coleman4hcs[clickhouse]
+```
+
+## Optional observability stack
+
+See [`examples/observability/`](../examples/observability/) for a Docker
+Compose stack with OTel Collector + Grafana (ClickHouse under a profile).
+
+```bash
+cd examples/observability
+docker compose up -d          # base stack
+docker compose --profile clickhouse up -d  # with ClickHouse
+```
+
+## Migration from CSV outputs
+
+If you previously relied on CSV files produced by `MonitorCollector`:
+
+1. **CSV output still works** — `MonitorCollector.save()` is unchanged.
+2. **New Parquet pipeline** runs in parallel (when `results.enabled = true`).
+3. Query Parquet with DuckDB:
+
+```sql
+SELECT * FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+WHERE policy = 'UCB' AND reward_function = 'RNFail';
+```
+
+4. To disable Parquet and keep only CSV, set `results.enabled = false` in
+   `config.toml`.
