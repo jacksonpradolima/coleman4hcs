@@ -1,0 +1,93 @@
+"""
+coleman4hcs.results.writer - Thread-Safe Bounded-Queue Writer.
+
+Provides a ``ResultsWriter`` that accepts row dicts through a bounded queue
+and flushes them to a ``ResultsSink`` via a dedicated background thread.
+
+This decouples the hot path (``monitor.collect``) from I/O latency and
+guarantees bounded memory usage regardless of experiment length.
+"""
+
+from __future__ import annotations
+
+import logging
+import queue
+import threading
+from typing import Any
+
+from coleman4hcs.results.sink_base import ResultsSink
+
+logger = logging.getLogger(__name__)
+
+_SENTINEL = None  # signals the writer thread to stop
+
+
+class ResultsWriter:
+    """Thread-safe writer that drains a bounded queue into a ``ResultsSink``.
+
+    Parameters
+    ----------
+    sink : ResultsSink
+        The target results sink.
+    max_queue_size : int
+        Maximum number of rows that can be queued.  When the queue is full
+        the calling thread blocks until space is available.
+
+    Attributes
+    ----------
+    sink : ResultsSink
+        Target sink.
+    """
+
+    def __init__(self, sink: ResultsSink, max_queue_size: int = 10_000) -> None:
+        self.sink = sink
+        self._queue: queue.Queue[dict[str, Any] | None] = queue.Queue(maxsize=max_queue_size)
+        self._thread = threading.Thread(target=self._drain, daemon=True, name="ResultsWriter")
+        self._started = False
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def start(self) -> None:
+        """Start the background writer thread."""
+        if not self._started:
+            self._thread.start()
+            self._started = True
+
+    def enqueue(self, row: dict[str, Any]) -> None:
+        """Add a row to the write queue.
+
+        Parameters
+        ----------
+        row : dict[str, Any]
+            Result row to persist.
+        """
+        if not self._started:
+            self.start()
+        self._queue.put(row)
+
+    def stop(self) -> None:
+        """Signal the writer thread to finish and wait for it to drain."""
+        if self._started:
+            self._queue.put(_SENTINEL)
+            self._thread.join()
+            self._started = False
+
+    # ------------------------------------------------------------------
+    # Internal
+    # ------------------------------------------------------------------
+
+    def _drain(self) -> None:
+        """Background loop: read from queue, write to sink."""
+        while True:
+            row = self._queue.get()
+            if row is _SENTINEL:
+                # Drain remaining items
+                while not self._queue.empty():
+                    remaining = self._queue.get_nowait()
+                    if remaining is not _SENTINEL:
+                        self.sink.write_row(remaining)
+                self.sink.flush()
+                break
+            self.sink.write_row(row)

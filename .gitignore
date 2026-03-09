@@ -189,7 +189,7 @@ dmypy.json
 data/square@okhttp/features-engineered.csv
 
 backup/
-results/
+/results/
 
 .idea/encodings.xml
 .idea/inspectionProfiles/
