@@ -1,0 +1,139 @@
+"""Tests for the checkpoint store interface and implementations."""
+
+import json
+
+from coleman4hcs.checkpoint.checkpoint_store import CheckpointStore, LocalCheckpointStore, NullCheckpointStore
+from coleman4hcs.checkpoint.state import CheckpointPayload
+
+# ============================================================================
+# NullCheckpointStore
+# ============================================================================
+
+
+class TestNullCheckpointStore:
+    def test_is_checkpoint_store(self):
+        assert isinstance(NullCheckpointStore(), CheckpointStore)
+
+    def test_save_is_noop(self):
+        store = NullCheckpointStore()
+        payload = CheckpointPayload(run_id="r1", experiment=1, step=10)
+        store.save(payload)  # should not raise
+
+    def test_load_returns_none(self):
+        store = NullCheckpointStore()
+        assert store.load("r1", 1) is None
+
+
+# ============================================================================
+# CheckpointPayload
+# ============================================================================
+
+
+class TestCheckpointPayload:
+    def test_defaults(self):
+        p = CheckpointPayload()
+        assert p.run_id == ""
+        assert p.experiment == 0
+        assert p.step == 0
+        assert p.agents is None
+        assert p.monitor is None
+        assert p.variant_monitors == {}
+        assert p.bandit is None
+        assert p.extra == {}
+
+    def test_custom_values(self):
+        p = CheckpointPayload(run_id="test", experiment=3, step=42, agents=["a1"])
+        assert p.run_id == "test"
+        assert p.experiment == 3
+        assert p.step == 42
+        assert p.agents == ["a1"]
+
+
+# ============================================================================
+# LocalCheckpointStore
+# ============================================================================
+
+
+class TestLocalCheckpointStore:
+    def test_save_creates_files(self, tmp_path):
+        store = LocalCheckpointStore(base_dir=str(tmp_path / "ckpts"))
+        payload = CheckpointPayload(run_id="run1", experiment=1, step=100, agents=["agent1"])
+        store.save(payload)
+
+        run_dir = tmp_path / "ckpts" / "run1"
+        assert run_dir.exists()
+        assert (run_dir / "progress.json").exists()
+        assert (run_dir / "ckpt_ex1_step100.pkl").exists()
+
+    def test_progress_json_content(self, tmp_path):
+        store = LocalCheckpointStore(base_dir=str(tmp_path / "ckpts"))
+        payload = CheckpointPayload(run_id="run1", experiment=1, step=100)
+        store.save(payload)
+
+        progress_path = tmp_path / "ckpts" / "run1" / "progress.json"
+        with open(progress_path) as f:
+            progress = json.load(f)
+
+        assert progress["run_id"] == "run1"
+        assert progress["experiment"] == 1
+        assert progress["step_committed"] == 100
+        assert "checkpoint_path" in progress
+        assert "timestamp" in progress
+
+    def test_load_roundtrip(self, tmp_path):
+        store = LocalCheckpointStore(base_dir=str(tmp_path / "ckpts"))
+        payload = CheckpointPayload(run_id="run1", experiment=2, step=500, agents=["a1", "a2"], extra={"key": "value"})
+        store.save(payload)
+
+        loaded = store.load("run1", 2)
+        assert loaded is not None
+        assert loaded.run_id == "run1"
+        assert loaded.experiment == 2
+        assert loaded.step == 500
+        assert loaded.agents == ["a1", "a2"]
+        assert loaded.extra == {"key": "value"}
+
+    def test_load_nonexistent_returns_none(self, tmp_path):
+        store = LocalCheckpointStore(base_dir=str(tmp_path / "ckpts"))
+        assert store.load("nonexistent", 1) is None
+
+    def test_load_wrong_experiment_returns_none(self, tmp_path):
+        store = LocalCheckpointStore(base_dir=str(tmp_path / "ckpts"))
+        payload = CheckpointPayload(run_id="run1", experiment=1, step=100)
+        store.save(payload)
+
+        # Request experiment 2, but checkpoint is for experiment 1
+        assert store.load("run1", 2) is None
+
+    def test_overwrite_checkpoint(self, tmp_path):
+        store = LocalCheckpointStore(base_dir=str(tmp_path / "ckpts"))
+
+        store.save(CheckpointPayload(run_id="run1", experiment=1, step=100, agents=["old"]))
+        store.save(CheckpointPayload(run_id="run1", experiment=1, step=200, agents=["new"]))
+
+        loaded = store.load("run1", 1)
+        assert loaded is not None
+        assert loaded.step == 200
+        assert loaded.agents == ["new"]
+
+    def test_atomic_json_write(self, tmp_path):
+        """Verify atomic write produces valid JSON."""
+        path = str(tmp_path / "test.json")
+        LocalCheckpointStore._atomic_json_write(path, {"key": "value"})
+
+        with open(path) as f:
+            data = json.load(f)
+        assert data == {"key": "value"}
+
+    def test_load_missing_pickle_returns_none(self, tmp_path):
+        """Verify load returns None when progress.json exists but pickle file is missing."""
+        store = LocalCheckpointStore(base_dir=str(tmp_path / "ckpts"))
+        payload = CheckpointPayload(run_id="run1", experiment=1, step=100)
+        store.save(payload)
+
+        # Remove the pickle file
+        run_dir = tmp_path / "ckpts" / "run1"
+        for f in run_dir.glob("*.pkl"):
+            f.unlink()
+
+        assert store.load("run1", 1) is None

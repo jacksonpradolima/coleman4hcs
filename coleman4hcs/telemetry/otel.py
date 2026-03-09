@@ -71,8 +71,7 @@ class Telemetry:
     ) -> None:
         if not _HAS_OTEL:
             raise ImportError(
-                "opentelemetry SDK is required for Telemetry. "
-                "Install it with: pip install coleman4hcs[telemetry]"
+                "opentelemetry SDK is required for Telemetry. Install it with: pip install coleman4hcs[telemetry]"
             )
 
         resource = Resource.create({"service.name": service_name})
