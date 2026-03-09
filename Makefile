@@ -86,10 +86,10 @@ test-cov: ensure-uv install ## Run tests with coverage report in parallel if xdi
 # ——— Documentation ————————————————————————————————————————
 
 docs: ensure-uv ## Build documentation with Zensical
-	$(UV) run zensical build --strict
+	$(UV) run --extra docs zensical build --strict
 
 docs-serve: ensure-uv ## Serve documentation locally
-	$(UV) run zensical serve
+	$(UV) run --extra docs zensical serve
 
 # ——— Build ————————————————————————————————————————————————
 
