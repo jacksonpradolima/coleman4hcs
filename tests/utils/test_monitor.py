@@ -48,13 +48,6 @@ def null_monitor():
     return MonitorCollector(sink=NullSink())
 
 
-@pytest.fixture
-def parquet_monitor(tmp_path):
-    """Create a MonitorCollector backed by a ParquetSink."""
-    sink = ParquetSink(out_dir=str(tmp_path / "runs"), batch_size=100)
-    return MonitorCollector(sink=sink)
-
-
 def _make_params(mock_scenario_provider, mock_metric, **overrides):
     """Build a CollectParams with sensible defaults."""
     kwargs = {

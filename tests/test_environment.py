@@ -294,7 +294,6 @@ def test_environment_with_results_config(mock_agent, mock_scenario_provider, moc
         evaluation_metric=mock_evaluation_metric,
         results_config={"enabled": True, "sink": "parquet", "out_dir": str(tmp_path / "runs"), "batch_size": 50},
     )
-    assert isinstance(env._sink, ParquetSink)
     assert isinstance(env.monitor.sink, ParquetSink)
 
 
@@ -306,4 +305,4 @@ def test_environment_disabled_results(mock_agent, mock_scenario_provider, mock_e
         evaluation_metric=mock_evaluation_metric,
         results_config={"enabled": False},
     )
-    assert isinstance(env._sink, NullSink)
+    assert isinstance(env.monitor.sink, NullSink)
