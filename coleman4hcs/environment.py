@@ -10,7 +10,7 @@ The module also contains the following features:
 - Mechanism to reset the environment and agent's memories.
 - Ability to run a single experiment or multiple experiments.
 - Support for both simple and contextual agents.
-- Periodic saving of experiments to handle long-running experiments.
+- Periodic saving of experiments via the checkpoint store.
 - Facilities for creating and storing results obtained during experiments.
 - Support for scenarios with variants, commonly found in Heterogeneous Computing Systems (HCS).
 - Helper methods for loading and saving experiment states for recovery purposes.
@@ -22,22 +22,22 @@ Environment
 """
 
 import logging
-import os
-import pickle
 import time
 import warnings
-from pathlib import Path
 
 import numpy as np
 import polars as pl
 
 from coleman4hcs.agent import ContextualAgent, SlidingWindowContextualAgent
 from coleman4hcs.bandit import EvaluationMetricBandit
+from coleman4hcs.checkpoint.checkpoint_store import CheckpointStore, NullCheckpointStore
+from coleman4hcs.checkpoint.state import CheckpointPayload
+from coleman4hcs.results.parquet_sink import ParquetSink
+from coleman4hcs.results.sink_base import NullSink, ResultsSink
 from coleman4hcs.scenarios import IndustrialDatasetHCSScenarioProvider, VirtualHCSScenario
+from coleman4hcs.telemetry.otel import get_telemetry
 from coleman4hcs.utils.monitor import MonitorCollector
 from coleman4hcs.utils.monitor_params import CollectParams
-
-Path("backup").mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,15 @@ class Environment:
         The scenario provider supplying test case data.
     evaluation_metric : EvaluationMetric
         The evaluation metric used to assess prioritization performance.
+    results_config : dict or None
+        Configuration for the results sink (from ``config.toml [results]``).
+        When ``None``, a ``NullSink`` is used.
+    checkpoint_config : dict or None
+        Configuration for checkpoints (from ``config.toml [checkpoint]``).
+        When ``None``, a ``NullCheckpointStore`` is used.
+    telemetry_config : dict or None
+        Configuration for telemetry (from ``config.toml [telemetry]``).
+        When ``None``, a ``NoOpTelemetry`` is used.
 
     Attributes
     ----------
@@ -64,13 +73,25 @@ class Environment:
         The scenario provider instance.
     evaluation_metric : EvaluationMetric
         The evaluation metric instance.
-    monitor : MonitorCollector or None
+    monitor : MonitorCollector
         Monitor for collecting feedback during the process.
     variant_monitors : dict
         Dictionary of monitors for each variant.
+    checkpoint_store : CheckpointStore
+        Store for saving/loading experiment checkpoints.
+    telemetry : Telemetry or NoOpTelemetry
+        Telemetry facade for metrics and traces.
     """
 
-    def __init__(self, agents, scenario_provider, evaluation_metric):
+    def __init__(  # noqa: PLR0913
+        self,
+        agents,
+        scenario_provider,
+        evaluation_metric,
+        results_config: dict | None = None,
+        checkpoint_config: dict | None = None,
+        telemetry_config: dict | None = None,
+    ):
         """Initialize the Environment.
 
         Parameters
@@ -81,19 +102,82 @@ class Environment:
             The scenario provider supplying test case data.
         evaluation_metric : EvaluationMetric
             The evaluation metric used to assess prioritization performance.
+        results_config : dict or None
+            Results configuration dict.
+        checkpoint_config : dict or None
+            Checkpoint configuration dict.
+        telemetry_config : dict or None
+            Telemetry configuration dict.
         """
         self.agents = agents
         self.scenario_provider = scenario_provider
         self.evaluation_metric = evaluation_metric
-        self.monitor: MonitorCollector = MonitorCollector()
+
+        # Build the results sink from config
+        self._results_config = results_config or {}
+        self._sink = self._build_sink(self._results_config)
+
+        # Build the checkpoint store from config
+        ckpt_cfg = checkpoint_config or {}
+        if ckpt_cfg.get("enabled", False):
+            from coleman4hcs.checkpoint.checkpoint_store import LocalCheckpointStore
+
+            self.checkpoint_store: CheckpointStore = LocalCheckpointStore(
+                base_dir=ckpt_cfg.get("base_dir", "checkpoints"),
+            )
+            self._checkpoint_interval: int = ckpt_cfg.get("interval", 50000)
+        else:
+            self.checkpoint_store = NullCheckpointStore()
+            self._checkpoint_interval = 50000
+
+        # Build the telemetry facade from config
+        tel_cfg = telemetry_config or {}
+        self.telemetry = get_telemetry(
+            enabled=tel_cfg.get("enabled", False),
+            service_name=tel_cfg.get("service_name", "coleman4hcs"),
+            otlp_endpoint=tel_cfg.get("otlp_endpoint", "http://localhost:4318"),
+        )
+
+        self.monitor: MonitorCollector = MonitorCollector(sink=self._sink)
         self.variant_monitors: dict[str, MonitorCollector] = {}
         self.reset()
+
+    @staticmethod
+    def _build_sink(results_config: dict) -> ResultsSink:
+        """Create a ResultsSink from the ``[results]`` config section.
+
+        Parameters
+        ----------
+        results_config : dict
+            Config dict with keys ``enabled``, ``sink``, ``out_dir``, etc.
+
+        Returns
+        -------
+        ResultsSink
+        """
+        if not results_config.get("enabled", False):
+            return NullSink()
+
+        sink_type = results_config.get("sink", "parquet")
+        if sink_type == "parquet":
+            top_k_raw = results_config.get("top_k_prioritization", 0)
+            top_k = top_k_raw if top_k_raw and top_k_raw > 0 else None
+            return ParquetSink(
+                out_dir=results_config.get("out_dir", "./runs"),
+                batch_size=results_config.get("batch_size", 1000),
+                top_k=top_k,
+            )
+        if sink_type == "clickhouse":
+            from coleman4hcs.results.clickhouse_sink import ClickHouseSink
+
+            return ClickHouseSink()
+        return NullSink()
 
     def reset(self):
         """Reset the environment for a new simulation."""
         self.reset_agents_memory()
-        # Monitor saves the feedback during the process
-        self.monitor = MonitorCollector()
+        # Create monitors backed by the configured sink
+        self.monitor = MonitorCollector(sink=self._sink)
         self.variant_monitors = {}
 
         if (
@@ -101,7 +185,7 @@ class Environment:
             and self.scenario_provider.get_total_variants() > 0
         ):
             for variant in self.scenario_provider.get_all_variants():
-                self.variant_monitors[variant] = MonitorCollector()
+                self.variant_monitors[variant] = MonitorCollector(sink=self._sink)
 
     def reset_agents_memory(self):
         """Reset all agents' memory to an initial state."""
@@ -132,9 +216,13 @@ class Environment:
         restore_step = 1
 
         if restore:
-            # Restore the experiment from the last backup
-            # This is useful for long experiments
-            restore_step, self.agents, self.monitor, self.variant_monitors, bandit = self.load_experiment(experiment)
+            # Try to restore from checkpoint store
+            run_id = str(self.scenario_provider)
+            payload = self.checkpoint_store.load(run_id, experiment)
+            if payload is not None:
+                restore_step = payload.step
+                self.agents = payload.agents if payload.agents is not None else self.agents
+                bandit = payload.bandit
             self.scenario_provider.last_build(restore_step)
             restore_step += 1  # start 1 step after the last build
 
@@ -163,6 +251,7 @@ class Environment:
             end_bandit = time.time()
 
             bandit_duration = end_bandit - start_bandit
+            self.telemetry.record_latency("bandit_update", bandit_duration)
 
             # we can analyse the same "moment/scenario t" for "i agents"
             for _, agent in enumerate(self.agents):
@@ -189,6 +278,7 @@ class Environment:
                         virtual_scenario,
                     )
 
+            self.telemetry.record_cycle()
             self.save_periodically(restore, t, experiment, bandit)
 
     def run_prioritization(  # pylint: disable=too-many-positional-arguments
@@ -247,6 +337,10 @@ class Environment:
         # Compute end time
         end = time.time()
 
+        prioritization_time = (end - start) + bandit_duration
+        self.telemetry.record_latency("prioritization", prioritization_time)
+        self.telemetry.record_fitness(metric.fitness, metric.cost)
+
         logger.debug(
             "Exp: %s - Ep: %s - Name: %s (%s) - NAPFD/APFDc: %.4f/%.4f",
             experiment,
@@ -267,7 +361,7 @@ class Environment:
             reward_function=str(agent.get_reward_function()),
             metric=metric,
             total_build_duration=self.scenario_provider.total_build_duration,
-            prioritization_time=(end - start) + bandit_duration,
+            prioritization_time=prioritization_time,
             rewards=np.mean(agent.last_reward),
             prioritization_order=action,
         )
@@ -344,7 +438,7 @@ class Environment:
             self.variant_monitors[variant].collect(params)
 
     def save_periodically(  # pylint: disable=too-many-positional-arguments
-        self, restore, t, experiment, bandit, interval=50000
+        self, restore, t, experiment, bandit, interval=None
     ):
         """Save the experiment periodically based on a predefined interval.
 
@@ -358,11 +452,13 @@ class Environment:
             The current experiment number.
         bandit : Bandit
             The current bandit being used in the simulation.
-        interval : int, optional
-            The interval at which the experiment should be saved. Default is 50000.
+        interval : int or None, optional
+            The interval at which the experiment should be saved.
+            When ``None``, uses the configured checkpoint interval.
         """
+        save_interval = interval if interval is not None else self._checkpoint_interval
         # Save experiment each X builds
-        if restore and t % interval == 0:
+        if restore and t % save_interval == 0:
             self.save_experiment(experiment, t, bandit)
 
     def run(self, experiments=1, trials=100, bandit_type=EvaluationMetricBandit, restore=True):
@@ -384,64 +480,14 @@ class Environment:
         for exp in range(experiments):
             self.run_single(exp, trials, bandit_type, restore)
 
-    def create_file(self, name):
-        """Create a file to store the results obtained during the experiment.
-
-        Parameters
-        ----------
-        name : str
-            The name of the file to store the results.
-        """
-        self.monitor.create_file(name)
-
-        # If we are working with HCS scenario, we create a file for each variant in a specific directory
-        if (
-            isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider)
-            and self.scenario_provider.get_total_variants() > 0
-        ):
-            # Ignore the extension
-            name = name.split(".csv")[0]
-            name = f"{name}_variants"
-
-            Path(name).mkdir(parents=True, exist_ok=True)
-
-            for variant in self.scenario_provider.get_all_variants():
-                self.variant_monitors[variant].create_file(
-                    f"{name}/{name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv"
-                )
-
-    def store_experiment(self, csv_file_name):
-        """Save the results obtained during the experiment.
-
-        Parameters
-        ----------
-        csv_file_name : str
-            The name of the file to store the results.
-        """
-        # Collect from temp and save a file (backup and easy sharing/auditing)
-        self.monitor.save(csv_file_name)
-
-        if (
-            isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider)
-            and self.scenario_provider.get_total_variants() > 0
-        ):
-            # Ignore the extension
-            name2 = csv_file_name.split(".csv")[0]
-            name2 = f"{name2}_variants"
-
-            Path(name2).mkdir(parents=True, exist_ok=True)
-
-            for variant in self.scenario_provider.get_all_variants():
-                # Collect from temp and save a file (backup and easy sharing/auditing)
-                self.variant_monitors[variant].save(
-                    f"{name2}/{csv_file_name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv"
-                )
-
-        # Clear experiment
-        self.monitor.clear()
+    def store_experiment(self):
+        """Flush and persist the results collected during the experiment."""
+        self.monitor.flush()
+        for variant_monitor in self.variant_monitors.values():
+            variant_monitor.flush()
 
     def load_experiment(self, experiment):
-        """Load a backup of the experiment.
+        """Load a backup of the experiment from the checkpoint store.
 
         Parameters
         ----------
@@ -450,20 +496,14 @@ class Environment:
 
         Returns
         -------
-        tuple
-            A tuple containing the restore step, agents, monitor,
-            variant monitors, and bandit.
+        CheckpointPayload or None
+            The loaded checkpoint payload, or ``None`` if not found.
         """
-        filename = f"backup/{str(self.scenario_provider)}_ex_{experiment}.p"
-
-        if not os.path.exists(filename):
-            return 0, self.agents, self.monitor, self.variant_monitors, None
-
-        with open(filename, "rb") as file:
-            return pickle.load(file)
+        run_id = str(self.scenario_provider)
+        return self.checkpoint_store.load(run_id, experiment)
 
     def save_experiment(self, experiment, t, bandit):
-        """Save a backup for the experiment.
+        """Save a checkpoint for the experiment.
 
         Parameters
         ----------
@@ -480,9 +520,14 @@ class Environment:
             If there is an error saving the experiment.
         """
         try:
-            filename = f"backup/{str(self.scenario_provider)}_ex_{experiment}.p"
-            with open(filename, "wb") as f:
-                pickle.dump([t, self.agents, self.monitor, self.variant_monitors, bandit], f)
+            payload = CheckpointPayload(
+                run_id=str(self.scenario_provider),
+                experiment=experiment,
+                step=t,
+                agents=self.agents,
+                bandit=bandit,
+            )
+            self.checkpoint_store.save(payload)
         except Exception as e:
             logger.error("Error saving the experiment: %s", e)
             raise e

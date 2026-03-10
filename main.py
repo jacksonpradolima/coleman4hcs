@@ -10,7 +10,6 @@ The module offers:
 - Experiment setups using configuration files.
 - Ability to use various policies and reward functions.
 - Parallel processing capabilities for experiment runs.
-- Tools for dataset processing and scenario generation.
 - Dynamic class loading for policies, reward functions, and agents.
 - Logging and storage functionalities for experiment results.
 
@@ -32,8 +31,6 @@ from multiprocessing import Pool
 from pathlib import Path
 from typing import Any
 
-import duckdb
-import polars as pl
 from dotenv import load_dotenv
 
 import coleman4hcs.policy
@@ -82,7 +79,6 @@ def exp_run_industrial_dataset(
     iteration: int,
     trials: int,
     env: Environment,
-    experiment_directory: str,
     level: int,
 ) -> None:
     """Execute a single run of the industrial dataset experiment.
@@ -95,17 +91,13 @@ def exp_run_industrial_dataset(
         The total number of trials to be executed.
     env : Environment
         An instance of the environment where the experiment is run.
-    experiment_directory : str
-        The directory where experiment results will be stored.
     level : int
         The logging level.
     """
-    csv_file_name = f"{experiment_directory}{str(env.scenario_provider)}_{iteration}.csv"
     # Initialize logging for worker processes without mutating Environment state.
     create_logger(level)
-    env.create_file(csv_file_name)
     env.run_single(iteration, trials)
-    env.store_experiment(csv_file_name)
+    env.store_experiment()
 
 
 def load_class_from_module(module, class_name: str):
@@ -239,105 +231,6 @@ or IndustrialDatasetContextScenarioProvider
     return IndustrialDatasetScenarioProvider(base_tcfile, sched_time_ratio)
 
 
-def merge_csv(files, output_file):
-    """Merge multiple CSV files into a single CSV file.
-
-    Reads a list of CSV files, concatenates their contents into a single
-    DataFrame, and writes the combined data to a new CSV file. Also cleans up
-    the temporary files after merging.
-
-    Parameters
-    ----------
-    files : list of str
-        A list of file paths to the CSV files to be merged.
-    output_file : str
-        The file path for the output CSV file where the merged data will be
-        saved.
-    """
-    # Merge all CSV files into one DataFrame
-    dfs = [pl.read_csv(file, separator=";") for file in files]
-    df = pl.concat(dfs, how="vertical")
-
-    # Save the merged DataFrame to CSV
-    df.write_csv(output_file, separator=";", quote_style="never")
-
-    # Optionally, clean up temporary files
-    for file in files:
-        os.remove(file)
-
-
-def store_experiments(csv_file, scenario):
-    """Store experiment results from a CSV file into a DuckDB database.
-
-    Reads experiment results from a given CSV file and inserts them into a
-    DuckDB database table named 'experiments'. If the table does not exist, it
-    is created with a predefined schema.
-
-    Parameters
-    ----------
-    csv_file : str
-        The path to the CSV file containing experiment results.
-    scenario : object
-        The scenario object associated with the experiment results. Used to
-        determine if variant-specific handling is needed.
-
-    Notes
-    -----
-    The database connection is hardcoded to 'experiments.db'. This function
-    will create or open this database file in the current working directory.
-    The CSV file is expected to have a header row and use ';' as the
-    delimiter.
-    """
-    # Create/Open a database to store the results
-    conn = duckdb.connect("experiments.db")
-
-    # Ensure the tables exist with the appropriate schema
-    conn.execute("""
-    CREATE TABLE IF NOT EXISTS experiments (
-        scenario VARCHAR,
-        experiment_id INTEGER,
-        step INTEGER,
-        policy VARCHAR,
-        reward_function VARCHAR,
-        sched_time FLOAT,
-        sched_time_duration FLOAT,
-        total_build_duration FLOAT,
-        prioritization_time FLOAT,
-        detected INTEGER,
-        missed INTEGER,
-        tests_ran INTEGER,
-        tests_not_ran INTEGER,
-        ttf FLOAT,
-        ttf_duration FLOAT,
-        time_reduction FLOAT,
-        fitness FLOAT,
-        cost FLOAT,
-        rewards FLOAT,
-        avg_precision FLOAT,
-        prioritization_order VARCHAR
-    );
-    """)
-
-    df = conn.read_csv(csv_file, delimiter=";", quotechar='"', header=True)  # noqa: F841
-
-    # Insert the DataFrame into the 'experiments' table
-    conn.execute("INSERT INTO experiments SELECT * FROM df;")
-
-    if isinstance(scenario, IndustrialDatasetHCSScenarioProvider) and scenario.get_total_variants() > 0:
-        # Ignore the extension
-        name2 = csv_file.split(".csv")[0]
-        name2 = f"{name2}_variants"
-
-        Path(name2).mkdir(parents=True, exist_ok=True)
-
-        for variant in scenario.get_all_variants():
-            csv_file_variant = f"{name2}/{csv_file.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv"
-            df = conn.read_csv(csv_file_variant, delimiter=";", quotechar='"', header=True)  # noqa: F841
-
-            # Insert the DataFrame into the 'experiments' table
-            conn.execute("INSERT INTO experiments SELECT * FROM df;")
-
-
 if __name__ == "__main__":
     load_dotenv()
     config = get_config()
@@ -361,6 +254,11 @@ if __name__ == "__main__":
 
     # Contextual Information
     (context_config, feature_groups) = map(config["contextual_information"].get, ["config", "feature_group"])
+
+    # Results / Checkpoint / Telemetry configuration (framework-first defaults)
+    results_config = config.get("results", {})
+    checkpoint_config = config.get("checkpoint", {})
+    telemetry_config = config.get("telemetry", {})
 
     # Load policy objects along with the target reward functions
     policies = {
@@ -416,11 +314,18 @@ if __name__ == "__main__":
             # Stop conditional
             trials = scenario.max_builds
 
-            # Prepare the experiment
-            env = Environment(agents, scenario, evaluation_metric)
+            # Prepare the experiment with config-driven architecture
+            env = Environment(
+                agents,
+                scenario,
+                evaluation_metric,
+                results_config=results_config,
+                checkpoint_config=checkpoint_config,
+                telemetry_config=telemetry_config,
+            )
 
-            parameters: list[tuple[int, int, Environment, str, int]] = [
-                (i + 1, trials, env, experiment_directory, level) for i in range(independent_executions)
+            parameters: list[tuple[int, int, Environment, int]] = [
+                (i + 1, trials, env, level) for i in range(independent_executions)
             ]
 
             # Compute time
@@ -434,15 +339,5 @@ if __name__ == "__main__":
                     exp_run_industrial_dataset(*param)
 
             end = time.time()
-
-            # Read and merge the independent executions
-            csv_file_names = [
-                f"{experiment_directory}{str(env.scenario_provider)}_{i + 1}.csv" for i in range(independent_executions)
-            ]
-            csv_file = f"{experiment_directory}{str(env.scenario_provider)}.csv"
-            merge_csv(csv_file_names, csv_file)
-
-            # Store the results in the duckdb database
-            store_experiments(csv_file, scenario)
 
             logging.info("Time expend to run the experiments: %s\n\n", end - start)

@@ -83,7 +83,8 @@ class TestHashOrder:
 
     def test_none_order(self):
         h = _hash_order(None)
-        assert isinstance(h, str) and len(h) == 64
+        assert isinstance(h, str)
+        assert len(h) == 64
 
 
 class TestTopK:

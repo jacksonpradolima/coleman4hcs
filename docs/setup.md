@@ -68,27 +68,24 @@ pip install coleman4hcs[clickhouse]
 
 ## Optional observability stack
 
-See [`examples/observability/`](../examples/observability/) for a Docker
-Compose stack with OTel Collector + Grafana (ClickHouse under a profile).
+See the [Observability guide](observability.md) for a Docker Compose stack
+with OTel Collector + Grafana (ClickHouse under a profile).
 
-```bash
-cd examples/observability
-docker compose up -d          # base stack
-docker compose --profile clickhouse up -d  # with ClickHouse
-```
+## How to query results
 
-## Migration from CSV outputs
-
-If you previously relied on CSV files produced by `MonitorCollector`:
-
-1. **CSV output still works** — `MonitorCollector.save()` is unchanged.
-2. **New Parquet pipeline** runs in parallel (when `results.enabled = true`).
-3. Query Parquet with DuckDB:
+Results are written as Hive-partitioned Parquet files under `./runs/`.  You
+can query them directly with DuckDB (already a project dependency):
 
 ```sql
-SELECT * FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
-WHERE policy = 'UCB' AND reward_function = 'RNFail';
-```
+-- Average NAPFD per policy
+SELECT policy, AVG(fitness) AS avg_napfd
+FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+GROUP BY policy
+ORDER BY avg_napfd DESC;
 
-4. To disable Parquet and keep only CSV, set `results.enabled = false` in
-   `config.toml`.
+-- Cost distribution per reward function
+SELECT reward_function,
+       PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY cost) AS median_cost
+FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+GROUP BY reward_function;
+```
