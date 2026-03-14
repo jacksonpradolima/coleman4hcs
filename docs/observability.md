@@ -5,21 +5,41 @@ debugging and profiling Coleman4HCS experiments.
 
 !!! note "Framework-first guarantee"
     `python main.py` works without Docker or any of these services.
-    Install optional extras only when you need them.
+    The observability stack is **optional** for local installs, but
+    **enabled automatically** in the DevContainer.
 
-## Quick start
+## DevContainer: zero-step setup
+
+If you develop inside the DevContainer, **everything is already running**.
+The container automatically:
+
+1. Installs the `telemetry` and `clickhouse` pip extras
+2. Starts the OTel Collector + Grafana via Docker Compose
+3. Enables `[telemetry] enabled = true` in `config.toml`
+
+Just run your experiment:
+
+```bash
+uv run python main.py
+# Open http://localhost:3000 → Grafana shows metrics in real-time
+```
+
+## Local setup (without DevContainer)
 
 ```bash
 # Base stack (OTel Collector + Grafana)
 cd examples/observability
 docker compose up -d
 
+# Install telemetry extras
+uv pip install coleman4hcs[telemetry]
+
 # Enable telemetry in config.toml:
 #   [telemetry]
 #   enabled = true
 
 # Run your experiment
-python main.py
+uv run python main.py
 ```
 
 ## With ClickHouse

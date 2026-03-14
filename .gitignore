@@ -204,3 +204,6 @@ htmlcov/
 
 # Ignore profiling files
 prof/
+
+# Auto-generated DevContainer overlay (created by post-create.sh)
+.devcontainer/config.devcontainer.toml

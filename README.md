@@ -64,6 +64,8 @@ In order to use this `version`, use any Contextual-MAB available, for instance, 
 - [Citation](#citation)
 - [Installation](#installation)
 - [Development](#development)
+- [Architecture: Results, Checkpoints & Telemetry](#architecture-results-checkpoints--telemetry)
+- [Observability](#observability)
 - [Datasets](#datasets)
 - [About the files input](#about-the-files-input)
 - [Using the tool](#using-the-tool)
@@ -156,17 +158,25 @@ This project uses a `Makefile` to streamline common development tasks. Run `make
 
 ## DevContainer (recommended)
 
-The fastest way to start developing is with a [DevContainer](https://containers.dev/). Open the repo in VS Code or any DevContainer-compatible editor and select **"Reopen in Container"** — everything is set up automatically.
+The fastest way to start developing is with a [DevContainer](https://containers.dev/). Open the repo in VS Code or any DevContainer-compatible editor and select **"Reopen in Container"** — **everything works out of the box**, including the full observability stack.
 
-**What's included:**
+**What happens automatically:**
 
-- Python 3 + [uv](https://docs.astral.sh/uv/) (the project's package manager)
-- Docker-in-Docker — run the optional observability stack inside the container
-- Pre-installed VS Code extensions (Ruff, Pylance, Pyright, Copilot, TOML, Jupyter, etc.)
-- Auto-forwarded ports for Grafana (3000), OTel Collector (4317/4318), ClickHouse (8123/9000), and Prometheus (8889)
-- Post-create script that runs `make install`, `make pre-commit-install`, and seeds `.env`
+1. Python 3 + uv + all dependencies (including telemetry & ClickHouse extras) are installed
+2. Pre-commit hooks are configured
+3. `.env` is seeded from `.env.example`
+4. The **observability stack** (OTel Collector + Grafana) starts via Docker-in-Docker
+5. **Telemetry is enabled** in `config.toml` so metrics flow to Grafana immediately
 
-After the container builds, you're ready to go:
+After the container builds, just run your experiment:
+
+```bash
+uv run python main.py
+```
+
+Grafana is already live at http://localhost:3000 — open it in your browser to see metrics in real-time.
+
+**Other useful commands:**
 
 ```bash
 make test           # run the test suite
@@ -174,11 +184,205 @@ make lint           # lint with ruff
 make docs-serve     # preview docs locally
 ```
 
-To bring up the optional observability stack inside the container:
+**What's included in the DevContainer:**
+
+| What | Why |
+|------|-----|
+| Python 3 + [uv](https://docs.astral.sh/uv/) | The project's package manager |
+| Docker-in-Docker | Runs the observability stack automatically |
+| VS Code extensions | Ruff, Pylance, Pyright, Copilot, TOML, Jupyter, etc. |
+| Telemetry + ClickHouse extras | Pre-installed — no extra `pip install` needed |
+| OTel Collector + Grafana | Started automatically on container start |
+| Port forwarding | All service ports mapped to your host (see table below) |
+
+**Forwarded ports (all accessible from your host browser):**
+
+| Port | Service | URL |
+|------|---------|-----|
+| 3000 | Grafana | http://localhost:3000 |
+| 4317 | OTel Collector (gRPC) | — (used by the framework) |
+| 4318 | OTel Collector (HTTP) | — (used by the framework) |
+| 8889 | Prometheus metrics | http://localhost:8889/metrics |
+| 8123 | ClickHouse (HTTP) | http://localhost:8123 *(only with `--profile clickhouse`)* |
+| 9000 | ClickHouse (native) | — *(only with `--profile clickhouse`)* |
+
+> **ClickHouse** is not started by default.  If you need it, run:
+> ```bash
+> cd examples/observability && docker compose --profile clickhouse up -d
+> ```
+> Then set `sink = "clickhouse"` in `config.toml` under `[results]`.
+
+# Architecture: Results, Checkpoints & Telemetry
+
+Coleman4HCS is **framework-first**: `python main.py` works with zero external
+services.  All monitoring is split into three independent layers that can be
+enabled or disabled individually:
+
+| Layer | Purpose | Default | Optional |
+|-------|---------|---------|----------|
+| **Results** | Persist experiment facts (NAPFD, APFDc, …) | Partitioned Parquet (zstd) | ClickHouse sink |
+| **Checkpoints** | Crash-safe resume | Local filesystem (pickle + `progress.json`) | — |
+| **Telemetry** | Observability (latency, throughput) | Disabled (NoOp) | OpenTelemetry + Collector |
+
+When a layer is disabled its module resolves to a **null implementation** with
+near-zero overhead (`NullSink`, `NullCheckpointStore`, `NoOpTelemetry`).
+
+## Configuration
+
+All settings live in `config.toml`.  The new sections are:
+
+```toml
+# ── Results (Fact data) ─────────────────────────────────────────────
+[results]
+enabled = true            # false → NullSink (discard all results)
+sink = "parquet"          # "parquet" (default) | "clickhouse" (requires extras)
+out_dir = "./runs"        # Root directory for partitioned Parquet output
+batch_size = 1000         # Rows buffered before flush
+top_k_prioritization = 0  # 0 = store hash only; >0 = also keep top-k entries
+
+# ── Checkpoints (Resume / Recovery) ────────────────────────────────
+[checkpoint]
+enabled = true
+interval = 50000          # Steps between checkpoint saves
+base_dir = "checkpoints"
+
+# ── Telemetry (Observability) ──────────────────────────────────────
+[telemetry]
+enabled = false                          # true → requires extras + running Collector
+otlp_endpoint = "http://localhost:4318"  # OTel Collector HTTP endpoint
+service_name = "coleman4hcs"
+```
+
+## Optional extras
 
 ```bash
-cd examples/observability && docker compose up -d
-# Grafana → http://localhost:3000
+# Telemetry (OpenTelemetry SDK)
+pip install coleman4hcs[telemetry]
+
+# ClickHouse results sink
+pip install coleman4hcs[clickhouse]
+```
+
+## Querying results
+
+Results are written as Hive-partitioned Parquet files under `./runs/`.  You
+can query them directly with DuckDB (already a project dependency):
+
+```sql
+-- Average NAPFD per policy
+SELECT policy, AVG(fitness) AS avg_napfd
+FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+GROUP BY policy
+ORDER BY avg_napfd DESC;
+
+-- Cost distribution per reward function
+SELECT reward_function,
+       PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY cost) AS median_cost
+FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+GROUP BY reward_function;
+```
+
+# Observability
+
+> **Framework-first guarantee:** `python main.py` works without Docker or
+> any of these services.  The observability stack is **optional** for local
+> installs, but **enabled automatically** in the DevContainer.
+
+Coleman4HCS ships with a local observability stack (OTel Collector + Grafana)
+for real-time metrics and traces during experiments.
+
+## Using the DevContainer (zero-step setup)
+
+If you develop inside the DevContainer, **everything is already running**.
+The post-start hook automatically:
+
+1. Starts the OTel Collector + Grafana via Docker Compose
+2. Enables `[telemetry] enabled = true` in `config.toml`
+3. Installs the `telemetry` and `clickhouse` pip extras
+
+Just run your experiment and open Grafana:
+
+```bash
+uv run python main.py
+# Open http://localhost:3000 → metrics appear in real-time
+```
+
+No manual steps required.
+
+## Local setup (without DevContainer)
+
+If you're **not** using the DevContainer, follow these steps:
+
+```bash
+# 1. Start the observability stack
+cd examples/observability
+docker compose up -d
+
+# 2. Install telemetry extras
+uv pip install coleman4hcs[telemetry]
+
+# 3. Enable telemetry in config.toml
+#    [telemetry]
+#    enabled = true
+
+# 4. Run experiments — metrics flow to Grafana
+uv run python main.py
+```
+
+## Port reference
+
+| Port | Service | URL |
+|------|---------|-----|
+| **3000** | Grafana | http://localhost:3000 |
+| **4317** | OTel Collector (gRPC) | — (used by the framework) |
+| **4318** | OTel Collector (HTTP) | — (used by the framework, default endpoint) |
+| **8889** | Prometheus metrics | http://localhost:8889/metrics |
+| **8123** | ClickHouse (HTTP) | http://localhost:8123 *(only with `--profile clickhouse`)* |
+| **9000** | ClickHouse (native) | — *(only with `--profile clickhouse`)* |
+
+## Metric names
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `coleman.cycles_total` | Counter | Total experiment cycles processed |
+| `coleman.bandit_update_latency` | Histogram (s) | Bandit arm-update latency |
+| `coleman.prioritization_latency` | Histogram (s) | Test-case prioritization latency |
+| `coleman.evaluation_latency` | Histogram (s) | Evaluation step latency |
+| `coleman.napfd` | Histogram | NAPFD score distribution |
+| `coleman.apfdc` | Histogram | APFDc score distribution |
+
+### Cardinality rules
+
+- **No `step` label** in metrics (would create unbounded cardinality).
+- `run_id` is a resource attribute, not a metric label.
+- Per-step detail is available in **traces** (span attributes).
+
+## Adding ClickHouse (optional)
+
+ClickHouse is **not** started by default (even in the DevContainer) since most
+users don't need it.  To add it:
+
+```bash
+# Start ClickHouse alongside the existing stack
+cd examples/observability
+docker compose --profile clickhouse up -d
+
+# Switch the results sink in config.toml:
+#   [results]
+#   sink = "clickhouse"
+
+# Run experiments — results go to the coleman_results table
+uv run python main.py
+```
+
+The ClickHouse extras are already installed in the DevContainer.  For local
+installs run `uv pip install coleman4hcs[clickhouse]` first.
+
+## Tear down
+
+```bash
+cd examples/observability
+docker compose --profile clickhouse down -v
 ```
 
 # Datasets
@@ -232,8 +436,10 @@ flowchart TD
     F --> J[Test prioritization per cycle]
     J --> K["Test execution outcomes (verdict, duration, rank)"]
     K --> L["Evaluation Metrics (e.g., NAPFD)"]
-    L --> M[CSV experiment outputs]
-    M --> N[DuckDB experiments.db]
+    L --> M["Results Sink (Parquet / ClickHouse)"]
+    L --> P["Telemetry (OTel → Collector → Grafana, optional)"]
+
+    F --> Q["Checkpoint Store (local, crash-safe resume)"]
 
     K --> O[Feedback loop]
     O --> I
