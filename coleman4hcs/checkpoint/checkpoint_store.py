@@ -142,7 +142,7 @@ class LocalCheckpointStore(CheckpointStore):
             "checkpoint_path": ckpt_path,
             "timestamp": time.time(),
         }
-        progress_path = os.path.join(run_dir, "progress.json")
+        progress_path = os.path.join(run_dir, f"progress_ex{payload.experiment}.json")
         self._atomic_json_write(progress_path, progress)
 
         logger.debug(
@@ -168,7 +168,7 @@ class LocalCheckpointStore(CheckpointStore):
             Loaded payload or ``None`` if not found.
         """
         run_dir = os.path.join(self.base_dir, run_id)
-        progress_path = os.path.join(run_dir, "progress.json")
+        progress_path = os.path.join(run_dir, f"progress_ex{experiment}.json")
 
         if not os.path.exists(progress_path):
             return None

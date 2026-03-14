@@ -62,7 +62,7 @@ class TestLocalCheckpointStore:
 
         run_dir = tmp_path / "ckpts" / "run1"
         assert run_dir.exists()
-        assert (run_dir / "progress.json").exists()
+        assert (run_dir / "progress_ex1.json").exists()
         assert (run_dir / "ckpt_ex1_step100.pkl").exists()
 
     def test_progress_json_content(self, tmp_path):
@@ -70,7 +70,7 @@ class TestLocalCheckpointStore:
         payload = CheckpointPayload(run_id="run1", experiment=1, step=100)
         store.save(payload)
 
-        progress_path = tmp_path / "ckpts" / "run1" / "progress.json"
+        progress_path = tmp_path / "ckpts" / "run1" / "progress_ex1.json"
         with open(progress_path) as f:
             progress = json.load(f)
 
@@ -137,3 +137,23 @@ class TestLocalCheckpointStore:
             f.unlink()
 
         assert store.load("run1", 1) is None
+
+    def test_multi_experiment_isolation(self, tmp_path):
+        """Multiple experiments for the same run_id must not overwrite each other."""
+        store = LocalCheckpointStore(base_dir=str(tmp_path / "ckpts"))
+
+        store.save(CheckpointPayload(run_id="run1", experiment=1, step=50, agents=["a1"]))
+        store.save(CheckpointPayload(run_id="run1", experiment=2, step=75, agents=["a2"]))
+
+        loaded1 = store.load("run1", 1)
+        loaded2 = store.load("run1", 2)
+
+        assert loaded1 is not None
+        assert loaded1.experiment == 1
+        assert loaded1.step == 50
+        assert loaded1.agents == ["a1"]
+
+        assert loaded2 is not None
+        assert loaded2.experiment == 2
+        assert loaded2.step == 75
+        assert loaded2.agents == ["a2"]

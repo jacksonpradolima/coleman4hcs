@@ -179,6 +179,23 @@ class TestParquetSink:
         total = sum(pq.read_table(f).num_rows for f in parquet_files)
         assert total == 100
 
+    def test_picklable(self, tmp_path):
+        """ParquetSink must survive pickle round-trip (needed for multiprocessing.Pool)."""
+        import pickle
+
+        sink = ParquetSink(out_dir=str(tmp_path / "runs"), batch_size=100, top_k=3)
+        sink.write_row(_make_row(step=1))
+
+        data = pickle.dumps(sink)
+        restored = pickle.loads(data)  # noqa: S301
+
+        assert restored.out_dir == sink.out_dir
+        assert restored.batch_size == sink.batch_size
+        assert restored.top_k == sink.top_k
+        # Verify restored sink is functional
+        restored.write_row(_make_row(step=2))
+        restored.flush()
+
 
 # ============================================================================
 # ResultsWriter (thread-safe queue)

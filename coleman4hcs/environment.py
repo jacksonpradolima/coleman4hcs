@@ -223,8 +223,8 @@ class Environment:
                 restore_step = payload.step
                 self.agents = payload.agents if payload.agents is not None else self.agents
                 bandit = payload.bandit
-            self.scenario_provider.last_build(restore_step)
-            restore_step += 1  # start 1 step after the last build
+                self.scenario_provider.last_build(restore_step)
+                restore_step += 1  # start 1 step after the last build
 
         # Test Budget percentage
         avail_time_ratio = self.scenario_provider.get_avail_time_ratio()

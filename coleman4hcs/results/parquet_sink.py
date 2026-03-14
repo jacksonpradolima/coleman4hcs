@@ -138,6 +138,21 @@ class ParquetSink(ResultsSink):
         os.makedirs(out_dir, exist_ok=True)
 
     # ------------------------------------------------------------------
+    # Pickling support (threading.Lock is not picklable)
+    # ------------------------------------------------------------------
+
+    def __getstate__(self) -> dict[str, Any]:
+        """Return picklable state (exclude the lock)."""
+        state = self.__dict__.copy()
+        del state["_lock"]
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        """Restore state and recreate the lock."""
+        self.__dict__.update(state)
+        self._lock = threading.Lock()
+
+    # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
