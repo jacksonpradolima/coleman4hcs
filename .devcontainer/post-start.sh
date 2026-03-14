@@ -15,7 +15,7 @@ set -euo pipefail
 echo "── Starting observability stack ──"
 if command -v docker >/dev/null 2>&1; then
   (cd examples/observability && docker compose up -d --wait) || \
-    echo "⚠  Could not start observability stack (Docker may not be ready yet)."
+    echo "⚠  Could not start observability stack. Check Docker status with 'docker ps' or restart the container."
 else
   echo "⚠  Docker not available — skipping observability stack."
 fi
@@ -43,7 +43,7 @@ if new != text:
     print('Telemetry enabled in config.toml for DevContainer.')
 else:
     print('Telemetry already enabled.')
-" 2>/dev/null || echo "⚠  Could not auto-enable telemetry in config.toml."
+" 2>/dev/null || echo "⚠  Could not auto-enable telemetry in config.toml. The file may be missing or malformed — check [telemetry] section."
 fi
 
 echo ""
