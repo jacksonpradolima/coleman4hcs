@@ -26,9 +26,9 @@ if TYPE_CHECKING:
 class MonitorCollector:
     """Collect data during an experiment and write to a ResultsSink.
 
-    By default, results are streamed to a ``ParquetSink`` (partitioned,
-    zstd-compressed Parquet files).  When ``sink`` is ``None`` or a
-    ``NullSink``, data is silently discarded.
+    When ``sink`` is ``None``, a ``NullSink`` (no-op) is used so data is
+    silently discarded.  Pass a ``ParquetSink`` (or any other
+    ``ResultsSink``) explicitly to persist results.
 
     Parameters
     ----------
@@ -67,6 +67,7 @@ class MonitorCollector:
     - ``rewards``: AVG Reward from the prioritized test set.
     - ``avg_precision``: 1 - We found all failures, 123 - We did not find all failures.
     - ``prioritization_order``: Prioritized test set (stored as hash + optional top-k in Parquet).
+    - ``variant``: Variant name for HCS systems (``None`` for non-variant runs).
     """
 
     def __init__(self, sink: ResultsSink | None = None) -> None:
@@ -110,6 +111,7 @@ class MonitorCollector:
             "rewards": params.rewards,
             "avg_precision": params.metric.avg_precision,
             "prioritization_order": params.prioritization_order,
+            "variant": params.variant,
         }
 
         self.sink.write_row(row)

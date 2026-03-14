@@ -23,7 +23,7 @@ fi
 # ── 2. Ensure telemetry is enabled in config.toml ────────────────────────
 #    The Python regex is anchored to the [telemetry] section header so it
 #    will not affect [results] or [checkpoint] sections.
-if [ -f .devcontainer/config.devcontainer.toml ] && [ -f config.toml ]; then
+if [ -f config.toml ]; then
   python3 -c "
 import re, pathlib
 

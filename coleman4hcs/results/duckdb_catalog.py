@@ -57,8 +57,8 @@ class DuckDBCatalog:
 
         Returns
         -------
-        duckdb.DuckDBPyRelation
-            Query result.
+        pandas.DataFrame
+            Query result as a DataFrame.
         """
         return self.conn.execute(sql).fetchdf()
 

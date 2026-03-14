@@ -433,6 +433,7 @@ class Environment:
                 prioritization_time=(end - start) + bandit_duration,
                 rewards=0,
                 prioritization_order=df["Name"].to_list(),
+                variant=variant,
             )
 
             self.variant_monitors[variant].collect(params)

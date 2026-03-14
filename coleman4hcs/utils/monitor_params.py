@@ -49,6 +49,8 @@ class CollectParams:
         The average reward from the prioritized test set.
     prioritization_order : list
         The order of prioritized test cases.
+    variant : str or None
+        The variant name (for HCS systems).  ``None`` for non-variant runs.
     """
 
     scenario_provider: ScenarioProviderLike
@@ -62,3 +64,4 @@ class CollectParams:
     prioritization_time: int
     rewards: float
     prioritization_order: list[Any]
+    variant: str | None = None

@@ -74,7 +74,7 @@ class NullCheckpointStore(CheckpointStore):
             Ignored.
         """
 
-    def load(self, run_id: str, experiment: int) -> None:
+    def load(self, run_id: str, experiment: int) -> CheckpointPayload | None:
         """Return ``None`` (no checkpoint available).
 
         Parameters
@@ -86,7 +86,8 @@ class NullCheckpointStore(CheckpointStore):
 
         Returns
         -------
-        None
+        CheckpointPayload or None
+            Always ``None``.
         """
         return None
 
