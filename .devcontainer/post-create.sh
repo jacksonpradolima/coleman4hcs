@@ -2,26 +2,33 @@
 # =============================================================================
 # DevContainer post-create setup for Coleman4HCS
 # =============================================================================
-# Runs once after the container is created.  Installs the correct Python,
+# Runs once after the container is created.  Installs uv, Python 3.14,
 # project dependencies (including telemetry + clickhouse extras), pre-commit
 # hooks, and prepares the environment so that observability works out of the
 # box — zero manual steps.
 # =============================================================================
-set -euo pipefail
+set -e
 
 echo "── Setting up Coleman4HCS DevContainer ──"
 
-# 1. Install Python 3.14, create the venv, and install dev dependencies
-make install
+# 1. Install uv (the project's package manager)
+if ! command -v uv >/dev/null 2>&1; then
+  echo "Installing uv..."
+  curl -LsSf https://astral.sh/uv/install.sh | bash
+  export PATH="$HOME/.local/bin:$PATH"
+fi
 
-# 2. Install optional extras so observability works without extra pip commands
-uv pip install -e ".[telemetry,clickhouse]"
+# 2. Install Python 3.14, create the venv, and install ALL dependencies
+#    (dev + docs + notebook + telemetry + clickhouse extras)
+make setup
+uv sync --frozen --extra dev --extra docs --extra notebook --extra telemetry --extra clickhouse
+uv run --python .venv/bin/python --no-project pip install -e .
 
-# 3. Install pre-commit hooks
-make pre-commit-install
+# 3. Install pre-commit hooks (non-critical)
+make pre-commit-install || echo "⚠  pre-commit install failed — you can run 'make pre-commit-install' manually."
 
 # 4. Seed .env from the example if it does not exist yet
-if [ ! -f .env ]; then
+if [ ! -f .env ] && [ -f .env.example ]; then
   cp .env.example .env
   echo "Created .env from .env.example"
 fi

@@ -7,7 +7,10 @@
 # active config so that `uv run python main.py` sends metrics to Grafana
 # without any manual steps.
 # =============================================================================
-set -euo pipefail
+set -e
+
+# Ensure uv is on PATH (installed by post-create.sh)
+export PATH="$HOME/.local/bin:$PATH"
 
 # ── 1. Start the observability stack (OTel Collector + Grafana) ──────────
 #    Uses Docker-in-Docker.  If the containers are already running this is a
