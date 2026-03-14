@@ -11,7 +11,7 @@ including the full observability stack.
 
 **What happens automatically:**
 
-1. Python 3 + uv + all dependencies (including telemetry & ClickHouse extras) are installed
+1. Python 3.14 + uv + all dependencies (including telemetry & ClickHouse extras) are installed
 2. Pre-commit hooks are configured
 3. `.env` is seeded from `.env.example`
 4. The **observability stack** (OTel Collector + Grafana) starts via Docker-in-Docker
@@ -30,7 +30,7 @@ No manual steps required — skip to [Running Experiments](#running-experiments)
 
 | What | Why |
 |------|-----|
-| **Python 3 + uv** | Project package manager |
+| **Python 3.14 + uv** | Project package manager |
 | **Docker-in-Docker** | Runs the observability stack automatically |
 | **VS Code extensions** | Ruff, Pylance, Pyright, Copilot, TOML, Jupyter, and more |
 | **Telemetry + ClickHouse extras** | Pre-installed — no extra `pip install` needed |

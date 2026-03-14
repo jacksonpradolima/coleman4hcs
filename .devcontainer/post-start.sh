@@ -21,18 +21,16 @@ else
 fi
 
 # ── 2. Ensure telemetry is enabled in config.toml ────────────────────────
-#    If the DevContainer overlay exists and config.toml still has
-#    `enabled = false` for telemetry, patch it in-place.
+#    The Python regex is anchored to the [telemetry] section header so it
+#    will not affect [results] or [checkpoint] sections.
 if [ -f .devcontainer/config.devcontainer.toml ] && [ -f config.toml ]; then
-  if grep -q 'enabled = false' config.toml 2>/dev/null; then
-    # Only patch the [telemetry] section, not [results] or [checkpoint]
-    if python3 -c "
+  python3 -c "
 import re, pathlib
 
 cfg = pathlib.Path('config.toml')
 text = cfg.read_text()
 
-# Find the [telemetry] section and flip enabled = false → true
+# Find the [telemetry] section and flip enabled = false -> true
 new = re.sub(
     r'(\[telemetry\][^\[]*?)enabled\s*=\s*false',
     r'\1enabled = true',
@@ -45,16 +43,11 @@ if new != text:
     print('Telemetry enabled in config.toml for DevContainer.')
 else:
     print('Telemetry already enabled.')
-" 2>/dev/null; then
-      :
-    else
-      echo "⚠  Could not auto-enable telemetry in config.toml."
-    fi
-  fi
+" 2>/dev/null || echo "⚠  Could not auto-enable telemetry in config.toml."
 fi
 
 echo ""
 echo "✅  DevContainer started — observability is live."
-echo "  Grafana          → http://localhost:3000"
+echo "  Grafana           → http://localhost:3000"
 echo "  Prometheus metrics → http://localhost:8889/metrics"
 echo ""

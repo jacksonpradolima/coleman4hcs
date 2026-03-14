@@ -162,11 +162,11 @@ The fastest way to start developing is with a [DevContainer](https://containers.
 
 **What happens automatically:**
 
-1. Python 3 + uv + all dependencies (including telemetry & ClickHouse extras) are installed
-2. Pre-commit hooks are configured
-3. `.env` is seeded from `.env.example`
-4. The **observability stack** (OTel Collector + Grafana) starts via Docker-in-Docker
-5. **Telemetry is enabled** in `config.toml` so metrics flow to Grafana immediately
+1. Python 3.14 + uv + all dependencies (including telemetry & ClickHouse extras) are installed *(on create)*
+2. Pre-commit hooks are configured *(on create)*
+3. `.env` is seeded from `.env.example` *(on create)*
+4. The **observability stack** (OTel Collector + Grafana) starts via Docker-in-Docker *(on every start)*
+5. **Telemetry is enabled** in `config.toml` so metrics flow to Grafana immediately *(on every start)*
 
 After the container builds, just run your experiment:
 
@@ -188,7 +188,7 @@ make docs-serve     # preview docs locally
 
 | What | Why |
 |------|-----|
-| Python 3 + [uv](https://docs.astral.sh/uv/) | The project's package manager |
+| Python 3.14 + [uv](https://docs.astral.sh/uv/) | The project's package manager |
 | Docker-in-Docker | Runs the observability stack automatically |
 | VS Code extensions | Ruff, Pylance, Pyright, Copilot, TOML, Jupyter, etc. |
 | Telemetry + ClickHouse extras | Pre-installed — no extra `pip install` needed |
