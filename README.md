@@ -154,6 +154,33 @@ This project uses a `Makefile` to streamline common development tasks. Run `make
 | `make docs`              | Build documentation with Zensical    |
 | `make help`              | Show all available Make targets      |
 
+## DevContainer (recommended)
+
+The fastest way to start developing is with a [DevContainer](https://containers.dev/). Open the repo in VS Code or any DevContainer-compatible editor and select **"Reopen in Container"** — everything is set up automatically.
+
+**What's included:**
+
+- Python 3 + [uv](https://docs.astral.sh/uv/) (the project's package manager)
+- Docker-in-Docker — run the optional observability stack inside the container
+- Pre-installed VS Code extensions (Ruff, Pylance, Pyright, Copilot, TOML, Jupyter, etc.)
+- Auto-forwarded ports for Grafana (3000), OTel Collector (4317/4318), ClickHouse (8123/9000), and Prometheus (8889)
+- Post-create script that runs `make install`, `make pre-commit-install`, and seeds `.env`
+
+After the container builds, you're ready to go:
+
+```bash
+make test           # run the test suite
+make lint           # lint with ruff
+make docs-serve     # preview docs locally
+```
+
+To bring up the optional observability stack inside the container:
+
+```bash
+cd examples/observability && docker compose up -d
+# Grafana → http://localhost:3000
+```
+
 # Datasets
 
 The datasets used in the examples (and much more datasets) are available at [Harvard Dataverse Repository](https://dataverse.harvard.edu/dataverse/gres-ufpr).
