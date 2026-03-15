@@ -62,6 +62,7 @@ _RESULT_SCHEMA = pa.schema(
         ("avg_precision", pa.float64()),
         ("prioritization_order_hash", pa.utf8()),
         ("prioritization_order_top_k", pa.utf8()),
+        ("variant", pa.utf8()),
     ]
 )
 

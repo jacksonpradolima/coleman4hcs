@@ -46,6 +46,7 @@ def _make_row(**overrides):
         "rewards": 0.9,
         "avg_precision": 0.75,
         "prioritization_order": ["tc1", "tc2", "tc3"],
+        "variant": None,
     }
     row.update(overrides)
     return row
@@ -236,3 +237,50 @@ class TestResultsWriter:
         for i in range(10):
             writer.enqueue(_make_row(step=i))
         writer.stop()  # should not raise
+
+
+# ============================================================================
+# DuckDBCatalog
+# ============================================================================
+
+
+class TestDuckDBCatalog:
+    def test_create_view_and_query(self, tmp_path):
+        """DuckDBCatalog should create a view over Parquet and return query results."""
+        from coleman4hcs.results.duckdb_catalog import DuckDBCatalog
+
+        # Write some rows via ParquetSink first
+        sink = ParquetSink(out_dir=str(tmp_path / "runs"), batch_size=100)
+        for i in range(5):
+            sink.write_row(_make_row(step=i, fitness=0.5 + i * 0.1))
+        sink.close()
+
+        cat = DuckDBCatalog(str(tmp_path / "runs"))
+        df = cat.query("SELECT COUNT(*) AS cnt FROM results")
+        assert df["cnt"][0] == 5
+        cat.close()
+
+    def test_query_aggregation(self, tmp_path):
+        """DuckDBCatalog should support aggregation queries over the view."""
+        from coleman4hcs.results.duckdb_catalog import DuckDBCatalog
+
+        sink = ParquetSink(out_dir=str(tmp_path / "runs"), batch_size=100)
+        for i in range(3):
+            sink.write_row(_make_row(step=i, fitness=float(i)))
+        sink.close()
+
+        cat = DuckDBCatalog(str(tmp_path / "runs"))
+        df = cat.query("SELECT AVG(fitness) AS avg_fitness FROM results")
+        assert abs(df["avg_fitness"][0] - 1.0) < 1e-6  # (0+1+2)/3 = 1.0
+        cat.close()
+
+    def test_close(self, tmp_path):
+        """DuckDBCatalog.close() should not raise."""
+        from coleman4hcs.results.duckdb_catalog import DuckDBCatalog
+
+        sink = ParquetSink(out_dir=str(tmp_path / "runs"), batch_size=100)
+        sink.write_row(_make_row())
+        sink.close()
+
+        cat = DuckDBCatalog(str(tmp_path / "runs"))
+        cat.close()  # should not raise

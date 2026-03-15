@@ -299,9 +299,9 @@ If you develop inside the DevContainer, **everything is already running**.
 The post-start hook automatically:
 
 1. Starts the OTel Collector + Prometheus + Grafana + ClickHouse via Docker Compose
-2. Starts Prometheus + ClickHouse via Docker Compose
-3. Enables `[telemetry] enabled = true` in `config.toml`
-4. Installs the `telemetry` and `clickhouse` pip extras
+2. Enables `[telemetry] enabled = true` in `config.toml`
+
+The `telemetry` and `clickhouse` pip extras are installed during container creation.
 
 Just run your experiment and open Grafana:
 
@@ -340,8 +340,8 @@ uv run python main.py
 | **4317** | OTel Collector (gRPC) | — (used by the framework) |
 | **4318** | OTel Collector (HTTP) | — (used by the framework, default endpoint) |
 | **8889** | Prometheus metrics | http://localhost:8889/metrics |
-| **8123** | ClickHouse (HTTP) | http://localhost:8123 *(only with `--profile clickhouse`)* |
-| **9000** | ClickHouse (native) | — *(only with `--profile clickhouse`)* |
+| **8123** | ClickHouse (HTTP) | http://localhost:8123 *(auto-started in DevContainer; local: `--profile clickhouse`)* |
+| **9000** | ClickHouse (native) | — *(auto-started in DevContainer; local: `--profile clickhouse`)* |
 
 ## Metric names
 
@@ -362,18 +362,22 @@ uv run python main.py
 
 ## Adding ClickHouse (optional)
 
-ClickHouse is **not** started by default (even in the DevContainer) since most
-users don't need it.  To add it:
+In the DevContainer, ClickHouse is already started by the post-start hook.
+For local setups, start ClickHouse alongside the existing stack:
 
 ```bash
-# Start ClickHouse alongside the existing stack
 cd examples/observability
 docker compose --profile clickhouse up -d
+```
 
-# Switch the results sink in config.toml:
-#   [results]
-#   sink = "clickhouse"
+Then switch the results sink in `config.toml`:
 
+```toml
+[results]
+sink = "clickhouse"
+```
+
+```bash
 # Run experiments — results go to the coleman_results table
 uv run python main.py
 ```

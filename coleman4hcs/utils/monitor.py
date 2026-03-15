@@ -4,12 +4,13 @@ coleman4hcs.utils.monitor - Monitor Utilities.
 This module provides tools for monitoring and collecting data during experiments related to
 the Coleman4HCS framework. The primary functionality revolves around the `MonitorCollector`
 class, which facilitates data collection during an experiment and writes results to
-partitioned Parquet files via a ``ResultsSink``.
+a configured ``ResultsSink``.
 
 Classes
 -------
 MonitorCollector
-    Collects data during an experiment and writes to a ResultsSink (Parquet by default).
+    Collects data during an experiment and writes to a ResultsSink (NullSink by default;
+    pass a ``ParquetSink`` or other sink explicitly to persist results).
 """
 
 from __future__ import annotations

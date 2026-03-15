@@ -50,7 +50,8 @@ CREATE TABLE IF NOT EXISTS {_CLICKHOUSE_TABLE} (
     cost               Float64,
     rewards            Float64,
     avg_precision      Float64,
-    prioritization_order String
+    prioritization_order String,
+    variant            Nullable(String)
 ) ENGINE = MergeTree()
 ORDER BY (scenario, policy, reward_function, experiment, step)
 """
@@ -85,6 +86,7 @@ _INSERT_COLS = [
     "rewards",
     "avg_precision",
     "prioritization_order",
+    "variant",
 ]
 
 
@@ -141,6 +143,7 @@ class ClickHouseSink(ResultsSink):
             ("process_cpu_utilization_percent", "Nullable(Float64)"),
             ("process_cpu_time_seconds", "Nullable(Float64)"),
             ("wall_time_seconds", "Nullable(Float64)"),
+            ("variant", "Nullable(String)"),
         ]:
             self._client.command(
                 f"ALTER TABLE {_CLICKHOUSE_TABLE} ADD COLUMN IF NOT EXISTS {column_name} {column_type}"
