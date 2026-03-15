@@ -24,6 +24,7 @@ Environment
 import logging
 import time
 import warnings
+from typing import Any
 
 import numpy as np
 import polars as pl
@@ -36,6 +37,7 @@ from coleman4hcs.results.parquet_sink import ParquetSink
 from coleman4hcs.results.sink_base import NullSink, ResultsSink
 from coleman4hcs.scenarios import IndustrialDatasetHCSScenarioProvider, VirtualHCSScenario
 from coleman4hcs.telemetry.otel import get_telemetry
+from coleman4hcs.telemetry.resources import ProcessResourceTracker, ResourceSnapshot
 from coleman4hcs.utils.monitor import MonitorCollector
 from coleman4hcs.utils.monitor_params import CollectParams
 
@@ -91,6 +93,7 @@ class Environment:
         results_config: dict | None = None,
         checkpoint_config: dict | None = None,
         telemetry_config: dict | None = None,
+        runtime_metadata: dict[str, Any] | None = None,
     ):
         """Initialize the Environment.
 
@@ -112,6 +115,10 @@ class Environment:
         self.agents = agents
         self.scenario_provider = scenario_provider
         self.evaluation_metric = evaluation_metric
+        self.runtime_metadata: dict[str, str] = {}
+        self.set_runtime_metadata(runtime_metadata)
+        self._resource_tracker: ProcessResourceTracker | None = None
+        self._last_resource_snapshot: ResourceSnapshot | None = None
 
         # Build the results sink from config
         self._results_config = results_config or {}
@@ -136,6 +143,7 @@ class Environment:
             enabled=tel_cfg.get("enabled", False),
             service_name=tel_cfg.get("service_name", "coleman4hcs"),
             otlp_endpoint=tel_cfg.get("otlp_endpoint", "http://localhost:4318"),
+            export_interval_millis=tel_cfg.get("export_interval_millis", 5000),
         )
 
         self.monitor: MonitorCollector = MonitorCollector(sink=self._sink)
@@ -192,6 +200,51 @@ class Environment:
         for agent in self.agents:
             agent.reset()
 
+    def set_runtime_metadata(self, runtime_metadata: dict[str, Any] | None = None) -> None:
+        """Set execution-scoped metadata used for telemetry and persisted results."""
+        default_metadata = {
+            "execution_id": "unknown",
+            "worker_id": "0",
+            "parallel_mode": "sequential",
+        }
+        incoming_metadata = runtime_metadata or {}
+        self.runtime_metadata = {key: str(value) for key, value in default_metadata.items()}
+        self.runtime_metadata.update({key: str(value) for key, value in incoming_metadata.items() if value is not None})
+
+    def _current_runtime_metadata(self) -> dict[str, str]:
+        """Return execution metadata attached to the current environment run."""
+        return dict(self.runtime_metadata)
+
+    def _experiment_telemetry_attributes(self, experiment: int) -> dict[str, Any]:
+        """Build low-cardinality telemetry attributes for one experiment run."""
+        attributes = {
+            "scenario": str(self.scenario_provider),
+            "experiment": str(experiment),
+            "time_ratio": f"{self.scenario_provider.get_avail_time_ratio():.2f}",
+        }
+        attributes.update(self._current_runtime_metadata())
+        return attributes
+
+    def _agent_telemetry_attributes(self, experiment: int, policy: str, reward_function: str) -> dict[str, Any]:
+        """Build telemetry attributes for one agent execution within an experiment."""
+        attrs = self._experiment_telemetry_attributes(experiment)
+        attrs.update(
+            {
+                "policy": policy,
+                "reward_function": reward_function,
+            }
+        )
+        return attrs
+
+    def _sample_resources(self) -> ResourceSnapshot:
+        """Capture one process resource sample, creating the tracker lazily when necessary."""
+        if self._resource_tracker is None:
+            self._resource_tracker = ProcessResourceTracker()
+
+        snapshot = self._resource_tracker.sample()
+        self._last_resource_snapshot = snapshot
+        return snapshot
+
     def run_single(self, experiment, trials=100, bandit_type=EvaluationMetricBandit, restore=True):
         """Execute a single simulation experiment.
 
@@ -214,72 +267,102 @@ class Environment:
 
         # restore to step
         restore_step = 1
+        experiment_attrs = self._experiment_telemetry_attributes(experiment)
+        self._resource_tracker = ProcessResourceTracker()
+        self._last_resource_snapshot = None
 
-        if restore:
-            # Try to restore from checkpoint store
-            run_id = str(self.scenario_provider)
-            payload = self.checkpoint_store.load(run_id, experiment)
-            if payload is not None:
-                restore_step = payload.step
-                self.agents = payload.agents if payload.agents is not None else self.agents
-                bandit = payload.bandit
-                self.scenario_provider.last_build(restore_step)
-                restore_step += 1  # start 1 step after the last build
+        # Each independent execution must restart the scenario iteration from the beginning
+        # unless a checkpoint explicitly restores to a later step.
+        self.scenario_provider.last_build(0)
 
-        # Test Budget percentage
-        avail_time_ratio = self.scenario_provider.get_avail_time_ratio()
+        self.telemetry.mark_run_started(experiment_attrs)
 
-        # For each "virtual scenario" I must analyse it and evaluate it
-        for t, virtual_scenario in enumerate(self.scenario_provider, start=restore_step):
-            # The max number of scenarios that will be analyzed
-            if t > trials:
-                break
+        try:
+            if restore:
+                # Try to restore from checkpoint store
+                run_id = str(self.scenario_provider)
+                payload = self.checkpoint_store.load(run_id, experiment)
+                if payload is not None:
+                    restore_step = payload.step
+                    self.agents = payload.agents if payload.agents is not None else self.agents
+                    bandit = payload.bandit
+                    self.scenario_provider.last_build(restore_step)
+                    restore_step += 1  # start 1 step after the last build
 
-            # Time Budget
-            available_time = virtual_scenario.get_available_time()
-            self.evaluation_metric.update_available_time(available_time)
+            logger.info(
+                "Starting experiment=%s scenario=%s from_step=%s total_trials=%s",
+                experiment,
+                self.scenario_provider,
+                restore_step,
+                trials,
+            )
 
-            # Compute time
-            start_bandit = time.time()
+            # Test Budget percentage
+            avail_time_ratio = self.scenario_provider.get_avail_time_ratio()
 
-            if bandit is None:
-                bandit = bandit_type(virtual_scenario.get_testcases(), self.evaluation_metric)
-            else:
-                # Update bandit (the arms = TC available) for all agents
-                bandit.update_arms(virtual_scenario.get_testcases())
+            # For each "virtual scenario" I must analyse it and evaluate it
+            for t, virtual_scenario in enumerate(self.scenario_provider, start=restore_step):
+                # The max number of scenarios that will be analyzed
+                if t > trials:
+                    break
 
-            end_bandit = time.time()
-
-            bandit_duration = end_bandit - start_bandit
-            self.telemetry.record_latency("bandit_update", bandit_duration)
-
-            # we can analyse the same "moment/scenario t" for "i agents"
-            for _, agent in enumerate(self.agents):
-                # Update again because the variants
-                # each variant has its own test budget size, that is, different from the whole system
+                # Time Budget
+                available_time = virtual_scenario.get_available_time()
                 self.evaluation_metric.update_available_time(available_time)
 
-                action, end, exp_name, start = self.run_prioritization(
-                    agent, bandit, bandit_duration, experiment, t, virtual_scenario
-                )
+                # Compute time
+                start_bandit = time.time()
 
-                # If we are working with HCS scenario and there are variants
-                if isinstance(virtual_scenario, VirtualHCSScenario) and len(virtual_scenario.get_variants()) > 0:
-                    self.run_prioritization_hcs(
-                        agent,
-                        action,
-                        avail_time_ratio,
-                        bandit_duration,
-                        end,
-                        exp_name,
-                        experiment,
-                        start,
-                        t,
-                        virtual_scenario,
+                if bandit is None:
+                    bandit = bandit_type(virtual_scenario.get_testcases(), self.evaluation_metric)
+                else:
+                    # Update bandit (the arms = TC available) for all agents
+                    bandit.update_arms(virtual_scenario.get_testcases())
+
+                end_bandit = time.time()
+
+                bandit_duration = end_bandit - start_bandit
+                self.telemetry.record_latency("bandit_update", bandit_duration, attributes=experiment_attrs)
+
+                # we can analyse the same "moment/scenario t" for "i agents"
+                for _, agent in enumerate(self.agents):
+                    # Update again because the variants
+                    # each variant has its own test budget size, that is, different from the whole system
+                    self.evaluation_metric.update_available_time(available_time)
+
+                    action, end, exp_name, start = self.run_prioritization(
+                        agent, bandit, bandit_duration, experiment, t, virtual_scenario
                     )
 
-            self.telemetry.record_cycle()
-            self.save_periodically(restore, t, experiment, bandit)
+                    # If we are working with HCS scenario and there are variants
+                    if isinstance(virtual_scenario, VirtualHCSScenario) and len(virtual_scenario.get_variants()) > 0:
+                        self.run_prioritization_hcs(
+                            agent,
+                            action,
+                            avail_time_ratio,
+                            bandit_duration,
+                            end,
+                            exp_name,
+                            experiment,
+                            start,
+                            t,
+                            virtual_scenario,
+                        )
+
+                self.telemetry.record_cycle(experiment_attrs)
+                self.save_periodically(restore, t, experiment, bandit)
+
+            logger.info("Finished experiment=%s scenario=%s", experiment, self.scenario_provider)
+        finally:
+            run_snapshot = self._sample_resources()
+            self.telemetry.record_experiment_resources(
+                run_snapshot.wall_time_seconds,
+                run_snapshot.cpu_time_seconds,
+                run_snapshot.peak_rss_mib,
+                attributes=experiment_attrs,
+            )
+            self.telemetry.mark_run_finished(experiment_attrs)
+            self.telemetry.flush()
 
     def run_prioritization(  # pylint: disable=too-many-positional-arguments
         self, agent, bandit, bandit_duration, experiment, t, virtual_scenario
@@ -317,6 +400,9 @@ class Environment:
         else:
             exp_name = str(agent)
 
+        reward_function_name = str(agent.get_reward_function())
+        telemetry_attrs = self._agent_telemetry_attributes(experiment, exp_name, reward_function_name)
+
         # Update the bandit inside the agent.
         # This loop also update the actions available for policy choose
         agent.update_bandit(bandit)
@@ -326,9 +412,11 @@ class Environment:
 
         # Choose action (Prioritized Test Suite List) from agent (from current Q estimate)
         action = agent.choose()
+        after_choose = time.time()
 
         # Pick up reward from bandit for chosen action
         # Submit prioritized test cases for evaluation step the environment and get new measurements
+        start_evaluation = time.time()
         metric = agent.bandit.pull(action)
 
         # Update Q action-value estimates (Reward Functions)
@@ -337,16 +425,25 @@ class Environment:
         # Compute end time
         end = time.time()
 
-        prioritization_time = (end - start) + bandit_duration
-        self.telemetry.record_latency("prioritization", prioritization_time)
-        self.telemetry.record_fitness(metric.fitness, metric.cost)
+        prioritization_time = (after_choose - start) + bandit_duration
+        evaluation_time = end - start_evaluation
+        resource_snapshot = self._sample_resources()
+        self.telemetry.record_latency("prioritization", prioritization_time, attributes=telemetry_attrs)
+        self.telemetry.record_latency("evaluation", evaluation_time, attributes=telemetry_attrs)
+        self.telemetry.record_fitness(metric.fitness, metric.cost, attributes=telemetry_attrs)
+        self.telemetry.record_resource_snapshot(
+            resource_snapshot.current_rss_mib,
+            resource_snapshot.peak_rss_mib,
+            resource_snapshot.cpu_utilization_percent,
+            attributes=telemetry_attrs,
+        )
 
         logger.debug(
             "Exp: %s - Ep: %s - Name: %s (%s) - NAPFD/APFDc: %.4f/%.4f",
             experiment,
             t,
             exp_name,
-            str(agent.get_reward_function()),
+            reward_function_name,
             metric.fitness,
             metric.cost,
         )
@@ -358,12 +455,20 @@ class Environment:
             experiment=experiment,
             t=t,
             policy=exp_name,
-            reward_function=str(agent.get_reward_function()),
+            reward_function=reward_function_name,
             metric=metric,
             total_build_duration=self.scenario_provider.total_build_duration,
             prioritization_time=prioritization_time,
             rewards=np.mean(agent.last_reward),
             prioritization_order=action,
+            execution_id=self.runtime_metadata.get("execution_id"),
+            worker_id=self.runtime_metadata.get("worker_id"),
+            parallel_mode=self.runtime_metadata.get("parallel_mode"),
+            process_memory_rss_mib=resource_snapshot.current_rss_mib,
+            process_memory_peak_rss_mib=resource_snapshot.peak_rss_mib,
+            process_cpu_utilization_percent=resource_snapshot.cpu_utilization_percent,
+            process_cpu_time_seconds=resource_snapshot.cpu_time_seconds,
+            wall_time_seconds=resource_snapshot.wall_time_seconds,
         )
 
         self.monitor.collect(params)
@@ -400,6 +505,7 @@ class Environment:
         """
         # Get the variants that exist in the current commit
         variants = virtual_scenario.get_variants()
+        resource_snapshot = self._last_resource_snapshot
 
         # For each variant I will evaluate the impact of the main prioritization
         for variant in variants["Variant"].unique():
@@ -433,6 +539,16 @@ class Environment:
                 prioritization_time=(end - start) + bandit_duration,
                 rewards=0,
                 prioritization_order=df["Name"].to_list(),
+                execution_id=self.runtime_metadata.get("execution_id"),
+                worker_id=self.runtime_metadata.get("worker_id"),
+                parallel_mode=self.runtime_metadata.get("parallel_mode"),
+                process_memory_rss_mib=resource_snapshot.current_rss_mib if resource_snapshot else None,
+                process_memory_peak_rss_mib=resource_snapshot.peak_rss_mib if resource_snapshot else None,
+                process_cpu_utilization_percent=resource_snapshot.cpu_utilization_percent
+                if resource_snapshot
+                else None,  # noqa: E501
+                process_cpu_time_seconds=resource_snapshot.cpu_time_seconds if resource_snapshot else None,
+                wall_time_seconds=resource_snapshot.wall_time_seconds if resource_snapshot else None,
                 variant=variant,
             )
 
@@ -486,6 +602,7 @@ class Environment:
         self.monitor.flush()
         for variant_monitor in self.variant_monitors.values():
             variant_monitor.flush()
+        self.telemetry.flush()
 
     def load_experiment(self, experiment):
         """Load a backup of the experiment from the checkpoint store.

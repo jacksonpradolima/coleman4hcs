@@ -1,0 +1,677 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum({__name__=~\".*run_active.*\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"})",
+          "instant": true,
+          "legendFormat": "active runs",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Active Runs",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 18,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (scenario, experiment, execution_id, worker_id, time_ratio) (rate({__name__=~\".*cycles_total.*\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"}[30s])) and on (scenario, experiment, execution_id, worker_id) ({__name__=~\".*run_active.*\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"} > 0)",
+          "instant": false,
+          "legendFormat": "{{scenario}} | exp {{experiment}} | exec {{execution_id}} | worker {{worker_id}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Cycles Throughput By Experiment",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(sum by (scenario, experiment, execution_id, worker_id, policy, reward_function) (rate({__name__=~\".*prioritization_latency.*_sum\", scenario=~\"$dataset\", execution_id=~\"$execution_id\", policy=~\"$policy\"}[30s])) / sum by (scenario, experiment, execution_id, worker_id, policy, reward_function) (rate({__name__=~\".*prioritization_latency.*_count\", scenario=~\"$dataset\", execution_id=~\"$execution_id\", policy=~\"$policy\"}[30s]))) and on (scenario, experiment, execution_id, worker_id) ({__name__=~\".*run_active.*\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"} > 0)",
+          "instant": false,
+          "legendFormat": "{{policy}} | {{reward_function}} | exp {{experiment}} | worker {{worker_id}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Prioritization Latency By Agent",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(sum by (scenario, experiment, execution_id, worker_id, policy, reward_function) (rate({__name__=~\".*evaluation_latency.*_sum\", scenario=~\"$dataset\", execution_id=~\"$execution_id\", policy=~\"$policy\"}[30s])) / sum by (scenario, experiment, execution_id, worker_id, policy, reward_function) (rate({__name__=~\".*evaluation_latency.*_count\", scenario=~\"$dataset\", execution_id=~\"$execution_id\", policy=~\"$policy\"}[30s]))) and on (scenario, experiment, execution_id, worker_id) ({__name__=~\".*run_active.*\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"} > 0)",
+          "instant": false,
+          "legendFormat": "{{policy}} | {{reward_function}} | exp {{experiment}} | worker {{worker_id}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Evaluation Latency By Agent",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(sum by (scenario, experiment, execution_id, worker_id, policy, reward_function) (rate({__name__=~\".*napfd.*_sum\", scenario=~\"$dataset\", execution_id=~\"$execution_id\", policy=~\"$policy\"}[30s])) / sum by (scenario, experiment, execution_id, worker_id, policy, reward_function) (rate({__name__=~\".*napfd.*_count\", scenario=~\"$dataset\", execution_id=~\"$execution_id\", policy=~\"$policy\"}[30s]))) and on (scenario, experiment, execution_id, worker_id) ({__name__=~\".*run_active.*\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"} > 0)",
+          "instant": false,
+          "legendFormat": "{{policy}} | {{reward_function}} | exp {{experiment}} | worker {{worker_id}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "NAPFD By Agent",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(sum by (scenario, experiment, execution_id, worker_id, policy, reward_function) (rate({__name__=~\".*apfdc.*_sum\", scenario=~\"$dataset\", execution_id=~\"$execution_id\", policy=~\"$policy\"}[30s])) / sum by (scenario, experiment, execution_id, worker_id, policy, reward_function) (rate({__name__=~\".*apfdc.*_count\", scenario=~\"$dataset\", execution_id=~\"$execution_id\", policy=~\"$policy\"}[30s]))) and on (scenario, experiment, execution_id, worker_id) ({__name__=~\".*run_active.*\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"} > 0)",
+          "instant": false,
+          "legendFormat": "{{policy}} | {{reward_function}} | exp {{experiment}} | worker {{worker_id}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "APFDc By Agent",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(sum by (scenario, experiment, execution_id, worker_id, time_ratio) (rate({__name__=~\".*bandit_update_latency.*_sum\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"}[30s])) / sum by (scenario, experiment, execution_id, worker_id, time_ratio) (rate({__name__=~\".*bandit_update_latency.*_count\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"}[30s]))) and on (scenario, experiment, execution_id, worker_id) ({__name__=~\".*run_active.*\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"} > 0)",
+          "instant": false,
+          "legendFormat": "{{scenario}} | exp {{experiment}} | exec {{execution_id}} | worker {{worker_id}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Bandit Update Latency By Experiment",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 29
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(sum by (scenario, experiment, execution_id, worker_id) (rate({__name__=~\".*process_cpu_utilization.*_sum\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"}[30s])) / sum by (scenario, experiment, execution_id, worker_id) (rate({__name__=~\".*process_cpu_utilization.*_count\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"}[30s]))) and on (scenario, experiment, execution_id, worker_id) ({__name__=~\".*run_active.*\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"} > 0)",
+          "instant": false,
+          "legendFormat": "{{scenario}} | exp {{experiment}} | worker {{worker_id}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "CPU Utilization By Execution",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "mibibytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 29
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "(sum by (scenario, experiment, execution_id, worker_id) (rate({__name__=~\".*process_memory_rss.*_sum\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"}[30s])) / sum by (scenario, experiment, execution_id, worker_id) (rate({__name__=~\".*process_memory_rss.*_count\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"}[30s]))) and on (scenario, experiment, execution_id, worker_id) ({__name__=~\".*run_active.*\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"} > 0)",
+          "instant": false,
+          "legendFormat": "{{scenario}} | exp {{experiment}} | worker {{worker_id}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Resident Memory By Execution",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "coleman4hcs",
+    "observability"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values({__name__=~\".*run_active.*\"}, scenario)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Dataset",
+        "multi": false,
+        "name": "dataset",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values({__name__=~\".*run_active.*\"}, scenario)",
+          "refId": "Prometheus-dataset"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values({__name__=~\".*run_active.*\", scenario=~\"$dataset\"}, execution_id)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Execution",
+        "multi": false,
+        "name": "execution_id",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values({__name__=~\".*run_active.*\", scenario=~\"$dataset\"}, execution_id)",
+          "refId": "Prometheus-execution"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values({__name__=~\".*prioritization_latency.*_count\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"}, policy)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Policy",
+        "multi": false,
+        "name": "policy",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values({__name__=~\".*prioritization_latency.*_count\", scenario=~\"$dataset\", execution_id=~\"$execution_id\"}, policy)",
+          "refId": "Prometheus-policy"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Coleman4HCS Overview",
+  "uid": "coleman4hcs-overview",
+  "version": 3,
+  "weekStart": ""
+}

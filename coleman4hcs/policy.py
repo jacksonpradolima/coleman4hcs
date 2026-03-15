@@ -448,7 +448,11 @@ class FRRMABPolicy(Policy):
         """
         # We must calculate the sum of the rewards (FIRs, Fitness Improvement Rates) by each arm in the sliding window
         self.history = agent.history.group_by("Name").agg(
-            [pl.col("ActionAttempts").sum(), pl.col("ValueEstimates").sum(), pl.col("T").count().alias("T")]
+            [
+                pl.col("ActionAttempts").sum(),
+                pl.col("ValueEstimates").sum(),
+                pl.col("T").count().cast(HISTORY_SCHEMA["T"]).alias("T"),
+            ]
         )
 
         # Find rank of each arm
@@ -562,7 +566,7 @@ class SlMABPolicy(Policy):
 
         # Group by Name and aggregate T column
         self.history = agent.history.group_by(["Name"]).agg(
-            [pl.col("T").count().alias("T"), pl.col("T").max().alias("Ti")]
+            [pl.col("T").count().cast(HISTORY_SCHEMA["T"]).alias("T"), pl.col("T").max().alias("Ti")]
         )
 
         # Get Q and R values from agent.actions by joining on Name

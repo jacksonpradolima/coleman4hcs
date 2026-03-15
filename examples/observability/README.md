@@ -9,7 +9,7 @@ observability when developing or profiling Coleman4HCS experiments.
 ## Quick start
 
 ```bash
-# Base stack (OTel Collector + Grafana)
+# Base stack (OTel Collector + Prometheus + Grafana)
 docker compose up -d
 
 # Enable telemetry in config.toml:
@@ -18,7 +18,12 @@ docker compose up -d
 
 # Run your experiment
 python main.py
+
+# Open Grafana (datasource + dashboard are auto-provisioned)
+# http://localhost:3000
 ```
+
+No manual datasource setup is required in Grafana.
 
 ## With ClickHouse
 
@@ -43,6 +48,12 @@ docker compose --profile clickhouse down -v
 | `coleman.evaluation_latency` | Histogram (s) | Evaluation step latency |
 | `coleman.napfd` | Histogram | NAPFD score distribution |
 | `coleman.apfdc` | Histogram | APFDc score distribution |
+
+## Endpoints
+
+* Grafana: `http://localhost:3000`
+* Prometheus UI: `http://localhost:9090`
+* Collector exporter (scrape target): `http://localhost:8889/metrics`
 
 ### Cardinality rules
 

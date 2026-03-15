@@ -141,6 +141,31 @@ def test_run_single(environment, mock_scenario_provider, mock_agent):
     mock_bandit.pull.assert_called_once_with(["testcase1"])
 
 
+def test_run_single_resets_scenario_provider_and_run_lifecycle(environment, mock_scenario_provider):
+    """Each independent experiment must restart the scenario stream and close telemetry lifecycle."""
+    mock_virtual_scenario = MagicMock()
+    mock_virtual_scenario.get_available_time.return_value = 100
+    mock_virtual_scenario.get_testcases.return_value = [
+        {"Name": "testcase1", "Duration": 1.0, "CalcPrio": 0, "LastRun": "0", "LastResults": ""},
+        {"Name": "testcase2", "Duration": 2.0, "CalcPrio": 0, "LastRun": "0", "LastResults": ""},
+    ]
+    mock_scenario_provider.__iter__.side_effect = lambda: iter([mock_virtual_scenario])
+    mock_scenario_provider.total_build_duration = 150
+
+    environment.telemetry = MagicMock()
+    environment.run_prioritization = MagicMock(return_value=([], 0.0, "policy", 0.0))
+    environment.save_periodically = MagicMock()
+
+    environment.run_single("experiment_1", trials=1, restore=False)
+    environment.run_single("experiment_2", trials=1, restore=False)
+
+    assert mock_scenario_provider.last_build.call_args_list[0].args == (0,)
+    assert mock_scenario_provider.last_build.call_args_list[1].args == (0,)
+    assert environment.telemetry.mark_run_started.call_count == 2
+    assert environment.telemetry.mark_run_finished.call_count == 2
+    assert environment.telemetry.flush.call_count == 2
+
+
 def test_save_periodically(environment):
     """Test the save_periodically method to ensure saving happens only at specified intervals."""
     environment.save_experiment = MagicMock()

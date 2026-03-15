@@ -24,12 +24,20 @@ CREATE TABLE IF NOT EXISTS {_CLICKHOUSE_TABLE} (
     scenario           String,
     experiment         Int64,
     step               Int64,
+    execution_id       Nullable(String),
+    worker_id          Nullable(String),
+    parallel_mode      Nullable(String),
     policy             String,
     reward_function    String,
     sched_time         Float64,
     sched_time_duration Float64,
     total_build_duration Float64,
     prioritization_time Float64,
+    process_memory_rss_mib Nullable(Float64),
+    process_memory_peak_rss_mib Nullable(Float64),
+    process_cpu_utilization_percent Nullable(Float64),
+    process_cpu_time_seconds Nullable(Float64),
+    wall_time_seconds Nullable(Float64),
     detected           Int64,
     missed             Int64,
     tests_ran          Int64,
@@ -50,12 +58,20 @@ _INSERT_COLS = [
     "scenario",
     "experiment",
     "step",
+    "execution_id",
+    "worker_id",
+    "parallel_mode",
     "policy",
     "reward_function",
     "sched_time",
     "sched_time_duration",
     "total_build_duration",
     "prioritization_time",
+    "process_memory_rss_mib",
+    "process_memory_peak_rss_mib",
+    "process_cpu_utilization_percent",
+    "process_cpu_time_seconds",
+    "wall_time_seconds",
     "detected",
     "missed",
     "tests_ran",
@@ -108,9 +124,26 @@ class ClickHouseSink(ResultsSink):
 
         self._client = clickhouse_connect.get_client(host=host, port=port, database=database)
         self._client.command(_CREATE_TABLE_SQL)
+        self._ensure_schema()
         self.batch_size = batch_size
         self._buffer: list[dict[str, Any]] = []
         self._lock = threading.Lock()
+
+    def _ensure_schema(self) -> None:
+        """Add newly introduced columns for existing tables without requiring manual migration."""
+        for column_name, column_type in [
+            ("execution_id", "Nullable(String)"),
+            ("worker_id", "Nullable(String)"),
+            ("parallel_mode", "Nullable(String)"),
+            ("process_memory_rss_mib", "Nullable(Float64)"),
+            ("process_memory_peak_rss_mib", "Nullable(Float64)"),
+            ("process_cpu_utilization_percent", "Nullable(Float64)"),
+            ("process_cpu_time_seconds", "Nullable(Float64)"),
+            ("wall_time_seconds", "Nullable(Float64)"),
+        ]:
+            self._client.command(
+                f"ALTER TABLE {_CLICKHOUSE_TABLE} ADD COLUMN IF NOT EXISTS {column_name} {column_type}"
+            )
 
     def write_row(self, row: dict[str, Any]) -> None:
         """Buffer one result row.

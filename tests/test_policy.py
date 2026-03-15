@@ -352,9 +352,9 @@ def test_greedy_policy_performance(dummy_agent, benchmark):
 
     # Assertions - Ensure all actions are returned
     assert len(chosen_actions) == num_actions, "GreedyPolicy should return all actions."
-    assert sorted(chosen_actions) == sorted(dummy_agent.actions["Name"].to_list()), (
-        "GreedyPolicy should return all actions, but names mismatch."
-    )
+    assert sorted(chosen_actions) == sorted(
+        dummy_agent.actions["Name"].to_list()
+    ), "GreedyPolicy should return all actions, but names mismatch."
 
 
 @pytest.mark.benchmark(group="policy")
@@ -382,12 +382,12 @@ def test_random_policy_performance(dummy_agent, benchmark):
 
     # Assertions - Ensure all actions are returned
     assert len(chosen_actions) == num_actions, "RandomPolicy should return all actions."
-    assert sorted(chosen_actions) == sorted(dummy_agent.actions["Name"].to_list()), (
-        "RandomPolicy should return all actions, but there is a mismatch in the names."
-    )
-    assert chosen_actions != dummy_agent.actions["Name"].to_list(), (
-        "RandomPolicy should shuffle the actions, but returned them in the original order!"
-    )
+    assert sorted(chosen_actions) == sorted(
+        dummy_agent.actions["Name"].to_list()
+    ), "RandomPolicy should return all actions, but there is a mismatch in the names."
+    assert (
+        chosen_actions != dummy_agent.actions["Name"].to_list()
+    ), "RandomPolicy should shuffle the actions, but returned them in the original order!"
 
 
 @pytest.mark.benchmark(group="policy")
@@ -533,6 +533,33 @@ def test_frrmab_choose_all_performance(dummy_agent, benchmark):
     assert len(chosen_actions) == num_actions, "FRRMABPolicy should select all actions."
     expected_order = policy.history.sort("Q", descending=True)["Name"].to_list()
     assert chosen_actions == expected_order, "FRRMABPolicy did not return actions sorted by Q values."
+
+
+def test_frrmab_choose_all_accepts_history_after_credit_assignment(dummy_agent):
+    """Regression test: grouped count output must remain schema-compatible with choose_all concat."""
+    policy = FRRMABPolicy(c=0.3, decayed_factor=1)
+    dummy_agent.policy = policy
+    dummy_agent.actions = pl.DataFrame(
+        {
+            "Name": ["A1", "A2", "A3"],
+            "ActionAttempts": [1.0, 1.0, 1.0],
+            "ValueEstimates": [1.0, 0.5, 0.2],
+            "Q": [0.0, 0.0, 0.0],
+        }
+    )
+    dummy_agent.history = pl.DataFrame(
+        {
+            "Name": ["A1", "A1", "A2"],
+            "ActionAttempts": [1.0, 1.0, 1.0],
+            "ValueEstimates": [1.0, 0.5, 0.25],
+            "T": [1, 2, 3],
+        }
+    )
+
+    policy.credit_assignment(dummy_agent)
+    chosen_actions = policy.choose_all(dummy_agent)
+
+    assert set(chosen_actions) == {"A1", "A2", "A3"}
 
 
 @pytest.mark.benchmark(group="policy")

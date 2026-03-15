@@ -33,6 +33,7 @@ Tested Functionalities:
 """
 
 import logging
+import pickle
 from typing import cast
 from unittest.mock import Mock, patch
 
@@ -44,11 +45,13 @@ from coleman4hcs.environment import Environment
 from coleman4hcs.policy import FRRMABPolicy, SWLinUCBPolicy
 from coleman4hcs.scenarios import IndustrialDatasetScenarioProvider
 from main import (
+    build_runtime_metadata,
     create_agents,
     create_logger,
     exp_run_industrial_dataset,
     get_scenario_provider,
     load_class_from_module,
+    to_builtin_types,
 )
 
 # ------------------------
@@ -91,8 +94,47 @@ def test_exp_run_industrial_dataset(mock_environment, mock_create_logger, tmpdir
         level=20,
     )
 
+    mock_env.set_runtime_metadata.assert_called_once()
     mock_env.run_single.assert_called_once()
     mock_env.store_experiment.assert_called_once()
+
+
+def test_build_runtime_metadata_is_unique_per_execution():
+    """Execution metadata should uniquely identify independent runs."""
+    metadata_a = build_runtime_metadata("fakedata", 0.5, 1, "process")
+    metadata_b = build_runtime_metadata("fakedata", 0.5, 1, "process")
+
+    assert metadata_a["worker_id"] == "1"
+    assert metadata_a["parallel_mode"] == "process"
+    assert metadata_a["execution_id"] != metadata_b["execution_id"]
+
+
+def test_to_builtin_types_returns_picklable_dicts():
+    """Config normalization should remove dynamic mapping wrappers from TOML parsing."""
+
+    class DynamicInlineTableDict(dict):
+        pass
+
+    raw = DynamicInlineTableDict(
+        {
+            "algorithm": DynamicInlineTableDict(
+                {
+                    "frrmab": DynamicInlineTableDict(
+                        {
+                            "timerank": DynamicInlineTableDict({"c": 0.5}),
+                        }
+                    )
+                }
+            )
+        }
+    )
+
+    normalized = to_builtin_types(raw)
+    pickle.dumps(normalized)
+
+    assert type(normalized) is dict
+    assert type(normalized["algorithm"]) is dict
+    assert type(normalized["algorithm"]["frrmab"]) is dict
 
 
 def test_load_class_from_module_valid():

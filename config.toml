@@ -80,6 +80,6 @@ base_dir = "checkpoints"
 
 # ── Telemetry (Observability) ──────────────────────────────────────
 [telemetry]
-enabled = false                          # Default off; requires pip install coleman4hcs[telemetry]
+enabled = true                          # Default off; requires pip install coleman4hcs[telemetry]
 otlp_endpoint = "http://localhost:4318"
 service_name = "coleman4hcs"

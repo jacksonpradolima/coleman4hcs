@@ -10,12 +10,18 @@ the same interface with near-zero overhead.
 
 Metric names (for documentation / Grafana dashboard authors)
 ------------------------------------------------------------
+* ``coleman.run_active``             – up/down counter
 * ``coleman.cycles_total``            – counter
 * ``coleman.bandit_update_latency``   – histogram (seconds)
 * ``coleman.prioritization_latency``  – histogram (seconds)
 * ``coleman.evaluation_latency``      – histogram (seconds)
 * ``coleman.napfd``                   – histogram
 * ``coleman.apfdc``                   – histogram
+* ``coleman.process_memory_rss``      – histogram (MiB)
+* ``coleman.process_memory_peak_rss`` – histogram (MiB)
+* ``coleman.process_cpu_utilization`` – histogram (%)
+* ``coleman.experiment_wall_time``    – histogram (seconds)
+* ``coleman.experiment_cpu_time``     – histogram (seconds)
 """
 
 from __future__ import annotations
@@ -68,6 +74,7 @@ class Telemetry:
         self,
         service_name: str = "coleman4hcs",
         otlp_endpoint: str = "http://localhost:4318",
+        export_interval_millis: int = 5000,
     ) -> None:
         if not _HAS_OTEL:
             raise ImportError(
@@ -77,18 +84,26 @@ class Telemetry:
         resource = Resource.create({"service.name": service_name})
 
         # Metrics
-        reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=f"{otlp_endpoint}/v1/metrics"))
+        reader = PeriodicExportingMetricReader(
+            OTLPMetricExporter(endpoint=f"{otlp_endpoint}/v1/metrics"),
+            export_interval_millis=export_interval_millis,
+        )
         meter_provider = MeterProvider(resource=resource, metric_readers=[reader])
         otel_metrics.set_meter_provider(meter_provider)
+        self._meter_provider = meter_provider
         self.meter = meter_provider.get_meter("coleman4hcs")
 
         # Traces
         tracer_provider = TracerProvider(resource=resource)
         tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{otlp_endpoint}/v1/traces")))
         otel_trace.set_tracer_provider(tracer_provider)
+        self._tracer_provider = tracer_provider
         self.tracer = tracer_provider.get_tracer("coleman4hcs")
 
         # Pre-create instruments
+        self.run_active = self.meter.create_up_down_counter(
+            "coleman.run_active", description="Currently active experiment runs"
+        )
         self.cycles_total = self.meter.create_counter("coleman.cycles_total", description="Total cycles processed")
         self.bandit_update_latency = self.meter.create_histogram(
             "coleman.bandit_update_latency", unit="s", description="Bandit update latency"
@@ -101,6 +116,21 @@ class Telemetry:
         )
         self.napfd = self.meter.create_histogram("coleman.napfd", description="NAPFD distribution")
         self.apfdc = self.meter.create_histogram("coleman.apfdc", description="APFDc distribution")
+        self.process_memory_rss = self.meter.create_histogram(
+            "coleman.process_memory_rss", unit="MiBy", description="Process resident memory usage"
+        )
+        self.process_memory_peak_rss = self.meter.create_histogram(
+            "coleman.process_memory_peak_rss", unit="MiBy", description="Process peak resident memory usage"
+        )
+        self.process_cpu_utilization = self.meter.create_histogram(
+            "coleman.process_cpu_utilization", unit="%", description="Process CPU utilization"
+        )
+        self.experiment_wall_time = self.meter.create_histogram(
+            "coleman.experiment_wall_time", unit="s", description="End-to-end experiment duration"
+        )
+        self.experiment_cpu_time = self.meter.create_histogram(
+            "coleman.experiment_cpu_time", unit="s", description="CPU time consumed by one experiment"
+        )
 
     def record_cycle(self, attributes: dict[str, Any] | None = None) -> None:
         """Increment the cycle counter.
@@ -111,6 +141,14 @@ class Telemetry:
             Optional OTel attributes (avoid high cardinality).
         """
         self.cycles_total.add(1, attributes=attributes)
+
+    def mark_run_started(self, attributes: dict[str, Any] | None = None) -> None:
+        """Mark an experiment run as active."""
+        self.run_active.add(1, attributes=attributes)
+
+    def mark_run_finished(self, attributes: dict[str, Any] | None = None) -> None:
+        """Mark an experiment run as finished."""
+        self.run_active.add(-1, attributes=attributes)
 
     def record_latency(self, name: str, duration: float, attributes: dict[str, Any] | None = None) -> None:
         """Record a latency observation.
@@ -142,6 +180,39 @@ class Telemetry:
         """
         self.napfd.record(fitness, attributes=attributes)
         self.apfdc.record(cost, attributes=attributes)
+
+    def record_resource_snapshot(
+        self,
+        current_rss_mib: float | None,
+        peak_rss_mib: float | None,
+        cpu_utilization_percent: float | None,
+        attributes: dict[str, Any] | None = None,
+    ) -> None:
+        """Record a point-in-time process resource sample."""
+        if current_rss_mib is not None:
+            self.process_memory_rss.record(current_rss_mib, attributes=attributes)
+        if peak_rss_mib is not None:
+            self.process_memory_peak_rss.record(peak_rss_mib, attributes=attributes)
+        if cpu_utilization_percent is not None:
+            self.process_cpu_utilization.record(cpu_utilization_percent, attributes=attributes)
+
+    def record_experiment_resources(
+        self,
+        wall_time_seconds: float,
+        cpu_time_seconds: float,
+        peak_rss_mib: float | None,
+        attributes: dict[str, Any] | None = None,
+    ) -> None:
+        """Record final resource totals for one experiment."""
+        self.experiment_wall_time.record(wall_time_seconds, attributes=attributes)
+        self.experiment_cpu_time.record(cpu_time_seconds, attributes=attributes)
+        if peak_rss_mib is not None:
+            self.process_memory_peak_rss.record(peak_rss_mib, attributes=attributes)
+
+    def flush(self) -> None:
+        """Force pending metrics and traces to be exported."""
+        self._meter_provider.force_flush()
+        self._tracer_provider.force_flush()
 
     @contextlib.contextmanager
     def span(self, name: str, attributes: dict[str, Any] | None = None):
@@ -178,6 +249,12 @@ class NoOpTelemetry:
             Ignored.
         """
 
+    def mark_run_started(self, attributes: dict[str, Any] | None = None) -> None:
+        """No-op."""
+
+    def mark_run_finished(self, attributes: dict[str, Any] | None = None) -> None:
+        """No-op."""
+
     def record_latency(self, name: str, duration: float, attributes: dict[str, Any] | None = None) -> None:
         """No-op.
 
@@ -204,6 +281,27 @@ class NoOpTelemetry:
             Ignored.
         """
 
+    def record_resource_snapshot(
+        self,
+        current_rss_mib: float | None,
+        peak_rss_mib: float | None,
+        cpu_utilization_percent: float | None,
+        attributes: dict[str, Any] | None = None,
+    ) -> None:
+        """No-op."""
+
+    def record_experiment_resources(
+        self,
+        wall_time_seconds: float,
+        cpu_time_seconds: float,
+        peak_rss_mib: float | None,
+        attributes: dict[str, Any] | None = None,
+    ) -> None:
+        """No-op."""
+
+    def flush(self) -> None:
+        """No-op flush."""
+
     @contextlib.contextmanager
     def span(self, name: str, attributes: dict[str, Any] | None = None):
         """No-op context manager.
@@ -226,6 +324,7 @@ def get_telemetry(
     enabled: bool = False,
     service_name: str = "coleman4hcs",
     otlp_endpoint: str = "http://localhost:4318",
+    export_interval_millis: int = 5000,
 ) -> Telemetry | NoOpTelemetry:
     """Return the appropriate telemetry implementation.
 
@@ -237,6 +336,8 @@ def get_telemetry(
         OTLP service name.
     otlp_endpoint : str
         OTLP endpoint URL.
+    export_interval_millis : int
+        Metric export interval in milliseconds.
 
     Returns
     -------
@@ -255,7 +356,11 @@ def get_telemetry(
         return NoOpTelemetry()
 
     try:
-        return Telemetry(service_name=service_name, otlp_endpoint=otlp_endpoint)
+        return Telemetry(
+            service_name=service_name,
+            otlp_endpoint=otlp_endpoint,
+            export_interval_millis=export_interval_millis,
+        )
     except Exception:
         logger.exception("Failed to initialize OpenTelemetry; falling back to NoOpTelemetry")
         return NoOpTelemetry()

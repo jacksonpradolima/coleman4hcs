@@ -165,7 +165,7 @@ The fastest way to start developing is with a [DevContainer](https://containers.
 1. Python 3.14 + uv + all dependencies (including telemetry & ClickHouse extras) are installed *(on create)*
 2. Pre-commit hooks are configured *(on create)*
 3. `.env` is seeded from `.env.example` *(on create)*
-4. The **observability stack** (OTel Collector + Grafana) starts via Docker-in-Docker *(on every start)*
+4. The **observability stack** (OTel Collector + Prometheus + Grafana + ClickHouse) starts via Docker-in-Docker *(on every start)*
 5. **Telemetry is enabled** in `config.toml` so metrics flow to Grafana immediately *(on every start)*
 
 After the container builds, just run your experiment:
@@ -192,7 +192,7 @@ make docs-serve     # preview docs locally
 | Docker-in-Docker | Runs the observability stack automatically |
 | VS Code extensions | Ruff, Pylance, Pyright, Copilot, TOML, Jupyter, etc. |
 | Telemetry + ClickHouse extras | Pre-installed — no extra `pip install` needed |
-| OTel Collector + Grafana | Started automatically on container start |
+| OTel Collector + Prometheus + Grafana + ClickHouse | Started automatically on container start |
 | Port forwarding | All service ports mapped to your host (see table below) |
 
 **Forwarded ports (all accessible from your host browser):**
@@ -200,17 +200,16 @@ make docs-serve     # preview docs locally
 | Port | Service | URL |
 |------|---------|-----|
 | 3000 | Grafana | http://localhost:3000 |
+| 9090 | Prometheus | http://localhost:9090 |
 | 4317 | OTel Collector (gRPC) | — (used by the framework) |
 | 4318 | OTel Collector (HTTP) | — (used by the framework) |
 | 8889 | Prometheus metrics | http://localhost:8889/metrics |
-| 8123 | ClickHouse (HTTP) | http://localhost:8123 *(only with `--profile clickhouse`)* |
-| 9000 | ClickHouse (native) | — *(only with `--profile clickhouse`)* |
+| 8123 | ClickHouse (HTTP) | http://localhost:8123 |
+| 9000 | ClickHouse (native) | — |
 
-> **ClickHouse** is not started by default.  If you need it, run:
-> ```bash
-> cd examples/observability && docker compose --profile clickhouse up -d
-> ```
-> Then set `sink = "clickhouse"` in `config.toml` under `[results]`.
+> **ClickHouse sink remains optional.** The service is running in DevContainer,
+> but you still need `sink = "clickhouse"` in `config.toml` under `[results]`
+> if you want results persisted to ClickHouse instead of Parquet.
 
 # Architecture: Results, Checkpoints & Telemetry
 
@@ -288,7 +287,7 @@ GROUP BY reward_function;
 > any of these services.  The observability stack is **optional** for local
 > installs, but **enabled automatically** in the DevContainer.
 
-Coleman4HCS ships with a local observability stack (OTel Collector + Grafana)
+Coleman4HCS ships with a local observability stack (OTel Collector + Prometheus + Grafana)
 for real-time metrics and traces during experiments.
 
 ## Using the DevContainer (zero-step setup)
@@ -296,9 +295,10 @@ for real-time metrics and traces during experiments.
 If you develop inside the DevContainer, **everything is already running**.
 The post-start hook automatically:
 
-1. Starts the OTel Collector + Grafana via Docker Compose
-2. Enables `[telemetry] enabled = true` in `config.toml`
-3. Installs the `telemetry` and `clickhouse` pip extras
+1. Starts the OTel Collector + Prometheus + Grafana + ClickHouse via Docker Compose
+2. Starts Prometheus + ClickHouse via Docker Compose
+3. Enables `[telemetry] enabled = true` in `config.toml`
+4. Installs the `telemetry` and `clickhouse` pip extras
 
 Just run your experiment and open Grafana:
 

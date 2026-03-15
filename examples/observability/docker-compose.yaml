@@ -29,6 +29,22 @@ services:
       - "8889:8889"   # Prometheus exporter (metrics)
     restart: unless-stopped
 
+  # ── Prometheus (scrapes OTel Collector exporter) ──────────────────
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: coleman-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - otel-collector
+    restart: unless-stopped
+
   # ── Grafana ───────────────────────────────────────────────────────
   grafana:
     image: grafana/grafana:11.0.0
@@ -36,8 +52,14 @@ services:
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
       - "3000:3000"
+    depends_on:
+      - prometheus
     restart: unless-stopped
 
   # ── ClickHouse (optional, behind profile) ─────────────────────────
