@@ -205,5 +205,6 @@ htmlcov/
 # Ignore profiling files
 prof/
 
-# Ignore runs output
+# Ignore runs and checkpoints output
 runs/
+checkpoints/
