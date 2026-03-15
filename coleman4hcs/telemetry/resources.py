@@ -6,11 +6,14 @@ import os
 import sys
 import time
 from dataclasses import dataclass
+from types import ModuleType
 
 try:
-    import resource
+    import resource as _resource_module
 except ImportError:  # pragma: no cover - not expected on Linux, but keeps portability
-    resource = None
+    resource_module: ModuleType | None = None
+else:
+    resource_module = _resource_module
 
 
 @dataclass(frozen=True)
@@ -82,11 +85,11 @@ def _get_current_rss_mib() -> float | None:
 
 def _get_peak_rss_mib() -> float | None:
     """Return the peak resident set size in MiB when available."""
-    if resource is None:
+    if resource_module is None:
         return None
 
     try:
-        peak_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        peak_rss = resource_module.getrusage(resource_module.RUSAGE_SELF).ru_maxrss
     except (AttributeError, OSError, ValueError):
         return None
 

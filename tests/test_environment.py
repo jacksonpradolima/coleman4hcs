@@ -125,7 +125,7 @@ def test_run_single(environment, mock_scenario_provider, mock_agent):
     environment.checkpoint_store = MagicMock()
     environment.checkpoint_store.load.return_value = CheckpointPayload(
         run_id="MockScenarioProvider",
-        experiment="experiment_1",
+        experiment=1,
         step=1,
         agents=[mock_agent],
         bandit=mock_bandit,
@@ -164,6 +164,41 @@ def test_run_single_resets_scenario_provider_and_run_lifecycle(environment, mock
     assert environment.telemetry.mark_run_started.call_count == 2
     assert environment.telemetry.mark_run_finished.call_count == 2
     assert environment.telemetry.flush.call_count == 2
+
+
+def test_run_single_resumes_from_checkpoint_step(environment, mock_scenario_provider, mock_agent):
+    """Resume must continue from the step after the checkpoint instead of replaying prior builds."""
+    mock_virtual_scenario = MagicMock()
+    mock_virtual_scenario.get_available_time.return_value = 100
+    mock_virtual_scenario.get_testcases.return_value = [
+        {"Name": "testcase1", "Duration": 1.0, "CalcPrio": 0, "LastRun": "0", "LastResults": ""},
+        {"Name": "testcase2", "Duration": 2.0, "CalcPrio": 0, "LastRun": "0", "LastResults": ""},
+    ]
+    mock_scenario_provider.__iter__.side_effect = lambda: iter([mock_virtual_scenario])
+    mock_scenario_provider.total_build_duration = 150
+
+    mock_bandit = MagicMock(spec=EvaluationMetricBandit)
+    mock_agent.bandit = mock_bandit
+    mock_agent.get_reward_function.return_value = "reward_function"
+    mock_agent.last_reward = [0.4]
+
+    environment.checkpoint_store = MagicMock()
+    environment.checkpoint_store.load.return_value = CheckpointPayload(
+        run_id=str(mock_scenario_provider),
+        experiment=1,
+        step=5,
+        agents=[mock_agent],
+        bandit=mock_bandit,
+    )
+    environment.run_prioritization = MagicMock(return_value=([], 0.0, "policy", 0.0))
+    environment.save_periodically = MagicMock()
+
+    environment.run_single(1, trials=10, restore=True)
+
+    assert mock_scenario_provider.last_build.call_args_list[0].args == (0,)
+    assert mock_scenario_provider.last_build.call_args_list[1].args == (5,)
+    assert environment.run_prioritization.call_args.args[4] == 6
+    mock_bandit.update_arms.assert_called_once()
 
 
 def test_save_periodically(environment):

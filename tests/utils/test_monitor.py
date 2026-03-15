@@ -50,21 +50,22 @@ def null_monitor():
 
 def _make_params(mock_scenario_provider, mock_metric, **overrides):
     """Build a CollectParams with sensible defaults."""
-    kwargs = {
-        "scenario_provider": mock_scenario_provider,
-        "available_time": 50,
-        "experiment": 1,
-        "t": 1,
-        "policy": "TestPolicy",
-        "reward_function": "TestReward",
-        "metric": mock_metric,
-        "total_build_duration": 100,
-        "prioritization_time": 10,
-        "rewards": 0.9,
-        "prioritization_order": ["test1", "test2"],
-    }
-    kwargs.update(overrides)
-    return CollectParams(**kwargs)
+    params = CollectParams(
+        scenario_provider=mock_scenario_provider,
+        available_time=50,
+        experiment=1,
+        t=1,
+        policy="TestPolicy",
+        reward_function="TestReward",
+        metric=mock_metric,
+        total_build_duration=100,
+        prioritization_time=10,
+        rewards=0.9,
+        prioritization_order=["test1", "test2"],
+    )
+    for key, value in overrides.items():
+        setattr(params, key, value)
+    return params
 
 
 def test_default_monitor_uses_null_sink():

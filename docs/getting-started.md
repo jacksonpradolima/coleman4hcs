@@ -135,6 +135,279 @@ uv pip install coleman4hcs[clickhouse]
 uv run python main.py
 ```
 
+## Checking Final Results
+
+Grafana is for live execution behavior: throughput, latency, CPU, memory, and
+run separation while the experiment is still running.
+
+The final experiment facts are stored separately:
+
+* Parquet, by default: `./runs/`
+* Checkpoint progress for resume/recovery: `./checkpoints/`
+* ClickHouse, when enabled: table `coleman_results`
+
+### What happens if you run experiments again?
+
+By default, Coleman4HCS **appends** new final results instead of replacing the
+old ones.
+
+For the default Parquet sink this means:
+
+* new files are created under `./runs/`
+* previous files are preserved
+* old and new executions coexist in the same dataset
+* the new `execution_id` lets you separate one run from another analytically
+
+For the ClickHouse sink this means:
+
+* new rows are inserted into `coleman_results`
+* previous rows are preserved unless you explicitly delete them
+
+Checkpoint behavior is different: for the same run and experiment, the latest
+checkpoint progress is updated so recovery can continue from the most recent
+durable step.
+
+If you want a completely fresh analysis space, choose one of these options
+before running again:
+
+```bash
+# Option 1: start from a clean Parquet directory
+rm -rf ./runs
+
+# Option 2: keep old runs, but write new ones elsewhere
+# config.toml -> [results] out_dir = "./runs-new"
+
+# Option 3: clean checkpoints too, if you do not want recovery state reused
+rm -rf ./checkpoints
+```
+
+### Default Parquet output
+
+After `uv run python main.py`, inspect the partitioned Parquet dataset:
+
+```bash
+find ./runs -name '*.parquet' | head
+```
+
+Query it directly with DuckDB:
+
+```bash
+uv run python -c "
+import duckdb
+print(duckdb.sql(\"\"\"
+    SELECT scenario,
+           execution_id,
+           policy,
+           reward_function,
+           AVG(fitness) AS avg_napfd,
+           AVG(cost) AS avg_apfdc,
+           AVG(process_memory_rss_mib) AS avg_rss_mib,
+           AVG(process_cpu_utilization_percent) AS avg_cpu_pct
+    FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+    GROUP BY scenario, execution_id, policy, reward_function
+    ORDER BY avg_napfd DESC
+\"\"\")
+)"
+```
+
+### DuckDB, in practice
+
+DuckDB is the easiest way to inspect final results deeply without moving data
+out of the Parquet dataset.
+
+#### Open an interactive DuckDB session
+
+```bash
+uv run python -c "import duckdb; duckdb.connect('analysis.duckdb').execute('SELECT 1'); print('ready')"
+```
+
+Or use it directly from Python scripts and notebooks.
+
+#### Inspect available columns
+
+```bash
+uv run python -c "
+import duckdb
+print(duckdb.sql(\"\"\"
+    DESCRIBE
+    SELECT *
+    FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+\"\"\").df())
+"
+```
+
+#### See which executions are available
+
+```bash
+uv run python -c "
+import duckdb
+print(duckdb.sql(\"\"\"
+    SELECT scenario,
+           execution_id,
+           COUNT(*) AS rows,
+           MIN(step) AS first_step,
+           MAX(step) AS last_step
+    FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+    GROUP BY scenario, execution_id
+    ORDER BY scenario, execution_id
+\"\"\").df())
+"
+```
+
+#### Compare policies by final quality and resource cost
+
+```bash
+uv run python -c "
+import duckdb
+print(duckdb.sql(\"\"\"
+    SELECT scenario,
+           policy,
+           reward_function,
+           AVG(fitness) AS avg_napfd,
+           AVG(cost) AS avg_apfdc,
+           AVG(prioritization_time) AS avg_prioritization_time,
+           AVG(process_memory_rss_mib) AS avg_rss_mib,
+           AVG(process_cpu_utilization_percent) AS avg_cpu_pct,
+           MAX(wall_time_seconds) AS wall_time_seconds
+    FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+    GROUP BY scenario, policy, reward_function
+    ORDER BY avg_napfd DESC, avg_apfdc DESC
+\"\"\").df())
+"
+```
+
+#### Slice one specific execution
+
+```bash
+uv run python -c "
+import duckdb
+execution_id = 'replace-with-real-execution-id'
+print(duckdb.sql(f\"\"\"
+    SELECT experiment,
+           step,
+           policy,
+           reward_function,
+           fitness,
+           cost,
+           process_memory_rss_mib,
+           process_cpu_utilization_percent
+    FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+    WHERE execution_id = '{execution_id}'
+    ORDER BY experiment, step, policy
+\"\"\").df())
+"
+```
+
+#### Export a filtered report
+
+```bash
+uv run python -c "
+import duckdb
+duckdb.sql(\"\"\"
+    COPY (
+        SELECT scenario,
+               execution_id,
+               policy,
+               reward_function,
+               AVG(fitness) AS avg_napfd,
+               AVG(cost) AS avg_apfdc
+        FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+        GROUP BY scenario, execution_id, policy, reward_function
+    ) TO './runs/analysis/final-summary.csv' (HEADER, DELIMITER ',')
+\"\"\")
+print('exported ./runs/analysis/final-summary.csv')
+"
+```
+
+### ClickHouse, in practice
+
+If you want a long-lived analytical store instead of Parquet files, switch the
+ results sink to ClickHouse.
+
+#### Enable it
+
+```toml
+[results]
+enabled = true
+sink = "clickhouse"
+```
+
+Run the service locally:
+
+```bash
+cd examples/observability
+docker compose --profile clickhouse up -d
+```
+
+#### Query it from Python
+
+```bash
+uv run python -c "
+import clickhouse_connect
+
+client = clickhouse_connect.get_client(host='localhost', port=8123, database='default')
+rows = client.query('''
+    SELECT scenario,
+           execution_id,
+           policy,
+           reward_function,
+           AVG(fitness) AS avg_napfd,
+           AVG(cost) AS avg_apfdc,
+           AVG(process_memory_rss_mib) AS avg_rss_mib,
+           AVG(process_cpu_utilization_percent) AS avg_cpu_pct
+    FROM coleman_results
+    GROUP BY scenario, execution_id, policy, reward_function
+    ORDER BY avg_napfd DESC
+''')
+print(rows.result_rows)
+"
+```
+
+#### Inspect stored schema
+
+```bash
+uv run python -c "
+import clickhouse_connect
+client = clickhouse_connect.get_client(host='localhost', port=8123, database='default')
+print(client.query('DESCRIBE TABLE coleman_results').result_rows)
+"
+```
+
+#### Clean old data when needed
+
+ClickHouse also accumulates results by default. If you need a fresh table:
+
+```bash
+uv run python -c "
+import clickhouse_connect
+client = clickhouse_connect.get_client(host='localhost', port=8123, database='default')
+client.command('TRUNCATE TABLE coleman_results')
+print('coleman_results truncated')
+"
+```
+
+### Resume and recovery
+
+If checkpoints are enabled, Coleman4HCS writes one directory per run under
+`./checkpoints/`. Each experiment keeps a `progress_ex<N>.json` file pointing
+to the last durable checkpoint.
+
+To inspect recovery state:
+
+```bash
+find ./checkpoints -name 'progress_*.json' -maxdepth 3 -print
+```
+
+When `uv run python main.py` is started again with the same configuration,
+the framework loads the last saved checkpoint and resumes from the next step
+instead of replaying completed builds.
+
+### Notebook workflow
+
+For a guided end-to-end workflow covering configuration, observability,
+checkpoints, export, and analysis, open the marimo notebook example in
+[workflow.py](workflow.py).
+
 ## Port Reference
 
 | Port | Service | URL |

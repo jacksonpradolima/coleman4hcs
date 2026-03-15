@@ -35,6 +35,18 @@ The default dashboard now includes top-level filters for dataset, execution,
 and policy, so you can slice one live run without visually mixing it with the
 others.
 
+## Live behavior vs. final results
+
+Grafana answers: "what is happening right now?"
+
+For final experiment results, use the persisted outputs instead:
+
+* `./runs/` for partitioned Parquet datasets
+* `coleman_results` in ClickHouse when the ClickHouse sink is enabled
+* `./checkpoints/` to inspect resume/recovery progress files
+
+The complete guided workflow is available in [workflow.py](workflow.py).
+
 ## Local setup (without DevContainer)
 
 ```bash

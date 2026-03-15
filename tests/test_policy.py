@@ -23,6 +23,8 @@ Test Plan:
 4. Ensure exceptions (e.g., `QException`) are properly raised when needed.
 """
 
+from typing import Any
+
 import numpy as np
 import polars as pl
 import pytest
@@ -613,7 +615,7 @@ def test_linucb_policy_credit_assignment_performance(contextual_agent, benchmark
     num_actions = 5_000
     num_features = 100
     actions = [f"A{i}" for i in range(num_actions)]
-    features = {f"feat{i}": rng.random(num_actions) for i in range(num_features)}
+    features: dict[str, Any] = {f"feat{i}": rng.random(num_actions) for i in range(num_features)}
     features["Name"] = actions
 
     contextual_agent.context_features = pl.DataFrame(features)

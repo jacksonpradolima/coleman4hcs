@@ -12,6 +12,7 @@ remains unaffected.
 
 from __future__ import annotations
 
+import importlib
 import threading
 from typing import Any
 
@@ -115,7 +116,7 @@ class ClickHouseSink(ResultsSink):
         batch_size: int = 1000,
     ) -> None:
         try:
-            import clickhouse_connect  # noqa: F811
+            clickhouse_connect = importlib.import_module("clickhouse_connect")
         except ImportError as exc:
             raise ImportError(
                 "clickhouse-connect is required for ClickHouseSink. "

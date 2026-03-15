@@ -25,6 +25,16 @@ python main.py
 
 No manual datasource setup is required in Grafana.
 
+Grafana is intended for live behavior during execution. Final experiment facts
+remain in the configured results sink:
+
+* `./runs/` when using the default Parquet sink
+* `coleman_results` when using the ClickHouse sink
+* `./checkpoints/` for resume/recovery state
+
+For an end-to-end example covering setup, observability, checkpoints, export,
+and analysis, see [docs/workflow.py](docs/workflow.py).
+
 ## With ClickHouse
 
 ```bash

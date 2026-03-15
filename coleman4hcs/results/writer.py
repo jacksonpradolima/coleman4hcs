@@ -19,7 +19,13 @@ from coleman4hcs.results.sink_base import ResultsSink
 
 logger = logging.getLogger(__name__)
 
-_SENTINEL = None  # signals the writer thread to stop
+
+class _StopSignal:
+    """Marker object used to stop the writer thread."""
+
+
+_SENTINEL = _StopSignal()
+_QueueItem = dict[str, Any] | _StopSignal
 
 
 class ResultsWriter:
@@ -41,7 +47,7 @@ class ResultsWriter:
 
     def __init__(self, sink: ResultsSink, max_queue_size: int = 10_000) -> None:
         self.sink = sink
-        self._queue: queue.Queue[dict[str, Any] | None] = queue.Queue(maxsize=max_queue_size)
+        self._queue: queue.Queue[_QueueItem] = queue.Queue(maxsize=max_queue_size)
         self._thread = threading.Thread(target=self._drain, daemon=True, name="ResultsWriter")
         self._started = False
 
@@ -82,11 +88,11 @@ class ResultsWriter:
         """Background loop: read from queue, write to sink."""
         while True:
             row = self._queue.get()
-            if row is _SENTINEL:
+            if isinstance(row, _StopSignal):
                 # Drain remaining items
                 while not self._queue.empty():
                     remaining = self._queue.get_nowait()
-                    if remaining is not _SENTINEL:
+                    if not isinstance(remaining, _StopSignal):
                         self.sink.write_row(remaining)
                 self.sink.flush()
                 break

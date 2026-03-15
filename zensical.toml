@@ -15,6 +15,7 @@ repo_url = "https://github.com/jacksonpradolima/coleman4hcs"
 nav = [
   { "Home" = "index.md" },
   { "Getting Started" = "getting-started.md" },
+  { "Workflow Notebook" = "workflow.py" },
   { "Configuration" = "configuration.md" },
   { "Setup & Architecture" = "setup.md" },
   { "Observability" = "observability.md" },

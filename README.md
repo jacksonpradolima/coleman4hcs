@@ -267,6 +267,9 @@ pip install coleman4hcs[clickhouse]
 Results are written as Hive-partitioned Parquet files under `./runs/`.  You
 can query them directly with DuckDB (already a project dependency):
 
+For a guided end-to-end example covering configuration, observability,
+resume/recovery, export, and final analysis, see [docs/workflow.py](docs/workflow.py).
+
 ```sql
 -- Average NAPFD per policy
 SELECT policy, AVG(fitness) AS avg_napfd

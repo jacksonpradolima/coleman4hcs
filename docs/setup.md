@@ -14,6 +14,9 @@ Results are written as **partitioned Parquet files** (zstd compressed) under
 `./runs/` by default.  You can query them directly with DuckDB or Polars
 without loading everything into RAM.
 
+Repeated runs append new result files by default. They do not replace previous
+results unless you explicitly remove `./runs/` or choose another `out_dir`.
+
 ## Architecture overview
 
 Coleman4HCS separates three concerns:
@@ -89,3 +92,5 @@ SELECT reward_function,
 FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
 GROUP BY reward_function;
 ```
+
+For a guided end-to-end walkthrough, see the official [workflow notebook](workflow.py).

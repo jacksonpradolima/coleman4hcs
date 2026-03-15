@@ -157,7 +157,8 @@ class ParquetSink(ResultsSink):
 
     def __setstate__(self, state: dict[str, Any]) -> None:
         """Restore state and recreate the lock."""
-        self.__dict__.update(state)
+        for key, value in state.items():
+            setattr(self, key, value)
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------

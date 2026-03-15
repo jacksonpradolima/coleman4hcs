@@ -34,7 +34,7 @@ Tested Functionalities:
 
 import logging
 import pickle
-from typing import cast
+from typing import TypedDict, cast
 from unittest.mock import Mock, patch
 
 import pytest
@@ -45,12 +45,15 @@ from coleman4hcs.environment import Environment
 from coleman4hcs.policy import FRRMABPolicy, SWLinUCBPolicy
 from coleman4hcs.scenarios import IndustrialDatasetScenarioProvider
 from main import (
+    EnvironmentBuildConfig,
+    ExecutionPlan,
     build_runtime_metadata,
     create_agents,
     create_logger,
     exp_run_industrial_dataset,
     get_scenario_provider,
     load_class_from_module,
+    run_parallel_executions,
     to_builtin_types,
 )
 
@@ -135,6 +138,93 @@ def test_to_builtin_types_returns_picklable_dicts():
     assert type(normalized) is dict
     assert type(normalized["algorithm"]) is dict
     assert type(normalized["algorithm"]["frrmab"]) is dict
+
+
+def test_run_parallel_executions_dispatches_unique_execution_plans():
+    """Parallel dispatch should preserve per-worker isolation metadata."""
+
+    class CapturedData(TypedDict, total=False):
+        pool_size: int
+        args: list[tuple[EnvironmentBuildConfig, ExecutionPlan]]
+
+    captured: CapturedData = {}
+
+    class FakeAsyncResult:
+        def get(self, timeout=None):  # noqa: ARG002
+            return None
+
+    class FakePool:
+        def __init__(self, size):
+            captured["pool_size"] = size
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):  # noqa: ARG002
+            return False
+
+        def starmap_async(self, func, args_list):
+            captured["args"] = list(args_list)
+            return FakeAsyncResult()
+
+        def terminate(self):
+            return None
+
+        def join(self):
+            return None
+
+    class FakeContext:
+        def Pool(self, size):  # noqa: N802
+            return FakePool(size)
+
+    build_config = EnvironmentBuildConfig(
+        datasets_dir="examples",
+        dataset="fakedata",
+        sched_time_ratio=0.5,
+        use_hcs=False,
+        use_context=False,
+        context_config={},
+        feature_groups={},
+        results_config={},
+        checkpoint_config={},
+        telemetry_config={},
+        algorithm_configs={},
+        rewards_names=["RNFail"],
+        policy_names=["Random"],
+    )
+    plans = [
+        ExecutionPlan(
+            iteration=1,
+            trials=10,
+            level=20,
+            execution_id="exec-1",
+            worker_id="1",
+            parallel_mode="process",
+        ),
+        ExecutionPlan(
+            iteration=2,
+            trials=10,
+            level=20,
+            execution_id="exec-2",
+            worker_id="2",
+            parallel_mode="process",
+        ),
+    ]
+
+    with patch("main.get_context", return_value=FakeContext()):
+        run_parallel_executions(2, build_config, plans)
+
+    assert captured["pool_size"] == 2
+    assert len(captured["args"]) == 2
+
+    dispatched_first_plan = captured["args"][0][1]
+    dispatched_second_plan = captured["args"][1][1]
+
+    assert isinstance(dispatched_first_plan, ExecutionPlan)
+    assert isinstance(dispatched_second_plan, ExecutionPlan)
+    assert dispatched_first_plan.execution_id == "exec-1"
+    assert dispatched_second_plan.execution_id == "exec-2"
+    assert dispatched_first_plan.execution_id != dispatched_second_plan.execution_id
 
 
 def test_load_class_from_module_valid():

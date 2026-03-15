@@ -27,6 +27,7 @@ Metric names (for documentation / Grafana dashboard authors)
 from __future__ import annotations
 
 import contextlib
+import importlib
 import logging
 from typing import Any
 
@@ -36,17 +37,30 @@ logger = logging.getLogger(__name__)
 # Try importing OpenTelemetry; fall back gracefully
 # ---------------------------------------------------------------------------
 _HAS_OTEL = False
-try:
-    from opentelemetry import metrics as otel_metrics
-    from opentelemetry import trace as otel_trace
-    from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    from opentelemetry.sdk.metrics import MeterProvider
-    from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-    from opentelemetry.sdk.resources import Resource
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+otel_metrics: Any = None
+otel_trace: Any = None
+OTLPMetricExporter: Any = None
+OTLPSpanExporter: Any = None
+MeterProvider: Any = None
+PeriodicExportingMetricReader: Any = None
+Resource: Any = None
+TracerProvider: Any = None
+BatchSpanProcessor: Any = None
 
+try:
+    otel_metrics = importlib.import_module("opentelemetry.metrics")
+    otel_trace = importlib.import_module("opentelemetry.trace")
+    OTLPMetricExporter = importlib.import_module(
+        "opentelemetry.exporter.otlp.proto.http.metric_exporter"
+    ).OTLPMetricExporter
+    OTLPSpanExporter = importlib.import_module("opentelemetry.exporter.otlp.proto.http.trace_exporter").OTLPSpanExporter
+    MeterProvider = importlib.import_module("opentelemetry.sdk.metrics").MeterProvider
+    PeriodicExportingMetricReader = importlib.import_module(
+        "opentelemetry.sdk.metrics.export"
+    ).PeriodicExportingMetricReader
+    Resource = importlib.import_module("opentelemetry.sdk.resources").Resource
+    TracerProvider = importlib.import_module("opentelemetry.sdk.trace").TracerProvider
+    BatchSpanProcessor = importlib.import_module("opentelemetry.sdk.trace.export").BatchSpanProcessor
     _HAS_OTEL = True
 except ImportError:  # pragma: no cover – tested via NoOpTelemetry path
     pass
