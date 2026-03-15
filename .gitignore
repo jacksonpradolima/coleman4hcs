@@ -189,7 +189,7 @@ dmypy.json
 data/square@okhttp/features-engineered.csv
 
 backup/
-results/
+/results/
 
 .idea/encodings.xml
 .idea/inspectionProfiles/
@@ -204,3 +204,7 @@ htmlcov/
 
 # Ignore profiling files
 prof/
+
+# Ignore runs and checkpoints output
+runs/
+checkpoints/

@@ -1,0 +1,78 @@
+# =============================================================================
+# Coleman4HCS – Optional Local Observability Stack
+# =============================================================================
+#
+# This Compose file provides an optional local observability stack for
+# debugging and profiling Coleman4HCS experiments.  It is NOT required for
+# normal usage — `python main.py` works without any of these services.
+#
+# Quick start (base stack — OTel Collector + Grafana):
+#   docker compose up -d
+#
+# With ClickHouse (optional):
+#   docker compose --profile clickhouse up -d
+#
+# Tear down:
+#   docker compose --profile clickhouse down -v
+# =============================================================================
+
+services:
+  # ── OpenTelemetry Collector ───────────────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.100.0
+    container_name: coleman-otel-collector
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "4317:4317"   # gRPC receiver
+      - "4318:4318"   # HTTP receiver
+      - "8889:8889"   # Prometheus exporter (metrics)
+    restart: unless-stopped
+
+  # ── Prometheus (scrapes OTel Collector exporter) ──────────────────
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: coleman-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - otel-collector
+    restart: unless-stopped
+
+  # ── Grafana ───────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: coleman-grafana
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # ── ClickHouse (optional, behind profile) ─────────────────────────
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.4
+    container_name: coleman-clickhouse
+    profiles: ["clickhouse"]
+    ports:
+      - "8123:8123"   # HTTP interface
+      - "9000:9000"   # Native interface
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    restart: unless-stopped
+
+volumes:
+  clickhouse-data:

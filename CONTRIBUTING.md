@@ -5,13 +5,28 @@ provides guidelines and instructions for contributing.
 
 ## Getting Started
 
-### Prerequisites
+### Option A: DevContainer (recommended)
+
+The easiest way to get a fully working development environment is with a
+[DevContainer](https://containers.dev/):
+
+1. Open the repo in **VS Code** (or any DevContainer-compatible editor).
+2. When prompted, select **"Reopen in Container"** (or run the
+   `Dev Containers: Reopen in Container` command).
+3. Wait for the container to build — `make install`, pre-commit hooks, and
+   `.env` are set up automatically.
+
+Everything you need (Python, uv, Docker, extensions) is pre-configured.
+
+### Option B: Local setup
+
+#### Prerequisites
 
 - [Python 3.14+](https://www.python.org/downloads/)
 - [UV](https://docs.astral.sh/uv/) — fast Python package manager
 - [GNU Make](https://www.gnu.org/software/make/)
 
-### Setup
+#### Setup
 
 ```bash
 # Clone the repository

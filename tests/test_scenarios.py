@@ -145,6 +145,27 @@ def test_industrial_dataset_scenario_provider(mock_csv_data, tmp_path):
     assert len(scenario.get_testcases()) == 2, "Should retrieve test cases for BuildId=1 only."
 
 
+def test_industrial_dataset_scenario_provider_casts_name_to_string(tmp_path):
+    """Test that numeric Name values are normalized to strings when loading datasets."""
+    csv_file = tmp_path / "testcases_numeric_names.csv"
+    pl.DataFrame(
+        {
+            "Name": [1, 2],
+            "Duration": [1.0, 2.0],
+            "CalcPrio": [0, 0],
+            "LastRun": ["2023-01-01", "2023-01-02"],
+            "Verdict": [1, 0],
+            "BuildId": [1, 1],
+        }
+    ).write_csv(csv_file, separator=";")
+
+    provider = IndustrialDatasetScenarioProvider(str(csv_file), sched_time_ratio=0.5)
+    scenario = next(provider)
+
+    assert scenario.get_testcases()[0]["Name"] == "1"
+    assert scenario.get_testcases()[1]["Name"] == "2"
+
+
 def test_provider_stop_iteration(mock_csv_data, tmp_path):
     """Test StopIteration after all scenarios are retrieved."""
     csv_file = tmp_path / "testcases.csv"

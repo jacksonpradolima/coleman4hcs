@@ -63,3 +63,23 @@ previous_build = ['Duration', 'NumRan', 'NumErrors']
 [contextual_information.feature_group]
 feature_group_name = "time_execution"
 feature_group_values = ['Duration', 'NumErrors']
+
+# ── Results (Fact data) ─────────────────────────────────────────────
+[results]
+enabled = true            # Set false to disable results collection entirely (NullSink)
+sink = "parquet"          # "parquet" (default) | "clickhouse" (requires extras)
+out_dir = "./runs"        # Root directory for partitioned Parquet output
+batch_size = 1000         # Rows buffered before flush
+top_k_prioritization = 0  # 0 = store hash only; >0 = also keep top-k entries
+
+# ── Checkpoints (Resume / Recovery) ────────────────────────────────
+[checkpoint]
+enabled = true
+interval = 50000          # Steps between checkpoint saves
+base_dir = "checkpoints"
+
+# ── Telemetry (Observability) ──────────────────────────────────────
+[telemetry]
+enabled = true                          # Default off; requires pip install coleman4hcs[telemetry]
+otlp_endpoint = "http://localhost:4318"
+service_name = "coleman4hcs"
