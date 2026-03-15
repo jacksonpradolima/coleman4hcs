@@ -204,3 +204,6 @@ htmlcov/
 
 # Ignore profiling files
 prof/
+
+# Ignore runs output
+runs/
