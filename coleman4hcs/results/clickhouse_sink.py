@@ -19,26 +19,28 @@ from typing import Any
 from coleman4hcs.results.sink_base import ResultsSink
 
 _CLICKHOUSE_TABLE = "coleman_results"
+_NULLABLE_STRING = "Nullable(String)"
+_NULLABLE_FLOAT64 = "Nullable(Float64)"
 
 _CREATE_TABLE_SQL = f"""
 CREATE TABLE IF NOT EXISTS {_CLICKHOUSE_TABLE} (
     scenario           String,
     experiment         Int64,
     step               Int64,
-    execution_id       Nullable(String),
-    worker_id          Nullable(String),
-    parallel_mode      Nullable(String),
+    execution_id       {_NULLABLE_STRING},
+    worker_id          {_NULLABLE_STRING},
+    parallel_mode      {_NULLABLE_STRING},
     policy             String,
     reward_function    String,
     sched_time         Float64,
     sched_time_duration Float64,
     total_build_duration Float64,
     prioritization_time Float64,
-    process_memory_rss_mib Nullable(Float64),
-    process_memory_peak_rss_mib Nullable(Float64),
-    process_cpu_utilization_percent Nullable(Float64),
-    process_cpu_time_seconds Nullable(Float64),
-    wall_time_seconds Nullable(Float64),
+    process_memory_rss_mib {_NULLABLE_FLOAT64},
+    process_memory_peak_rss_mib {_NULLABLE_FLOAT64},
+    process_cpu_utilization_percent {_NULLABLE_FLOAT64},
+    process_cpu_time_seconds {_NULLABLE_FLOAT64},
+    wall_time_seconds {_NULLABLE_FLOAT64},
     detected           Int64,
     missed             Int64,
     tests_ran          Int64,
@@ -51,7 +53,7 @@ CREATE TABLE IF NOT EXISTS {_CLICKHOUSE_TABLE} (
     rewards            Float64,
     avg_precision      Float64,
     prioritization_order String,
-    variant            Nullable(String)
+    variant            {_NULLABLE_STRING}
 ) ENGINE = MergeTree()
 ORDER BY (scenario, policy, reward_function, experiment, step)
 """
@@ -135,15 +137,15 @@ class ClickHouseSink(ResultsSink):
     def _ensure_schema(self) -> None:
         """Add newly introduced columns for existing tables without requiring manual migration."""
         for column_name, column_type in [
-            ("execution_id", "Nullable(String)"),
-            ("worker_id", "Nullable(String)"),
-            ("parallel_mode", "Nullable(String)"),
-            ("process_memory_rss_mib", "Nullable(Float64)"),
-            ("process_memory_peak_rss_mib", "Nullable(Float64)"),
-            ("process_cpu_utilization_percent", "Nullable(Float64)"),
-            ("process_cpu_time_seconds", "Nullable(Float64)"),
-            ("wall_time_seconds", "Nullable(Float64)"),
-            ("variant", "Nullable(String)"),
+            ("execution_id", _NULLABLE_STRING),
+            ("worker_id", _NULLABLE_STRING),
+            ("parallel_mode", _NULLABLE_STRING),
+            ("process_memory_rss_mib", _NULLABLE_FLOAT64),
+            ("process_memory_peak_rss_mib", _NULLABLE_FLOAT64),
+            ("process_cpu_utilization_percent", _NULLABLE_FLOAT64),
+            ("process_cpu_time_seconds", _NULLABLE_FLOAT64),
+            ("wall_time_seconds", _NULLABLE_FLOAT64),
+            ("variant", _NULLABLE_STRING),
         ]:
             self._client.command(
                 f"ALTER TABLE {_CLICKHOUSE_TABLE} ADD COLUMN IF NOT EXISTS {column_name} {column_type}"

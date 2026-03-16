@@ -47,7 +47,6 @@ def _(mo):
         6. Compare policies by quality and resource cost
         """
     )
-    return
 
 
 @app.cell
@@ -107,7 +106,6 @@ def _(mo, telemetry_cfg):
         dataset slicing, and execution separation while the run is active.
         """
     )
-    return
 
 
 @app.cell
@@ -139,7 +137,6 @@ def _(checkpoint_cfg, json, mo, path_class, pd):
 def _(checkpoint_df, mo):
     """Display current checkpoint progress or explain its absence."""
     checkpoint_df if not checkpoint_df.empty else mo.md("No checkpoint progress files found.")
-    return
 
 
 @app.cell
@@ -206,7 +203,6 @@ def _(mo, summary_df):
     """Preview the aggregated final-results summary."""
     mo.md("## Final Results Summary")
     summary_df.head(25) if not summary_df.empty else mo.md("No Parquet results found yet.")
-    return
 
 
 @app.cell
@@ -235,7 +231,6 @@ ORDER BY avg_napfd DESC;
             mo.md(f"```sql\n{clickhouse_example}\n```"),
         ]
     )
-    return
 
 
 @app.cell
@@ -250,7 +245,6 @@ def _(mo, runs_root, summary_df):
         mo.md(f"## Export\nSummary exported to `{export_path}`.")
     else:
         mo.md("## Export\nNo summary exported because there are no result rows yet.")
-    return
 
 
 @app.cell
@@ -288,7 +282,6 @@ def _(mo):
         * if you want a fresh analytical space, clean `./runs/` and optionally `./checkpoints/`
         """
     )
-    return
 
 
 @app.cell
@@ -305,7 +298,6 @@ def _(mo):
         * Switch to ClickHouse when you want a persistent analytical store instead of Parquet files
         """
     )
-    return
 
 
 if __name__ == "__main__":

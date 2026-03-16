@@ -271,7 +271,7 @@ class TestDuckDBCatalog:
 
         cat = DuckDBCatalog(str(tmp_path / "runs"))
         df = cat.query("SELECT AVG(fitness) AS avg_fitness FROM results")
-        assert abs(df["avg_fitness"][0] - 1.0) < 1e-6  # (0+1+2)/3 = 1.0
+        assert abs(df["avg_fitness"][0] - 1.0) < 1e-6
         cat.close()
 
     def test_close(self, tmp_path):

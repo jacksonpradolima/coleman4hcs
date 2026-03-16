@@ -246,6 +246,29 @@ class Environment:
         self._last_resource_snapshot = snapshot
         return snapshot
 
+    def _try_restore_checkpoint(self, experiment):
+        """Attempt to restore experiment state from the checkpoint store.
+
+        Parameters
+        ----------
+        experiment : int
+            Current experiment number.
+
+        Returns
+        -------
+        tuple[int, object | None]
+            A ``(restore_step, bandit)`` pair.  When no checkpoint exists the
+            defaults ``(1, None)`` are returned.
+        """
+        run_id = str(self.scenario_provider)
+        payload = self.checkpoint_store.load(run_id, experiment)
+        if payload is None:
+            return 1, None
+
+        self.agents = payload.agents if payload.agents is not None else self.agents
+        self.scenario_provider.last_build(payload.step)
+        return payload.step + 1, payload.bandit
+
     def run_single(self, experiment, trials=100, bandit_type=EvaluationMetricBandit, restore=True):
         """Execute a single simulation experiment.
 
@@ -280,15 +303,7 @@ class Environment:
 
         try:
             if restore:
-                # Try to restore from checkpoint store
-                run_id = str(self.scenario_provider)
-                payload = self.checkpoint_store.load(run_id, experiment)
-                if payload is not None:
-                    restore_step = payload.step
-                    self.agents = payload.agents if payload.agents is not None else self.agents
-                    bandit = payload.bandit
-                    self.scenario_provider.last_build(restore_step)
-                    restore_step += 1  # start 1 step after the last build
+                restore_step, bandit = self._try_restore_checkpoint(experiment)
 
             logger.info(
                 "Starting experiment=%s scenario=%s from_step=%s total_trials=%s",
