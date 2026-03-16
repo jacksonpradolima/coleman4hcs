@@ -132,10 +132,10 @@ class Telemetry:
         self.napfd = self.meter.create_histogram("coleman.napfd", description="NAPFD distribution")
         self.apfdc = self.meter.create_histogram("coleman.apfdc", description="APFDc distribution")
         self.process_memory_rss = self.meter.create_histogram(
-            "coleman.process_memory_rss", unit="MiBy", description="Process resident memory usage"
+            "coleman.process_memory_rss", unit="MiB", description="Process resident memory usage"
         )
         self.process_memory_peak_rss = self.meter.create_histogram(
-            "coleman.process_memory_peak_rss", unit="MiBy", description="Process peak resident memory usage"
+            "coleman.process_memory_peak_rss", unit="MiB", description="Process peak resident memory usage"
         )
         self.process_cpu_utilization = self.meter.create_histogram(
             "coleman.process_cpu_utilization", unit="%", description="Process CPU utilization"

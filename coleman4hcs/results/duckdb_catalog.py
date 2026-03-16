@@ -16,7 +16,7 @@ Usage
 from __future__ import annotations
 
 import duckdb
-import pandas as pd
+import polars as pl
 
 
 class DuckDBCatalog:
@@ -50,7 +50,7 @@ class DuckDBCatalog:
             f"CREATE OR REPLACE VIEW results AS SELECT * FROM read_parquet('{escaped}', hive_partitioning=1)",
         )
 
-    def query(self, sql: str) -> pd.DataFrame:
+    def query(self, sql: str) -> pl.DataFrame:
         """Execute an SQL query against the results view.
 
         Parameters
@@ -60,10 +60,10 @@ class DuckDBCatalog:
 
         Returns
         -------
-        pandas.DataFrame
+        polars.DataFrame
             Query result as a DataFrame.
         """
-        return self.conn.execute(sql).fetchdf()
+        return self.conn.execute(sql).pl()
 
     def close(self) -> None:
         """Close the DuckDB connection."""

@@ -9,7 +9,6 @@ readme = "README.md"
 dependencies = [
     "duckdb",
     "numpy",
-    "pandas",
     "polars",
     "pyarrow",
     "python-dotenv",
