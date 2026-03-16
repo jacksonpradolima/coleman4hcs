@@ -35,6 +35,29 @@ The default dashboard now includes top-level filters for dataset, execution,
 and policy, so you can slice one live run without visually mixing it with the
 others.
 
+The top row also includes a "Current Cycle By Active Experiment" panel next to
+"Active Runs", so you can see optimization stage progression while runs are
+still active.
+
+The dashboard now has a dedicated `Sched Time Ratio` filter (label `time_ratio`)
+so you can isolate runs by available CI budget percentage.
+
+For operational analysis, use the snapshot panels that focus on current
+iteration/stage instead of time-based curves:
+
+* `Current Cycle By Active Experiment`
+* `Progress To Target Steps (%)`
+* `Convergence Signal (Current NAPFD)`
+* `Checkpoint Save Rate (last 5m)`
+
+The agent/system panels in the overview are also configured as instant
+snapshots (table/gauge/stat), which removes the time-axis dependency when the
+goal is to inspect current simulation stage.
+
+Snapshot table panels now include an explicit current-step column (merged from
+`cycles_total`) beside the metric value, so each metric row can be interpreted
+in the context of the current simulation iteration.
+
 ## Live behavior vs. final results
 
 Grafana answers: "what is happening right now?"

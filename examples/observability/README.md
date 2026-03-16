@@ -25,6 +25,27 @@ python main.py
 
 No manual datasource setup is required in Grafana.
 
+The overview dashboard includes "Active Runs" and "Current Cycle By Active
+Experiment" on the top row so optimization progress is visible in real time.
+
+It also includes a `Sched Time Ratio` filter (`time_ratio` label) so you can
+separate runs by CI budget percentage and compare behavior under tighter time
+budgets.
+
+For step-oriented analysis, prefer the snapshot panels (current iteration)
+instead of timeline panels:
+
+* `Current Cycle By Active Experiment`
+* `Progress To Target Steps (%)`
+* `Convergence Signal (Current NAPFD)`
+* `Checkpoint Save Rate (last 5m)`
+
+The main overview panels are configured as instant snapshots (table/gauge/stat)
+so the dashboard emphasizes current step/stage rather than a time-axis history.
+
+Snapshot table panels include a current-step column (derived from
+`cycles_total`) beside the metric value.
+
 Grafana is intended for live behavior during execution. Final experiment facts
 remain in the configured results sink:
 

@@ -646,6 +646,7 @@ class Environment:
                 bandit=bandit,
             )
             self.checkpoint_store.save(payload)
+            self.telemetry.record_checkpoint_save(self._experiment_telemetry_attributes(experiment))
         except Exception as e:
             logger.error("Error saving the experiment: %s", e)
             raise e

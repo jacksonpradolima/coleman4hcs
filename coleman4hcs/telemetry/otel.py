@@ -22,6 +22,7 @@ Metric names (for documentation / Grafana dashboard authors)
 * ``coleman.process_cpu_utilization`` – histogram (%)
 * ``coleman.experiment_wall_time``    – histogram (seconds)
 * ``coleman.experiment_cpu_time``     – histogram (seconds)
+* ``coleman.checkpoint_saves_total``  – counter
 """
 
 from __future__ import annotations
@@ -145,6 +146,9 @@ class Telemetry:
         self.experiment_cpu_time = self.meter.create_histogram(
             "coleman.experiment_cpu_time", unit="s", description="CPU time consumed by one experiment"
         )
+        self.checkpoint_saves_total = self.meter.create_counter(
+            "coleman.checkpoint_saves_total", description="Total checkpoints saved"
+        )
 
     def record_cycle(self, attributes: dict[str, Any] | None = None) -> None:
         """Increment the cycle counter.
@@ -222,6 +226,10 @@ class Telemetry:
         self.experiment_cpu_time.record(cpu_time_seconds, attributes=attributes)
         if peak_rss_mib is not None:
             self.process_memory_peak_rss.record(peak_rss_mib, attributes=attributes)
+
+    def record_checkpoint_save(self, attributes: dict[str, Any] | None = None) -> None:
+        """Record one successful checkpoint save event."""
+        self.checkpoint_saves_total.add(1, attributes=attributes)
 
     def flush(self) -> None:
         """Force pending metrics and traces to be exported."""
@@ -311,6 +319,9 @@ class NoOpTelemetry:
         peak_rss_mib: float | None,
         attributes: dict[str, Any] | None = None,
     ) -> None:
+        """No-op."""
+
+    def record_checkpoint_save(self, attributes: dict[str, Any] | None = None) -> None:
         """No-op."""
 
     def flush(self) -> None:
