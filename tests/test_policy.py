@@ -354,9 +354,9 @@ def test_greedy_policy_performance(dummy_agent, benchmark):
 
     # Assertions - Ensure all actions are returned
     assert len(chosen_actions) == num_actions, "GreedyPolicy should return all actions."
-    assert sorted(chosen_actions) == sorted(
-        dummy_agent.actions["Name"].to_list()
-    ), "GreedyPolicy should return all actions, but names mismatch."
+    assert sorted(chosen_actions) == sorted(dummy_agent.actions["Name"].to_list()), (
+        "GreedyPolicy should return all actions, but names mismatch."
+    )
 
 
 @pytest.mark.benchmark(group="policy")
@@ -384,12 +384,12 @@ def test_random_policy_performance(dummy_agent, benchmark):
 
     # Assertions - Ensure all actions are returned
     assert len(chosen_actions) == num_actions, "RandomPolicy should return all actions."
-    assert sorted(chosen_actions) == sorted(
-        dummy_agent.actions["Name"].to_list()
-    ), "RandomPolicy should return all actions, but there is a mismatch in the names."
-    assert (
-        chosen_actions != dummy_agent.actions["Name"].to_list()
-    ), "RandomPolicy should shuffle the actions, but returned them in the original order!"
+    assert sorted(chosen_actions) == sorted(dummy_agent.actions["Name"].to_list()), (
+        "RandomPolicy should return all actions, but there is a mismatch in the names."
+    )
+    assert chosen_actions != dummy_agent.actions["Name"].to_list(), (
+        "RandomPolicy should shuffle the actions, but returned them in the original order!"
+    )
 
 
 @pytest.mark.benchmark(group="policy")

@@ -11,7 +11,7 @@ export UV_LINK_MODE ?= copy
 
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup install pre-commit-install lint format typecheck test test-cov docs docs-serve check-precommit clean interrogate build
+.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve check-precommit clean interrogate build
 
 ## —— Coleman4HCS Makefile ——————————————————————————————————
 
@@ -49,6 +49,9 @@ lint: ensure-uv ## Run ruff linter
 
 format: ensure-uv ## Run ruff formatter
 	$(UV) run ruff format .
+
+format-check: ensure-uv ## Check ruff formatting without changing files
+	$(UV) run ruff format --check .
 
 typecheck: ensure-uv ## Run pyright and ty type checkers
 	# Run both static type checkers
