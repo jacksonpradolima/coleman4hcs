@@ -219,7 +219,8 @@ class ParquetSink(ResultsSink):
 
         table = pa.Table.from_pylist(self._buffer, schema=_RESULT_SCHEMA)
         self._file_counter += 1
-        basename = f"part-{self._file_counter:06d}-{int(time.time())}-{{i}}.parquet"
+        pid = os.getpid()
+        basename = f"part-{self._file_counter:06d}-{pid}-{int(time.time())}-{{i}}.parquet"
 
         pq.write_to_dataset(
             table,

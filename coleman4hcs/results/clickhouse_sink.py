@@ -174,6 +174,7 @@ class ClickHouseSink(ResultsSink):
     def close(self) -> None:
         """Flush remaining data and close the connection."""
         self.flush()
+        self._client.close()
 
     def _flush_locked(self) -> None:
         """Insert buffered rows into ClickHouse (caller holds lock)."""

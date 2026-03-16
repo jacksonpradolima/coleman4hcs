@@ -179,7 +179,8 @@ class Environment:
             from coleman4hcs.results.clickhouse_sink import ClickHouseSink
 
             return ClickHouseSink()
-        return NullSink()
+        msg = f"Unsupported results sink type: {sink_type!r}. Valid options are 'parquet' or 'clickhouse'."
+        raise ValueError(msg)
 
     def reset(self):
         """Reset the environment for a new simulation."""
