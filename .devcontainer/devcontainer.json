@@ -38,7 +38,8 @@
         "ms-pyright.pyright",
         "ms-toolsai.jupyter",
         "astral-sh.ty",
-        "marimo-team.vscode-marimo"
+        "marimo-team.vscode-marimo",
+        "ms-vscode.makefile-tools"
       ],
       "settings": {
         "python.defaultInterpreterPath": ".venv/bin/python",
