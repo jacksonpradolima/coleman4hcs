@@ -49,6 +49,7 @@ class ResultsWriter:
         self.sink = sink
         self._queue: queue.Queue[_QueueItem] = queue.Queue(maxsize=max_queue_size)
         self._thread: threading.Thread | None = None
+        self._lock = threading.Lock()
         self._started = False
 
     # ------------------------------------------------------------------
@@ -59,12 +60,14 @@ class ResultsWriter:
         """Start the background writer thread.
 
         A new thread is created each time so the writer can be
-        stopped and restarted safely.
+        stopped and restarted safely.  Protected by a lock so
+        concurrent callers cannot create duplicate threads.
         """
-        if not self._started:
-            self._thread = threading.Thread(target=self._drain, daemon=True, name="ResultsWriter")
-            self._thread.start()
-            self._started = True
+        with self._lock:
+            if not self._started:
+                self._thread = threading.Thread(target=self._drain, daemon=True, name="ResultsWriter")
+                self._thread.start()
+                self._started = True
 
     def enqueue(self, row: dict[str, Any]) -> None:
         """Add a row to the write queue.
@@ -80,10 +83,11 @@ class ResultsWriter:
 
     def stop(self) -> None:
         """Signal the writer thread to finish and wait for it to drain."""
-        if self._started:
-            self._queue.put(_SENTINEL)
-            self._thread.join()
-            self._started = False
+        with self._lock:
+            if self._started:
+                self._queue.put(_SENTINEL)
+                self._thread.join()
+                self._started = False
 
     # ------------------------------------------------------------------
     # Internal
