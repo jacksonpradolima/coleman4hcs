@@ -16,6 +16,7 @@ Usage
 from __future__ import annotations
 
 import duckdb
+import pandas as pd
 
 
 class DuckDBCatalog:
@@ -44,10 +45,12 @@ class DuckDBCatalog:
     def _create_view(self) -> None:
         """Create the ``results`` view pointing at the Parquet dataset."""
         glob_path = f"{self.parquet_root}/**/*.parquet"
-        sql = f"CREATE OR REPLACE VIEW results AS SELECT * FROM read_parquet('{glob_path}', hive_partitioning=1)"
-        self.conn.execute(sql)
+        escaped = glob_path.replace("'", "''")
+        self.conn.execute(
+            f"CREATE OR REPLACE VIEW results AS SELECT * FROM read_parquet('{escaped}', hive_partitioning=1)",
+        )
 
-    def query(self, sql: str):
+    def query(self, sql: str) -> pd.DataFrame:
         """Execute an SQL query against the results view.
 
         Parameters

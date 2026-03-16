@@ -207,7 +207,7 @@ class LocalCheckpointStore(CheckpointStore):
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
             os.replace(tmp_path, path)
-        except BaseException:
+        except Exception:
             # Clean up temp file on failure
             Path(tmp_path).unlink(missing_ok=True)
             raise
