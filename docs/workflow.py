@@ -163,22 +163,24 @@ def _(mo, path_class, results_cfg):
 
 
 @app.cell
-def _(duckdb, parquet_files, pd):
+def _(duckdb, parquet_files, pd, runs_root):
     """Load raw Parquet rows and build an aggregated final-results summary."""
     if not parquet_files:
         raw_df = pd.DataFrame()
         summary_df = pd.DataFrame()
         return raw_df, summary_df
 
+    parquet_glob = str(runs_root / "**" / "*.parquet")
+
     raw_df = duckdb.sql(
-        """
+        f"""
         SELECT *
-        FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+        FROM read_parquet('{parquet_glob}', hive_partitioning=1)
         """
     ).df()
 
     summary_df = duckdb.sql(
-        """
+        f"""
         SELECT scenario,
                execution_id,
                experiment,
@@ -190,7 +192,7 @@ def _(duckdb, parquet_files, pd):
                AVG(process_memory_rss_mib) AS avg_rss_mib,
                AVG(process_cpu_utilization_percent) AS avg_cpu_pct,
                MAX(wall_time_seconds) AS wall_time_seconds
-        FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+        FROM read_parquet('{parquet_glob}', hive_partitioning=1)
         GROUP BY scenario, execution_id, experiment, policy, reward_function
         ORDER BY avg_napfd DESC, avg_apfdc DESC
         """

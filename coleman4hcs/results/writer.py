@@ -48,7 +48,7 @@ class ResultsWriter:
     def __init__(self, sink: ResultsSink, max_queue_size: int = 10_000) -> None:
         self.sink = sink
         self._queue: queue.Queue[_QueueItem] = queue.Queue(maxsize=max_queue_size)
-        self._thread = threading.Thread(target=self._drain, daemon=True, name="ResultsWriter")
+        self._thread: threading.Thread | None = None
         self._started = False
 
     # ------------------------------------------------------------------
@@ -56,8 +56,13 @@ class ResultsWriter:
     # ------------------------------------------------------------------
 
     def start(self) -> None:
-        """Start the background writer thread."""
+        """Start the background writer thread.
+
+        A new thread is created each time so the writer can be
+        stopped and restarted safely.
+        """
         if not self._started:
+            self._thread = threading.Thread(target=self._drain, daemon=True, name="ResultsWriter")
             self._thread.start()
             self._started = True
 

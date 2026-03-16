@@ -43,6 +43,9 @@ release = [
 ]
 notebook = [
     "marimo",
+    "matplotlib",
+    "pandas",
+    "seaborn",
 ]
 telemetry = [
     "opentelemetry-api",
