@@ -654,6 +654,9 @@ class Environment:
             If there is an error saving the experiment.
         """
         try:
+            self.monitor.flush()
+            for variant_monitor in self.variant_monitors.values():
+                variant_monitor.flush()
             payload = CheckpointPayload(
                 run_id=str(self.scenario_provider),
                 experiment=experiment,
