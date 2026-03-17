@@ -97,18 +97,35 @@ uv run python main.py
 uv run python main.py
 ```
 
-Results appear in `./runs/` (Parquet).  Query them with DuckDB:
+Results appear in `./runs/` (Parquet).
+
+Start an interactive workflow first:
 
 ```bash
-uv run python -c "
+# Python REPL
+uv run python
+
+# IPython REPL (richer shell for exploration)
+uv run ipython
+
+# Notebook/app workflow (marimo)
+uv run marimo edit docs/workflow.py
+```
+
+Then import DuckDB once and run your queries incrementally:
+
+```python
 import duckdb
-print(duckdb.sql(\"\"\"
+con = duckdb.connect("analysis.duckdb")
+
+duckdb.sql("""
     SELECT policy, AVG(fitness) AS avg_napfd
     FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
     GROUP BY policy ORDER BY avg_napfd DESC
-\"\"\"))
-"
+""")
 ```
+
+For iterative analysis, `ipython` or `marimo` is usually more comfortable.
 
 **With telemetry (OTel Collector + Grafana):**
 
@@ -191,10 +208,9 @@ find ./runs -name '*.parquet' | head
 
 Query it directly with DuckDB:
 
-```bash
-uv run python -c "
+```python
 import duckdb
-print(duckdb.sql(\"\"\"
+duckdb.sql("""
     SELECT scenario,
            execution_id,
            policy,
@@ -206,8 +222,7 @@ print(duckdb.sql(\"\"\"
     FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
     GROUP BY scenario, execution_id, policy, reward_function
     ORDER BY avg_napfd DESC
-\"\"\")
-)"
+""")
 ```
 
 ### DuckDB, in practice
@@ -215,33 +230,33 @@ print(duckdb.sql(\"\"\"
 DuckDB is the easiest way to inspect final results deeply without moving data
 out of the Parquet dataset.
 
-#### Open an interactive DuckDB session
+#### Start an interactive session
 
 ```bash
-uv run python -c "import duckdb; duckdb.connect('analysis.duckdb').execute('SELECT 1'); print('ready')"
+uv run ipython
 ```
 
-Or use it directly from Python scripts and notebooks.
+Then initialize once:
+
+```python
+import duckdb
+con = duckdb.connect("analysis.duckdb")
+```
 
 #### Inspect available columns
 
-```bash
-uv run python -c "
-import duckdb
-print(duckdb.sql(\"\"\"
+```python
+duckdb.sql("""
     DESCRIBE
     SELECT *
     FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
-\"\"\").df())
-"
+""").df()
 ```
 
 #### See which executions are available
 
-```bash
-uv run python -c "
-import duckdb
-print(duckdb.sql(\"\"\"
+```python
+duckdb.sql("""
     SELECT scenario,
            execution_id,
            COUNT(*) AS rows,
@@ -250,16 +265,13 @@ print(duckdb.sql(\"\"\"
     FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
     GROUP BY scenario, execution_id
     ORDER BY scenario, execution_id
-\"\"\").df())
-"
+""").df()
 ```
 
 #### Compare policies by final quality and resource cost
 
-```bash
-uv run python -c "
-import duckdb
-print(duckdb.sql(\"\"\"
+```python
+duckdb.sql("""
     SELECT scenario,
            policy,
            reward_function,
@@ -272,17 +284,14 @@ print(duckdb.sql(\"\"\"
     FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
     GROUP BY scenario, policy, reward_function
     ORDER BY avg_napfd DESC, avg_apfdc DESC
-\"\"\").df())
-"
+""").df()
 ```
 
 #### Slice one specific execution
 
-```bash
-uv run python -c "
-import duckdb
+```python
 execution_id = 'replace-with-real-execution-id'
-print(duckdb.sql(f\"\"\"
+duckdb.sql(f"""
     SELECT experiment,
            step,
            policy,
@@ -294,16 +303,13 @@ print(duckdb.sql(f\"\"\"
     FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
     WHERE execution_id = '{execution_id}'
     ORDER BY experiment, step, policy
-\"\"\").df())
-"
+""").df()
 ```
 
 #### Export a filtered report
 
-```bash
-uv run python -c "
-import duckdb
-duckdb.sql(\"\"\"
+```python
+duckdb.sql("""
     COPY (
         SELECT scenario,
                execution_id,
@@ -314,9 +320,8 @@ duckdb.sql(\"\"\"
         FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
         GROUP BY scenario, execution_id, policy, reward_function
     ) TO './runs/analysis/final-summary.csv' (HEADER, DELIMITER ',')
-\"\"\")
+""")
 print('exported ./runs/analysis/final-summary.csv')
-"
 ```
 
 ### ClickHouse, in practice
@@ -341,8 +346,7 @@ docker compose --profile clickhouse up -d
 
 #### Query it from Python
 
-```bash
-uv run python -c "
+```python
 import clickhouse_connect
 
 client = clickhouse_connect.get_client(host='localhost', port=8123, database='default')
@@ -360,30 +364,25 @@ rows = client.query('''
     ORDER BY avg_napfd DESC
 ''')
 print(rows.result_rows)
-"
 ```
 
 #### Inspect stored schema
 
-```bash
-uv run python -c "
+```python
 import clickhouse_connect
 client = clickhouse_connect.get_client(host='localhost', port=8123, database='default')
 print(client.query('DESCRIBE TABLE coleman_results').result_rows)
-"
 ```
 
 #### Clean old data when needed
 
 ClickHouse also accumulates results by default. If you need a fresh table:
 
-```bash
-uv run python -c "
+```python
 import clickhouse_connect
 client = clickhouse_connect.get_client(host='localhost', port=8123, database='default')
 client.command('TRUNCATE TABLE coleman_results')
 print('coleman_results truncated')
-"
 ```
 
 ### Resume and recovery
@@ -406,7 +405,7 @@ instead of replaying completed builds.
 
 For a guided end-to-end workflow covering configuration, observability,
 checkpoints, export, and analysis, open the marimo notebook example in
-[workflow.py](workflow.py).
+[docs/workflow.py](docs/workflow.py).
 
 ## Port Reference
 
