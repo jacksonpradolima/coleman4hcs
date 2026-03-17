@@ -11,7 +11,7 @@ export UV_LINK_MODE ?= copy
 
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve check-precommit clean interrogate build
+.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve check-precommit clean interrogate build run
 
 ## —— Coleman4HCS Makefile ——————————————————————————————————
 
@@ -98,6 +98,12 @@ docs-serve: ensure-uv ## Serve documentation locally
 
 build: ensure-uv ## Build the package
 	$(UV) build
+
+# ——— Run ————————————————————————————————————————————————
+
+run: ensure-uv ## Remove runs/checkpoints and execute main.py
+	rm -rf runs/ checkpoints/
+	$(UV) run python main.py
 
 # ——— Pre-commit ———————————————————————————————————————————
 
