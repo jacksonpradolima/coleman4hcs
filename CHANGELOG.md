@@ -1,6 +1,185 @@
 # CHANGELOG
 
 
+## v1.2.0 (2026-03-22)
+
+### Bug Fixes
+
+- Add lock to ResultsWriter start/stop for thread safety
+  ([`a88da89`](https://github.com/jacksonpradolima/coleman4hcs/commit/a88da891f5440ec8c5259872fd402ddbe9a30bfa))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Address 3 Codex P1 review issues — build-1 skip, per-experiment checkpoints, picklable ParquetSink
+  ([`7356b24`](https://github.com/jacksonpradolima/coleman4hcs/commit/7356b249f5f8db36cf593177b9e7b0bb42caae25))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Address 4 copilot-reviewer comments (notebook extras, dynamic paths, thread restart)
+  ([`6f69ab6`](https://github.com/jacksonpradolima/coleman4hcs/commit/6f69ab6de42074a6a2669c6c8a64ea1b24c76d40))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Address 5 PR review comments — return type, docstrings, variant column, overlay cleanup
+  ([`8630323`](https://github.com/jacksonpradolima/coleman4hcs/commit/8630323d416b3f62918a1a09a9de47ac4f44de5c))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Address 8 review comments — variant column in Parquet/ClickHouse, docstring fixes, config default,
+  README corrections, DuckDBCatalog tests
+  ([`0dd8759`](https://github.com/jacksonpradolima/coleman4hcs/commit/0dd8759de1f7f93634f81e93ddebc201481cfb08))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Address code review — remove broad grep guard, fix Python version, clarify create vs start timing
+  ([`6d80242`](https://github.com/jacksonpradolima/coleman4hcs/commit/6d80242c120695783a71e1b3adea3ee76bd344fe))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Address SonarCloud issues and add sonar-project.properties
+  ([`9362368`](https://github.com/jacksonpradolima/coleman4hcs/commit/93623680345e4b823a69f6b72ab001d8381a2f35))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Address SonarCloud issues — reduce cognitive complexity, extract constants, remove redundant
+  returns
+  ([`a8d3b60`](https://github.com/jacksonpradolima/coleman4hcs/commit/a8d3b60e4b947ffbf557897e3ced645997a5852f))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Ensure thread safety in ResultsWriter and update configuration for telemetry and verbosity
+  ([`fb0f676`](https://github.com/jacksonpradolima/coleman4hcs/commit/fb0f67672b5ea8df3aa790e95fa626d8fc65e29f))
+
+- Flush result buffers before committing checkpoint step
+  ([`d7b2a57`](https://github.com/jacksonpradolima/coleman4hcs/commit/d7b2a57db720da221fae1a02c0e489b95f79df04))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Improve DevContainer error messages with actionable guidance
+  ([`0a75a67`](https://github.com/jacksonpradolima/coleman4hcs/commit/0a75a6722e3d18ca74e63256f02032a74e5046f3))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Make DevContainer more robust — remove third-party uv feature, install uv via curl, use uv sync
+  for all extras
+  ([`c2de7c7`](https://github.com/jacksonpradolima/coleman4hcs/commit/c2de7c7254fd839164f3cadccaaae5bfe9c93c93))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Reject unsupported sink values, close ClickHouse client, process-safe Parquet filenames
+  ([`361ccc9`](https://github.com/jacksonpradolima/coleman4hcs/commit/361ccc98341ece5acc44eda82e905815ee36f55b))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Replace pandas with polars in DuckDBCatalog, fix OTel unit typo, remove pandas direct dep
+  ([`ecb0f31`](https://github.com/jacksonpradolima/coleman4hcs/commit/ecb0f31c6572bd59af5f766d8a520cade851b6b2))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+### Chores
+
+- Ignore runs directory
+  ([`a03c6b2`](https://github.com/jacksonpradolima/coleman4hcs/commit/a03c6b2e656208cdf657b4d892e7d4fb21b50ff3))
+
+- Update uv.lock for version 1.1.0
+  ([`3c99b59`](https://github.com/jacksonpradolima/coleman4hcs/commit/3c99b59974ef813921a0953c65b6832facb3ce57))
+
+- **deps**: Bump tornado in the uv group across 1 directory
+  ([`3133c1b`](https://github.com/jacksonpradolima/coleman4hcs/commit/3133c1b181e5cf7184ef1d68c57bca06d5b8635c))
+
+Bumps the uv group with 1 update in the / directory:
+  [tornado](https://github.com/tornadoweb/tornado).
+
+Updates `tornado` from 6.5.4 to 6.5.5 -
+  [Changelog](https://github.com/tornadoweb/tornado/blob/master/docs/releases.rst) -
+  [Commits](https://github.com/tornadoweb/tornado/compare/v6.5.4...v6.5.5)
+
+--- updated-dependencies: - dependency-name: tornado dependency-version: 6.5.5
+
+dependency-type: indirect
+
+dependency-group: uv
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **makefile**: Add run command
+  ([`756c8a9`](https://github.com/jacksonpradolima/coleman4hcs/commit/756c8a92c7e77befe4363642707c81bada447486))
+
+### Documentation
+
+- Add DevContainer usage documentation to README, Getting Started, and CONTRIBUTING
+  ([`d97fd83`](https://github.com/jacksonpradolima/coleman4hcs/commit/d97fd830452f2ba40698cbbbaef9b7a5ad9b1979))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Enhance getting started guide with interactive workflow examples for DuckDB
+  ([`dc05214`](https://github.com/jacksonpradolima/coleman4hcs/commit/dc05214423d8d2f29b5ea5b65624fdd375c9b8df))
+
+### Features
+
+- Add Grafana provisioning for dashboards and datasources
+  ([`39f21cc`](https://github.com/jacksonpradolima/coleman4hcs/commit/39f21cc6f79e1050bc05ec71b65e7630a0a7775f))
+
+- Introduced default.yml for Grafana dashboards provisioning. - Added default.yml for Prometheus
+  datasource configuration. - Created prometheus.yml for Prometheus scraping configuration.
+
+refactor: Enhance main execution logic and telemetry tracking
+
+- Refactored main.py to include new data classes for execution plans and environment configurations.
+  - Implemented runtime metadata generation for telemetry. - Improved parallel execution handling
+  with responsive Ctrl+C support. - Updated agent creation logic to be more modular and
+  maintainable.
+
+test: Add tests for telemetry and resource tracking
+
+- Implemented tests for process resource tracking and telemetry functionalities. - Added regression
+  tests for policy behavior and scenario provider normalization.
+
+fix: Ensure scenario provider resets between experiments
+
+- Modified environment.run_single to reset scenario state and telemetry lifecycle for independent
+  experiments.
+
+- Make DevContainer fully automatic — observability starts on container boot, zero manual steps
+  ([`97c16e9`](https://github.com/jacksonpradolima/coleman4hcs/commit/97c16e90e96a2070b69b4865db3a118c9d4a2b7a))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Update DevContainer for full dev experience (uv, Docker-in-Docker, port forwarding)
+  ([`ebd9149`](https://github.com/jacksonpradolima/coleman4hcs/commit/ebd91490e49b6a83046ae4cb905740b8fd67a8b0))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+### Refactoring
+
+- Add ms-vscode.makefile-tools extension to devcontainer configuration
+  ([`4a49deb`](https://github.com/jacksonpradolima/coleman4hcs/commit/4a49deb02690053ec6d95ec97a9736f5c2da9d4f))
+
+- Enhance telemetry for checkpoint saves; update observability documentation and Grafana dashboard
+  ([`98f4976`](https://github.com/jacksonpradolima/coleman4hcs/commit/98f4976013fcb5b1d7d655508291468ee4e24e31))
+
+- Replace MonitorCollector with Results + Telemetry + Checkpoints architecture
+  ([`88a0059`](https://github.com/jacksonpradolima/coleman4hcs/commit/88a005925b2d16360d6ed041de2053ce57ea61a8))
+
+refactor: replace MonitorCollector with Results + Telemetry + Checkpoints architecture
+
+- Telemetry module to use dynamic imports for OpenTelemetry; enhance resource handling in telemetry
+  resources; update documentation for clarity on experiment results and observability; add workflow
+  notebook for guided analysis; improve test coverage for checkpoint resumption and parallel
+  execution plans.
+  ([`f3c310c`](https://github.com/jacksonpradolima/coleman4hcs/commit/f3c310ca0f897fdb1a7b5d00c03c273ab17da874))
+
+- Update .gitignore to include checkpoints output; enhance Makefile to install telemetry and
+  clickhouse extras
+  ([`3a8582d`](https://github.com/jacksonpradolima/coleman4hcs/commit/3a8582d80acc1cebb864066633e715499f9f77a9))
+
+- Update linting and formatting checks; enhance Makefile and pre-commit configuration; remove
+  obsolete workflow notebook; improve test assertions for policy performance
+  ([`2cc55f3`](https://github.com/jacksonpradolima/coleman4hcs/commit/2cc55f34417af48bd98ab3ca64634331679098b7))
+
+
 ## v1.1.0 (2026-03-09)
 
 ### Chores
