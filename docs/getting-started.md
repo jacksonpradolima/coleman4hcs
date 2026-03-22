@@ -117,10 +117,15 @@ Then import DuckDB once and run your queries incrementally:
 ```python
 import duckdb
 con = duckdb.connect("analysis.duckdb")
-
-duckdb.sql("""
-    SELECT policy, AVG(fitness) AS avg_napfd
+con.execute("""
+    CREATE OR REPLACE VIEW experiment_results AS
+    SELECT *
     FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+""")
+
+con.sql("""
+    SELECT policy, AVG(fitness) AS avg_napfd
+    FROM experiment_results
     GROUP BY policy ORDER BY avg_napfd DESC
 """)
 ```
@@ -206,11 +211,18 @@ After `uv run python main.py`, inspect the partitioned Parquet dataset:
 find ./runs -name '*.parquet' | head
 ```
 
-Query it directly with DuckDB:
+Prepare a reusable view in DuckDB, then query it directly:
 
 ```python
 import duckdb
-duckdb.sql("""
+con = duckdb.connect("analysis.duckdb")
+con.execute("""
+    CREATE OR REPLACE VIEW experiment_results AS
+    SELECT *
+    FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+""")
+
+con.sql("""
     SELECT scenario,
            execution_id,
            policy,
@@ -219,7 +231,7 @@ duckdb.sql("""
            AVG(cost) AS avg_apfdc,
            AVG(process_memory_rss_mib) AS avg_rss_mib,
            AVG(process_cpu_utilization_percent) AS avg_cpu_pct
-    FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+    FROM experiment_results
     GROUP BY scenario, execution_id, policy, reward_function
     ORDER BY avg_napfd DESC
 """)
@@ -236,33 +248,38 @@ out of the Parquet dataset.
 uv run ipython
 ```
 
-Then initialize once:
+Then initialize once and reuse the same view across the remaining examples:
 
 ```python
 import duckdb
 con = duckdb.connect("analysis.duckdb")
+con.execute("""
+    CREATE OR REPLACE VIEW experiment_results AS
+    SELECT *
+    FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+""")
 ```
 
 #### Inspect available columns
 
 ```python
-duckdb.sql("""
+con.sql("""
     DESCRIBE
     SELECT *
-    FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+    FROM experiment_results
 """).df()
 ```
 
 #### See which executions are available
 
 ```python
-duckdb.sql("""
+con.sql("""
     SELECT scenario,
            execution_id,
            COUNT(*) AS rows,
            MIN(step) AS first_step,
            MAX(step) AS last_step
-    FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+    FROM experiment_results
     GROUP BY scenario, execution_id
     ORDER BY scenario, execution_id
 """).df()
@@ -271,7 +288,7 @@ duckdb.sql("""
 #### Compare policies by final quality and resource cost
 
 ```python
-duckdb.sql("""
+con.sql("""
     SELECT scenario,
            policy,
            reward_function,
@@ -281,7 +298,7 @@ duckdb.sql("""
            AVG(process_memory_rss_mib) AS avg_rss_mib,
            AVG(process_cpu_utilization_percent) AS avg_cpu_pct,
            MAX(wall_time_seconds) AS wall_time_seconds
-    FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+    FROM experiment_results
     GROUP BY scenario, policy, reward_function
     ORDER BY avg_napfd DESC, avg_apfdc DESC
 """).df()
@@ -291,7 +308,7 @@ duckdb.sql("""
 
 ```python
 execution_id = 'replace-with-real-execution-id'
-duckdb.sql(f"""
+con.sql(f"""
     SELECT experiment,
            step,
            policy,
@@ -300,7 +317,7 @@ duckdb.sql(f"""
            cost,
            process_memory_rss_mib,
            process_cpu_utilization_percent
-    FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+    FROM experiment_results
     WHERE execution_id = '{execution_id}'
     ORDER BY experiment, step, policy
 """).df()
@@ -308,8 +325,10 @@ duckdb.sql(f"""
 
 #### Export a filtered report
 
+Before executte the following command, create the `analysis` directory first under the `runs/` directory.
+
 ```python
-duckdb.sql("""
+con.sql("""
     COPY (
         SELECT scenario,
                execution_id,
@@ -317,7 +336,7 @@ duckdb.sql("""
                reward_function,
                AVG(fitness) AS avg_napfd,
                AVG(cost) AS avg_apfdc
-        FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+        FROM experiment_results
         GROUP BY scenario, execution_id, policy, reward_function
     ) TO './runs/analysis/final-summary.csv' (HEADER, DELIMITER ',')
 """)
@@ -344,12 +363,62 @@ cd examples/observability
 docker compose --profile clickhouse up -d
 ```
 
-#### Query it from Python
+#### Initialize once and reuse
+
+Start a Python session and connect once — then reuse `client` across all the
+examples below:
 
 ```python
 import clickhouse_connect
 
 client = clickhouse_connect.get_client(host='localhost', port=8123, database='default')
+```
+
+#### Inspect stored schema
+
+```python
+print(client.query('DESCRIBE TABLE coleman_results').result_rows)
+```
+
+#### See which executions are available
+
+```python
+rows = client.query('''
+    SELECT scenario,
+           execution_id,
+           COUNT(*) AS rows,
+           MIN(step)  AS first_step,
+           MAX(step)  AS last_step
+    FROM coleman_results
+    GROUP BY scenario, execution_id
+    ORDER BY scenario, execution_id
+''')
+print(rows.result_rows)
+```
+
+#### Compare policies by final quality and resource cost
+
+```python
+rows = client.query('''
+    SELECT scenario,
+           policy,
+           reward_function,
+           AVG(fitness)                      AS avg_napfd,
+           AVG(cost)                         AS avg_apfdc,
+           AVG(prioritization_time)          AS avg_prioritization_time,
+           AVG(process_memory_rss_mib)       AS avg_rss_mib,
+           AVG(process_cpu_utilization_percent) AS avg_cpu_pct,
+           MAX(wall_time_seconds)            AS wall_time_seconds
+    FROM coleman_results
+    GROUP BY scenario, policy, reward_function
+    ORDER BY avg_napfd DESC, avg_apfdc DESC
+''')
+print(rows.result_rows)
+```
+
+#### Query a summary across all executions
+
+```python
 rows = client.query('''
     SELECT scenario,
            execution_id,
@@ -366,12 +435,48 @@ rows = client.query('''
 print(rows.result_rows)
 ```
 
-#### Inspect stored schema
+#### Slice one specific execution
 
 ```python
-import clickhouse_connect
-client = clickhouse_connect.get_client(host='localhost', port=8123, database='default')
-print(client.query('DESCRIBE TABLE coleman_results').result_rows)
+execution_id = 'replace-with-real-execution-id'
+rows = client.query(f'''
+    SELECT experiment,
+           step,
+           policy,
+           reward_function,
+           fitness,
+           cost,
+           process_memory_rss_mib,
+           process_cpu_utilization_percent
+    FROM coleman_results
+    WHERE execution_id = '{execution_id}'
+    ORDER BY experiment, step, policy
+''')
+print(rows.result_rows)
+```
+
+#### Export a filtered report to CSV
+
+```python
+import csv
+
+rows = client.query('''
+    SELECT scenario,
+           execution_id,
+           policy,
+           reward_function,
+           AVG(fitness) AS avg_napfd,
+           AVG(cost) AS avg_apfdc
+    FROM coleman_results
+    GROUP BY scenario, execution_id, policy, reward_function
+''')
+
+with open('./runs/analysis/final-summary.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(rows.column_names)
+    writer.writerows(rows.result_rows)
+
+print('exported ./runs/analysis/final-summary.csv')
 ```
 
 #### Clean old data when needed
@@ -379,8 +484,6 @@ print(client.query('DESCRIBE TABLE coleman_results').result_rows)
 ClickHouse also accumulates results by default. If you need a fresh table:
 
 ```python
-import clickhouse_connect
-client = clickhouse_connect.get_client(host='localhost', port=8123, database='default')
 client.command('TRUNCATE TABLE coleman_results')
 print('coleman_results truncated')
 ```

@@ -86,7 +86,8 @@ class ResultsWriter:
         with self._lock:
             if self._started:
                 self._queue.put(_SENTINEL)
-                self._thread.join()
+                if self._thread is not None:
+                    self._thread.join()
                 self._started = False
 
     # ------------------------------------------------------------------
