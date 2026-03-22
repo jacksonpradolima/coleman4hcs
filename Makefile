@@ -11,7 +11,7 @@ export UV_LINK_MODE ?= copy
 
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup install pre-commit-install lint format typecheck test test-cov docs docs-serve check-precommit clean interrogate build
+.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve check-precommit clean interrogate build run
 
 ## —— Coleman4HCS Makefile ——————————————————————————————————
 
@@ -35,7 +35,7 @@ setup: ensure-uv ## Setup Python 3.14 for local development
 	$(UV) venv .venv --python 3.14 --allow-existing
 
 install: ensure-uv setup ## Install all dependencies from uv.lock (including dev, docs, notebook extras) into .venv
-	$(UV) sync --frozen --extra dev --extra docs --extra notebook
+	$(UV) sync --frozen --extra dev --extra docs --extra notebook --extra telemetry --extra clickhouse
 	# Ensure project is installed in editable mode
 	$(UV) run --python $(PYTHON) --no-project pip install -e .
 
@@ -49,6 +49,9 @@ lint: ensure-uv ## Run ruff linter
 
 format: ensure-uv ## Run ruff formatter
 	$(UV) run ruff format .
+
+format-check: ensure-uv ## Check ruff formatting without changing files
+	$(UV) run ruff format --check .
 
 typecheck: ensure-uv ## Run pyright and ty type checkers
 	# Run both static type checkers
@@ -95,6 +98,12 @@ docs-serve: ensure-uv ## Serve documentation locally
 
 build: ensure-uv ## Build the package
 	$(UV) build
+
+# ——— Run ————————————————————————————————————————————————
+
+run: ensure-uv ## Remove runs/checkpoints and execute main.py
+	rm -rf runs/ checkpoints/
+	$(UV) run python main.py
 
 # ——— Pre-commit ———————————————————————————————————————————
 

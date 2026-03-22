@@ -23,6 +23,8 @@ Test Plan:
 4. Ensure exceptions (e.g., `QException`) are properly raised when needed.
 """
 
+from typing import Any
+
 import numpy as np
 import polars as pl
 import pytest
@@ -535,6 +537,33 @@ def test_frrmab_choose_all_performance(dummy_agent, benchmark):
     assert chosen_actions == expected_order, "FRRMABPolicy did not return actions sorted by Q values."
 
 
+def test_frrmab_choose_all_accepts_history_after_credit_assignment(dummy_agent):
+    """Regression test: grouped count output must remain schema-compatible with choose_all concat."""
+    policy = FRRMABPolicy(c=0.3, decayed_factor=1)
+    dummy_agent.policy = policy
+    dummy_agent.actions = pl.DataFrame(
+        {
+            "Name": ["A1", "A2", "A3"],
+            "ActionAttempts": [1.0, 1.0, 1.0],
+            "ValueEstimates": [1.0, 0.5, 0.2],
+            "Q": [0.0, 0.0, 0.0],
+        }
+    )
+    dummy_agent.history = pl.DataFrame(
+        {
+            "Name": ["A1", "A1", "A2"],
+            "ActionAttempts": [1.0, 1.0, 1.0],
+            "ValueEstimates": [1.0, 0.5, 0.25],
+            "T": [1, 2, 3],
+        }
+    )
+
+    policy.credit_assignment(dummy_agent)
+    chosen_actions = policy.choose_all(dummy_agent)
+
+    assert set(chosen_actions) == {"A1", "A2", "A3"}
+
+
 @pytest.mark.benchmark(group="policy")
 def test_swlinucb_policy_choose_all_performance(sliding_window_contextual_agent, benchmark):
     """
@@ -586,7 +615,7 @@ def test_linucb_policy_credit_assignment_performance(contextual_agent, benchmark
     num_actions = 5_000
     num_features = 100
     actions = [f"A{i}" for i in range(num_actions)]
-    features = {f"feat{i}": rng.random(num_actions) for i in range(num_features)}
+    features: dict[str, Any] = {f"feat{i}": rng.random(num_actions) for i in range(num_features)}
     features["Name"] = actions
 
     contextual_agent.context_features = pl.DataFrame(features)

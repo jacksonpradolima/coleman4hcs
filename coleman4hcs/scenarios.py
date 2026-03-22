@@ -281,8 +281,19 @@ class IndustrialDatasetScenarioProvider:
         # We use ';' separated values to avoid issues with thousands
         df = pl.read_csv(tcfile, separator=";", try_parse_dates=True)
 
-        # Handle Duration column - convert to numeric and fill nulls
-        df = df.with_columns([pl.col("Duration").cast(pl.Float64, strict=False).fill_null(0.0)])
+        # Normalize core fields to the types expected by the rest of the pipeline.
+        expressions = [
+            pl.col("Name").cast(pl.Utf8, strict=False),
+            pl.col("Duration").cast(pl.Float64, strict=False).fill_null(0.0),
+        ]
+
+        if "LastRun" in df.columns:
+            expressions.append(pl.col("LastRun").cast(pl.Utf8, strict=False).fill_null(""))
+
+        if "LastResults" in df.columns:
+            expressions.append(pl.col("LastResults").cast(pl.Utf8, strict=False).fill_null(""))
+
+        df = df.with_columns(expressions)
 
         return df
 

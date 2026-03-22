@@ -49,6 +49,24 @@ class CollectParams:
         The average reward from the prioritized test set.
     prioritization_order : list
         The order of prioritized test cases.
+    execution_id : str or None
+        Unique identifier for the execution instance.
+    worker_id : str or None
+        Logical worker identifier used in parallel runs.
+    parallel_mode : str or None
+        Execution mode label, for example ``sequential`` or ``process``.
+    process_memory_rss_mib : float or None
+        Current process resident memory in MiB.
+    process_memory_peak_rss_mib : float or None
+        Peak resident memory seen by the process in MiB.
+    process_cpu_utilization_percent : float or None
+        CPU utilization percentage measured for the latest interval.
+    process_cpu_time_seconds : float or None
+        Total process CPU time since the experiment started.
+    wall_time_seconds : float or None
+        Wall-clock time since the experiment started.
+    variant : str or None
+        The variant name (for HCS systems).  ``None`` for non-variant runs.
     """
 
     scenario_provider: ScenarioProviderLike
@@ -62,3 +80,12 @@ class CollectParams:
     prioritization_time: int
     rewards: float
     prioritization_order: list[Any]
+    execution_id: str | None = None
+    worker_id: str | None = None
+    parallel_mode: str | None = None
+    process_memory_rss_mib: float | None = None
+    process_memory_peak_rss_mib: float | None = None
+    process_cpu_utilization_percent: float | None = None
+    process_cpu_time_seconds: float | None = None
+    wall_time_seconds: float | None = None
+    variant: str | None = None

@@ -10,7 +10,7 @@ The module also contains the following features:
 - Mechanism to reset the environment and agent's memories.
 - Ability to run a single experiment or multiple experiments.
 - Support for both simple and contextual agents.
-- Periodic saving of experiments to handle long-running experiments.
+- Periodic saving of experiments via the checkpoint store.
 - Facilities for creating and storing results obtained during experiments.
 - Support for scenarios with variants, commonly found in Heterogeneous Computing Systems (HCS).
 - Helper methods for loading and saving experiment states for recovery purposes.
@@ -22,22 +22,24 @@ Environment
 """
 
 import logging
-import os
-import pickle
 import time
 import warnings
-from pathlib import Path
+from typing import Any
 
 import numpy as np
 import polars as pl
 
 from coleman4hcs.agent import ContextualAgent, SlidingWindowContextualAgent
 from coleman4hcs.bandit import EvaluationMetricBandit
+from coleman4hcs.checkpoint.checkpoint_store import CheckpointStore, NullCheckpointStore
+from coleman4hcs.checkpoint.state import CheckpointPayload
+from coleman4hcs.results.parquet_sink import ParquetSink
+from coleman4hcs.results.sink_base import NullSink, ResultsSink
 from coleman4hcs.scenarios import IndustrialDatasetHCSScenarioProvider, VirtualHCSScenario
+from coleman4hcs.telemetry.otel import get_telemetry
+from coleman4hcs.telemetry.resources import ProcessResourceTracker, ResourceSnapshot
 from coleman4hcs.utils.monitor import MonitorCollector
 from coleman4hcs.utils.monitor_params import CollectParams
-
-Path("backup").mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +57,15 @@ class Environment:
         The scenario provider supplying test case data.
     evaluation_metric : EvaluationMetric
         The evaluation metric used to assess prioritization performance.
+    results_config : dict or None
+        Configuration for the results sink (from ``config.toml [results]``).
+        When ``None``, a ``NullSink`` is used.
+    checkpoint_config : dict or None
+        Configuration for checkpoints (from ``config.toml [checkpoint]``).
+        When ``None``, a ``NullCheckpointStore`` is used.
+    telemetry_config : dict or None
+        Configuration for telemetry (from ``config.toml [telemetry]``).
+        When ``None``, a ``NoOpTelemetry`` is used.
 
     Attributes
     ----------
@@ -64,13 +75,26 @@ class Environment:
         The scenario provider instance.
     evaluation_metric : EvaluationMetric
         The evaluation metric instance.
-    monitor : MonitorCollector or None
+    monitor : MonitorCollector
         Monitor for collecting feedback during the process.
     variant_monitors : dict
         Dictionary of monitors for each variant.
+    checkpoint_store : CheckpointStore
+        Store for saving/loading experiment checkpoints.
+    telemetry : Telemetry or NoOpTelemetry
+        Telemetry facade for metrics and traces.
     """
 
-    def __init__(self, agents, scenario_provider, evaluation_metric):
+    def __init__(  # noqa: PLR0913
+        self,
+        agents,
+        scenario_provider,
+        evaluation_metric,
+        results_config: dict | None = None,
+        checkpoint_config: dict | None = None,
+        telemetry_config: dict | None = None,
+        runtime_metadata: dict[str, Any] | None = None,
+    ):
         """Initialize the Environment.
 
         Parameters
@@ -81,19 +105,88 @@ class Environment:
             The scenario provider supplying test case data.
         evaluation_metric : EvaluationMetric
             The evaluation metric used to assess prioritization performance.
+        results_config : dict or None
+            Results configuration dict.
+        checkpoint_config : dict or None
+            Checkpoint configuration dict.
+        telemetry_config : dict or None
+            Telemetry configuration dict.
         """
         self.agents = agents
         self.scenario_provider = scenario_provider
         self.evaluation_metric = evaluation_metric
-        self.monitor: MonitorCollector = MonitorCollector()
+        self.runtime_metadata: dict[str, str] = {}
+        self.set_runtime_metadata(runtime_metadata)
+        self._resource_tracker: ProcessResourceTracker | None = None
+        self._last_resource_snapshot: ResourceSnapshot | None = None
+
+        # Build the results sink from config
+        self._results_config = results_config or {}
+        self._sink = self._build_sink(self._results_config)
+
+        # Build the checkpoint store from config
+        ckpt_cfg = checkpoint_config or {}
+        if ckpt_cfg.get("enabled", False):
+            from coleman4hcs.checkpoint.checkpoint_store import LocalCheckpointStore
+
+            self.checkpoint_store: CheckpointStore = LocalCheckpointStore(
+                base_dir=ckpt_cfg.get("base_dir", "checkpoints"),
+            )
+            self._checkpoint_interval: int = ckpt_cfg.get("interval", 50000)
+        else:
+            self.checkpoint_store = NullCheckpointStore()
+            self._checkpoint_interval = 50000
+
+        # Build the telemetry facade from config
+        tel_cfg = telemetry_config or {}
+        self.telemetry = get_telemetry(
+            enabled=tel_cfg.get("enabled", False),
+            service_name=tel_cfg.get("service_name", "coleman4hcs"),
+            otlp_endpoint=tel_cfg.get("otlp_endpoint", "http://localhost:4318"),
+            export_interval_millis=tel_cfg.get("export_interval_millis", 5000),
+        )
+
+        self.monitor: MonitorCollector = MonitorCollector(sink=self._sink)
         self.variant_monitors: dict[str, MonitorCollector] = {}
         self.reset()
+
+    @staticmethod
+    def _build_sink(results_config: dict) -> ResultsSink:
+        """Create a ResultsSink from the ``[results]`` config section.
+
+        Parameters
+        ----------
+        results_config : dict
+            Config dict with keys ``enabled``, ``sink``, ``out_dir``, etc.
+
+        Returns
+        -------
+        ResultsSink
+        """
+        if not results_config.get("enabled", False):
+            return NullSink()
+
+        sink_type = results_config.get("sink", "parquet")
+        if sink_type == "parquet":
+            top_k_raw = results_config.get("top_k_prioritization", 0)
+            top_k = top_k_raw if top_k_raw and top_k_raw > 0 else None
+            return ParquetSink(
+                out_dir=results_config.get("out_dir", "./runs"),
+                batch_size=results_config.get("batch_size", 1000),
+                top_k=top_k,
+            )
+        if sink_type == "clickhouse":
+            from coleman4hcs.results.clickhouse_sink import ClickHouseSink
+
+            return ClickHouseSink()
+        msg = f"Unsupported results sink type: {sink_type!r}. Valid options are 'parquet' or 'clickhouse'."
+        raise ValueError(msg)
 
     def reset(self):
         """Reset the environment for a new simulation."""
         self.reset_agents_memory()
-        # Monitor saves the feedback during the process
-        self.monitor = MonitorCollector()
+        # Create monitors backed by the configured sink
+        self.monitor = MonitorCollector(sink=self._sink)
         self.variant_monitors = {}
 
         if (
@@ -101,12 +194,80 @@ class Environment:
             and self.scenario_provider.get_total_variants() > 0
         ):
             for variant in self.scenario_provider.get_all_variants():
-                self.variant_monitors[variant] = MonitorCollector()
+                self.variant_monitors[variant] = MonitorCollector(sink=self._sink)
 
     def reset_agents_memory(self):
         """Reset all agents' memory to an initial state."""
         for agent in self.agents:
             agent.reset()
+
+    def set_runtime_metadata(self, runtime_metadata: dict[str, Any] | None = None) -> None:
+        """Set execution-scoped metadata used for telemetry and persisted results."""
+        default_metadata = {
+            "execution_id": "unknown",
+            "worker_id": "0",
+            "parallel_mode": "sequential",
+        }
+        incoming_metadata = runtime_metadata or {}
+        self.runtime_metadata = {key: str(value) for key, value in default_metadata.items()}
+        self.runtime_metadata.update({key: str(value) for key, value in incoming_metadata.items() if value is not None})
+
+    def _current_runtime_metadata(self) -> dict[str, str]:
+        """Return execution metadata attached to the current environment run."""
+        return dict(self.runtime_metadata)
+
+    def _experiment_telemetry_attributes(self, experiment: int) -> dict[str, Any]:
+        """Build low-cardinality telemetry attributes for one experiment run."""
+        attributes = {
+            "scenario": str(self.scenario_provider),
+            "experiment": str(experiment),
+            "time_ratio": f"{self.scenario_provider.get_avail_time_ratio():.2f}",
+        }
+        attributes.update(self._current_runtime_metadata())
+        return attributes
+
+    def _agent_telemetry_attributes(self, experiment: int, policy: str, reward_function: str) -> dict[str, Any]:
+        """Build telemetry attributes for one agent execution within an experiment."""
+        attrs = self._experiment_telemetry_attributes(experiment)
+        attrs.update(
+            {
+                "policy": policy,
+                "reward_function": reward_function,
+            }
+        )
+        return attrs
+
+    def _sample_resources(self) -> ResourceSnapshot:
+        """Capture one process resource sample, creating the tracker lazily when necessary."""
+        if self._resource_tracker is None:
+            self._resource_tracker = ProcessResourceTracker()
+
+        snapshot = self._resource_tracker.sample()
+        self._last_resource_snapshot = snapshot
+        return snapshot
+
+    def _try_restore_checkpoint(self, experiment):
+        """Attempt to restore experiment state from the checkpoint store.
+
+        Parameters
+        ----------
+        experiment : int
+            Current experiment number.
+
+        Returns
+        -------
+        tuple[int, object | None]
+            A ``(restore_step, bandit)`` pair.  When no checkpoint exists the
+            defaults ``(1, None)`` are returned.
+        """
+        run_id = str(self.scenario_provider)
+        payload = self.checkpoint_store.load(run_id, experiment)
+        if payload is None:
+            return 1, None
+
+        self.agents = payload.agents if payload.agents is not None else self.agents
+        self.scenario_provider.last_build(payload.step)
+        return payload.step + 1, payload.bandit
 
     def run_single(self, experiment, trials=100, bandit_type=EvaluationMetricBandit, restore=True):
         """Execute a single simulation experiment.
@@ -130,66 +291,94 @@ class Environment:
 
         # restore to step
         restore_step = 1
+        experiment_attrs = self._experiment_telemetry_attributes(experiment)
+        self._resource_tracker = ProcessResourceTracker()
+        self._last_resource_snapshot = None
 
-        if restore:
-            # Restore the experiment from the last backup
-            # This is useful for long experiments
-            restore_step, self.agents, self.monitor, self.variant_monitors, bandit = self.load_experiment(experiment)
-            self.scenario_provider.last_build(restore_step)
-            restore_step += 1  # start 1 step after the last build
+        # Each independent execution must restart the scenario iteration from the beginning
+        # unless a checkpoint explicitly restores to a later step.
+        self.scenario_provider.last_build(0)
 
-        # Test Budget percentage
-        avail_time_ratio = self.scenario_provider.get_avail_time_ratio()
+        self.telemetry.mark_run_started(experiment_attrs)
 
-        # For each "virtual scenario" I must analyse it and evaluate it
-        for t, virtual_scenario in enumerate(self.scenario_provider, start=restore_step):
-            # The max number of scenarios that will be analyzed
-            if t > trials:
-                break
+        try:
+            if restore:
+                restore_step, bandit = self._try_restore_checkpoint(experiment)
 
-            # Time Budget
-            available_time = virtual_scenario.get_available_time()
-            self.evaluation_metric.update_available_time(available_time)
+            logger.info(
+                "Starting experiment=%s scenario=%s from_step=%s total_trials=%s",
+                experiment,
+                self.scenario_provider,
+                restore_step,
+                trials,
+            )
 
-            # Compute time
-            start_bandit = time.time()
+            # Test Budget percentage
+            avail_time_ratio = self.scenario_provider.get_avail_time_ratio()
 
-            if bandit is None:
-                bandit = bandit_type(virtual_scenario.get_testcases(), self.evaluation_metric)
-            else:
-                # Update bandit (the arms = TC available) for all agents
-                bandit.update_arms(virtual_scenario.get_testcases())
+            # For each "virtual scenario" I must analyse it and evaluate it
+            for t, virtual_scenario in enumerate(self.scenario_provider, start=restore_step):
+                # The max number of scenarios that will be analyzed
+                if t > trials:
+                    break
 
-            end_bandit = time.time()
-
-            bandit_duration = end_bandit - start_bandit
-
-            # we can analyse the same "moment/scenario t" for "i agents"
-            for _, agent in enumerate(self.agents):
-                # Update again because the variants
-                # each variant has its own test budget size, that is, different from the whole system
+                # Time Budget
+                available_time = virtual_scenario.get_available_time()
                 self.evaluation_metric.update_available_time(available_time)
 
-                action, end, exp_name, start = self.run_prioritization(
-                    agent, bandit, bandit_duration, experiment, t, virtual_scenario
-                )
+                # Compute time
+                start_bandit = time.time()
 
-                # If we are working with HCS scenario and there are variants
-                if isinstance(virtual_scenario, VirtualHCSScenario) and len(virtual_scenario.get_variants()) > 0:
-                    self.run_prioritization_hcs(
-                        agent,
-                        action,
-                        avail_time_ratio,
-                        bandit_duration,
-                        end,
-                        exp_name,
-                        experiment,
-                        start,
-                        t,
-                        virtual_scenario,
+                if bandit is None:
+                    bandit = bandit_type(virtual_scenario.get_testcases(), self.evaluation_metric)
+                else:
+                    # Update bandit (the arms = TC available) for all agents
+                    bandit.update_arms(virtual_scenario.get_testcases())
+
+                end_bandit = time.time()
+
+                bandit_duration = end_bandit - start_bandit
+                self.telemetry.record_latency("bandit_update", bandit_duration, attributes=experiment_attrs)
+
+                # we can analyse the same "moment/scenario t" for "i agents"
+                for _, agent in enumerate(self.agents):
+                    # Update again because the variants
+                    # each variant has its own test budget size, that is, different from the whole system
+                    self.evaluation_metric.update_available_time(available_time)
+
+                    action, end, exp_name, start = self.run_prioritization(
+                        agent, bandit, bandit_duration, experiment, t, virtual_scenario
                     )
 
-            self.save_periodically(restore, t, experiment, bandit)
+                    # If we are working with HCS scenario and there are variants
+                    if isinstance(virtual_scenario, VirtualHCSScenario) and len(virtual_scenario.get_variants()) > 0:
+                        self.run_prioritization_hcs(
+                            agent,
+                            action,
+                            avail_time_ratio,
+                            bandit_duration,
+                            end,
+                            exp_name,
+                            experiment,
+                            start,
+                            t,
+                            virtual_scenario,
+                        )
+
+                self.telemetry.record_cycle(experiment_attrs)
+                self.save_periodically(restore, t, experiment, bandit)
+
+            logger.info("Finished experiment=%s scenario=%s", experiment, self.scenario_provider)
+        finally:
+            run_snapshot = self._sample_resources()
+            self.telemetry.record_experiment_resources(
+                run_snapshot.wall_time_seconds,
+                run_snapshot.cpu_time_seconds,
+                run_snapshot.peak_rss_mib,
+                attributes=experiment_attrs,
+            )
+            self.telemetry.mark_run_finished(experiment_attrs)
+            self.telemetry.flush()
 
     def run_prioritization(  # pylint: disable=too-many-positional-arguments
         self, agent, bandit, bandit_duration, experiment, t, virtual_scenario
@@ -227,6 +416,9 @@ class Environment:
         else:
             exp_name = str(agent)
 
+        reward_function_name = str(agent.get_reward_function())
+        telemetry_attrs = self._agent_telemetry_attributes(experiment, exp_name, reward_function_name)
+
         # Update the bandit inside the agent.
         # This loop also update the actions available for policy choose
         agent.update_bandit(bandit)
@@ -236,9 +428,11 @@ class Environment:
 
         # Choose action (Prioritized Test Suite List) from agent (from current Q estimate)
         action = agent.choose()
+        after_choose = time.time()
 
         # Pick up reward from bandit for chosen action
         # Submit prioritized test cases for evaluation step the environment and get new measurements
+        start_evaluation = time.time()
         metric = agent.bandit.pull(action)
 
         # Update Q action-value estimates (Reward Functions)
@@ -247,12 +441,25 @@ class Environment:
         # Compute end time
         end = time.time()
 
+        prioritization_time = (after_choose - start) + bandit_duration
+        evaluation_time = end - start_evaluation
+        resource_snapshot = self._sample_resources()
+        self.telemetry.record_latency("prioritization", prioritization_time, attributes=telemetry_attrs)
+        self.telemetry.record_latency("evaluation", evaluation_time, attributes=telemetry_attrs)
+        self.telemetry.record_fitness(metric.fitness, metric.cost, attributes=telemetry_attrs)
+        self.telemetry.record_resource_snapshot(
+            resource_snapshot.current_rss_mib,
+            resource_snapshot.peak_rss_mib,
+            resource_snapshot.cpu_utilization_percent,
+            attributes=telemetry_attrs,
+        )
+
         logger.debug(
             "Exp: %s - Ep: %s - Name: %s (%s) - NAPFD/APFDc: %.4f/%.4f",
             experiment,
             t,
             exp_name,
-            str(agent.get_reward_function()),
+            reward_function_name,
             metric.fitness,
             metric.cost,
         )
@@ -264,12 +471,20 @@ class Environment:
             experiment=experiment,
             t=t,
             policy=exp_name,
-            reward_function=str(agent.get_reward_function()),
+            reward_function=reward_function_name,
             metric=metric,
             total_build_duration=self.scenario_provider.total_build_duration,
-            prioritization_time=(end - start) + bandit_duration,
+            prioritization_time=prioritization_time,
             rewards=np.mean(agent.last_reward),
             prioritization_order=action,
+            execution_id=self.runtime_metadata.get("execution_id"),
+            worker_id=self.runtime_metadata.get("worker_id"),
+            parallel_mode=self.runtime_metadata.get("parallel_mode"),
+            process_memory_rss_mib=resource_snapshot.current_rss_mib,
+            process_memory_peak_rss_mib=resource_snapshot.peak_rss_mib,
+            process_cpu_utilization_percent=resource_snapshot.cpu_utilization_percent,
+            process_cpu_time_seconds=resource_snapshot.cpu_time_seconds,
+            wall_time_seconds=resource_snapshot.wall_time_seconds,
         )
 
         self.monitor.collect(params)
@@ -306,6 +521,7 @@ class Environment:
         """
         # Get the variants that exist in the current commit
         variants = virtual_scenario.get_variants()
+        resource_snapshot = self._last_resource_snapshot
 
         # For each variant I will evaluate the impact of the main prioritization
         for variant in variants["Variant"].unique():
@@ -339,12 +555,23 @@ class Environment:
                 prioritization_time=(end - start) + bandit_duration,
                 rewards=0,
                 prioritization_order=df["Name"].to_list(),
+                execution_id=self.runtime_metadata.get("execution_id"),
+                worker_id=self.runtime_metadata.get("worker_id"),
+                parallel_mode=self.runtime_metadata.get("parallel_mode"),
+                process_memory_rss_mib=resource_snapshot.current_rss_mib if resource_snapshot else None,
+                process_memory_peak_rss_mib=resource_snapshot.peak_rss_mib if resource_snapshot else None,
+                process_cpu_utilization_percent=resource_snapshot.cpu_utilization_percent
+                if resource_snapshot
+                else None,  # noqa: E501
+                process_cpu_time_seconds=resource_snapshot.cpu_time_seconds if resource_snapshot else None,
+                wall_time_seconds=resource_snapshot.wall_time_seconds if resource_snapshot else None,
+                variant=variant,
             )
 
             self.variant_monitors[variant].collect(params)
 
     def save_periodically(  # pylint: disable=too-many-positional-arguments
-        self, restore, t, experiment, bandit, interval=50000
+        self, restore, t, experiment, bandit, interval=None
     ):
         """Save the experiment periodically based on a predefined interval.
 
@@ -358,11 +585,13 @@ class Environment:
             The current experiment number.
         bandit : Bandit
             The current bandit being used in the simulation.
-        interval : int, optional
-            The interval at which the experiment should be saved. Default is 50000.
+        interval : int or None, optional
+            The interval at which the experiment should be saved.
+            When ``None``, uses the configured checkpoint interval.
         """
+        save_interval = interval if interval is not None else self._checkpoint_interval
         # Save experiment each X builds
-        if restore and t % interval == 0:
+        if restore and t % save_interval == 0:
             self.save_experiment(experiment, t, bandit)
 
     def run(self, experiments=1, trials=100, bandit_type=EvaluationMetricBandit, restore=True):
@@ -384,64 +613,15 @@ class Environment:
         for exp in range(experiments):
             self.run_single(exp, trials, bandit_type, restore)
 
-    def create_file(self, name):
-        """Create a file to store the results obtained during the experiment.
-
-        Parameters
-        ----------
-        name : str
-            The name of the file to store the results.
-        """
-        self.monitor.create_file(name)
-
-        # If we are working with HCS scenario, we create a file for each variant in a specific directory
-        if (
-            isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider)
-            and self.scenario_provider.get_total_variants() > 0
-        ):
-            # Ignore the extension
-            name = name.split(".csv")[0]
-            name = f"{name}_variants"
-
-            Path(name).mkdir(parents=True, exist_ok=True)
-
-            for variant in self.scenario_provider.get_all_variants():
-                self.variant_monitors[variant].create_file(
-                    f"{name}/{name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv"
-                )
-
-    def store_experiment(self, csv_file_name):
-        """Save the results obtained during the experiment.
-
-        Parameters
-        ----------
-        csv_file_name : str
-            The name of the file to store the results.
-        """
-        # Collect from temp and save a file (backup and easy sharing/auditing)
-        self.monitor.save(csv_file_name)
-
-        if (
-            isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider)
-            and self.scenario_provider.get_total_variants() > 0
-        ):
-            # Ignore the extension
-            name2 = csv_file_name.split(".csv")[0]
-            name2 = f"{name2}_variants"
-
-            Path(name2).mkdir(parents=True, exist_ok=True)
-
-            for variant in self.scenario_provider.get_all_variants():
-                # Collect from temp and save a file (backup and easy sharing/auditing)
-                self.variant_monitors[variant].save(
-                    f"{name2}/{csv_file_name.split('/')[-1].split('@')[0]}@{variant.replace('/', '-')}.csv"
-                )
-
-        # Clear experiment
-        self.monitor.clear()
+    def store_experiment(self):
+        """Flush and persist the results collected during the experiment."""
+        self.monitor.flush()
+        for variant_monitor in self.variant_monitors.values():
+            variant_monitor.flush()
+        self.telemetry.flush()
 
     def load_experiment(self, experiment):
-        """Load a backup of the experiment.
+        """Load a backup of the experiment from the checkpoint store.
 
         Parameters
         ----------
@@ -450,20 +630,14 @@ class Environment:
 
         Returns
         -------
-        tuple
-            A tuple containing the restore step, agents, monitor,
-            variant monitors, and bandit.
+        CheckpointPayload or None
+            The loaded checkpoint payload, or ``None`` if not found.
         """
-        filename = f"backup/{str(self.scenario_provider)}_ex_{experiment}.p"
-
-        if not os.path.exists(filename):
-            return 0, self.agents, self.monitor, self.variant_monitors, None
-
-        with open(filename, "rb") as file:
-            return pickle.load(file)
+        run_id = str(self.scenario_provider)
+        return self.checkpoint_store.load(run_id, experiment)
 
     def save_experiment(self, experiment, t, bandit):
-        """Save a backup for the experiment.
+        """Save a checkpoint for the experiment.
 
         Parameters
         ----------
@@ -480,9 +654,18 @@ class Environment:
             If there is an error saving the experiment.
         """
         try:
-            filename = f"backup/{str(self.scenario_provider)}_ex_{experiment}.p"
-            with open(filename, "wb") as f:
-                pickle.dump([t, self.agents, self.monitor, self.variant_monitors, bandit], f)
-        except Exception as e:
-            logger.error("Error saving the experiment: %s", e)
-            raise e
+            self.monitor.flush()
+            for variant_monitor in self.variant_monitors.values():
+                variant_monitor.flush()
+            payload = CheckpointPayload(
+                run_id=str(self.scenario_provider),
+                experiment=experiment,
+                step=t,
+                agents=self.agents,
+                bandit=bandit,
+            )
+            self.checkpoint_store.save(payload)
+            self.telemetry.record_checkpoint_save(self._experiment_telemetry_attributes(experiment))
+        except Exception:
+            logger.exception("Error saving the experiment")
+            raise

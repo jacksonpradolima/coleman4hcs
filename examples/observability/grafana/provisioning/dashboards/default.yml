@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: coleman4hcs
+    orgId: 1
+    folder: Coleman4HCS
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

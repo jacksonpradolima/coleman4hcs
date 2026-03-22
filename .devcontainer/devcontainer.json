@@ -2,9 +2,29 @@
   "name": "coleman4hcs",
   "image": "mcr.microsoft.com/devcontainers/python:3",
   "features": {
-    "ghcr.io/devcontainers/features/node:1": {}
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": false
+    }
   },
-  "postCreateCommand": "make install && make pre-commit-install",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+  "forwardPorts": [
+    3000,
+    4317,
+    4318,
+    8123,
+    8889,
+    9000
+  ],
+  "portsAttributes": {
+    "3000": { "label": "Grafana", "onAutoForward": "notify" },
+    "4317": { "label": "OTel Collector (gRPC)", "onAutoForward": "silent" },
+    "4318": { "label": "OTel Collector (HTTP)", "onAutoForward": "silent" },
+    "8123": { "label": "ClickHouse (HTTP)", "onAutoForward": "silent" },
+    "8889": { "label": "Prometheus metrics", "onAutoForward": "silent" },
+    "9000": { "label": "ClickHouse (native)", "onAutoForward": "silent" }
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -18,7 +38,8 @@
         "ms-pyright.pyright",
         "ms-toolsai.jupyter",
         "astral-sh.ty",
-        "marimo-team.vscode-marimo"
+        "marimo-team.vscode-marimo",
+        "ms-vscode.makefile-tools"
       ],
       "settings": {
         "python.defaultInterpreterPath": ".venv/bin/python",

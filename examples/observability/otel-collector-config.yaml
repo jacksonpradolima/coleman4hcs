@@ -1,0 +1,53 @@
+# =============================================================================
+# OpenTelemetry Collector Configuration for Coleman4HCS
+# =============================================================================
+#
+# Receives OTLP data from the framework and exports:
+#   - Metrics → Prometheus endpoint (scrape at :8889/metrics)
+#   - Traces  → Debug logger (swap in a Jaeger/Tempo exporter for production)
+#
+# ClickHouse exporter can be enabled under the "clickhouse" profile by
+# uncommenting the relevant sections below.
+# =============================================================================
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:4317"
+      http:
+        endpoint: "0.0.0.0:4318"
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+exporters:
+  # Prometheus endpoint for Grafana scraping
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: "coleman"
+
+  # Debug/logging exporter (traces)
+  debug:
+    verbosity: basic
+
+  # Uncomment for ClickHouse export (requires the clickhouse profile):
+  # clickhouse:
+  #   endpoint: tcp://clickhouse:9000
+  #   database: default
+  #   traces_table_name: otel_traces
+  #   metrics_table_name: otel_metrics
+  #   logs_table_name: otel_logs
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]

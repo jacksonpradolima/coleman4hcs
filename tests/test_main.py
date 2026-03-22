@@ -4,8 +4,7 @@ Unit and integration tests for the main application logic.
 This module contains unit and integration tests to verify the functionality
 of various core functions present in the project's `main` module. The tests
 cover a wide range of behaviors, including logging setup, managing agents,
-loading classes dynamically, working with experiments, scenario providers,
-and CSV processing.
+loading classes dynamically, working with experiments, and scenario providers.
 
 Purpose:
 - Ensure the robustness, reliability, and correct behavior of the `main` module's core logic.
@@ -29,32 +28,14 @@ Tested Functionalities:
 5. **Scenario Setup**:
    - `get_scenario_provider`: Tests the initialization of different scenario providers.
 
-6. **File Management**:
-   - `merge_csv`: Verifies merging of multiple CSV files into one while ensuring cleanup of temporary files.
-   - `store_experiments`: Tests the storage of experiment results into the database.
-
-7. **End-to-End Workflow**:
+6. **End-to-End Workflow**:
    - Ensures integration of various components with mock objects to validate behavior across larger workflows.
-
-Dependencies:
-- `pytest` for test management and fixtures.
-- `unittest.mock` for mocking dependencies like functions, modules, and objects.
-- Core components from the `coleman4hcs` package that integrate with the tested functions.
-
-Test Structure:
-- **Unit Tests**:
-  Focused on validating individual functions in the `main` module.
-  Examples: `test_create_logger`, `test_create_agents_frrmab`.
-
-- **Integration Tests**:
-  Comprehensive tests to ensure modules and components work together as expected.
-  Examples: `test_end_to_end_execution`.
-
 """
 
 import logging
-from typing import cast
-from unittest.mock import Mock, call, patch
+import pickle
+from typing import TypedDict, cast
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -62,15 +43,18 @@ import coleman4hcs.policy
 from coleman4hcs.agent import ContextualAgent, RewardSlidingWindowAgent
 from coleman4hcs.environment import Environment
 from coleman4hcs.policy import FRRMABPolicy, SWLinUCBPolicy
-from coleman4hcs.scenarios import IndustrialDatasetHCSScenarioProvider, IndustrialDatasetScenarioProvider
+from coleman4hcs.scenarios import IndustrialDatasetScenarioProvider
 from main import (
+    EnvironmentBuildConfig,
+    ExecutionPlan,
+    build_runtime_metadata,
     create_agents,
     create_logger,
     exp_run_industrial_dataset,
     get_scenario_provider,
     load_class_from_module,
-    merge_csv,
-    store_experiments,
+    run_parallel_executions,
+    to_builtin_types,
 )
 
 # ------------------------
@@ -110,13 +94,137 @@ def test_exp_run_industrial_dataset(mock_environment, mock_create_logger, tmpdir
         iteration=1,
         trials=10,
         env=cast(Environment, mock_env),
-        experiment_directory=str(tmpdir),
         level=20,
     )
 
-    mock_env.create_file.assert_called_once()
+    mock_env.set_runtime_metadata.assert_called_once()
     mock_env.run_single.assert_called_once()
     mock_env.store_experiment.assert_called_once()
+
+
+def test_build_runtime_metadata_is_unique_per_execution():
+    """Execution metadata should uniquely identify independent runs."""
+    metadata_a = build_runtime_metadata("fakedata", 0.5, 1, "process")
+    metadata_b = build_runtime_metadata("fakedata", 0.5, 1, "process")
+
+    assert metadata_a["worker_id"] == "1"
+    assert metadata_a["parallel_mode"] == "process"
+    assert metadata_a["execution_id"] != metadata_b["execution_id"]
+
+
+def test_to_builtin_types_returns_picklable_dicts():
+    """Config normalization should remove dynamic mapping wrappers from TOML parsing."""
+
+    class DynamicInlineTableDict(dict):
+        pass
+
+    raw = DynamicInlineTableDict(
+        {
+            "algorithm": DynamicInlineTableDict(
+                {
+                    "frrmab": DynamicInlineTableDict(
+                        {
+                            "timerank": DynamicInlineTableDict({"c": 0.5}),
+                        }
+                    )
+                }
+            )
+        }
+    )
+
+    normalized = to_builtin_types(raw)
+    pickle.dumps(normalized)
+
+    assert type(normalized) is dict
+    assert type(normalized["algorithm"]) is dict
+    assert type(normalized["algorithm"]["frrmab"]) is dict
+
+
+def test_run_parallel_executions_dispatches_unique_execution_plans():
+    """Parallel dispatch should preserve per-worker isolation metadata."""
+
+    class CapturedData(TypedDict, total=False):
+        pool_size: int
+        args: list[tuple[EnvironmentBuildConfig, ExecutionPlan]]
+
+    captured: CapturedData = {}
+
+    class FakeAsyncResult:
+        def get(self, timeout=None):  # noqa: ARG002
+            return None
+
+    class FakePool:
+        def __init__(self, size):
+            captured["pool_size"] = size
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):  # noqa: ARG002
+            return False
+
+        def starmap_async(self, func, args_list):
+            captured["args"] = list(args_list)
+            return FakeAsyncResult()
+
+        def terminate(self):
+            return None
+
+        def join(self):
+            return None
+
+    class FakeContext:
+        def Pool(self, size):  # noqa: N802
+            return FakePool(size)
+
+    build_config = EnvironmentBuildConfig(
+        datasets_dir="examples",
+        dataset="fakedata",
+        sched_time_ratio=0.5,
+        use_hcs=False,
+        use_context=False,
+        context_config={},
+        feature_groups={},
+        results_config={},
+        checkpoint_config={},
+        telemetry_config={},
+        algorithm_configs={},
+        rewards_names=["RNFail"],
+        policy_names=["Random"],
+    )
+    plans = [
+        ExecutionPlan(
+            iteration=1,
+            trials=10,
+            level=20,
+            execution_id="exec-1",
+            worker_id="1",
+            parallel_mode="process",
+        ),
+        ExecutionPlan(
+            iteration=2,
+            trials=10,
+            level=20,
+            execution_id="exec-2",
+            worker_id="2",
+            parallel_mode="process",
+        ),
+    ]
+
+    with patch("main.get_context", return_value=FakeContext()):
+        run_parallel_executions(2, build_config, plans)
+
+    assert captured["pool_size"] == 2
+    assert len(captured["args"]) == 2
+
+    dispatched_first_plan = captured["args"][0][1]
+    dispatched_second_plan = captured["args"][1][1]
+
+    assert isinstance(dispatched_first_plan, ExecutionPlan)
+    assert isinstance(dispatched_second_plan, ExecutionPlan)
+    assert dispatched_first_plan.execution_id == "exec-1"
+    assert dispatched_second_plan.execution_id == "exec-2"
+    assert dispatched_first_plan.execution_id != dispatched_second_plan.execution_id
 
 
 def test_load_class_from_module_valid():
@@ -170,53 +278,6 @@ def test_get_scenario_provider_basic():
     assert isinstance(scenario_provider, IndustrialDatasetScenarioProvider)
 
 
-@patch("main.os.remove")
-@patch("main.pl.read_csv")
-@patch("main.pl.concat")
-def test_merge_csv(mock_concat, mock_read_csv, mock_remove, tmpdir):
-    """Test that merge_csv correctly merges files and cleans up temporary files."""
-    # Mocked return values
-    df_merged = Mock()
-    mock_concat.return_value = df_merged
-
-    # Temporary CSV files
-    temp_files = [tmpdir.join(f"file{i}.csv") for i in range(3)]
-
-    # Call merge_csv
-    output_file = tmpdir.join("output.csv")
-    merge_csv(temp_files, output_file)
-
-    # Ensure files were merged
-    mock_read_csv.assert_has_calls([call(file, separator=";") for file in temp_files])
-    mock_concat.assert_called_once()
-    df_merged.write_csv.assert_called_once_with(output_file, separator=";", quote_style="never")
-
-    # Ensure temp files were deleted
-    mock_remove.assert_has_calls([call(file) for file in temp_files])
-
-
-@patch("main.duckdb.connect")
-@patch("main.pl.read_csv")
-def test_store_experiments(mock_read_csv, mock_duckdb_connect, tmpdir):
-    """Test that store_experiments inserts data into DuckDB correctly."""
-    # Mock database connection and DataFrame
-    mock_conn = mock_duckdb_connect.return_value
-    mock_df = Mock()
-    mock_read_csv.return_value = mock_df
-
-    # CSV file and dummy scenario
-    csv_file = tmpdir.join("results.csv")
-    scenario = Mock(spec=IndustrialDatasetHCSScenarioProvider)
-    scenario.get_total_variants.return_value = 0  # Explicitly define behavior for mock
-
-    # Call store_experiments
-    store_experiments(csv_file, scenario)
-
-    # Verify database commands
-    mock_conn.execute.assert_called()
-    mock_conn.execute.assert_any_call("INSERT INTO experiments SELECT * FROM df;")
-
-
 # ------------------------
 # Integration Tests
 # ------------------------
@@ -226,26 +287,16 @@ def test_store_experiments(mock_read_csv, mock_duckdb_connect, tmpdir):
 @patch("main.Environment")
 def test_end_to_end_execution(mock_environment, mock_create_logger, tmpdir):
     """Test end-to-end execution using mocked environment and logger."""
-    # Mock environment and logger creation
     mock_env = mock_environment.return_value
     mock_env.scenario_provider = Mock()
     mock_env.max_builds = 10
     mock_env.logger = mock_create_logger.return_value
 
-    # Temporary experiment directory
-    experiment_directory = tmpdir.join("experiment/")
-
-    # Parameters
     independent_executions = 3
-    parameters = [
-        (i + 1, 10, cast(Environment, mock_env), str(experiment_directory), 20) for i in range(independent_executions)
-    ]
+    parameters = [(i + 1, 10, cast(Environment, mock_env), 20) for i in range(independent_executions)]
 
-    # Parallel pool size test (single-threaded for simplicity)
-    for iteration, trials, env, exp_dir, level in parameters:
-        exp_run_industrial_dataset(iteration, trials, env, exp_dir, level)
+    for iteration, trials, env, level in parameters:
+        exp_run_industrial_dataset(iteration, trials, env, level)
 
-    # Check that required environment methods were called
-    assert mock_env.create_file.call_count == independent_executions
     assert mock_env.run_single.call_count == independent_executions
     assert mock_env.store_experiment.call_count == independent_executions
