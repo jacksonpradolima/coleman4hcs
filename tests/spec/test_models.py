@@ -124,5 +124,7 @@ class TestRunSpec:
         assert spec.algorithm["ucb"]["timerank"]["c"] == 0.5
 
     def test_invalid_type_raises(self):
-        with pytest.raises(Exception):  # noqa: B017
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
             RunSpec.model_validate({"execution": {"parallel_pool_size": "not_an_int"}})
