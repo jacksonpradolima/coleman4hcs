@@ -16,6 +16,8 @@ dependencies = [
     "scikit-posthocs",
     "toml",
     "tomli",
+    "pydantic>=2.12.5",
+    "pyyaml>=6.0.3",
 ]
 
 [project.optional-dependencies]
@@ -55,6 +57,9 @@ telemetry = [
 clickhouse = [
     "clickhouse-connect",
 ]
+
+[project.scripts]
+coleman = "coleman4hcs.cli:main"
 
 [project.urls]
 homepage = "https://github.com/jacksonpradolima/coleman4hcs"

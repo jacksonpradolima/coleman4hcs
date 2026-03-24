@@ -1,0 +1,79 @@
+"""Tests for spec I/O (load_spec, save_resolved)."""
+
+import json
+import os
+import tempfile
+
+import yaml
+
+from coleman4hcs.spec.io import load_spec, save_resolved
+from coleman4hcs.spec.models import RunSpec
+
+
+class TestLoadSpec:
+    def test_load_minimal_yaml(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as fh:
+            yaml.dump({"execution": {"verbose": True}}, fh)
+            path = fh.name
+        try:
+            spec = load_spec(path)
+            assert spec.execution.verbose is True
+            assert spec.execution.parallel_pool_size == 10  # default
+        finally:
+            os.unlink(path)
+
+    def test_load_full_config(self):
+        data = {
+            "execution": {"parallel_pool_size": 4},
+            "experiment": {"datasets": ["a@b"], "policies": ["Random"]},
+            "results": {"enabled": False},
+            "checkpoint": {"enabled": False},
+            "telemetry": {"enabled": False},
+        }
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as fh:
+            yaml.dump(data, fh)
+            path = fh.name
+        try:
+            spec = load_spec(path)
+            assert spec.execution.parallel_pool_size == 4
+            assert spec.experiment.datasets == ["a@b"]
+            assert spec.results.enabled is False
+        finally:
+            os.unlink(path)
+
+    def test_load_with_packs(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, "packs", "results"))
+            with open(os.path.join(tmpdir, "packs", "results", "parquet.yaml"), "w") as fh:
+                yaml.dump({"results": {"sink": "parquet", "enabled": True}}, fh)
+
+            cfg_path = os.path.join(tmpdir, "run.yaml")
+            with open(cfg_path, "w") as fh:
+                yaml.dump(
+                    {"packs": ["results/parquet"], "execution": {"verbose": True}},
+                    fh,
+                )
+
+            spec = load_spec(cfg_path, packs_dir=os.path.join(tmpdir, "packs"))
+            assert spec.results.sink == "parquet"
+            assert spec.execution.verbose is True
+
+
+class TestSaveResolved:
+    def test_creates_file(self):
+        spec = RunSpec()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out = save_resolved(spec, os.path.join(tmpdir, "sub", "spec.json"))
+            assert out.exists()
+            with open(out) as fh:
+                data = json.load(fh)
+            assert data["execution"]["parallel_pool_size"] == 10
+
+    def test_roundtrip(self):
+        spec = RunSpec(execution={"parallel_pool_size": 7})
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out = save_resolved(spec, os.path.join(tmpdir, "spec.json"))
+            with open(out) as fh:
+                data = json.load(fh)
+            spec2 = RunSpec.model_validate(data)
+            assert spec == spec2
