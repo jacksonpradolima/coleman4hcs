@@ -1,5 +1,6 @@
 """Tests for config pack resolution."""
 
+import contextlib
 import os
 import tempfile
 
@@ -84,3 +85,12 @@ class TestResolvePacks:
             # Pack sets sink, but inline overrides batch_size
             assert result["results"]["sink"] == "parquet"
             assert result["results"]["batch_size"] == 2000
+
+    def test_does_not_mutate_input(self):
+        raw = {"packs": ["missing"], "execution": {"verbose": True}}
+        original = dict(raw)
+        # Even though the pack doesn't exist, the input should not be mutated
+        # by the time the error is raised.
+        with contextlib.suppress(FileNotFoundError):
+            resolve_packs(raw, packs_dir="/tmp/no_such_dir")
+        assert raw == original

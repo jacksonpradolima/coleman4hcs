@@ -60,11 +60,49 @@ def _set_nested(data: dict[str, Any], dotted_key: str, value: Any) -> None:
         Dot-separated path (e.g. ``"algorithm.ucb.timerank.c"``).
     value : Any
         Value to assign.
+
+    Raises
+    ------
+    ValueError
+        If an intermediate path component is not a mapping.
     """
     parts = dotted_key.split(".")
     current = data
-    for part in parts[:-1]:
-        current = current.setdefault(part, {})
+    for idx, part in enumerate(parts[:-1]):
+        if not isinstance(current, dict):
+            path_so_far = ".".join(parts[:idx])
+            msg = (
+                f"Cannot set nested key {dotted_key!r}: "
+                f"path component {path_so_far!r} is not a mapping "
+                f"(found {type(current).__name__})."
+            )
+            raise ValueError(msg)
+
+        if part in current:
+            next_obj = current[part]
+            if not isinstance(next_obj, dict):
+                path_so_far = ".".join(parts[: idx + 1])
+                msg = (
+                    f"Cannot set nested key {dotted_key!r}: "
+                    f"path component {path_so_far!r} is not a mapping "
+                    f"(found {type(next_obj).__name__})."
+                )
+                raise ValueError(msg)
+            current = next_obj
+        else:
+            new_container: dict[str, Any] = {}
+            current[part] = new_container
+            current = new_container
+
+    if not isinstance(current, dict):
+        path_so_far = ".".join(parts[:-1])
+        msg = (
+            f"Cannot set nested key {dotted_key!r}: "
+            f"path component {path_so_far!r} is not a mapping "
+            f"(found {type(current).__name__})."
+        )
+        raise ValueError(msg)
+
     current[parts[-1]] = value
 
 
@@ -88,12 +126,19 @@ def _expand_axis(axis: SweepAxis) -> list[dict[str, Any]]:
         combos = list(itertools.product(*sorted_values))
     elif axis.mode == "zip":
         sorted_values = [axis.params[k] for k in sorted_keys]
-        combos = list(zip(*sorted_values, strict=False))
+        lengths = {len(v) for v in sorted_values}
+        if len(lengths) > 1:
+            msg = (
+                "All parameter lists for a 'zip' sweep axis must have the same "
+                f"length; got lengths {lengths} for keys {sorted_keys}."
+            )
+            raise ValueError(msg)
+        combos = list(zip(*sorted_values, strict=True))
     else:
         msg = f"Unknown sweep mode: {axis.mode!r}"
         raise ValueError(msg)
 
-    return [dict(zip(sorted_keys, combo, strict=False)) for combo in combos]
+    return [dict(zip(sorted_keys, combo, strict=True)) for combo in combos]
 
 
 def expand_sweep(base: RunSpec, sweep: SweepSpec) -> list[RunSpec]:

@@ -1,5 +1,7 @@
 """Tests for the sweep engine."""
 
+import pytest
+
 from coleman4hcs.spec.models import RunSpec
 from coleman4hcs.spec.run_id import compute_run_id
 from coleman4hcs.spec.sweep import SweepAxis, SweepSpec, _expand_axis, _set_nested, expand_sweep
@@ -20,6 +22,11 @@ class TestSetNested:
         d = {"a": {"b": 1}}
         _set_nested(d, "a.b", 2)
         assert d["a"]["b"] == 2
+
+    def test_non_dict_intermediate_raises(self):
+        d = {"a": "not_a_dict"}
+        with pytest.raises(ValueError, match="is not a mapping"):
+            _set_nested(d, "a.b.c", 42)
 
 
 class TestExpandAxis:
@@ -50,6 +57,11 @@ class TestExpandAxis:
         # Sorted by key name: 'a' before 'b'
         assert r1[0] == {"a": 10, "b": 1}
 
+    def test_zip_unequal_lengths_raises(self):
+        axis = SweepAxis(mode="zip", params={"a": [1, 2, 3], "b": [10, 20]})
+        with pytest.raises(ValueError, match="same length"):
+            _expand_axis(axis)
+
 
 class TestExpandSweep:
     def test_no_axes_returns_copy(self):
@@ -78,13 +90,34 @@ class TestExpandSweep:
 
     def test_seed_replication(self):
         base = RunSpec()
+        seeds = [0, 1, 2]
         sweep = SweepSpec(
             axes=[SweepAxis(mode="grid", params={"execution.parallel_pool_size": [1, 2]})],
-            seeds=[0, 1, 2],
+            seeds=seeds,
         )
         result = expand_sweep(base, sweep)
         # 2 specs x 3 seeds = 6
         assert len(result) == 6
+
+        # Each spec should have an execution.seed taken from the provided seeds
+        found_seeds = {spec.execution.seed for spec in result}
+        assert found_seeds == set(seeds)
+
+        # We expect the full Cartesian product: each parallel_pool_size with each seed
+        combos = {(spec.execution.parallel_pool_size, spec.execution.seed) for spec in result}
+        expected_combos = {(pool_size, seed) for pool_size in [1, 2] for seed in seeds}
+        assert combos == expected_combos
+
+        # Changing only the seed should change the run_id
+        ids_by_pool_size: dict[int, set[str]] = {}
+        for spec in result:
+            pool_size = spec.execution.parallel_pool_size
+            run_id = compute_run_id(spec)
+            ids_by_pool_size.setdefault(pool_size, set()).add(run_id)
+
+        for _pool_size, ids in ids_by_pool_size.items():
+            # For each pool size, we should have one unique run_id per seed
+            assert len(ids) == len(seeds)
 
     def test_multi_axis_cartesian(self):
         base = RunSpec()

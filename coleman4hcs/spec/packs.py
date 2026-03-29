@@ -72,6 +72,7 @@ def resolve_packs(
         If a referenced pack file does not exist.
     """
     packs_dir = Path(packs_dir)
+    raw = dict(raw)  # Shallow copy to avoid mutating the caller's dict
     pack_refs: list[str] = raw.pop("packs", [])
 
     merged: dict[str, Any] = {}

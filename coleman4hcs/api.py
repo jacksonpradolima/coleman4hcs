@@ -20,6 +20,7 @@ save_resolved
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from coleman4hcs.spec.io import load_spec, save_resolved
@@ -85,12 +86,11 @@ def run(spec: RunSpec) -> RunResult:
     rid = compute_run_id(spec)
 
     # Persist resolved spec + provenance.
-    out_dir = spec.results.out_dir
-    run_dir = f"{out_dir}/{rid}"
-    save_resolved(spec, f"{run_dir}/spec.resolved.json")
+    run_dir = Path(spec.results.out_dir) / rid
+    save_resolved(spec, run_dir / "spec.resolved.json")
     save_provenance(run_dir)
 
-    return RunResult(run_id=rid, spec=spec, artifacts_dir=run_dir)
+    return RunResult(run_id=rid, spec=spec, artifacts_dir=str(run_dir))
 
 
 def run_many(
@@ -111,14 +111,30 @@ def run_many(
     -------
     list[RunResult]
         Results in the same order as *specs*.
+
+    Raises
+    ------
+    ValueError
+        If duplicate ``run_id`` values are detected when
+        ``max_workers > 1`` (parallel writes to the same directory
+        would cause data corruption).
     """
-    if max_workers <= 1:
-        return [run(s) for s in specs]
+    if max_workers > 1:
+        ids = [compute_run_id(s) for s in specs]
+        if len(set(ids)) != len(ids):
+            msg = (
+                "Duplicate run_id values detected among specs. "
+                "Parallel execution would cause racy writes to the same "
+                "run directory. Deduplicate specs or run sequentially."
+            )
+            raise ValueError(msg)
 
-    from concurrent.futures import ProcessPoolExecutor
+        from concurrent.futures import ProcessPoolExecutor
 
-    with ProcessPoolExecutor(max_workers=max_workers) as pool:
-        return list(pool.map(run, specs))
+        with ProcessPoolExecutor(max_workers=max_workers) as pool:
+            return list(pool.map(run, specs))
+
+    return [run(s) for s in specs]
 
 
 def sweep(base: RunSpec, sweep_spec: SweepSpec) -> list[RunSpec]:

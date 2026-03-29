@@ -21,12 +21,15 @@ class ExecutionSpec(BaseModel):
         Number of parallel worker processes.
     independent_executions : int
         How many independent repetitions to run.
+    seed : int | None
+        Random seed for this execution (``None`` = use default/global behavior).
     verbose : bool
         Enable verbose logging.
     """
 
     parallel_pool_size: int = 10
     independent_executions: int = 10
+    seed: int | None = None
     verbose: bool = False
 
 

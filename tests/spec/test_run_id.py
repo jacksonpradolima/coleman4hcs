@@ -58,9 +58,9 @@ class TestComputeRunId:
             checkpoint={"enabled": False},
             telemetry={"enabled": False},
         )
-        rid = compute_run_id(spec)
-        # This value is pre-computed and must never change.
-        assert rid == compute_run_id(spec)
+        # This pre-computed value must never change.
+        golden_rid = "ddd8bbefa143"
+        assert compute_run_id(spec) == golden_rid
         # Two independent constructions must match.
         spec_copy = RunSpec.model_validate(spec.model_dump())
-        assert compute_run_id(spec_copy) == rid
+        assert compute_run_id(spec_copy) == golden_rid

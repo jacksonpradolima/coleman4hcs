@@ -3,8 +3,8 @@ Deterministic run identifier derivation.
 
 The ``run_id`` is the first 12 hex characters of the SHA-256 digest of
 the *canonical* JSON serialisation of a resolved :class:`RunSpec`.
-Canonical means: sorted keys, no whitespace padding, and deterministic
-float formatting — so the same logical spec always yields the same id.
+Canonical means: sorted keys and no whitespace padding — so the same
+logical spec always yields the same id.
 """
 
 from __future__ import annotations
