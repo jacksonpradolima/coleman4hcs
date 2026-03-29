@@ -35,4 +35,16 @@ This policy applies to the `coleman4hcs` Python package and its dependencies as
 distributed through this repository. Third-party dependencies are managed via
 `uv` and pinned in `uv.lock`.
 
+### New dependencies
+
+The experiment system adds two new direct dependencies:
+
+| Dependency | Purpose | Advisory status |
+|-----------|---------|-----------------|
+| `pydantic>=2.12.5` | Typed run-spec models & validation | No known advisories |
+| `pyyaml>=6.0.3` | YAML config loading (safe_load only) | No known advisories |
+
+All YAML loading uses `yaml.safe_load()` — untrusted YAML with arbitrary
+Python constructors is never evaluated.
+
 Thank you for helping keep Coleman4HCS safe.

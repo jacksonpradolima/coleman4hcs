@@ -1,0 +1,9 @@
+experiment:
+  policies:
+    - LinUCB
+algorithm:
+  linucb:
+    timerank:
+      alpha: 0.5
+    rnfail:
+      alpha: 0.5

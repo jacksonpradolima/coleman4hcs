@@ -1,0 +1,3 @@
+execution:
+  parallel_pool_size: 1
+  verbose: false

@@ -62,6 +62,13 @@ In order to use this `version`, use any Contextual-MAB available, for instance, 
     - [Solving the Test Case Prioritization using Multi-Armed Bandit Algorithms](#solving-the-test-case-prioritization-using-multi-armed-bandit-algorithms)
 - [Getting started](#getting-started)
 - [Citation](#citation)
+- [Quick start](#quick-start)
+  - [Library API](#library-api)
+  - [CLI](#cli)
+  - [Config packs](#config-packs)
+  - [Sweep engine](#sweep-engine)
+  - [Deterministic run_id](#deterministic-run_id)
+  - [Provenance](#provenance)
 - [Installation](#installation)
 - [Development](#development)
 - [Architecture: Results, Checkpoints & Telemetry](#architecture-results-checkpoints--telemetry)
@@ -107,9 +114,176 @@ If this tool contributes to a project which leads to a scientific publication, I
 
 ```
 
+# Quick start
+
+Coleman4HCS ships a **typed, library-first experiment system** with
+YAML configs, composable config packs, a sweep engine, and deterministic
+`run_id` hashing.  External projects can `pip install coleman4hcs` and
+drive experiments programmatically **or** via the `coleman` CLI — no repo
+checkout required.
+
+> **Breaking change** — the `CONFIG_FILE` environment variable and raw TOML
+> dict workflow are replaced by YAML configs, typed Pydantic v2 models, and
+> the `coleman` CLI.
+
+## Library API
+
+```python
+from coleman4hcs.spec import RunSpec, SweepSpec, SweepAxis, compute_run_id
+from coleman4hcs.api  import run, run_many, sweep
+
+# 1. Define a spec
+spec = RunSpec(
+    experiment={"datasets": ["alibaba@druid"], "policies": ["UCB"], "rewards": ["RNFail"]},
+    results={"out_dir": "./runs"},
+)
+
+# 2. Deterministic run_id — same config always produces the same ID
+assert compute_run_id(spec) == compute_run_id(spec)
+
+# 3. Single run
+result = run(spec)
+print(result.run_id, result.artifacts_dir)
+
+# 4. Parameter sweep (grid × seeds)
+specs = sweep(spec, SweepSpec(
+    axes=[SweepAxis(mode="grid", params={"algorithm.ucb.rnfail.c": [0.1, 0.3, 0.5]})],
+    seeds=[0, 1, 2],
+))  # 3 values × 3 seeds = 9 specs
+
+results = run_many(specs, max_workers=4)
+```
+
+| Function | Description |
+|----------|-------------|
+| `run(spec)` | Execute a single experiment from a resolved `RunSpec` |
+| `run_many(specs, max_workers=)` | Execute multiple specs, optionally in parallel |
+| `sweep(base, sweep_spec)` | Expand a base spec × sweep definition into concrete specs |
+| `load_spec(path)` | Load and validate a `RunSpec` from YAML (with pack resolution) |
+| `save_resolved(spec, path)` | Persist a resolved spec as canonical JSON |
+
+## CLI
+
+The `coleman` console script is installed automatically with the package:
+
+```bash
+# Execute a single run
+coleman run --config run.yaml
+
+# Parameter sweep (grid mode)
+coleman sweep --config base.yaml \
+    --grid algorithm.ucb.rnfail.c=0.1,0.3,0.5 \
+    --grid execution.seed=range(0,20) \
+    --workers 4
+
+# Dry-run — print generated specs without executing
+coleman sweep --config base.yaml --grid execution.seed=range(0,5) --dry-run
+
+# Validate a config and optionally write the resolved spec
+coleman validate --config base.yaml --resolve resolved.json
+```
+
+## Config packs
+
+Config packs are composable YAML fragments under `packs/`.  Reference them
+with the `packs` key in your config and inline overrides win:
+
+```yaml
+# my-experiment.yaml
+packs:
+  - policy/linucb
+  - reward/rnfail
+  - results/parquet
+  - telemetry/off
+
+experiment:
+  datasets: ["alibaba@druid"]
+  policies: ["LinUCB"]
+
+execution:
+  independent_executions: 30
+```
+
+Shipped starter packs:
+
+| Pack | Category | Contents |
+|------|----------|----------|
+| `policy/linucb` | Policy | LinUCB with default alpha values |
+| `reward/rnfail` | Reward | RNFail reward function |
+| `runtime/local` | Runtime | Single-process local execution |
+| `results/parquet` | Results | Parquet sink with defaults |
+| `telemetry/off` | Telemetry | Telemetry disabled |
+
+## Sweep engine
+
+The sweep engine supports **grid** (Cartesian product) and **zip** (paired)
+modes, with optional seed replication:
+
+```python
+from coleman4hcs.spec import SweepSpec, SweepAxis, expand_sweep, RunSpec
+
+base = RunSpec()
+sweep_spec = SweepSpec(
+    axes=[
+        SweepAxis(mode="grid", params={
+            "algorithm.ucb.rnfail.c": [0.1, 0.3, 0.5],
+            "execution.parallel_pool_size": [1, 4],
+        }),
+    ],
+    seeds=[0, 1, 2],
+)
+specs = expand_sweep(base, sweep_spec)
+# 3 × 2 × 3 seeds = 18 specs, deterministic order
+```
+
+- **Grid mode** — Cartesian product of all parameter lists
+- **Zip mode** — paired lists (must have equal length, raises `ValueError` otherwise)
+- **Seeds** — each base spec is replicated per seed; the seed is stored on `ExecutionSpec.seed` and affects `run_id`
+
+## Deterministic run_id
+
+Every `RunSpec` hashes to a deterministic 12-character identifier:
+
+```
+run_id = sha256(canonical_json(resolved_spec))[:12]
+```
+
+- **Canonical JSON**: sorted keys, compact separators (`json.dumps(sort_keys=True, separators=(",", ":"))`)
+- **Same config → same `run_id` → same output directory**
+- Provenance files and artifacts are written to `<out_dir>/<run_id>/`
+
+## Provenance
+
+Each run persists:
+
+| File | Contents |
+|------|----------|
+| `spec.resolved.json` | The fully resolved `RunSpec` as canonical JSON |
+| `provenance.json` | Git commit, dirty flag, Python version, `uv.lock` hash |
+
 # Installation
 
-To use this tool, follow these steps:
+## As a library (recommended for new projects)
+
+Install Coleman4HCS as a dependency in your project:
+
+```bash
+pip install coleman4hcs
+```
+
+Or with optional extras:
+
+```bash
+pip install coleman4hcs[telemetry]     # OpenTelemetry SDK
+pip install coleman4hcs[clickhouse]    # ClickHouse results sink
+```
+
+Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
+drive experiments — no repo checkout required.
+
+## From source (for development)
+
+To develop or modify the tool, follow these steps:
 
 1. Clone the repository:
 
@@ -132,15 +306,15 @@ uv sync
 uv pip install -e .
 ```
 
-5. Copy the `.env.example` file to `.env`:
+5. Create a YAML config file (see [Quick start](#quick-start) for
+   the new config format) or use the legacy `config.toml` with the `.env` file:
 
 ```shell
 cp .env.example .env
 ```
 
-6. Edit the `.env` file and provide values for the following environment variables:
-
--   `CONFIG_FILE`: The path to your configuration file (e.g., `./config.toml`).
+   Edit the `.env` file and set `CONFIG_FILE` to your configuration file path
+   (legacy workflow), or use the new `coleman` CLI with YAML configs directly.
 
 # Development
 
