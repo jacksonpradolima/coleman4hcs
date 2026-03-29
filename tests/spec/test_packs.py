@@ -1,8 +1,6 @@
 """Tests for config pack resolution."""
 
 import contextlib
-import os
-import tempfile
 
 import pytest
 import yaml
@@ -38,59 +36,57 @@ class TestResolvePacks:
         result = resolve_packs(raw, packs_dir="/nonexistent")
         assert result == {"execution": {"verbose": True}}
 
-    def test_pack_file_not_found(self):
+    def test_pack_file_not_found(self, tmp_path):
         raw = {"packs": ["missing/pack"]}
+        packs_dir = str(tmp_path / "no_such_dir")
         with pytest.raises(FileNotFoundError, match="Pack file not found"):
-            resolve_packs(raw, packs_dir="/tmp/no_such_dir")
+            resolve_packs(raw, packs_dir=packs_dir)
 
-    def test_single_pack(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            os.makedirs(os.path.join(tmpdir, "policy"))
-            pack_path = os.path.join(tmpdir, "policy", "ucb.yaml")
-            with open(pack_path, "w") as fh:
-                yaml.dump({"experiment": {"policies": ["UCB"]}}, fh)
+    def test_single_pack(self, tmp_path):
+        policy_dir = tmp_path / "policy"
+        policy_dir.mkdir()
+        pack_path = policy_dir / "ucb.yaml"
+        pack_path.write_text(yaml.dump({"experiment": {"policies": ["UCB"]}}))
 
-            raw = {"packs": ["policy/ucb"], "experiment": {"rewards": ["RNFail"]}}
-            result = resolve_packs(raw, packs_dir=tmpdir)
+        raw = {"packs": ["policy/ucb"], "experiment": {"rewards": ["RNFail"]}}
+        result = resolve_packs(raw, packs_dir=str(tmp_path))
 
-            assert result["experiment"]["policies"] == ["UCB"]
-            assert result["experiment"]["rewards"] == ["RNFail"]
-            assert "packs" not in result
+        assert result["experiment"]["policies"] == ["UCB"]
+        assert result["experiment"]["rewards"] == ["RNFail"]
+        assert "packs" not in result
 
-    def test_multiple_packs_merge_order(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            os.makedirs(os.path.join(tmpdir, "policy"))
-            os.makedirs(os.path.join(tmpdir, "results"))
+    def test_multiple_packs_merge_order(self, tmp_path):
+        (tmp_path / "policy").mkdir()
+        (tmp_path / "results").mkdir()
 
-            with open(os.path.join(tmpdir, "policy", "greedy.yaml"), "w") as fh:
-                yaml.dump({"experiment": {"policies": ["Greedy"]}}, fh)
-            with open(os.path.join(tmpdir, "results", "parquet.yaml"), "w") as fh:
-                yaml.dump({"results": {"sink": "parquet", "enabled": True}}, fh)
+        (tmp_path / "policy" / "greedy.yaml").write_text(yaml.dump({"experiment": {"policies": ["Greedy"]}}))
+        (tmp_path / "results" / "parquet.yaml").write_text(yaml.dump({"results": {"sink": "parquet", "enabled": True}}))
 
-            raw = {"packs": ["policy/greedy", "results/parquet"]}
-            result = resolve_packs(raw, packs_dir=tmpdir)
+        raw = {"packs": ["policy/greedy", "results/parquet"]}
+        result = resolve_packs(raw, packs_dir=str(tmp_path))
 
-            assert result["experiment"]["policies"] == ["Greedy"]
-            assert result["results"]["sink"] == "parquet"
+        assert result["experiment"]["policies"] == ["Greedy"]
+        assert result["results"]["sink"] == "parquet"
 
-    def test_inline_overrides_win(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            os.makedirs(os.path.join(tmpdir, "results"))
-            with open(os.path.join(tmpdir, "results", "parquet.yaml"), "w") as fh:
-                yaml.dump({"results": {"sink": "parquet", "batch_size": 500}}, fh)
+    def test_inline_overrides_win(self, tmp_path):
+        (tmp_path / "results").mkdir()
+        (tmp_path / "results" / "parquet.yaml").write_text(
+            yaml.dump({"results": {"sink": "parquet", "batch_size": 500}})
+        )
 
-            raw = {"packs": ["results/parquet"], "results": {"batch_size": 2000}}
-            result = resolve_packs(raw, packs_dir=tmpdir)
+        raw = {"packs": ["results/parquet"], "results": {"batch_size": 2000}}
+        result = resolve_packs(raw, packs_dir=str(tmp_path))
 
-            # Pack sets sink, but inline overrides batch_size
-            assert result["results"]["sink"] == "parquet"
-            assert result["results"]["batch_size"] == 2000
+        # Pack sets sink, but inline overrides batch_size
+        assert result["results"]["sink"] == "parquet"
+        assert result["results"]["batch_size"] == 2000
 
-    def test_does_not_mutate_input(self):
+    def test_does_not_mutate_input(self, tmp_path):
         raw = {"packs": ["missing"], "execution": {"verbose": True}}
         original = dict(raw)
         # Even though the pack doesn't exist, the input should not be mutated
         # by the time the error is raised.
+        packs_dir = str(tmp_path / "no_such_dir")
         with contextlib.suppress(FileNotFoundError):
-            resolve_packs(raw, packs_dir="/tmp/no_such_dir")
+            resolve_packs(raw, packs_dir=packs_dir)
         assert raw == original

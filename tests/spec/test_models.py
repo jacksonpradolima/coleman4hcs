@@ -92,18 +92,19 @@ class TestRunSpec:
         assert spec.telemetry.enabled is False
         assert spec.checkpoint.enabled is True
 
-    def test_from_dict(self):
+    def test_from_dict(self, tmp_path):
+        out_dir = str(tmp_path / "test_runs")
         data = {
             "execution": {"parallel_pool_size": 2, "verbose": True},
             "experiment": {"datasets": ["org@proj"]},
-            "results": {"sink": "parquet", "out_dir": "/tmp/test_runs"},
+            "results": {"sink": "parquet", "out_dir": out_dir},
             "telemetry": {"enabled": True},
         }
         spec = RunSpec.model_validate(data)
         assert spec.execution.parallel_pool_size == 2
         assert spec.execution.verbose is True
         assert spec.experiment.datasets == ["org@proj"]
-        assert spec.results.out_dir == "/tmp/test_runs"
+        assert spec.results.out_dir == out_dir
         assert spec.telemetry.enabled is True
 
     def test_roundtrip_json(self):
@@ -121,7 +122,7 @@ class TestRunSpec:
 
     def test_algorithm_freeform(self):
         spec = RunSpec(algorithm={"ucb": {"timerank": {"c": 0.5}}})
-        assert spec.algorithm["ucb"]["timerank"]["c"] == 0.5
+        assert spec.algorithm["ucb"]["timerank"]["c"] == pytest.approx(0.5)
 
     def test_invalid_type_raises(self):
         from pydantic import ValidationError

@@ -34,8 +34,8 @@ class TestExpandAxis:
         axis = SweepAxis(mode="grid", params={"alpha": [0.1, 0.3, 0.5]})
         result = _expand_axis(axis)
         assert len(result) == 3
-        assert result[0] == {"alpha": 0.1}
-        assert result[2] == {"alpha": 0.5}
+        assert result[0] == pytest.approx({"alpha": 0.1})
+        assert result[2] == pytest.approx({"alpha": 0.5})
 
     def test_grid_two_params(self):
         axis = SweepAxis(mode="grid", params={"alpha": [0.1, 0.3], "seed": [0, 1, 2]})
@@ -46,8 +46,8 @@ class TestExpandAxis:
         axis = SweepAxis(mode="zip", params={"window": [10, 50, 100], "decay": [0.9, 0.95, 0.99]})
         result = _expand_axis(axis)
         assert len(result) == 3
-        assert result[0] == {"decay": 0.9, "window": 10}
-        assert result[2] == {"decay": 0.99, "window": 100}
+        assert result[0] == pytest.approx({"decay": 0.9, "window": 10})
+        assert result[2] == pytest.approx({"decay": 0.99, "window": 100})
 
     def test_grid_stable_order(self):
         axis = SweepAxis(mode="grid", params={"b": [1, 2], "a": [10, 20]})
@@ -76,8 +76,8 @@ class TestExpandSweep:
         sweep = SweepSpec(axes=[SweepAxis(mode="grid", params={"algorithm.ucb.timerank.c": [0.1, 0.3, 0.5]})])
         result = expand_sweep(base, sweep)
         assert len(result) == 3
-        assert result[0].algorithm["ucb"]["timerank"]["c"] == 0.1
-        assert result[2].algorithm["ucb"]["timerank"]["c"] == 0.5
+        assert result[0].algorithm["ucb"]["timerank"]["c"] == pytest.approx(0.1)
+        assert result[2].algorithm["ucb"]["timerank"]["c"] == pytest.approx(0.5)
 
     def test_deterministic_order(self):
         base = RunSpec()
