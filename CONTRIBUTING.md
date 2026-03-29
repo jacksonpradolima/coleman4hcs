@@ -76,6 +76,28 @@ make docs
 - **Type annotations**: Encouraged for all public APIs.
 - **Line length**: 120 characters.
 
+## Experiment Configuration (vNext)
+
+The project uses a **typed run specification system** based on Pydantic v2.
+When working with experiment configuration:
+
+- Models live in `coleman4hcs/spec/models.py` — every new config field should
+  be added as a typed Pydantic field, not a raw dict key.
+- Config packs live under `packs/<category>/<name>.yaml`.  When adding a new
+  pack, follow the existing directory structure (policy, reward, runtime,
+  results, telemetry).
+- The sweep engine (`coleman4hcs/spec/sweep.py`) supports grid and zip modes.
+  Zip-mode parameter lists **must** have equal length.
+- `_set_nested()` validates intermediate path components — never silently
+  overwrite a non-dict value.
+- The deterministic `run_id` is `sha256(canonical_json(spec))[:12]`.
+  Any change to models or serialisation **must** preserve backward
+  compatibility of existing `run_id` values — the golden-determinism test
+  guards this contract.
+- Tests for the spec system are in `tests/spec/`.  Use `pytest.approx()` for
+  floating-point comparisons and the `tmp_path` fixture (not `/tmp`) for
+  temporary directories.
+
 ## Commit Messages
 
 We use [Conventional Commits](https://www.conventionalcommits.org/). Commit
