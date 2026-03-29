@@ -62,7 +62,7 @@ In order to use this `version`, use any Contextual-MAB available, for instance, 
     - [Solving the Test Case Prioritization using Multi-Armed Bandit Algorithms](#solving-the-test-case-prioritization-using-multi-armed-bandit-algorithms)
 - [Getting started](#getting-started)
 - [Citation](#citation)
-- [Quick start (vNext)](#quick-start-vnext)
+- [Quick start](#quick-start)
   - [Library API](#library-api)
   - [CLI](#cli)
   - [Config packs](#config-packs)
@@ -114,16 +114,17 @@ If this tool contributes to a project which leads to a scientific publication, I
 
 ```
 
-# Quick start (vNext)
+# Quick start
 
-Coleman4HCS now ships a **typed, library-first experiment system** that
-replaces the old `CONFIG_FILE` / raw TOML workflow.  External projects can
-`pip install coleman4hcs` and drive experiments programmatically **or** via
-the `coleman` CLI — no repo checkout required.
+Coleman4HCS ships a **typed, library-first experiment system** with
+YAML configs, composable config packs, a sweep engine, and deterministic
+`run_id` hashing.  External projects can `pip install coleman4hcs` and
+drive experiments programmatically **or** via the `coleman` CLI — no repo
+checkout required.
 
-> **Breaking change** — this is a new major version.  The `CONFIG_FILE`
-> environment variable and raw TOML dict workflow are replaced by YAML configs,
-> typed Pydantic v2 models, and the `coleman` CLI.
+> **Breaking change** — the `CONFIG_FILE` environment variable and raw TOML
+> dict workflow are replaced by YAML configs, typed Pydantic v2 models, and
+> the `coleman` CLI.
 
 ## Library API
 
@@ -305,7 +306,7 @@ uv sync
 uv pip install -e .
 ```
 
-5. Create a YAML config file (see [Quick start (vNext)](#quick-start-vnext) for
+5. Create a YAML config file (see [Quick start](#quick-start) for
    the new config format) or use the legacy `config.toml` with the `.env` file:
 
 ```shell

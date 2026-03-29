@@ -76,7 +76,7 @@ make docs
 - **Type annotations**: Encouraged for all public APIs.
 - **Line length**: 120 characters.
 
-## Experiment Configuration (vNext)
+## Experiment Configuration
 
 The project uses a **typed run specification system** based on Pydantic v2.
 When working with experiment configuration:

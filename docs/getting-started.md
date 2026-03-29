@@ -65,6 +65,53 @@ make pre-commit-install
 
 ## Configuration
 
+Coleman4HCS uses YAML configuration files with typed Pydantic v2 models.
+You can compose configs with **config packs** and override specific settings
+inline.
+
+### Quick config (YAML + packs)
+
+Create a YAML config file:
+
+```yaml
+# my-experiment.yaml
+packs:
+  - policy/linucb
+  - reward/rnfail
+  - results/parquet
+  - telemetry/off
+
+experiment:
+  datasets: ["alibaba@druid"]
+
+execution:
+  independent_executions: 30
+```
+
+Run with the `coleman` CLI:
+
+```bash
+coleman run --config my-experiment.yaml
+```
+
+Or use the library API:
+
+```python
+from coleman4hcs.api import run, load_spec
+
+spec = load_spec("my-experiment.yaml")
+result = run(spec)
+print(result.run_id, result.artifacts_dir)
+```
+
+See the [Configuration guide](configuration.md) for the full schema
+reference, config packs, sweep engine, and determinism contract.
+
+### Legacy config (TOML + .env)
+
+The legacy workflow using `config.toml` and `.env` is still supported for
+existing projects:
+
 1. Copy the example environment file (DevContainer does this automatically):
 
 ```bash
@@ -77,19 +124,40 @@ cp .env.example .env
 
 ## Running Experiments
 
+### Using the `coleman` CLI (recommended)
+
+```bash
+# Single run
+coleman run --config my-experiment.yaml
+
+# Parameter sweep
+coleman sweep --config my-experiment.yaml \
+    --grid algorithm.ucb.rnfail.c=0.1,0.3,0.5 \
+    --grid execution.seed=range(0,10) \
+    --workers 4
+
+# Dry-run (preview specs without executing)
+coleman sweep --config my-experiment.yaml \
+    --grid execution.seed=range(0,5) \
+    --dry-run
+```
+
+Results are written to `./runs/<run_id>/` with `spec.resolved.json` and
+`provenance.json` alongside the experiment data.
+
 ### DevContainer: just run it
 
 If you're in the DevContainer, the observability stack is already running and
 telemetry is enabled.  Just run:
 
 ```bash
-uv run python main.py
+coleman run --config my-experiment.yaml
 # Results    → ./runs/       (Parquet)
 # Checkpoints → ./checkpoints/
 # Metrics    → http://localhost:3000 (Grafana, live)
 ```
 
-### Local setup: choose your level
+### Legacy workflow (`python main.py`)
 
 **Basic (Parquet only, no services needed):**
 
@@ -526,7 +594,12 @@ checkpoints, export, and analysis, open the marimo notebook example in
     and telemetry is enabled.  Locally, you start them manually with
     `docker compose up -d` and set `[telemetry] enabled = true`.
 
-## Quick Reference: `config.toml` Sections
+## Quick Reference: Configuration
+
+For the complete YAML schema, config packs, sweep engine, and determinism
+contract, see the [Configuration guide](configuration.md).
+
+### Legacy `config.toml` sections
 
 ```toml
 # ── Results ─────────────────────────────────────────────

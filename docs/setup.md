@@ -7,7 +7,20 @@ external services.
 
 ```bash
 pip install coleman4hcs
-python main.py
+```
+
+Use the library API or the `coleman` CLI to run experiments:
+
+```python
+from coleman4hcs.api import run, load_spec
+
+spec = load_spec("my-experiment.yaml")
+result = run(spec)
+print(result.run_id, result.artifacts_dir)
+```
+
+```bash
+coleman run --config my-experiment.yaml
 ```
 
 Results are written as **partitioned Parquet files** (zstd compressed) under
@@ -36,28 +49,42 @@ with near-zero overhead:
 * `NullCheckpointStore` — never saves/loads checkpoints
 * `NoOpTelemetry` — all instrument calls are instant no-ops
 
-## Configuration
+## Configuration system
 
-All settings live in `config.toml`:
+Coleman4HCS uses **YAML configuration files** validated against typed
+Pydantic v2 models.  See the [Configuration guide](configuration.md) for
+the full schema reference, config packs, sweep engine, and determinism
+contract.
 
-```toml
-[results]
-enabled = true
-sink = "parquet"
-out_dir = "./runs"
-batch_size = 1000
-top_k_prioritization = 0  # 0 = hash only
+### Quick example
 
-[checkpoint]
-enabled = true
-interval = 50000
-base_dir = "checkpoints"
+```yaml
+# experiment.yaml
+packs:
+  - policy/linucb
+  - reward/rnfail
+  - results/parquet
 
-[telemetry]
-enabled = false
-otlp_endpoint = "http://localhost:4318"
-service_name = "coleman4hcs"
+experiment:
+  datasets: ["alibaba@druid"]
+
+execution:
+  independent_executions: 30
 ```
+
+```bash
+coleman run --config experiment.yaml
+```
+
+### Key concepts
+
+| Concept | Description |
+|---------|-------------|
+| **RunSpec** | Typed Pydantic v2 model describing one complete experiment run |
+| **Config packs** | Composable YAML fragments (`packs/<category>/<name>.yaml`) merged left-to-right |
+| **Sweep engine** | Grid (Cartesian) or zip (paired) expansion of parameter ranges into multiple specs |
+| **Deterministic run_id** | `sha256(canonical_json(spec))[:12]` — same config always produces the same ID |
+| **Provenance** | `spec.resolved.json` + `provenance.json` (git, Python version, `uv.lock` hash) per run |
 
 ## Optional extras
 

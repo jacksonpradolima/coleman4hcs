@@ -35,9 +35,9 @@ This policy applies to the `coleman4hcs` Python package and its dependencies as
 distributed through this repository. Third-party dependencies are managed via
 `uv` and pinned in `uv.lock`.
 
-### New dependencies (vNext)
+### New dependencies
 
-The vNext experiment system adds two new direct dependencies:
+The experiment system adds two new direct dependencies:
 
 | Dependency | Purpose | Advisory status |
 |-----------|---------|-----------------|
