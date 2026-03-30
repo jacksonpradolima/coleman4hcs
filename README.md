@@ -307,14 +307,11 @@ uv pip install -e .
 ```
 
 5. Create a YAML config file (see [Quick start](#quick-start) for
-   the new config format) or use the legacy `config.toml` with the `.env` file:
+   the config format) and run with the `coleman` CLI:
 
-```shell
-cp .env.example .env
+```bash
+coleman run --config my-experiment.yaml
 ```
-
-   Edit the `.env` file and set `CONFIG_FILE` to your configuration file path
-   (legacy workflow), or use the new `coleman` CLI with YAML configs directly.
 
 # Development
 

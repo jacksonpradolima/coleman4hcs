@@ -107,21 +107,6 @@ print(result.run_id, result.artifacts_dir)
 See the [Configuration guide](configuration.md) for the full schema
 reference, config packs, sweep engine, and determinism contract.
 
-### Legacy config (TOML + .env)
-
-The legacy workflow using `config.toml` and `.env` is still supported for
-existing projects:
-
-1. Copy the example environment file (DevContainer does this automatically):
-
-```bash
-cp .env.example .env
-```
-
-2. Edit `.env` and set `CONFIG_FILE=./config.toml`.
-
-3. Customise `config.toml` to select datasets, policies, and reward functions.
-
 ## Running Experiments
 
 ### Using the `coleman` CLI (recommended)
@@ -155,74 +140,6 @@ coleman run --config my-experiment.yaml
 # Results    → ./runs/       (Parquet)
 # Checkpoints → ./checkpoints/
 # Metrics    → http://localhost:3000 (Grafana, live)
-```
-
-### Legacy workflow (`python main.py`)
-
-**Basic (Parquet only, no services needed):**
-
-```bash
-uv run python main.py
-```
-
-Results appear in `./runs/` (Parquet).
-
-Start an interactive workflow first:
-
-```bash
-# Python REPL
-uv run python
-
-# IPython REPL (richer shell for exploration)
-uv run ipython
-
-# Notebook/app workflow (marimo)
-uv run marimo edit docs/workflow.py
-```
-
-Then import DuckDB once and run your queries incrementally:
-
-```python
-import duckdb
-con = duckdb.connect("analysis.duckdb")
-con.execute("""
-    CREATE OR REPLACE VIEW experiment_results AS
-    SELECT *
-    FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
-""")
-
-con.sql("""
-    SELECT policy, AVG(fitness) AS avg_napfd
-    FROM experiment_results
-    GROUP BY policy ORDER BY avg_napfd DESC
-""")
-```
-
-For iterative analysis, `ipython` or `marimo` is usually more comfortable.
-
-**With telemetry (OTel Collector + Grafana):**
-
-```bash
-# 1. Start the stack
-cd examples/observability && docker compose up -d
-
-# 2. Install telemetry extras
-uv pip install coleman4hcs[telemetry]
-
-# 3. Enable in config.toml → [telemetry] enabled = true
-
-# 4. Run
-uv run python main.py
-# Grafana → http://localhost:3000
-```
-
-**With ClickHouse (optional results sink):**
-
-```bash
-cd examples/observability && docker compose --profile clickhouse up -d
-uv pip install coleman4hcs[clickhouse]
-# config.toml → [results] sink = "clickhouse"
-uv run python main.py
 ```
 
 ## Checking Final Results
@@ -598,30 +515,6 @@ checkpoints, export, and analysis, open the marimo notebook example in
 
 For the complete YAML schema, config packs, sweep engine, and determinism
 contract, see the [Configuration guide](configuration.md).
-
-### Legacy `config.toml` sections
-
-```toml
-# ── Results ─────────────────────────────────────────────
-[results]
-enabled = true            # false → NullSink (discard all)
-sink = "parquet"          # "parquet" (default) | "clickhouse"
-out_dir = "./runs"        # Parquet output directory
-batch_size = 1000         # Rows buffered before flush
-top_k_prioritization = 0  # 0 = store hash only; >0 = keep top-k
-
-# ── Checkpoints ─────────────────────────────────────────
-[checkpoint]
-enabled = true
-interval = 50000          # Steps between saves
-base_dir = "checkpoints"
-
-# ── Telemetry ───────────────────────────────────────────
-[telemetry]
-enabled = false                          # DevContainer auto-enables this
-otlp_endpoint = "http://localhost:4318"  # OTel Collector HTTP endpoint
-service_name = "coleman4hcs"
-```
 
 See the [Setup & Architecture](setup.md) guide for a deeper explanation
 of each layer and the [Observability guide](observability.md) for metric
