@@ -501,4 +501,4 @@ def run_experiment(spec_dict: dict[str, Any]) -> None:
                     exp_run_industrial_dataset_isolated(build_config, sequential_plan)
 
             end = time.time()
-            logging.info("Time expend to run the experiments: %s\n\n", end - start)
+            logging.info("Time spent running the experiments: %s\n\n", end - start)
