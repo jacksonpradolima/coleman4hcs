@@ -388,6 +388,33 @@ def run_parallel_executions(
             raise SystemExit(130) from None
 
 
+def _dispatch_executions(
+    parallel_pool_size: int,
+    build_config: EnvironmentBuildConfig,
+    execution_plans: list[ExecutionPlan],
+) -> None:
+    """Run execution plans in parallel or sequentially.
+
+    Extracted to keep ``run_experiment`` within the cognitive-complexity
+    budget (≤ 15).
+
+    Parameters
+    ----------
+    parallel_pool_size : int
+        When > 1, plans are dispatched to a process pool; otherwise they
+        run sequentially in the current process.
+    build_config : EnvironmentBuildConfig
+        Serializable configuration used to build isolated environments.
+    execution_plans : list[ExecutionPlan]
+        Task parameters for each independent execution.
+    """
+    if parallel_pool_size > 1:
+        run_parallel_executions(parallel_pool_size, build_config, execution_plans)
+    else:
+        for execution_plan in execution_plans:
+            exp_run_industrial_dataset_isolated(build_config, execution_plan)
+
+
 def run_experiment(spec_dict: dict[str, Any]) -> None:
     """Run a full experiment from a resolved spec dictionary.
 
@@ -485,20 +512,6 @@ def run_experiment(spec_dict: dict[str, Any]) -> None:
             ]
 
             start = time.time()
-
-            if parallel_pool_size > 1:
-                run_parallel_executions(parallel_pool_size, build_config, execution_plans)
-            else:
-                for execution_plan in execution_plans:
-                    sequential_plan = ExecutionPlan(
-                        iteration=execution_plan.iteration,
-                        trials=execution_plan.trials,
-                        level=execution_plan.level,
-                        execution_id=execution_plan.execution_id,
-                        worker_id=execution_plan.worker_id,
-                        parallel_mode="sequential",
-                    )
-                    exp_run_industrial_dataset_isolated(build_config, sequential_plan)
-
+            _dispatch_executions(parallel_pool_size, build_config, execution_plans)
             end = time.time()
             logging.info("Time spent running the experiments: %s\n\n", end - start)
