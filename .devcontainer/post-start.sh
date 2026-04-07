@@ -3,9 +3,8 @@
 # DevContainer post-start hook for Coleman4HCS
 # =============================================================================
 # Runs every time the container starts (not just on creation).
-# Brings up the observability stack and ensures telemetry is enabled in the
-# active config so that `uv run python main.py` sends metrics to Grafana
-# without any manual steps.
+# Brings up the observability stack so that `coleman run --config run.yaml`
+# sends metrics to Grafana without any manual steps.
 # =============================================================================
 set -e
 
@@ -23,31 +22,9 @@ else
   echo "⚠  Docker not available — skipping observability stack."
 fi
 
-# ── 2. Ensure telemetry is enabled in config.toml ────────────────────────
-#    The Python regex is anchored to the [telemetry] section header so it
-#    will not affect [results] or [checkpoint] sections.
-if [ -f config.toml ]; then
-  python3 -c "
-import re, pathlib
-
-cfg = pathlib.Path('config.toml')
-text = cfg.read_text()
-
-# Find the [telemetry] section and flip enabled = false -> true
-new = re.sub(
-    r'(\[telemetry\][^\[]*?)enabled\s*=\s*false',
-    r'\1enabled = true',
-    text,
-    count=1,
-    flags=re.DOTALL,
-)
-if new != text:
-    cfg.write_text(new)
-    print('Telemetry enabled in config.toml for DevContainer.')
-else:
-    print('Telemetry already enabled.')
-" 2>/dev/null || echo "⚠  Could not auto-enable telemetry in config.toml. The file may be missing or malformed — check [telemetry] section."
-fi
+# ── 2. Telemetry ─────────────────────────────────────────────────────────
+#    Use packs/telemetry/local.yaml in your run.yaml to enable telemetry.
+#    No config.toml patching needed.
 
 echo ""
 echo "✅  DevContainer started — observability is live."

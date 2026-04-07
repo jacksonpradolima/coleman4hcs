@@ -27,14 +27,8 @@ uv run --python .venv/bin/python --no-project pip install -e .
 # 3. Install pre-commit hooks (non-critical)
 make pre-commit-install || echo "⚠  pre-commit install failed — you can run 'make pre-commit-install' manually."
 
-# 4. Seed .env from the example if it does not exist yet
-if [ ! -f .env ] && [ -f .env.example ]; then
-  cp .env.example .env
-  echo "Created .env from .env.example"
-fi
-
-# 5. Done — the post-start hook will start the observability stack and
-#    enable telemetry in config.toml automatically on each container start.
+# 4. Done — the post-start hook will start the observability stack.
+#    Use packs/telemetry/local.yaml in your run.yaml to enable telemetry.
 
 echo ""
 echo "✅  DevContainer ready!"
@@ -51,5 +45,5 @@ echo "  make test          – run tests"
 echo "  make lint          – run ruff linter"
 echo "  make format        – run ruff formatter"
 echo "  make docs-serve    – serve docs locally"
-echo "  uv run python main.py  – run experiments (results + telemetry)"
+echo "  coleman run --config run.yaml  – run experiments (results + telemetry)"
 echo ""

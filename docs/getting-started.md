@@ -13,14 +13,13 @@ including the full observability stack.
 
 1. Python 3.14 + uv + all dependencies (including telemetry & ClickHouse extras) are installed
 2. Pre-commit hooks are configured
-3. `.env` is seeded from `.env.example`
-4. The **observability stack** (OTel Collector + Grafana) starts via Docker-in-Docker
-5. **Telemetry is enabled** in `config.toml` so metrics flow to Grafana immediately
+3. The **observability stack** (OTel Collector + Grafana) starts via Docker-in-Docker
+4. **Telemetry** can be enabled via the `telemetry/local` pack in `run.yaml`
 
 After the container builds, just run your experiment:
 
 ```bash
-uv run python main.py
+coleman run --config run.yaml
 # Open http://localhost:3000 → Grafana shows metrics in real-time
 ```
 
@@ -182,7 +181,7 @@ before running again:
 rm -rf ./runs
 
 # Option 2: keep old runs, but write new ones elsewhere
-# config.toml -> [results] out_dir = "./runs-new"
+# Set results.out_dir: "./runs-new" in your run.yaml
 
 # Option 3: clean checkpoints too, if you do not want recovery state reused
 rm -rf ./checkpoints
@@ -190,7 +189,7 @@ rm -rf ./checkpoints
 
 ### Default Parquet output
 
-After `uv run python main.py`, inspect the partitioned Parquet dataset:
+After `coleman run --config run.yaml`, inspect the partitioned Parquet dataset:
 
 ```bash
 find ./runs -name '*.parquet' | head
@@ -335,10 +334,11 @@ If you want a long-lived analytical store instead of Parquet files, switch the
 
 #### Enable it
 
-```toml
-[results]
-enabled = true
-sink = "clickhouse"
+```yaml
+# In your run.yaml, override the results section:
+results:
+  enabled: true
+  sink: clickhouse
 ```
 
 Run the service locally:
@@ -485,7 +485,7 @@ To inspect recovery state:
 find ./checkpoints -name 'progress_*.json' -maxdepth 3 -print
 ```
 
-When `uv run python main.py` is started again with the same configuration,
+When `coleman run --config run.yaml` is started again with the same configuration,
 the framework loads the last saved checkpoint and resumes from the next step
 instead of replaying completed builds.
 
@@ -509,7 +509,7 @@ checkpoints, export, and analysis, open the marimo notebook example in
 !!! note "DevContainer vs. local"
     In the DevContainer, the OTel Collector + Grafana start automatically
     and telemetry is enabled.  Locally, you start them manually with
-    `docker compose up -d` and set `[telemetry] enabled = true`.
+    `docker compose up -d` and use the `telemetry/local` pack in your `run.yaml`.
 
 ## Quick Reference: Configuration
 

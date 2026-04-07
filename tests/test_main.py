@@ -1,14 +1,17 @@
 """
-Unit and integration tests for the main application logic.
+Unit and integration tests for the experiment runner logic.
 
 This module contains unit and integration tests to verify the functionality
-of various core functions present in the project's `main` module. The tests
-cover a wide range of behaviors, including logging setup, managing agents,
-loading classes dynamically, working with experiments, and scenario providers.
+of various core functions present in the ``coleman4hcs.runner`` module. The
+tests cover a wide range of behaviors, including logging setup, managing
+agents, loading classes dynamically, working with experiments, and scenario
+providers.
 
 Purpose:
-- Ensure the robustness, reliability, and correct behavior of the `main` module's core logic.
-- Validate the integrations with other components like agents, policies, and scenario providers.
+- Ensure the robustness, reliability, and correct behavior of the runner
+  module's core logic.
+- Validate the integrations with other components like agents, policies,
+  and scenario providers.
 
 Tested Functionalities:
 1. **Logging**:
@@ -33,7 +36,6 @@ Tested Functionalities:
 """
 
 import logging
-import pickle
 from typing import TypedDict, cast
 from unittest.mock import Mock, patch
 
@@ -43,8 +45,7 @@ import coleman4hcs.policy
 from coleman4hcs.agent import ContextualAgent, RewardSlidingWindowAgent
 from coleman4hcs.environment import Environment
 from coleman4hcs.policy import FRRMABPolicy, SWLinUCBPolicy
-from coleman4hcs.scenarios import IndustrialDatasetScenarioProvider
-from main import (
+from coleman4hcs.runner import (
     EnvironmentBuildConfig,
     ExecutionPlan,
     build_runtime_metadata,
@@ -54,8 +55,8 @@ from main import (
     get_scenario_provider,
     load_class_from_module,
     run_parallel_executions,
-    to_builtin_types,
 )
+from coleman4hcs.scenarios import IndustrialDatasetScenarioProvider
 
 # ------------------------
 # Unit Tests
@@ -81,8 +82,8 @@ def test_create_logger():
     logger.handlers.clear()
 
 
-@patch("main.create_logger")
-@patch("main.Environment")
+@patch("coleman4hcs.runner.create_logger")
+@patch("coleman4hcs.runner.Environment")
 def test_exp_run_industrial_dataset(mock_environment, mock_create_logger, tmpdir):
     """Test that a single experiment run executes the expected environment methods."""
     mock_env = mock_environment.return_value
@@ -110,34 +111,6 @@ def test_build_runtime_metadata_is_unique_per_execution():
     assert metadata_a["worker_id"] == "1"
     assert metadata_a["parallel_mode"] == "process"
     assert metadata_a["execution_id"] != metadata_b["execution_id"]
-
-
-def test_to_builtin_types_returns_picklable_dicts():
-    """Config normalization should remove dynamic mapping wrappers from TOML parsing."""
-
-    class DynamicInlineTableDict(dict):
-        pass
-
-    raw = DynamicInlineTableDict(
-        {
-            "algorithm": DynamicInlineTableDict(
-                {
-                    "frrmab": DynamicInlineTableDict(
-                        {
-                            "timerank": DynamicInlineTableDict({"c": 0.5}),
-                        }
-                    )
-                }
-            )
-        }
-    )
-
-    normalized = to_builtin_types(raw)
-    pickle.dumps(normalized)
-
-    assert type(normalized) is dict
-    assert type(normalized["algorithm"]) is dict
-    assert type(normalized["algorithm"]["frrmab"]) is dict
 
 
 def test_run_parallel_executions_dispatches_unique_execution_plans():
@@ -211,7 +184,7 @@ def test_run_parallel_executions_dispatches_unique_execution_plans():
         ),
     ]
 
-    with patch("main.get_context", return_value=FakeContext()):
+    with patch("coleman4hcs.runner.get_context", return_value=FakeContext()):
         run_parallel_executions(2, build_config, plans)
 
     assert captured["pool_size"] == 2
@@ -283,8 +256,8 @@ def test_get_scenario_provider_basic():
 # ------------------------
 
 
-@patch("main.create_logger")
-@patch("main.Environment")
+@patch("coleman4hcs.runner.create_logger")
+@patch("coleman4hcs.runner.Environment")
 def test_end_to_end_execution(mock_environment, mock_create_logger, tmpdir):
     """Test end-to-end execution using mocked environment and logger."""
     mock_env = mock_environment.return_value

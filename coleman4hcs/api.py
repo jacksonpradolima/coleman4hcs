@@ -81,6 +81,7 @@ def run(spec: RunSpec) -> RunResult:
         Outcome container with deterministic ``run_id`` and summary
         metrics.
     """
+    from coleman4hcs.runner import run_experiment
     from coleman4hcs.spec.provenance import save_provenance
 
     rid = compute_run_id(spec)
@@ -89,6 +90,9 @@ def run(spec: RunSpec) -> RunResult:
     run_dir = Path(spec.results.out_dir) / rid
     save_resolved(spec, run_dir / "spec.resolved.json")
     save_provenance(run_dir)
+
+    # Execute the experiment.
+    run_experiment(spec.model_dump())
 
     return RunResult(run_id=rid, spec=spec, artifacts_dir=str(run_dir))
 

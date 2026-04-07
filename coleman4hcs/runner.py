@@ -1,44 +1,53 @@
 """
-main - Entry Point for Coleman4HCS.
+coleman4hcs.runner - Experiment orchestration utilities.
 
-This module provides the capabilities to run experiments for the Coleman4HCS framework.
-It facilitates the execution of various scenarios and evaluations based on predefined
-configurations.
+Provides the core functions for building agents, environments, and
+running experiments — both sequentially and in parallel.  These were
+previously in the top-level ``main.py`` and are now importable as a
+library module.
 
-The module offers:
-
-- Experiment setups using configuration files.
-- Ability to use various policies and reward functions.
-- Parallel processing capabilities for experiment runs.
-- Dynamic class loading for policies, reward functions, and agents.
-- Logging and storage functionalities for experiment results.
-
-Notes
------
-- Configuration files should be correctly set up.
-- Required dependencies should be installed.
-- Ensure all datasets are accessible and in the specified format.
-- This module uses environment variables, loaded through ``dotenv``, to obtain
-  specific configuration details.
+Functions
+---------
+create_logger
+    Create a multiprocessing-safe logger.
+load_class_from_module
+    Dynamically load a class from a module.
+create_agents
+    Build agent instances from a policy / reward / window-size triple.
+get_scenario_provider
+    Return the appropriate scenario provider for the given dataset config.
+build_agents_from_config
+    Build all agents from algorithm config dicts.
+build_environment
+    Create a fresh ``Environment`` for one execution.
+build_runtime_metadata
+    Build stable execution metadata for telemetry and results.
+exp_run_industrial_dataset
+    Execute a single experiment run.
+exp_run_industrial_dataset_isolated
+    Execute one run by constructing an isolated ``Environment`` in the worker.
+run_parallel_executions
+    Run worker executions with responsive Ctrl+C handling.
 """
 
+from __future__ import annotations
+
 import logging
-import os
 import sys
 import time
-import warnings
-from collections.abc import Mapping
 from dataclasses import dataclass
 from multiprocessing import TimeoutError, get_context
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from dotenv import load_dotenv
-
 import coleman4hcs.policy
 import coleman4hcs.reward
-from coleman4hcs.agent import ContextualAgent, RewardAgent, RewardSlidingWindowAgent, SlidingWindowContextualAgent
+from coleman4hcs.agent import (
+    ContextualAgent,
+    RewardAgent,
+    RewardSlidingWindowAgent,
+    SlidingWindowContextualAgent,
+)
 from coleman4hcs.environment import Environment
 from coleman4hcs.evaluation import NAPFDVerdictMetric
 from coleman4hcs.policy import FRRMABPolicy, LinUCBPolicy, SWLinUCBPolicy
@@ -47,23 +56,6 @@ from coleman4hcs.scenarios import (
     IndustrialDatasetHCSScenarioProvider,
     IndustrialDatasetScenarioProvider,
 )
-from config.config import get_config
-
-warnings.filterwarnings("ignore")
-
-
-def to_builtin_types(value: Any) -> Any:
-    """Recursively convert mapping/sequence wrappers into builtin serializable types."""
-    if isinstance(value, Mapping):
-        return {str(key): to_builtin_types(item) for key, item in value.items()}
-
-    if isinstance(value, list):
-        return [to_builtin_types(item) for item in value]
-
-    if isinstance(value, tuple):
-        return [to_builtin_types(item) for item in value]
-
-    return value
 
 
 @dataclass(frozen=True)
@@ -123,138 +115,6 @@ def create_logger(level):
     return logger
 
 
-def exp_run_industrial_dataset(
-    iteration: int,
-    trials: int,
-    env: Environment,
-    level: int,
-    runtime_metadata: dict[str, str] | None = None,
-) -> None:
-    """Execute a single run of the industrial dataset experiment.
-
-    Parameters
-    ----------
-    iteration : int
-        The current iteration of the experiment.
-    trials : int
-        The total number of trials to be executed.
-    env : Environment
-        An instance of the environment where the experiment is run.
-    level : int
-        The logging level.
-    runtime_metadata : dict[str, str] or None
-        Execution-scoped metadata attached to telemetry and persisted results.
-    """
-    # Initialize logging for worker processes without mutating Environment state.
-    create_logger(level)
-    env.set_runtime_metadata(runtime_metadata)
-    env.run_single(iteration, trials)
-    env.store_experiment()
-
-
-def build_agents_from_config(
-    algorithm_configs: dict[str, Any], policy_names: list[str], rewards_names: list[str]
-) -> list[RewardAgent | RewardSlidingWindowAgent | ContextualAgent | SlidingWindowContextualAgent]:
-    """Build all agents from config values in a process-local way."""
-    policies = {
-        policy_name: {
-            reward_name: load_class_from_module(coleman4hcs.policy, policy_name + "Policy")(
-                **algorithm_configs.get(policy_name.lower(), {}).get(reward_name.lower(), {})
-            )
-            for reward_name in rewards_names
-        }
-        for policy_name in policy_names
-    }
-
-    return [
-        agent
-        for policy_name, reward_policies in policies.items()
-        for reward_name, policy in reward_policies.items()
-        for agent in create_agents(
-            policy,
-            load_class_from_module(coleman4hcs.reward, reward_name + "Reward")(),
-            algorithm_configs.get(policy_name.lower(), {}).get("window_sizes", []),
-        )
-    ]
-
-
-def build_environment(
-    build_config: EnvironmentBuildConfig, runtime_metadata: dict[str, str]
-) -> tuple[Environment, int]:
-    """Create a fresh environment for one execution."""
-    agents = build_agents_from_config(
-        build_config.algorithm_configs,
-        build_config.policy_names,
-        build_config.rewards_names,
-    )
-    scenario = get_scenario_provider(
-        build_config.datasets_dir,
-        build_config.dataset,
-        build_config.sched_time_ratio,
-        build_config.use_hcs,
-        build_config.use_context,
-        build_config.context_config,
-        build_config.feature_groups,
-    )
-    env = Environment(
-        agents,
-        scenario,
-        NAPFDVerdictMetric(),
-        results_config=build_config.results_config,
-        checkpoint_config=build_config.checkpoint_config,
-        telemetry_config=build_config.telemetry_config,
-        runtime_metadata=runtime_metadata,
-    )
-    return env, scenario.max_builds
-
-
-def exp_run_industrial_dataset_isolated(build_config: EnvironmentBuildConfig, plan: ExecutionPlan) -> None:
-    """Execute one run by constructing an isolated Environment inside the worker process."""
-    runtime_metadata = {
-        "execution_id": plan.execution_id,
-        "worker_id": plan.worker_id,
-        "parallel_mode": plan.parallel_mode,
-    }
-    env, _ = build_environment(build_config, runtime_metadata)
-    exp_run_industrial_dataset(plan.iteration, plan.trials, env, plan.level, runtime_metadata)
-
-
-def run_parallel_executions(
-    parallel_pool_size: int,
-    build_config: EnvironmentBuildConfig,
-    execution_plans: list[ExecutionPlan],
-) -> None:
-    """Run worker executions with responsive Ctrl+C handling.
-
-    Parameters
-    ----------
-    parallel_pool_size : int
-        Number of worker processes.
-    build_config : EnvironmentBuildConfig
-        Serializable configuration used to build isolated environments.
-    execution_plans : list[ExecutionPlan]
-        Task parameters for worker execution.
-    """
-    with get_context("spawn").Pool(parallel_pool_size) as pool:
-        async_result = pool.starmap_async(
-            exp_run_industrial_dataset_isolated,
-            [(build_config, execution_plan) for execution_plan in execution_plans],
-        )
-
-        try:
-            while True:
-                try:
-                    async_result.get(timeout=1)
-                    break
-                except TimeoutError:
-                    continue
-        except KeyboardInterrupt:
-            logging.warning("Interrupt received. Terminating worker pool...")
-            pool.terminate()
-            pool.join()
-            raise SystemExit(130) from None
-
-
 def load_class_from_module(module, class_name: str):
     """Dynamically load a class from a given module.
 
@@ -278,16 +138,6 @@ def load_class_from_module(module, class_name: str):
     if hasattr(module, class_name):
         return getattr(module, class_name)
     raise ValueError(f"Class '{class_name}' not found in {module.__name__}!")
-
-
-def build_runtime_metadata(dataset: str, sched_time_ratio: float, iteration: int, parallel_mode: str) -> dict[str, str]:
-    """Build stable execution metadata for telemetry and persisted results."""
-    execution_id = f"{dataset}|tr={sched_time_ratio:.2f}|exp={iteration}|{uuid4().hex[:8]}"
-    return {
-        "execution_id": execution_id,
-        "worker_id": str(iteration),
-        "parallel_mode": parallel_mode,
-    }
 
 
 def create_agents(policy, rew_fun, window_sizes):
@@ -396,64 +246,204 @@ or IndustrialDatasetContextScenarioProvider
     return IndustrialDatasetScenarioProvider(base_tcfile, sched_time_ratio)
 
 
-if __name__ == "__main__":
-    load_dotenv()
-    config = to_builtin_types(get_config())
+def build_agents_from_config(
+    algorithm_configs: dict[str, Any], policy_names: list[str], rewards_names: list[str]
+) -> list[RewardAgent | RewardSlidingWindowAgent | ContextualAgent | SlidingWindowContextualAgent]:
+    """Build all agents from config values in a process-local way."""
+    policies = {
+        policy_name: {
+            reward_name: load_class_from_module(coleman4hcs.policy, policy_name + "Policy")(
+                **algorithm_configs.get(policy_name.lower(), {}).get(reward_name.lower(), {})
+            )
+            for reward_name in rewards_names
+        }
+        for policy_name in policy_names
+    }
 
-    # Execution configuration
-    (parallel_pool_size, independent_executions, verbose) = map(
-        config["execution"].get, ["parallel_pool_size", "independent_executions", "verbose"]
+    return [
+        agent
+        for policy_name, reward_policies in policies.items()
+        for reward_name, policy in reward_policies.items()
+        for agent in create_agents(
+            policy,
+            load_class_from_module(coleman4hcs.reward, reward_name + "Reward")(),
+            algorithm_configs.get(policy_name.lower(), {}).get("window_sizes", []),
+        )
+    ]
+
+
+def build_runtime_metadata(dataset: str, sched_time_ratio: float, iteration: int, parallel_mode: str) -> dict[str, str]:
+    """Build stable execution metadata for telemetry and persisted results."""
+    execution_id = f"{dataset}|tr={sched_time_ratio:.2f}|exp={iteration}|{uuid4().hex[:8]}"
+    return {
+        "execution_id": execution_id,
+        "worker_id": str(iteration),
+        "parallel_mode": parallel_mode,
+    }
+
+
+def build_environment(
+    build_config: EnvironmentBuildConfig, runtime_metadata: dict[str, str]
+) -> tuple[Environment, int]:
+    """Create a fresh environment for one execution."""
+    agents = build_agents_from_config(
+        build_config.algorithm_configs,
+        build_config.policy_names,
+        build_config.rewards_names,
     )
-
-    # Experiment Configuration
-    (sched_time_ratio, datasets_dir, datasets, experiment_dir, rewards_names, policy_names) = map(
-        config["experiment"].get,
-        ["scheduled_time_ratio", "datasets_dir", "datasets", "experiment_dir", "rewards", "policies"],
+    scenario = get_scenario_provider(
+        build_config.datasets_dir,
+        build_config.dataset,
+        build_config.sched_time_ratio,
+        build_config.use_hcs,
+        build_config.use_context,
+        build_config.context_config,
+        build_config.feature_groups,
     )
+    env = Environment(
+        agents,
+        scenario,
+        NAPFDVerdictMetric(),
+        results_config=build_config.results_config,
+        checkpoint_config=build_config.checkpoint_config,
+        telemetry_config=build_config.telemetry_config,
+        runtime_metadata=runtime_metadata,
+    )
+    return env, scenario.max_builds
 
-    # Algorithms Configuration
-    algorithm_configs = config["algorithm"]
 
-    # HCS Configuration
-    use_hcs = config.get("hcs_configuration", False).get("wts_strategy", False)
+def exp_run_industrial_dataset(
+    iteration: int,
+    trials: int,
+    env: Environment,
+    level: int,
+    runtime_metadata: dict[str, str] | None = None,
+) -> None:
+    """Execute a single run of the industrial dataset experiment.
 
-    # Contextual Information
-    (context_config, feature_groups) = map(config["contextual_information"].get, ["config", "feature_group"])
+    Parameters
+    ----------
+    iteration : int
+        The current iteration of the experiment.
+    trials : int
+        The total number of trials to be executed.
+    env : Environment
+        An instance of the environment where the experiment is run.
+    level : int
+        The logging level.
+    runtime_metadata : dict[str, str] or None
+        Execution-scoped metadata attached to telemetry and persisted results.
+    """
+    # Initialize logging for worker processes without mutating Environment state.
+    create_logger(level)
+    env.set_runtime_metadata(runtime_metadata)
+    env.run_single(iteration, trials)
+    env.store_experiment()
 
-    # Results / Checkpoint / Telemetry configuration (framework-first defaults)
-    results_config = config.get("results", {})
-    checkpoint_config = config.get("checkpoint", {})
-    telemetry_config = config.get("telemetry", {})
+
+def exp_run_industrial_dataset_isolated(build_config: EnvironmentBuildConfig, plan: ExecutionPlan) -> None:
+    """Execute one run by constructing an isolated Environment inside the worker process."""
+    runtime_metadata = {
+        "execution_id": plan.execution_id,
+        "worker_id": plan.worker_id,
+        "parallel_mode": plan.parallel_mode,
+    }
+    env, _ = build_environment(build_config, runtime_metadata)
+    exp_run_industrial_dataset(plan.iteration, plan.trials, env, plan.level, runtime_metadata)
+
+
+def run_parallel_executions(
+    parallel_pool_size: int,
+    build_config: EnvironmentBuildConfig,
+    execution_plans: list[ExecutionPlan],
+) -> None:
+    """Run worker executions with responsive Ctrl+C handling.
+
+    Parameters
+    ----------
+    parallel_pool_size : int
+        Number of worker processes.
+    build_config : EnvironmentBuildConfig
+        Serializable configuration used to build isolated environments.
+    execution_plans : list[ExecutionPlan]
+        Task parameters for worker execution.
+    """
+    with get_context("spawn").Pool(parallel_pool_size) as pool:
+        async_result = pool.starmap_async(
+            exp_run_industrial_dataset_isolated,
+            [(build_config, execution_plan) for execution_plan in execution_plans],
+        )
+
+        try:
+            while True:
+                try:
+                    async_result.get(timeout=1)
+                    break
+                except TimeoutError:
+                    continue
+        except KeyboardInterrupt:
+            logging.warning("Interrupt received. Terminating worker pool...")
+            pool.terminate()
+            pool.join()
+            raise SystemExit(130) from None
+
+
+def run_experiment(spec_dict: dict[str, Any]) -> None:
+    """Run a full experiment from a resolved spec dictionary.
+
+    This is the bridge between the new YAML/pack-based config system and
+    the existing experiment execution engine.
+
+    Parameters
+    ----------
+    spec_dict : dict[str, Any]
+        A resolved ``RunSpec`` as a plain dictionary (e.g., from
+        ``spec.model_dump()``).
+    """
+    from pathlib import Path
+
+    execution = spec_dict.get("execution", {})
+    experiment = spec_dict.get("experiment", {})
+    algorithm_configs = spec_dict.get("algorithm", {})
+    hcs_config = spec_dict.get("hcs_configuration", {})
+    contextual_info = spec_dict.get("contextual_information", {})
+    results_config = spec_dict.get("results", {})
+    checkpoint_config = spec_dict.get("checkpoint", {})
+    telemetry_config = spec_dict.get("telemetry", {})
+
+    parallel_pool_size = execution.get("parallel_pool_size", 10)
+    independent_executions = execution.get("independent_executions", 10)
+    verbose = execution.get("verbose", False)
+
+    sched_time_ratio = experiment.get("scheduled_time_ratio", [0.1, 0.5, 0.8])
+    datasets_dir = experiment.get("datasets_dir", "examples")
+    datasets = experiment.get("datasets", [])
+    experiment_dir = experiment.get("experiment_dir", "results/experiments/")
+    rewards_names = experiment.get("rewards", ["RNFail", "TimeRank"])
+    policy_names = experiment.get("policies", ["Random"])
+
+    use_hcs = hcs_config.get("wts_strategy", False)
+
+    context_config = contextual_info.get("config", {})
+    feature_groups = contextual_info.get("feature_group", {})
 
     agents = build_agents_from_config(algorithm_configs, policy_names, rewards_names)
 
-    # Check if there's an agent of type SlidingWindowContextualAgent or ContextualAgent
     has_sliding_window_contextual_agent = any(isinstance(agent, SlidingWindowContextualAgent) for agent in agents)
     has_contextual_agent = any(isinstance(agent, ContextualAgent) for agent in agents)
-
     use_context = has_contextual_agent or has_sliding_window_contextual_agent
 
-    logger = None
-    level = logging.NOTSET
-
-    if verbose:
-        level = logging.DEBUG
-        logger = create_logger(level)
-    else:
-        level = logging.INFO
-        logger = create_logger(level)
+    level = logging.DEBUG if verbose else logging.INFO
+    create_logger(level)
 
     for tr in sched_time_ratio:
-        experiment_directory = os.path.join(experiment_dir, f"time_ratio_{int(tr * 100)}/")
-
+        experiment_directory = f"{experiment_dir}time_ratio_{int(tr * 100)}/"
         Path(experiment_directory).mkdir(parents=True, exist_ok=True)
 
         for dataset in datasets:
             scenario = get_scenario_provider(
                 datasets_dir, dataset, tr, use_hcs, use_context, context_config, feature_groups
             )
-
-            # Stop conditional
             trials = scenario.max_builds
 
             build_config = EnvironmentBuildConfig(
@@ -493,7 +483,7 @@ if __name__ == "__main__":
                 )
                 for i in range(independent_executions)
             ]
-            # Compute time
+
             start = time.time()
 
             if parallel_pool_size > 1:
@@ -511,5 +501,4 @@ if __name__ == "__main__":
                     exp_run_industrial_dataset_isolated(build_config, sequential_plan)
 
             end = time.time()
-
             logging.info("Time expend to run the experiments: %s\n\n", end - start)

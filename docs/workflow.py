@@ -14,8 +14,6 @@ app = marimo.App(width="medium")
 def _():
     """Load notebook dependencies and plotting defaults."""
     import json
-    import os
-    import tomllib
     from pathlib import Path
 
     import duckdb
@@ -23,11 +21,12 @@ def _():
     import matplotlib.pyplot as plt
     import pandas as pd
     import seaborn as sns
+    import yaml
 
     plt.style.use("ggplot")
     sns.set_style("whitegrid")
     path_class = Path
-    return duckdb, json, mo, os, path_class, pd, plt, sns, tomllib
+    return duckdb, json, mo, path_class, pd, plt, sns, yaml
 
 
 @app.cell
@@ -39,7 +38,7 @@ def _(mo):
 
         This official notebook covers the full operational loop:
 
-        1. Read active settings from `config.toml`
+        1. Read active settings from `run.yaml`
         2. Inspect live behavior in Grafana
         3. Inspect checkpoint progress for resume and recovery
         4. Read final experiment results from Parquet
@@ -50,10 +49,11 @@ def _(mo):
 
 
 @app.cell
-def _(mo, os, path_class, pd, tomllib):
-    """Read the active runtime configuration from config.toml."""
-    config_path = path_class(os.getenv("CONFIG_FILE", "config.toml"))
-    config = tomllib.loads(config_path.read_text(encoding="utf-8"))
+def _(mo, path_class, pd, yaml):
+    """Read the active runtime configuration from run.yaml."""
+    config_path = path_class("run.yaml")
+    with open(config_path, encoding="utf-8") as f:
+        config = yaml.safe_load(f) or {}
 
     results_cfg = config.get("results", {})
     checkpoint_cfg = config.get("checkpoint", {})
@@ -293,7 +293,7 @@ def _(mo):
         """
         ## Suggested Next Steps
 
-        * Run `uv run python main.py` to generate fresh experiment data
+        * Run `coleman run --config run.yaml` to generate fresh experiment data
         * Open Grafana to inspect live execution behavior while the run is active
         * Use the Parquet summary above for final comparisons and report export
         * Inspect `./checkpoints/` to verify resume and recovery progress

@@ -3,7 +3,7 @@
 This directory contains an **optional** Docker Compose stack for local
 observability when developing or profiling Coleman4HCS experiments.
 
-> **Framework-first guarantee:** `python main.py` works without Docker or
+> **Framework-first guarantee:** `coleman run --config run.yaml` works without Docker or
 > any of these services.  Install optional extras only when you need them.
 
 ## Quick start
@@ -12,12 +12,12 @@ observability when developing or profiling Coleman4HCS experiments.
 # Base stack (OTel Collector + Prometheus + Grafana)
 docker compose up -d
 
-# Enable telemetry in config.toml:
-#   [telemetry]
-#   enabled = true
+# Use the telemetry/local pack in your run.yaml:
+#   packs:
+#     - telemetry/local
 
 # Run your experiment
-python main.py
+coleman run --config run.yaml
 
 # Open Grafana (datasource + dashboard are auto-provisioned)
 # http://localhost:3000

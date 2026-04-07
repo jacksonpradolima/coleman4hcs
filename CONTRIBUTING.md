@@ -13,8 +13,8 @@ The easiest way to get a fully working development environment is with a
 1. Open the repo in **VS Code** (or any DevContainer-compatible editor).
 2. When prompted, select **"Reopen in Container"** (or run the
    `Dev Containers: Reopen in Container` command).
-3. Wait for the container to build — `make install`, pre-commit hooks, and
-   `.env` are set up automatically.
+3. Wait for the container to build — `make install` and pre-commit hooks
+   are set up automatically.
 
 Everything you need (Python, uv, Docker, extensions) is pre-configured.
 

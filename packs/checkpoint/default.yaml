@@ -1,0 +1,4 @@
+checkpoint:
+  enabled: true
+  interval: 50000
+  base_dir: checkpoints
