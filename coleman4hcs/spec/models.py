@@ -58,7 +58,7 @@ class ExperimentSpec(BaseModel):
     experiment_dir: str = "results/experiments/"
     rewards: list[str] = Field(default_factory=lambda: ["RNFail", "TimeRank"])
     policies: list[str] = Field(
-        default_factory=lambda: ["Random", "Greedy", "EpsilonGreedy", "UCB", "FRRMAB"],
+        default_factory=lambda: ["Random"],
     )
 
 
