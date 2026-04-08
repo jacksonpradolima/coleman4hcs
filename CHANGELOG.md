@@ -1,6 +1,378 @@
 # CHANGELOG
 
 
+## v2.0.0 (2026-04-08)
+
+### Bug Fixes
+
+- Accumulate --grid flags in CLI and apply execution.seed to RNG
+  ([`497b5f3`](https://github.com/jacksonpradolima/coleman4hcs/commit/497b5f36e290d7bbf4209d965e6c6026cd2017b6))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/6da72e77-e7fa-40f1-b8f0-088c405c5e50
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Address all review comments from PR #144
+  ([`61276bc`](https://github.com/jacksonpradolima/coleman4hcs/commit/61276bc2e19b4cccafd9cafdf1e54d62c28515e0))
+
+- Add seed: int | None = None to ExecutionSpec so sweep seed replication is preserved - Fix
+  _set_nested() to validate non-dict intermediates with clear ValueError - Fix resolve_packs() to
+  not mutate caller's dict (shallow copy before pop) - Validate equal-length params for zip mode in
+  sweep engine (strict=True) - Fix run_id docstring to remove inaccurate "deterministic float
+  formatting" claim - Add golden constant (ddd8bbefa143) to test_golden_determinism - Use
+  pathlib.Path in run() instead of string concatenation - Guard run_many() against duplicate run_ids
+  in parallel mode - Improve test_seed_replication to verify seeds are preserved and affect run_id -
+  Add tests: _set_nested non-dict error, zip unequal lengths, resolve_packs immutability
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/082bbecc-0e54-462c-b866-8cbe5da870c0
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Correct spelling 'expend' → 'spent' in runner.py log message
+  ([`2881a65`](https://github.com/jacksonpradolima/coleman4hcs/commit/2881a6540060219362b2211a4fdc13c408b9a537))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/7ccd72b1-d1d6-49f2-950f-39414e092ac2
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Default ExperimentSpec.policies to ["Random"] only — parametric policies require algorithm config
+  from packs
+  ([`a5d47b7`](https://github.com/jacksonpradolima/coleman4hcs/commit/a5d47b7bd37cb63a1cc8e924aac547000daed9a3))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/445a1d09-34a2-4cbe-8a66-f89a41f8abe1
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Forbid extra fields on fixed specs, resolve packs_dir from config path, seed RNG in test
+  ([`4f33366`](https://github.com/jacksonpradolima/coleman4hcs/commit/4f333661e8430209a74a7814ea9615e3edd755b5))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/7aba7bf9-535d-409d-86b1-f92b285330b4
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Per-run output paths, validate packs type, use AlgorithmSpec in RunSpec
+  ([`1c64a94`](https://github.com/jacksonpradolima/coleman4hcs/commit/1c64a94b9a9003163a19ebcaf5138f2ea19abd24))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/cb1ca8a9-e092-4c6f-bd1a-3cc79525ce85
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Update assertion in FRRMABPolicy test to use np.isclose for value estimates
+  ([`1dff590`](https://github.com/jacksonpradolima/coleman4hcs/commit/1dff590f54ecaf9dbfc491e81eab339efd9f4e47))
+
+- Use pydantic.ValidationError instead of bare Exception in test
+  ([`59c800f`](https://github.com/jacksonpradolima/coleman4hcs/commit/59c800f1c97e8a415aae39747bf26ea3f43a4fe0))
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/c8df2a47-27c5-4b1e-9538-917d3e4a900d
+
+- Use tmp_path for safe temp dirs and pytest.approx for float comparisons in spec tests
+  ([`4b77a0e`](https://github.com/jacksonpradolima/coleman4hcs/commit/4b77a0e6c1e9b43716e47ae16730c6378d0bf6fc))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/5a4067d7-2b86-4213-963c-2f05e23fbbfe
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+### Chores
+
+- Update uv.lock for version 1.2.0
+  ([`233c2fa`](https://github.com/jacksonpradolima/coleman4hcs/commit/233c2fa873ee01d1664cd767fd7fb30a020cc3d9))
+
+- **deps**: Bump anchore/sbom-action from 0.23.0 to 0.23.1 in /.github/workflows
+  ([`ec724e3`](https://github.com/jacksonpradolima/coleman4hcs/commit/ec724e35c39383f52d2c6150b0eb4e0fc5670bc6))
+
+chore(deps): bump anchore/sbom-action from 0.23.0 to 0.23.1 in /.github/workflows
+
+- **deps**: Bump anchore/sbom-action in /.github/workflows
+  ([`4167b57`](https://github.com/jacksonpradolima/coleman4hcs/commit/4167b57e52d4fcfb58670067375abd19747f0764))
+
+Bumps [anchore/sbom-action](https://github.com/anchore/sbom-action) from 0.23.0 to 0.23.1. -
+  [Release notes](https://github.com/anchore/sbom-action/releases) -
+  [Changelog](https://github.com/anchore/sbom-action/blob/main/RELEASE.md) -
+  [Commits](https://github.com/anchore/sbom-action/compare/17ae1740179002c89186b61233e0f892c3118b11...57aae528053a48a3f6235f2d9461b05fbcb7366d)
+
+--- updated-dependencies: - dependency-name: anchore/sbom-action dependency-version: 0.23.1
+
+dependency-type: direct:production
+
+update-type: version-update:semver-patch
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump codecov/codecov-action from 5.5.2 to 5.5.3 in /.github/workflows
+  ([`3c487ae`](https://github.com/jacksonpradolima/coleman4hcs/commit/3c487ae4f78f96a893434a704bd3b7048090b9ec))
+
+chore(deps): bump codecov/codecov-action from 5.5.2 to 5.5.3 in /.github/workflows
+
+- **deps**: Bump codecov/codecov-action in /.github/workflows
+  ([`83300c0`](https://github.com/jacksonpradolima/coleman4hcs/commit/83300c051ba601dd8c0480d2f2ada1d263fc6513))
+
+Bumps [codecov/codecov-action](https://github.com/codecov/codecov-action) from 5.5.2 to 5.5.3. -
+  [Release notes](https://github.com/codecov/codecov-action/releases) -
+  [Changelog](https://github.com/codecov/codecov-action/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/codecov/codecov-action/compare/671740ac38dd9b0130fbe1cec585b89eea48d3de...1af58845a975a7985b0beb0cbe6fbbb71a41dbad)
+
+--- updated-dependencies: - dependency-name: codecov/codecov-action dependency-version: 5.5.3
+
+dependency-type: direct:production
+
+update-type: version-update:semver-patch
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump duckdb from 1.4.4 to 1.5.0
+  ([`9ff83a5`](https://github.com/jacksonpradolima/coleman4hcs/commit/9ff83a5b93c068bd150eca056098664f79091ed3))
+
+chore(deps): bump duckdb from 1.4.4 to 1.5.0
+
+- **deps**: Bump duckdb from 1.4.4 to 1.5.0
+  ([`dd5e313`](https://github.com/jacksonpradolima/coleman4hcs/commit/dd5e313ba183ce247bd7fa0c103acde3c2986786))
+
+Bumps [duckdb](https://github.com/duckdb/duckdb-python) from 1.4.4 to 1.5.0. - [Release
+  notes](https://github.com/duckdb/duckdb-python/releases) -
+  [Commits](https://github.com/duckdb/duckdb-python/compare/v1.4.4...v1.5.0)
+
+--- updated-dependencies: - dependency-name: duckdb dependency-version: 1.5.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump numpy from 2.4.2 to 2.4.3
+  ([`c8302d2`](https://github.com/jacksonpradolima/coleman4hcs/commit/c8302d21cb32383eb9672805008234e8aa11344a))
+
+chore(deps): bump numpy from 2.4.2 to 2.4.3
+
+- **deps**: Bump numpy from 2.4.2 to 2.4.3
+  ([`d8cfb3f`](https://github.com/jacksonpradolima/coleman4hcs/commit/d8cfb3fba0977f8cb3b01ee82a0839d7bfcc88ef))
+
+Bumps [numpy](https://github.com/numpy/numpy) from 2.4.2 to 2.4.3. - [Release
+  notes](https://github.com/numpy/numpy/releases) -
+  [Changelog](https://github.com/numpy/numpy/blob/main/doc/RELEASE_WALKTHROUGH.rst) -
+  [Commits](https://github.com/numpy/numpy/compare/v2.4.2...v2.4.3)
+
+--- updated-dependencies: - dependency-name: numpy dependency-version: 2.4.3
+
+dependency-type: direct:production
+
+update-type: version-update:semver-patch
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump polars from 1.38.1 to 1.39.0
+  ([`bada853`](https://github.com/jacksonpradolima/coleman4hcs/commit/bada853bba78957f0b4485f5e3931d98b560e79b))
+
+chore(deps): bump polars from 1.38.1 to 1.39.0
+
+- **deps**: Bump polars from 1.38.1 to 1.39.0
+  ([`916d8a9`](https://github.com/jacksonpradolima/coleman4hcs/commit/916d8a92071378e2825c1efcf2ca8eb03e2ecf59))
+
+Bumps [polars](https://github.com/pola-rs/polars) from 1.38.1 to 1.39.0. - [Release
+  notes](https://github.com/pola-rs/polars/releases) -
+  [Commits](https://github.com/pola-rs/polars/compare/py-1.38.1...py-1.39.0)
+
+--- updated-dependencies: - dependency-name: polars dependency-version: 1.39.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump ruff from 0.15.5 to 0.15.6
+  ([`8535f67`](https://github.com/jacksonpradolima/coleman4hcs/commit/8535f6774ded6e2e7bb81377e724fc06d8d9000f))
+
+chore(deps): bump ruff from 0.15.5 to 0.15.6
+
+- **deps**: Bump ruff from 0.15.5 to 0.15.6
+  ([`58f9616`](https://github.com/jacksonpradolima/coleman4hcs/commit/58f961624fd82c07e6804e273554ce6cc0613fb3))
+
+Bumps [ruff](https://github.com/astral-sh/ruff) from 0.15.5 to 0.15.6. - [Release
+  notes](https://github.com/astral-sh/ruff/releases) -
+  [Changelog](https://github.com/astral-sh/ruff/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/astral-sh/ruff/compare/0.15.5...0.15.6)
+
+--- updated-dependencies: - dependency-name: ruff dependency-version: 0.15.6
+
+dependency-type: direct:production
+
+update-type: version-update:semver-patch
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump softprops/action-gh-release from 2.5.0 to 2.6.1 in /.github/workflows
+  ([`d4b145b`](https://github.com/jacksonpradolima/coleman4hcs/commit/d4b145b6a5741d0b65cf594857359e9db442175d))
+
+chore(deps): bump softprops/action-gh-release from 2.5.0 to 2.6.1 in /.github/workflows
+
+- **deps**: Bump softprops/action-gh-release in /.github/workflows
+  ([`9dc56e4`](https://github.com/jacksonpradolima/coleman4hcs/commit/9dc56e4bac850687fdb91bea3fcd18c8adb901ac))
+
+Bumps [softprops/action-gh-release](https://github.com/softprops/action-gh-release) from 2.5.0 to
+  2.6.1. - [Release notes](https://github.com/softprops/action-gh-release/releases) -
+  [Changelog](https://github.com/softprops/action-gh-release/blob/master/CHANGELOG.md) -
+  [Commits](https://github.com/softprops/action-gh-release/compare/a06a81a03ee405af7f2048a818ed3f03bbf83c7b...153bb8e04406b158c6c84fc1615b65b24149a1fe)
+
+--- updated-dependencies: - dependency-name: softprops/action-gh-release dependency-version: 2.6.1
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump zensical from 0.0.24 to 0.0.26
+  ([`b4e0147`](https://github.com/jacksonpradolima/coleman4hcs/commit/b4e0147275dd4ad9e5cd7bac84dbb34bdf4922ae))
+
+chore(deps): bump zensical from 0.0.24 to 0.0.26
+
+- **deps**: Bump zensical from 0.0.24 to 0.0.26
+  ([`33713f7`](https://github.com/jacksonpradolima/coleman4hcs/commit/33713f73c799f75cc168c5a95c34f319a5ffb016))
+
+Bumps [zensical](https://github.com/zensical/zensical) from 0.0.24 to 0.0.26. - [Release
+  notes](https://github.com/zensical/zensical/releases) -
+  [Commits](https://github.com/zensical/zensical/compare/v0.0.24...v0.0.26)
+
+--- updated-dependencies: - dependency-name: zensical dependency-version: 0.0.26
+
+dependency-type: direct:production
+
+update-type: version-update:semver-patch
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+### Documentation
+
+- Remove all legacy/old references from getting-started.md and README.md
+  ([`0e0adb4`](https://github.com/jacksonpradolima/coleman4hcs/commit/0e0adb4aed95f6f71bc4e94531f30721ea2abaa4))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/0404e59e-1d4d-461c-99cf-e10db20cdf6b
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Update docs/setup, docs/configuration, remove vNext references, add deep configuration guide
+  ([`da6853e`](https://github.com/jacksonpradolima/coleman4hcs/commit/da6853e7ce1883b0f98274bcbb9237b49e57810c))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/8369f955-a8d7-4629-852b-8e30e20b7681
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Update README, CONTRIBUTING, and SECURITY for vNext experiment system
+  ([`9aa5cf9`](https://github.com/jacksonpradolima/coleman4hcs/commit/9aa5cf96c366c360ef87e76c9bd168232a09fe08))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/96ddad8f-82c7-4609-9672-ded24d1bdc6a
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+### Features
+
+- Experiment system — typed RunSpec + config packs + sweep engine + deterministic run_id + CLI (drop
+  TOML/CONFIG_FILE/main.py)
+  ([`35a0c44`](https://github.com/jacksonpradolima/coleman4hcs/commit/35a0c442f82a4391744534ac320130794a5aae5c))
+
+feat!: experiment system — typed RunSpec + config packs + sweep engine + deterministic run_id + CLI
+  (drop TOML/CONFIG_FILE/main.py)
+
+- Vnext experiment system — typed RunSpec + config packs + sweep engine + deterministic run_id + CLI
+  ([`7fc7565`](https://github.com/jacksonpradolima/coleman4hcs/commit/7fc7565cbd10272beb6fb288cebd1f959f1b4348))
+
+- Add coleman4hcs/spec/ with Pydantic v2 models (RunSpec, ExecutionSpec, ExperimentSpec, etc.) -
+  Implement deterministic run_id via sha256(canonical_json(resolved_spec))[:12] - Create config pack
+  system (packs/ layout + resolver with deep merge) - Implement sweep engine (grid/zip modes with
+  stable enumeration + seed replication) - Create coleman4hcs/api.py with run(), run_many(),
+  sweep(), load_spec(), save_resolved() - Add 'coleman' CLI console script (run, sweep, validate
+  commands) - Implement provenance tracking (spec.resolved.json + provenance.json per run) - Add 74
+  comprehensive tests for spec models, sweep engine, run_id, packs, API, CLI, provenance - Add
+  pydantic + pyyaml dependencies - All 275 tests pass (201 existing + 74 new)
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/c8df2a47-27c5-4b1e-9538-917d3e4a900d
+
+### Refactoring
+
+- Extract _dispatch_executions to reduce run_experiment cognitive complexity from 16 to 8
+  ([`61c9326`](https://github.com/jacksonpradolima/coleman4hcs/commit/61c9326de9a1d07519e327aba1ecc058e2ccd882))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/d0f17fdb-9b22-49bb-9650-e63981608311
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Move numpy import to top of runner.py and strengthen seed tests
+  ([`313f43c`](https://github.com/jacksonpradolima/coleman4hcs/commit/313f43ce84fc39255a2be19a3b1225c881225633))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/6da72e77-e7fa-40f1-b8f0-088c405c5e50
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Optimize reward calculation and update value estimates in Agent and Reward classes
+  ([`e805527`](https://github.com/jacksonpradolima/coleman4hcs/commit/e8055276fba9304522f06c4cae44f01684b19beb))
+
+- Remove config.toml, config/config.py, main.py, .env.example; add packs + run.yaml + runner module
+  ([`1bf6fe5`](https://github.com/jacksonpradolima/coleman4hcs/commit/1bf6fe5a68c7a5801888618a5377bc89e9fec535))
+
+- Remove config.toml — settings migrated to composable YAML packs - Remove config/config.py — no
+  longer needed (TOML loading replaced by YAML) - Remove main.py — replaced by coleman CLI
+  entry-point + runner module - Remove .env.example — no env vars needed for configuration - Remove
+  python-dotenv, toml, tomli dependencies - Add coleman4hcs/runner.py — reusable experiment
+  orchestration from main.py - Add run.yaml — default pack-based config for easy project
+  understanding - Add new packs: execution/default, experiment/alibaba_druid, algorithm/defaults,
+  checkpoint/default, hcs/off, contextual/default, telemetry/local - Update make run → coleman run
+  --config run.yaml - Update tests/test_main.py → import from coleman4hcs.runner - Update all docs,
+  README, CONTRIBUTING, DevContainer scripts
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/7ccd72b1-d1d6-49f2-950f-39414e092ac2
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+### Testing
+
+- Add comment clarifying intentional typo in extra="forbid" test
+  ([`50b619d`](https://github.com/jacksonpradolima/coleman4hcs/commit/50b619d30b05c927a719925c4cffc2e937dcc2df))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/7aba7bf9-535d-409d-86b1-f92b285330b4
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Add regression test for FRRMABPolicy to handle zero decay sum in credit assignment
+  ([`eec4d93`](https://github.com/jacksonpradolima/coleman4hcs/commit/eec4d932d544b3e015c04eff05273a659d007f54))
+
+
 ## v1.2.0 (2026-03-22)
 
 ### Bug Fixes
