@@ -1,6 +1,6 @@
 """Tests for deterministic run_id computation."""
 
-from coleman4hcs.spec.models import RunSpec
+from coleman4hcs.spec.models import CheckpointSpec, ExecutionSpec, ExperimentSpec, ResultsSpec, RunSpec, TelemetrySpec
 from coleman4hcs.spec.run_id import _canonical_json, compute_run_id
 
 
@@ -37,7 +37,7 @@ class TestComputeRunId:
 
     def test_different_spec_different_id(self):
         spec1 = RunSpec()
-        spec2 = RunSpec(execution={"parallel_pool_size": 999})
+        spec2 = RunSpec(execution=ExecutionSpec(parallel_pool_size=999))
         assert compute_run_id(spec1) != compute_run_id(spec2)
 
     def test_algorithm_params_affect_id(self):
@@ -51,12 +51,12 @@ class TestComputeRunId:
         If this fails, the determinism contract is broken.
         """
         spec = RunSpec(
-            execution={"parallel_pool_size": 1, "independent_executions": 1, "verbose": False},
-            experiment={"datasets": ["test@proj"], "rewards": ["RNFail"], "policies": ["UCB"]},
+            execution=ExecutionSpec(parallel_pool_size=1, independent_executions=1, verbose=False),
+            experiment=ExperimentSpec(datasets=["test@proj"], rewards=["RNFail"], policies=["UCB"]),
             algorithm={"ucb": {"rnfail": {"c": 0.3}}},
-            results={"enabled": False},
-            checkpoint={"enabled": False},
-            telemetry={"enabled": False},
+            results=ResultsSpec(enabled=False),
+            checkpoint=CheckpointSpec(enabled=False),
+            telemetry=TelemetrySpec(enabled=False),
         )
         # This pre-computed value must never change.
         golden_rid = "ddd8bbefa143"

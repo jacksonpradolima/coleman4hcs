@@ -249,26 +249,22 @@ class Agent:
         """
         self.update_action_attempts()
 
-        for test_case, r in zip(self.last_prioritization, reward, strict=False):
-            # Get current values using filter
-            row_data = self.actions.filter(pl.col("Name") == test_case)
+        reward_map = dict(zip(self.last_prioritization, reward, strict=False))
+        name_list = self.actions["Name"].to_list()
+        action_attempts = self.actions["ActionAttempts"].to_list()
+        current_estimates = self.actions["ValueEstimates"].to_list()
+        new_estimates = []
 
-            if row_data.height > 0:
-                k = row_data["ActionAttempts"][0]
-                q = row_data["ValueEstimates"][0]
+        for name, attempts, estimate in zip(name_list, action_attempts, current_estimates, strict=False):
+            observed_reward = reward_map.get(name)
+            if observed_reward is None or attempts <= 0:
+                new_estimates.append(estimate)
+                continue
 
-                alpha = 1.0 / k
+            alpha = 1.0 / attempts
+            new_estimates.append(estimate + alpha * (observed_reward - estimate))
 
-                # Update Q value by keeping running average of rewards for each action
-                new_value = q + alpha * (r - q)
-                self.actions = self.actions.with_columns(
-                    [
-                        pl.when(pl.col("Name") == test_case)
-                        .then(new_value)
-                        .otherwise(pl.col("ValueEstimates"))
-                        .alias("ValueEstimates")
-                    ]
-                )
+        self.actions = self.actions.with_columns([pl.Series("ValueEstimates", new_estimates)])
 
         self.t += 1
 
@@ -328,12 +324,7 @@ class RewardAgent(Agent):
         # Get rewards for each test case
         self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
 
-        # Update value estimates (accumulative reward) - create mapping
-        reward_map = {
-            name: self.last_reward[self.last_prioritization.index(name)]
-            for name in self.actions["Name"].to_list()
-            if name in self.last_prioritization
-        }
+        reward_map = dict(zip(self.last_prioritization, self.last_reward, strict=False))
 
         # Update using with_columns
         current_estimates = self.actions["ValueEstimates"].to_list()

@@ -52,7 +52,7 @@ class TestExperimentSpec:
 class TestAlgorithmSpec:
     def test_extra_allowed(self):
         spec = AlgorithmSpec.model_validate({"frrmab": {"window_sizes": [100]}})
-        assert spec.frrmab == {"window_sizes": [100]}
+        assert spec.model_dump()["frrmab"] == {"window_sizes": [100]}
 
     def test_empty(self):
         spec = AlgorithmSpec()

@@ -66,7 +66,24 @@ class TestCLIRun:
         with tempfile.TemporaryDirectory() as tmpdir:
             cfg_path = os.path.join(tmpdir, "run.yaml")
             with open(cfg_path, "w") as fh:
-                yaml.dump({"results": {"out_dir": tmpdir}}, fh)
+                yaml.dump(
+                    {
+                        "execution": {
+                            "parallel_pool_size": 1,
+                            "independent_executions": 1,
+                            "verbose": False,
+                        },
+                        "experiment": {
+                            "scheduled_time_ratio": [0.1],
+                            "datasets_dir": "examples",
+                            "datasets": ["fakedata"],
+                            "rewards": ["RNFail"],
+                            "policies": ["Random"],
+                        },
+                        "results": {"out_dir": tmpdir},
+                    },
+                    fh,
+                )
             main(["run", "--config", cfg_path])
             captured = capsys.readouterr()
             assert "run_id:" in captured.out
@@ -77,7 +94,24 @@ class TestCLISweep:
         with tempfile.TemporaryDirectory() as tmpdir:
             cfg_path = os.path.join(tmpdir, "base.yaml")
             with open(cfg_path, "w") as fh:
-                yaml.dump({"results": {"out_dir": tmpdir}}, fh)
+                yaml.dump(
+                    {
+                        "execution": {
+                            "parallel_pool_size": 1,
+                            "independent_executions": 1,
+                            "verbose": False,
+                        },
+                        "experiment": {
+                            "scheduled_time_ratio": [0.1],
+                            "datasets_dir": "examples",
+                            "datasets": ["fakedata"],
+                            "rewards": ["RNFail"],
+                            "policies": ["Random"],
+                        },
+                        "results": {"out_dir": tmpdir},
+                    },
+                    fh,
+                )
             main(
                 [
                     "sweep",

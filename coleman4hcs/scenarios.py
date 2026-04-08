@@ -23,6 +23,7 @@ IndustrialDatasetContextScenarioProvider
 """
 
 import os
+from decimal import Decimal
 from typing import cast
 
 import polars as pl
@@ -340,7 +341,8 @@ class IndustrialDatasetScenarioProvider:
         # Convert the solutions to a list of dict
         testcases = build_df.select(self.REQUIRED_COLUMNS).to_dicts()
 
-        self.total_build_duration = build_df["Duration"].sum()
+        total_build_duration = cast(int | float | Decimal | None, build_df["Duration"].sum())
+        self.total_build_duration = float(total_build_duration or 0.0)
         available_time = self.total_build_duration * self.avail_time_ratio
 
         # This test set is a "scenario" that must be evaluated.

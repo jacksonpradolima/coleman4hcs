@@ -6,9 +6,23 @@ import tempfile
 import yaml
 
 from coleman4hcs.api import RunResult, load_spec, run, run_many, save_resolved, sweep
-from coleman4hcs.spec.models import RunSpec
+from coleman4hcs.spec.models import ExecutionSpec, ExperimentSpec, ResultsSpec, RunSpec
 from coleman4hcs.spec.run_id import compute_run_id
 from coleman4hcs.spec.sweep import SweepAxis, SweepSpec
+
+
+def _light_run_spec(tmpdir: str, **execution_overrides) -> RunSpec:
+    """Build a minimal spec for fast API tests."""
+    execution = ExecutionSpec(parallel_pool_size=1, independent_executions=1, verbose=False, **execution_overrides)
+    experiment = ExperimentSpec(
+        scheduled_time_ratio=[0.1],
+        datasets_dir="examples",
+        datasets=["fakedata"],
+        rewards=["RNFail"],
+        policies=["Random"],
+    )
+    results = ResultsSpec(out_dir=tmpdir)
+    return RunSpec(execution=execution, experiment=experiment, results=results)
 
 
 class TestRunResult:
@@ -27,14 +41,14 @@ class TestRunResult:
 
 class TestRun:
     def test_produces_run_id(self):
-        spec = RunSpec(results={"out_dir": tempfile.mkdtemp()})
+        spec = _light_run_spec(tempfile.mkdtemp())
         result = run(spec)
         assert len(result.run_id) == 12
         assert result.run_id == compute_run_id(spec)
 
     def test_writes_artifacts(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            spec = RunSpec(results={"out_dir": tmpdir})
+            spec = _light_run_spec(tmpdir)
             result = run(spec)
             assert result.artifacts_dir is not None
             assert os.path.exists(os.path.join(result.artifacts_dir, "spec.resolved.json"))
@@ -42,8 +56,8 @@ class TestRun:
 
     def test_deterministic_run_id(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            spec1 = RunSpec(results={"out_dir": tmpdir})
-            spec2 = RunSpec(results={"out_dir": tmpdir})
+            spec1 = _light_run_spec(tmpdir)
+            spec2 = _light_run_spec(tmpdir)
             r1 = run(spec1)
             r2 = run(spec2)
             assert r1.run_id == r2.run_id
@@ -52,13 +66,7 @@ class TestRun:
 class TestRunMany:
     def test_sequential(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            specs = [
-                RunSpec(
-                    execution={"parallel_pool_size": i},
-                    results={"out_dir": tmpdir},
-                )
-                for i in range(3)
-            ]
+            specs = [_light_run_spec(tmpdir, seed=i) for i in (1, 2, 3)]
             results = run_many(specs, max_workers=1)
             assert len(results) == 3
             ids = [r.run_id for r in results]

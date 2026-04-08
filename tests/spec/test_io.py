@@ -7,7 +7,7 @@ import tempfile
 import yaml
 
 from coleman4hcs.spec.io import load_spec, save_resolved
-from coleman4hcs.spec.models import RunSpec
+from coleman4hcs.spec.models import ExecutionSpec, RunSpec
 
 
 class TestLoadSpec:
@@ -70,7 +70,7 @@ class TestSaveResolved:
             assert data["execution"]["parallel_pool_size"] == 10
 
     def test_roundtrip(self):
-        spec = RunSpec(execution={"parallel_pool_size": 7})
+        spec = RunSpec(execution=ExecutionSpec(parallel_pool_size=7))
         with tempfile.TemporaryDirectory() as tmpdir:
             out = save_resolved(spec, os.path.join(tmpdir, "spec.json"))
             with open(out) as fh:
