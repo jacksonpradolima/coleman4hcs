@@ -464,7 +464,8 @@ class FRRMABPolicy(Policy):
         decay_values = np.power(self.decayed_factor, ranking) * reward_arm
 
         # Compute FRR
-        frr = decay_values / decay_values.sum()
+        decay_total = decay_values.sum()
+        frr = np.zeros_like(decay_values, dtype=float) if np.isclose(decay_total, 0.0) else decay_values / decay_total
 
         # End of Credit Assignment
         ################################################
