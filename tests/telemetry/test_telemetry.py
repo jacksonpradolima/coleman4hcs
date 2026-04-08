@@ -56,6 +56,11 @@ class TestGetTelemetry:
         t = get_telemetry(enabled=False)
         assert isinstance(t, NoOpTelemetry)
 
+    def test_disabled_with_resource_attributes_returns_noop(self):
+        """resource_attributes are accepted but ignored when disabled."""
+        t = get_telemetry(enabled=False, resource_attributes={"run_id": "abc123"})
+        assert isinstance(t, NoOpTelemetry)
+
     def test_enabled_without_sdk_returns_noop(self):
         """Even if enabled, without OTel SDK we get NoOp (graceful fallback)."""
         # Since the test environment may or may not have OTel installed,
@@ -65,6 +70,15 @@ class TestGetTelemetry:
         assert hasattr(t, "record_cycle")
         assert hasattr(t, "record_latency")
         assert hasattr(t, "record_fitness")
+        assert hasattr(t, "span")
+
+    def test_enabled_with_resource_attributes_does_not_crash(self):
+        """Passing resource_attributes should not crash regardless of SDK availability."""
+        t = get_telemetry(
+            enabled=True,
+            resource_attributes={"execution_id": "test|tr=0.50|exp=1|abc12345", "run_id": "abc123def456"},
+        )
+        assert hasattr(t, "record_cycle")
         assert hasattr(t, "span")
 
     def test_interface_consistency(self):

@@ -8,3 +8,24 @@ datasources:
     url: http://prometheus:9090
     isDefault: true
     editable: true
+
+  - name: ClickHouse
+    uid: clickhouse
+    type: grafana-clickhouse-datasource
+    access: proxy
+    editable: true
+    jsonData:
+      host: clickhouse
+      port: 9000
+      protocol: native
+      defaultDatabase: default
+      logs:
+        defaultDatabase: default
+        defaultTable: otel_logs
+        timeColumn: Timestamp
+        levelColumn: SeverityText
+        messageColumn: Body
+      traces:
+        defaultDatabase: default
+        defaultTable: otel_traces
+        durationUnit: ns

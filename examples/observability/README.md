@@ -59,8 +59,49 @@ and analysis, see [docs/workflow.py](docs/workflow.py).
 ## With ClickHouse
 
 ```bash
-docker compose --profile clickhouse up -d
+OTEL_COLLECTOR_CONFIG=otel-collector-config-clickhouse.yaml \
+  docker compose --profile clickhouse up -d
 pip install coleman4hcs[clickhouse]
+```
+
+When the ClickHouse profile is active:
+
+* The OTel Collector exports **metrics, traces, and logs** to ClickHouse
+  (`otel_metrics`, `otel_traces`, `otel_logs` tables, created automatically).
+* Prometheus continues to receive metrics for live dashboards.
+* Grafana ships with **two datasources**: Prometheus (default) and ClickHouse.
+* Grafana Explore can query traces and logs in ClickHouse and supports
+  logs ↔ traces correlation workflows.
+
+### Persistent observability mode
+
+Use the ClickHouse profile when you need:
+
+* Post-run analysis and cross-run comparisons
+* Long retention beyond Prometheus's local TSDB
+* A single backend for both experiment results and telemetry
+  (`coleman_results` + `otel_*` tables)
+
+### Example ClickHouse queries
+
+```sql
+-- Recent traces
+SELECT TraceId, SpanName, Duration
+FROM otel_traces
+ORDER BY Timestamp DESC
+LIMIT 20;
+
+-- Metric averages over the last hour
+SELECT MetricName, avg(Value)
+FROM otel_metrics
+WHERE TimeUnix > now() - INTERVAL 1 HOUR
+GROUP BY MetricName;
+
+-- Log entries
+SELECT Timestamp, SeverityText, Body
+FROM otel_logs
+ORDER BY Timestamp DESC
+LIMIT 50;
 ```
 
 ## Tear down

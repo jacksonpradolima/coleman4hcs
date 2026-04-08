@@ -193,6 +193,10 @@ class TelemetrySpec(BaseModel):
         Reported service name.
     export_interval_millis : int
         Export interval in milliseconds.
+    resource_attributes : dict[str, str]
+        Extra OTel resource attributes (e.g. ``execution_id``, ``run_id``).
+        These are attached to the OTel Resource, not to individual metric
+        labels, avoiding high-cardinality issues.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -201,6 +205,7 @@ class TelemetrySpec(BaseModel):
     otlp_endpoint: str = "http://localhost:4318"
     service_name: str = "coleman4hcs"
     export_interval_millis: int = 5000
+    resource_attributes: dict[str, str] = {}
 
 
 class RunSpec(BaseModel):

@@ -9,8 +9,9 @@
 # Quick start (base stack — OTel Collector + Grafana):
 #   docker compose up -d
 #
-# With ClickHouse (optional):
-#   docker compose --profile clickhouse up -d
+# With ClickHouse (optional, persistent telemetry + results):
+#   OTEL_COLLECTOR_CONFIG=otel-collector-config-clickhouse.yaml \
+#     docker compose --profile clickhouse up -d
 #
 # Tear down:
 #   docker compose --profile clickhouse down -v
@@ -22,7 +23,7 @@ services:
     image: otel/opentelemetry-collector-contrib:0.100.0
     container_name: coleman-otel-collector
     volumes:
-      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+      - ./${OTEL_COLLECTOR_CONFIG:-otel-collector-config.yaml}:/etc/otelcol-contrib/config.yaml:ro
     ports:
       - "4317:4317"   # gRPC receiver
       - "4318:4318"   # HTTP receiver
@@ -52,6 +53,7 @@ services:
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+      GF_INSTALL_PLUGINS: "grafana-clickhouse-datasource"
     volumes:
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro

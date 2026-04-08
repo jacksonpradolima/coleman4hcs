@@ -144,6 +144,7 @@ class Environment:
             service_name=tel_cfg.get("service_name", "coleman4hcs"),
             otlp_endpoint=tel_cfg.get("otlp_endpoint", "http://localhost:4318"),
             export_interval_millis=tel_cfg.get("export_interval_millis", 5000),
+            resource_attributes=tel_cfg.get("resource_attributes"),
         )
 
         self.monitor: MonitorCollector = MonitorCollector(sink=self._sink)

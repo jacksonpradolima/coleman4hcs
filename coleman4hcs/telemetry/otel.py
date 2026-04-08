@@ -90,13 +90,17 @@ class Telemetry:
         service_name: str = "coleman4hcs",
         otlp_endpoint: str = "http://localhost:4318",
         export_interval_millis: int = 5000,
+        resource_attributes: dict[str, str] | None = None,
     ) -> None:
         if not _HAS_OTEL:
             raise ImportError(
                 "opentelemetry SDK is required for Telemetry. Install it with: pip install coleman4hcs[telemetry]"
             )
 
-        resource = Resource.create({"service.name": service_name})
+        attrs: dict[str, str] = {"service.name": service_name}
+        if resource_attributes:
+            attrs.update(resource_attributes)
+        resource = Resource.create(attrs)
 
         # Metrics
         reader = PeriodicExportingMetricReader(
@@ -350,6 +354,7 @@ def get_telemetry(
     service_name: str = "coleman4hcs",
     otlp_endpoint: str = "http://localhost:4318",
     export_interval_millis: int = 5000,
+    resource_attributes: dict[str, str] | None = None,
 ) -> Telemetry | NoOpTelemetry:
     """Return the appropriate telemetry implementation.
 
@@ -363,6 +368,9 @@ def get_telemetry(
         OTLP endpoint URL.
     export_interval_millis : int
         Metric export interval in milliseconds.
+    resource_attributes : dict[str, str] or None
+        Extra OTel resource attributes (e.g. ``execution_id``, ``run_id``).
+        Attached to the Resource, not to individual metric labels.
 
     Returns
     -------
@@ -385,6 +393,7 @@ def get_telemetry(
             service_name=service_name,
             otlp_endpoint=otlp_endpoint,
             export_interval_millis=export_interval_millis,
+            resource_attributes=resource_attributes,
         )
     except Exception:
         logger.exception("Failed to initialize OpenTelemetry; falling back to NoOpTelemetry")
