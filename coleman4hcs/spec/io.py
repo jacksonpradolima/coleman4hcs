@@ -24,7 +24,7 @@ from coleman4hcs.spec.packs import resolve_packs
 def load_spec(
     path: str | Path,
     *,
-    packs_dir: str | Path = "packs",
+    packs_dir: str | Path | None = None,
 ) -> RunSpec:
     """Load a :class:`RunSpec` from a YAML config file.
 
@@ -35,8 +35,10 @@ def load_spec(
     ----------
     path : str | Path
         Path to the YAML config file.
-    packs_dir : str | Path
-        Root directory for config packs.
+    packs_dir : str | Path | None
+        Root directory for config packs.  When ``None`` (the default),
+        the directory is derived as ``<config_dir>/packs`` so that
+        configs remain relocatable regardless of the working directory.
 
     Returns
     -------
@@ -50,7 +52,10 @@ def load_spec(
     pydantic.ValidationError
         If the resolved dict fails schema validation.
     """
-    path = Path(path)
+    path = Path(path).resolve()
+    if packs_dir is None:
+        packs_dir = path.parent / "packs"
+
     with open(path, encoding="utf-8") as fh:
         raw: dict[str, Any] = yaml.safe_load(fh) or {}
 

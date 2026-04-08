@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ExecutionSpec(BaseModel):
@@ -26,6 +26,8 @@ class ExecutionSpec(BaseModel):
     verbose : bool
         Enable verbose logging.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     parallel_pool_size: int = 10
     independent_executions: int = 10
@@ -51,6 +53,8 @@ class ExperimentSpec(BaseModel):
     policies : list[str]
         Bandit policy names.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     scheduled_time_ratio: list[float] = Field(default_factory=lambda: [0.1, 0.5, 0.8])
     datasets_dir: str = "examples"
@@ -79,6 +83,8 @@ class HCSConfigurationSpec(BaseModel):
         Whether to use the WTS strategy.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     wts_strategy: bool = False
 
 
@@ -93,6 +99,8 @@ class ContextualFeatureGroupSpec(BaseModel):
         Column names in the feature group.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     feature_group_name: str = "time_execution"
     feature_group_values: list[str] = Field(default_factory=lambda: ["Duration", "NumErrors"])
 
@@ -105,6 +113,8 @@ class ContextualConfigSpec(BaseModel):
     previous_build : list[str]
         Column names from the previous build.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     previous_build: list[str] = Field(default_factory=lambda: ["Duration", "NumRan", "NumErrors"])
 
@@ -119,6 +129,8 @@ class ContextualInformationSpec(BaseModel):
     feature_group : ContextualFeatureGroupSpec
         Feature group configuration.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     config: ContextualConfigSpec = Field(default_factory=ContextualConfigSpec)
     feature_group: ContextualFeatureGroupSpec = Field(default_factory=ContextualFeatureGroupSpec)
@@ -141,6 +153,8 @@ class ResultsSpec(BaseModel):
         Top-k value for prioritisation metrics (0 = disabled).
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     enabled: bool = True
     sink: str = "parquet"
     out_dir: str = "./runs"
@@ -161,6 +175,8 @@ class CheckpointSpec(BaseModel):
         Directory for checkpoint files.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     enabled: bool = True
     interval: int = 50000
     base_dir: str = "checkpoints"
@@ -180,6 +196,8 @@ class TelemetrySpec(BaseModel):
     export_interval_millis : int
         Export interval in milliseconds.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
     otlp_endpoint: str = "http://localhost:4318"
@@ -214,6 +232,8 @@ class RunSpec(BaseModel):
     telemetry : TelemetrySpec
         Telemetry export settings.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     execution: ExecutionSpec = Field(default_factory=ExecutionSpec)
     experiment: ExperimentSpec = Field(default_factory=ExperimentSpec)

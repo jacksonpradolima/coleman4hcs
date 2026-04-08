@@ -114,8 +114,8 @@ class TestSeedApplication:
         import coleman4hcs.policy
         from coleman4hcs.runner import run_experiment
 
-        # Reset to default (no seed)
-        coleman4hcs.policy._rng = np.random.default_rng()
+        # Reset to a known-seed baseline so the test is reproducible
+        coleman4hcs.policy._rng = np.random.default_rng(0)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             spec = _light_run_spec(tmpdir)

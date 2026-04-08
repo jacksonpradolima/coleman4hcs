@@ -129,3 +129,19 @@ class TestRunSpec:
 
         with pytest.raises(ValidationError):
             RunSpec.model_validate({"execution": {"parallel_pool_size": "not_an_int"}})
+
+    def test_extra_fields_rejected_on_execution(self):
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="extra_forbidden"):
+            ExecutionSpec.model_validate({"indepedent_executions": 5})
+
+    def test_extra_fields_rejected_on_runspec(self):
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="extra_forbidden"):
+            RunSpec.model_validate({"unknown_section": {}})
+
+    def test_extra_fields_allowed_on_algorithm(self):
+        spec = AlgorithmSpec.model_validate({"custom_key": 42})
+        assert spec.model_dump()["custom_key"] == 42

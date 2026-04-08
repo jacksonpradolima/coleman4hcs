@@ -58,6 +58,25 @@ class TestLoadSpec:
             assert spec.results.sink == "parquet"
             assert spec.execution.verbose is True
 
+    def test_load_packs_dir_from_config_location(self):
+        """Default packs_dir is derived from the config file's directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, "packs", "results"))
+            with open(os.path.join(tmpdir, "packs", "results", "parquet.yaml"), "w") as fh:
+                yaml.dump({"results": {"sink": "parquet", "enabled": True}}, fh)
+
+            cfg_path = os.path.join(tmpdir, "run.yaml")
+            with open(cfg_path, "w") as fh:
+                yaml.dump(
+                    {"packs": ["results/parquet"], "execution": {"verbose": True}},
+                    fh,
+                )
+
+            # No explicit packs_dir — should resolve from config file location
+            spec = load_spec(cfg_path)
+            assert spec.results.sink == "parquet"
+            assert spec.execution.verbose is True
+
 
 class TestSaveResolved:
     def test_creates_file(self):

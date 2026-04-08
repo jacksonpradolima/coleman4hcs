@@ -121,7 +121,9 @@ def main(argv: list[str] | None = None) -> None:
         Command-line arguments (defaults to ``sys.argv[1:]``).
     """
     parser = argparse.ArgumentParser(prog="coleman", description="Coleman4HCS experiment runner")
-    parser.add_argument("--packs-dir", default="packs", help="Root directory for config packs")
+    parser.add_argument(
+        "--packs-dir", default=None, help="Root directory for config packs (default: <config_dir>/packs)"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     # --- run ---
