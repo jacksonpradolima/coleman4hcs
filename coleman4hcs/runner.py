@@ -40,6 +40,8 @@ from multiprocessing import TimeoutError, get_context
 from typing import Any
 from uuid import uuid4
 
+import numpy as np
+
 import coleman4hcs.policy
 import coleman4hcs.reward
 from coleman4hcs.agent import (
@@ -445,8 +447,6 @@ def run_experiment(spec_dict: dict[str, Any]) -> None:
 
     # Apply seed to the module-level RNG for reproducibility.
     if seed is not None:
-        import numpy as np
-
         coleman4hcs.policy._rng = np.random.default_rng(seed)
 
     sched_time_ratio = experiment.get("scheduled_time_ratio", [0.1, 0.5, 0.8])

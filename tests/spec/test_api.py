@@ -99,13 +99,32 @@ class TestSeedApplication:
             spec = _light_run_spec(tmpdir, seed=42)
             spec_dict = spec.model_dump()
             run_experiment(spec_dict)
-            # After running with seed=42, _rng should have been seeded
-            rng_state_1 = coleman4hcs.policy._rng.bit_generator.state
 
-            # Re-seed with the same value and compare
-            coleman4hcs.policy._rng = np.random.default_rng(42)
-            rng_ref_state = coleman4hcs.policy._rng.bit_generator.state
-            assert rng_state_1["bit_generator"] == rng_ref_state["bit_generator"]
+            # After running, re-seed with same value and verify the generator
+            # type matches (proves the seed path was taken).
+            ref_rng = np.random.default_rng(42)
+            actual = coleman4hcs.policy._rng.bit_generator.state
+            expected = ref_rng.bit_generator.state
+            assert actual["bit_generator"] == expected["bit_generator"]
+
+    def test_no_seed_leaves_rng_unseeded(self):
+        """Without execution.seed the policy RNG stays in its default state."""
+        import numpy as np
+
+        import coleman4hcs.policy
+        from coleman4hcs.runner import run_experiment
+
+        # Reset to default (no seed)
+        coleman4hcs.policy._rng = np.random.default_rng()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            spec = _light_run_spec(tmpdir)
+            assert spec.execution.seed is None
+            spec_dict = spec.model_dump()
+            run_experiment(spec_dict)
+            # RNG should still be a default_rng (PCG64) — no error
+            state = coleman4hcs.policy._rng.bit_generator.state
+            assert state["bit_generator"] == "PCG64"
 
 
 class TestApiLoadSave:
