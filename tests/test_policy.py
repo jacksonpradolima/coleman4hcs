@@ -589,7 +589,7 @@ def test_frrmab_credit_assignment_handles_zero_decay_sum(dummy_agent):
 
     q_values = policy.history["Q"].to_numpy()
     assert np.isfinite(q_values).all()
-    assert (policy.history["ValueEstimates"] == 0.0).all()
+    assert np.isclose(policy.history["ValueEstimates"].to_numpy(), 0.0).all()
 
 
 @pytest.mark.benchmark(group="policy")
