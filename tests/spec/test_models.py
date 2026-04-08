@@ -134,7 +134,8 @@ class TestRunSpec:
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError, match="extra_forbidden"):
-            ExecutionSpec.model_validate({"indepedent_executions": 5})
+            # Intentional typo: "indepedent" instead of "independent"
+            ExecutionSpec.model_validate({"indepedent_executions": 5})  # noqa: RUF001
 
     def test_extra_fields_rejected_on_runspec(self):
         from pydantic import ValidationError
