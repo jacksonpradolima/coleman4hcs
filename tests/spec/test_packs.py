@@ -90,3 +90,23 @@ class TestResolvePacks:
         with contextlib.suppress(FileNotFoundError):
             resolve_packs(raw, packs_dir=packs_dir)
         assert raw == original
+
+    def test_packs_string_raises_type_error(self):
+        raw = {"packs": "policy/linucb"}
+        with pytest.raises(TypeError, match="must be a list of strings"):
+            resolve_packs(raw, packs_dir="/nonexistent")
+
+    def test_packs_none_raises_type_error(self):
+        raw = {"packs": None}
+        with pytest.raises(TypeError, match="must be a list of strings"):
+            resolve_packs(raw, packs_dir="/nonexistent")
+
+    def test_packs_non_string_item_raises_type_error(self):
+        raw = {"packs": [123]}
+        with pytest.raises(TypeError, match="must be a string"):
+            resolve_packs(raw, packs_dir="/nonexistent")
+
+    def test_packs_empty_string_raises_value_error(self):
+        raw = {"packs": [""]}
+        with pytest.raises(ValueError, match="non-empty string"):
+            resolve_packs(raw, packs_dir="/nonexistent")

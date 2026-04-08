@@ -7,8 +7,6 @@ type-safe defaults and validation.
 
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -219,8 +217,8 @@ class RunSpec(BaseModel):
         Execution-level settings.
     experiment : ExperimentSpec
         Experiment-level settings.
-    algorithm : dict[str, Any]
-        Per-algorithm hyper-parameters (free-form).
+    algorithm : AlgorithmSpec
+        Per-algorithm hyper-parameters (free-form, extra keys allowed).
     hcs_configuration : HCSConfigurationSpec
         HCS-specific flags.
     contextual_information : ContextualInformationSpec
@@ -237,7 +235,7 @@ class RunSpec(BaseModel):
 
     execution: ExecutionSpec = Field(default_factory=ExecutionSpec)
     experiment: ExperimentSpec = Field(default_factory=ExperimentSpec)
-    algorithm: dict[str, Any] = Field(default_factory=dict)
+    algorithm: AlgorithmSpec = Field(default_factory=AlgorithmSpec)
     hcs_configuration: HCSConfigurationSpec = Field(default_factory=HCSConfigurationSpec)
     contextual_information: ContextualInformationSpec = Field(default_factory=ContextualInformationSpec)
     results: ResultsSpec = Field(default_factory=ResultsSpec)

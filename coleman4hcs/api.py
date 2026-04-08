@@ -91,8 +91,14 @@ def run(spec: RunSpec) -> RunResult:
     save_resolved(spec, run_dir / "spec.resolved.json")
     save_provenance(run_dir)
 
-    # Execute the experiment.
-    run_experiment(spec.model_dump())
+    # Execute the experiment with per-run output paths so results and
+    # checkpoints do not collide across different run ids or sweeps.
+    execution_spec = spec.model_dump()
+    execution_spec["results"]["out_dir"] = str(run_dir / "results")
+    checkpoint_cfg = execution_spec.get("checkpoint")
+    if isinstance(checkpoint_cfg, dict) and "base_dir" in checkpoint_cfg:
+        checkpoint_cfg["base_dir"] = str(run_dir / "checkpoints")
+    run_experiment(execution_spec)
 
     return RunResult(run_id=rid, spec=spec, artifacts_dir=str(run_dir))
 

@@ -76,8 +76,8 @@ class TestExpandSweep:
         sweep = SweepSpec(axes=[SweepAxis(mode="grid", params={"algorithm.ucb.timerank.c": [0.1, 0.3, 0.5]})])
         result = expand_sweep(base, sweep)
         assert len(result) == 3
-        assert result[0].algorithm["ucb"]["timerank"]["c"] == pytest.approx(0.1)
-        assert result[2].algorithm["ucb"]["timerank"]["c"] == pytest.approx(0.5)
+        assert result[0].algorithm.model_dump()["ucb"]["timerank"]["c"] == pytest.approx(0.1)
+        assert result[2].algorithm.model_dump()["ucb"]["timerank"]["c"] == pytest.approx(0.5)
 
     def test_deterministic_order(self):
         base = RunSpec()

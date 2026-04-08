@@ -70,10 +70,28 @@ def resolve_packs(
     ------
     FileNotFoundError
         If a referenced pack file does not exist.
+    TypeError
+        If the ``packs`` key is not a list, or if any item is not a string.
+    ValueError
+        If any pack reference is an empty string.
     """
     packs_dir = Path(packs_dir)
     raw = dict(raw)  # Shallow copy to avoid mutating the caller's dict
-    pack_refs: list[str] = raw.pop("packs", [])
+    pack_refs_raw = raw.pop("packs", [])
+
+    if not isinstance(pack_refs_raw, list):
+        msg = f"The 'packs' key must be a list of strings, got {type(pack_refs_raw).__name__}."
+        raise TypeError(msg)
+
+    pack_refs: list[str] = []
+    for index, ref in enumerate(pack_refs_raw):
+        if not isinstance(ref, str):
+            msg = f"Each item in 'packs' must be a string, but item at index {index} is {type(ref).__name__}."
+            raise TypeError(msg)
+        if not ref:
+            msg = f"Each item in 'packs' must be a non-empty string, but item at index {index} is empty."
+            raise ValueError(msg)
+        pack_refs.append(ref)
 
     merged: dict[str, Any] = {}
     for ref in pack_refs:

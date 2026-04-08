@@ -122,7 +122,8 @@ class TestRunSpec:
 
     def test_algorithm_freeform(self):
         spec = RunSpec(algorithm={"ucb": {"timerank": {"c": 0.5}}})
-        assert spec.algorithm["ucb"]["timerank"]["c"] == pytest.approx(0.5)
+        dumped = spec.algorithm.model_dump()
+        assert dumped["ucb"]["timerank"]["c"] == pytest.approx(0.5)
 
     def test_invalid_type_raises(self):
         from pydantic import ValidationError
