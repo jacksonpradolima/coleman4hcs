@@ -58,13 +58,13 @@ class Environment:
     evaluation_metric : EvaluationMetric
         The evaluation metric used to assess prioritization performance.
     results_config : dict or None
-        Configuration for the results sink (from ``config.toml [results]``).
+        Configuration for the results sink (from the ``results`` section of the spec).
         When ``None``, a ``NullSink`` is used.
     checkpoint_config : dict or None
-        Configuration for checkpoints (from ``config.toml [checkpoint]``).
+        Configuration for checkpoints (from the ``checkpoint`` section of the spec).
         When ``None``, a ``NullCheckpointStore`` is used.
     telemetry_config : dict or None
-        Configuration for telemetry (from ``config.toml [telemetry]``).
+        Configuration for telemetry (from the ``telemetry`` section of the spec).
         When ``None``, a ``NoOpTelemetry`` is used.
 
     Attributes

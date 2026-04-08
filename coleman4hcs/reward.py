@@ -126,21 +126,18 @@ class TimeRankReward(Reward):
         # Detection ranks (convert to 0-based index)
         failing_indices = np.array(reward.detection_ranks) - 1
 
+        scheduled_testcases = reward.scheduled_testcases
+
         # Rewards for scheduled test cases
-        rewards = np.zeros(len(reward.scheduled_testcases))
+        rewards = np.zeros(len(scheduled_testcases))
         rewards[failing_indices] = 1  # Assign reward for failing test cases
         rewards = np.cumsum(rewards)  # Accumulate rewards for passing test cases
         rewards[failing_indices] = num_failing_tests  # Assign full reward to failing test cases
 
-        # Normalize the rewards to scale them between 0 and 1.
-        # This ensures that the rewards are proportionate to the number of failing test cases,
-        # aligning with the equation's intent to penalize non-failing test cases scheduled before failing ones.
-        normalized_rewards = [
-            rewards[reward.scheduled_testcases.index(tc)] / num_failing_tests
-            if tc in reward.scheduled_testcases
-            else 0.0
-            for tc in last_prioritization
-        ]
+        normalized_reward_by_testcase = dict(
+            zip(scheduled_testcases, (rewards / num_failing_tests).tolist(), strict=False)
+        )
+        normalized_rewards = [normalized_reward_by_testcase.get(test_case, 0.0) for test_case in last_prioritization]
 
         return normalized_rewards
 

@@ -13,14 +13,13 @@ including the full observability stack.
 
 1. Python 3.14 + uv + all dependencies (including telemetry & ClickHouse extras) are installed
 2. Pre-commit hooks are configured
-3. `.env` is seeded from `.env.example`
-4. The **observability stack** (OTel Collector + Grafana) starts via Docker-in-Docker
-5. **Telemetry is enabled** in `config.toml` so metrics flow to Grafana immediately
+3. The **observability stack** (OTel Collector + Grafana) starts via Docker-in-Docker
+4. **Telemetry** can be enabled via the `telemetry/local` pack in `run.yaml`
 
 After the container builds, just run your experiment:
 
 ```bash
-uv run python main.py
+coleman run --config run.yaml
 # Open http://localhost:3000 → Grafana shows metrics in real-time
 ```
 
@@ -65,17 +64,70 @@ make pre-commit-install
 
 ## Configuration
 
-1. Copy the example environment file (DevContainer does this automatically):
+Coleman4HCS uses YAML configuration files with typed Pydantic v2 models.
+You can compose configs with **config packs** and override specific settings
+inline.
 
-```bash
-cp .env.example .env
+### Quick config (YAML + packs)
+
+Create a YAML config file:
+
+```yaml
+# my-experiment.yaml
+packs:
+  - policy/linucb
+  - reward/rnfail
+  - results/parquet
+  - telemetry/off
+
+experiment:
+  datasets: ["alibaba@druid"]
+
+execution:
+  independent_executions: 30
 ```
 
-2. Edit `.env` and set `CONFIG_FILE=./config.toml`.
+Run with the `coleman` CLI:
 
-3. Customise `config.toml` to select datasets, policies, and reward functions.
+```bash
+coleman run --config my-experiment.yaml
+```
+
+Or use the library API:
+
+```python
+from coleman4hcs.api import run, load_spec
+
+spec = load_spec("my-experiment.yaml")
+result = run(spec)
+print(result.run_id, result.artifacts_dir)
+```
+
+See the [Configuration guide](configuration.md) for the full schema
+reference, config packs, sweep engine, and determinism contract.
 
 ## Running Experiments
+
+### Using the `coleman` CLI (recommended)
+
+```bash
+# Single run
+coleman run --config my-experiment.yaml
+
+# Parameter sweep
+coleman sweep --config my-experiment.yaml \
+    --grid algorithm.ucb.rnfail.c=0.1,0.3,0.5 \
+    --grid execution.seed=range(0,10) \
+    --workers 4
+
+# Dry-run (preview specs without executing)
+coleman sweep --config my-experiment.yaml \
+    --grid execution.seed=range(0,5) \
+    --dry-run
+```
+
+Results are written to `./runs/<run_id>/` with `spec.resolved.json` and
+`provenance.json` alongside the experiment data.
 
 ### DevContainer: just run it
 
@@ -83,78 +135,10 @@ If you're in the DevContainer, the observability stack is already running and
 telemetry is enabled.  Just run:
 
 ```bash
-uv run python main.py
+coleman run --config my-experiment.yaml
 # Results    → ./runs/       (Parquet)
 # Checkpoints → ./checkpoints/
 # Metrics    → http://localhost:3000 (Grafana, live)
-```
-
-### Local setup: choose your level
-
-**Basic (Parquet only, no services needed):**
-
-```bash
-uv run python main.py
-```
-
-Results appear in `./runs/` (Parquet).
-
-Start an interactive workflow first:
-
-```bash
-# Python REPL
-uv run python
-
-# IPython REPL (richer shell for exploration)
-uv run ipython
-
-# Notebook/app workflow (marimo)
-uv run marimo edit docs/workflow.py
-```
-
-Then import DuckDB once and run your queries incrementally:
-
-```python
-import duckdb
-con = duckdb.connect("analysis.duckdb")
-con.execute("""
-    CREATE OR REPLACE VIEW experiment_results AS
-    SELECT *
-    FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
-""")
-
-con.sql("""
-    SELECT policy, AVG(fitness) AS avg_napfd
-    FROM experiment_results
-    GROUP BY policy ORDER BY avg_napfd DESC
-""")
-```
-
-For iterative analysis, `ipython` or `marimo` is usually more comfortable.
-
-**With telemetry (OTel Collector + Grafana):**
-
-```bash
-# 1. Start the stack
-cd examples/observability && docker compose up -d
-
-# 2. Install telemetry extras
-uv pip install coleman4hcs[telemetry]
-
-# 3. Enable in config.toml → [telemetry] enabled = true
-
-# 4. Run
-uv run python main.py
-# Grafana → http://localhost:3000
-```
-
-**With ClickHouse (optional results sink):**
-
-```bash
-cd examples/observability && docker compose --profile clickhouse up -d
-uv pip install coleman4hcs[clickhouse]
-# config.toml → [results] sink = "clickhouse"
-uv run python main.py
 ```
 
 ## Checking Final Results
@@ -197,7 +181,7 @@ before running again:
 rm -rf ./runs
 
 # Option 2: keep old runs, but write new ones elsewhere
-# config.toml -> [results] out_dir = "./runs-new"
+# Set results.out_dir: "./runs-new" in your run.yaml
 
 # Option 3: clean checkpoints too, if you do not want recovery state reused
 rm -rf ./checkpoints
@@ -205,7 +189,7 @@ rm -rf ./checkpoints
 
 ### Default Parquet output
 
-After `uv run python main.py`, inspect the partitioned Parquet dataset:
+After `coleman run --config run.yaml`, inspect the partitioned Parquet dataset:
 
 ```bash
 find ./runs -name '*.parquet' | head
@@ -350,10 +334,11 @@ If you want a long-lived analytical store instead of Parquet files, switch the
 
 #### Enable it
 
-```toml
-[results]
-enabled = true
-sink = "clickhouse"
+```yaml
+# In your run.yaml, override the results section:
+results:
+  enabled: true
+  sink: clickhouse
 ```
 
 Run the service locally:
@@ -500,7 +485,7 @@ To inspect recovery state:
 find ./checkpoints -name 'progress_*.json' -maxdepth 3 -print
 ```
 
-When `uv run python main.py` is started again with the same configuration,
+When `coleman run --config run.yaml` is started again with the same configuration,
 the framework loads the last saved checkpoint and resumes from the next step
 instead of replaying completed builds.
 
@@ -524,31 +509,12 @@ checkpoints, export, and analysis, open the marimo notebook example in
 !!! note "DevContainer vs. local"
     In the DevContainer, the OTel Collector + Grafana start automatically
     and telemetry is enabled.  Locally, you start them manually with
-    `docker compose up -d` and set `[telemetry] enabled = true`.
+    `docker compose up -d` and use the `telemetry/local` pack in your `run.yaml`.
 
-## Quick Reference: `config.toml` Sections
+## Quick Reference: Configuration
 
-```toml
-# ── Results ─────────────────────────────────────────────
-[results]
-enabled = true            # false → NullSink (discard all)
-sink = "parquet"          # "parquet" (default) | "clickhouse"
-out_dir = "./runs"        # Parquet output directory
-batch_size = 1000         # Rows buffered before flush
-top_k_prioritization = 0  # 0 = store hash only; >0 = keep top-k
-
-# ── Checkpoints ─────────────────────────────────────────
-[checkpoint]
-enabled = true
-interval = 50000          # Steps between saves
-base_dir = "checkpoints"
-
-# ── Telemetry ───────────────────────────────────────────
-[telemetry]
-enabled = false                          # DevContainer auto-enables this
-otlp_endpoint = "http://localhost:4318"  # OTel Collector HTTP endpoint
-service_name = "coleman4hcs"
-```
+For the complete YAML schema, config packs, sweep engine, and determinism
+contract, see the [Configuration guide](configuration.md).
 
 See the [Setup & Architecture](setup.md) guide for a deeper explanation
 of each layer and the [Observability guide](observability.md) for metric

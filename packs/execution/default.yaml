@@ -1,0 +1,4 @@
+execution:
+  parallel_pool_size: 10
+  independent_executions: 10
+  verbose: false

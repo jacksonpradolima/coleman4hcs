@@ -1,0 +1,21 @@
+# Coleman4HCS — Default Run Configuration
+#
+# This file uses config packs for a clean, modular setup.
+# Each pack provides defaults for one concern; inline overrides
+# can be added below to customise any setting.
+#
+# Run with:
+#   coleman run --config run.yaml
+#   # or
+#   make run
+
+packs:
+  - execution/default
+  - experiment/alibaba_druid
+  - algorithm/defaults
+  - results/parquet
+  - checkpoint/default
+  - telemetry/off
+  - reward/rnfail
+  - hcs/off
+  - contextual/default

@@ -4,7 +4,7 @@ This page describes the **optional** local observability stack for
 debugging and profiling Coleman4HCS experiments.
 
 !!! note "Framework-first guarantee"
-    `python main.py` works without Docker or any of these services.
+    `coleman run --config run.yaml` works without Docker or any of these services.
     The observability stack is **optional** for local installs, but
     **enabled automatically** in the DevContainer.
 
@@ -15,12 +15,12 @@ The container automatically:
 
 1. Installs the `telemetry` and `clickhouse` pip extras
 2. Starts OTel Collector + Prometheus + Grafana + ClickHouse via Docker Compose
-3. Enables `[telemetry] enabled = true` in `config.toml`
+3. Telemetry can be enabled via the `telemetry/local` pack in `run.yaml`
 
 Just run your experiment:
 
 ```bash
-uv run python main.py
+coleman run --config run.yaml
 # Open http://localhost:3000 → Grafana shows metrics in real-time
 ```
 
@@ -80,12 +80,12 @@ docker compose up -d
 # Install telemetry extras
 uv pip install coleman4hcs[telemetry]
 
-# Enable telemetry in config.toml:
-#   [telemetry]
-#   enabled = true
+# Enable telemetry — use the telemetry/local pack in your run.yaml:
+#   packs:
+#     - telemetry/local
 
 # Run your experiment
-uv run python main.py
+coleman run --config run.yaml
 ```
 
 ## Endpoints

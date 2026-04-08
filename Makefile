@@ -56,7 +56,7 @@ format-check: ensure-uv ## Check ruff formatting without changing files
 typecheck: ensure-uv ## Run pyright and ty type checkers
 	# Run both static type checkers
 	$(UV) run --python $(PYTHON) --no-project pyright coleman4hcs
-	$(UV) run --python $(PYTHON) --no-project ty check coleman4hcs main.py tests
+	$(UV) run --python $(PYTHON) --no-project ty check coleman4hcs tests
 
 interrogate: ensure-uv ## Check docstring coverage with interrogate
 	$(UV) run interrogate coleman4hcs/ -v
@@ -101,9 +101,9 @@ build: ensure-uv ## Build the package
 
 # ——— Run ————————————————————————————————————————————————
 
-run: ensure-uv ## Remove runs/checkpoints and execute main.py
+run: ensure-uv ## Remove runs/checkpoints and execute coleman run
 	rm -rf runs/ checkpoints/
-	$(UV) run python main.py
+	$(UV) run coleman run --config run.yaml
 
 # ——— Pre-commit ———————————————————————————————————————————
 

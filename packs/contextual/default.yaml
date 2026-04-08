@@ -1,0 +1,11 @@
+contextual_information:
+  config:
+    previous_build:
+      - Duration
+      - NumRan
+      - NumErrors
+  feature_group:
+    feature_group_name: time_execution
+    feature_group_values:
+      - Duration
+      - NumErrors

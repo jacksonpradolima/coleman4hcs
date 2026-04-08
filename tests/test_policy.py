@@ -564,6 +564,34 @@ def test_frrmab_choose_all_accepts_history_after_credit_assignment(dummy_agent):
     assert set(chosen_actions) == {"A1", "A2", "A3"}
 
 
+def test_frrmab_credit_assignment_handles_zero_decay_sum(dummy_agent):
+    """Regression test: zero total reward must not produce NaN during FRR normalization."""
+    policy = FRRMABPolicy(c=0.3, decayed_factor=0.9)
+    dummy_agent.policy = policy
+    dummy_agent.actions = pl.DataFrame(
+        {
+            "Name": ["A1", "A2", "A3"],
+            "ActionAttempts": [1.0, 1.0, 1.0],
+            "ValueEstimates": [0.0, 0.0, 0.0],
+            "Q": [0.0, 0.0, 0.0],
+        }
+    )
+    dummy_agent.history = pl.DataFrame(
+        {
+            "Name": ["A1", "A2", "A3"],
+            "ActionAttempts": [1.0, 1.0, 1.0],
+            "ValueEstimates": [0.0, 0.0, 0.0],
+            "T": [1, 2, 3],
+        }
+    )
+
+    policy.credit_assignment(dummy_agent)
+
+    q_values = policy.history["Q"].to_numpy()
+    assert np.isfinite(q_values).all()
+    assert np.isclose(policy.history["ValueEstimates"].to_numpy(), 0.0).all()
+
+
 @pytest.mark.benchmark(group="policy")
 def test_swlinucb_policy_choose_all_performance(sliding_window_contextual_agent, benchmark):
     """

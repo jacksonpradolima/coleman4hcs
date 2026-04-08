@@ -1,0 +1,28 @@
+algorithm:
+  frrmab:
+    window_sizes: [100]
+    timerank:
+      c: 0.5
+    rnfail:
+      c: 0.3
+  ucb:
+    timerank:
+      c: 0.5
+    rnfail:
+      c: 0.3
+  epsilongreedy:
+    timerank:
+      epsilon: 0.5
+    rnfail:
+      epsilon: 0.3
+  linucb:
+    timerank:
+      alpha: 0.5
+    rnfail:
+      alpha: 0.5
+  swlinucb:
+    window_sizes: [100]
+    timerank:
+      alpha: 0.5
+    rnfail:
+      alpha: 0.5

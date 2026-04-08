@@ -62,6 +62,13 @@ In order to use this `version`, use any Contextual-MAB available, for instance, 
     - [Solving the Test Case Prioritization using Multi-Armed Bandit Algorithms](#solving-the-test-case-prioritization-using-multi-armed-bandit-algorithms)
 - [Getting started](#getting-started)
 - [Citation](#citation)
+- [Quick start](#quick-start)
+  - [Library API](#library-api)
+  - [CLI](#cli)
+  - [Config packs](#config-packs)
+  - [Sweep engine](#sweep-engine)
+  - [Deterministic run_id](#deterministic-run_id)
+  - [Provenance](#provenance)
 - [Installation](#installation)
 - [Development](#development)
 - [Architecture: Results, Checkpoints & Telemetry](#architecture-results-checkpoints--telemetry)
@@ -107,9 +114,177 @@ If this tool contributes to a project which leads to a scientific publication, I
 
 ```
 
+# Quick start
+
+Coleman4HCS ships a **typed, library-first experiment system** with
+YAML configs, composable config packs, a sweep engine, and deterministic
+`run_id` hashing.  External projects can `pip install coleman4hcs` and
+drive experiments programmatically **or** via the `coleman` CLI — no repo
+checkout required.
+
+> **Breaking change** — the `CONFIG_FILE` environment variable, raw TOML
+> dict workflow, and `main.py` entry-point are removed.  Configuration is now
+> handled via YAML configs, typed Pydantic v2 models, config packs, and
+> the `coleman` CLI.
+
+## Library API
+
+```python
+from coleman4hcs.spec import RunSpec, SweepSpec, SweepAxis, compute_run_id
+from coleman4hcs.api  import run, run_many, sweep
+
+# 1. Define a spec
+spec = RunSpec(
+    experiment={"datasets": ["alibaba@druid"], "policies": ["UCB"], "rewards": ["RNFail"]},
+    results={"out_dir": "./runs"},
+)
+
+# 2. Deterministic run_id — same config always produces the same ID
+assert compute_run_id(spec) == compute_run_id(spec)
+
+# 3. Single run
+result = run(spec)
+print(result.run_id, result.artifacts_dir)
+
+# 4. Parameter sweep (grid × seeds)
+specs = sweep(spec, SweepSpec(
+    axes=[SweepAxis(mode="grid", params={"algorithm.ucb.rnfail.c": [0.1, 0.3, 0.5]})],
+    seeds=[0, 1, 2],
+))  # 3 values × 3 seeds = 9 specs
+
+results = run_many(specs, max_workers=4)
+```
+
+| Function | Description |
+|----------|-------------|
+| `run(spec)` | Execute a single experiment from a resolved `RunSpec` |
+| `run_many(specs, max_workers=)` | Execute multiple specs, optionally in parallel |
+| `sweep(base, sweep_spec)` | Expand a base spec × sweep definition into concrete specs |
+| `load_spec(path)` | Load and validate a `RunSpec` from YAML (with pack resolution) |
+| `save_resolved(spec, path)` | Persist a resolved spec as canonical JSON |
+
+## CLI
+
+The `coleman` console script is installed automatically with the package:
+
+```bash
+# Execute a single run
+coleman run --config run.yaml
+
+# Parameter sweep (grid mode)
+coleman sweep --config base.yaml \
+    --grid algorithm.ucb.rnfail.c=0.1,0.3,0.5 \
+    --grid execution.seed=range(0,20) \
+    --workers 4
+
+# Dry-run — print generated specs without executing
+coleman sweep --config base.yaml --grid execution.seed=range(0,5) --dry-run
+
+# Validate a config and optionally write the resolved spec
+coleman validate --config base.yaml --resolve resolved.json
+```
+
+## Config packs
+
+Config packs are composable YAML fragments under `packs/`.  Reference them
+with the `packs` key in your config and inline overrides win:
+
+```yaml
+# my-experiment.yaml
+packs:
+  - policy/linucb
+  - reward/rnfail
+  - results/parquet
+  - telemetry/off
+
+experiment:
+  datasets: ["alibaba@druid"]
+  policies: ["LinUCB"]
+
+execution:
+  independent_executions: 30
+```
+
+Shipped starter packs:
+
+| Pack | Category | Contents |
+|------|----------|----------|
+| `policy/linucb` | Policy | LinUCB with default alpha values |
+| `reward/rnfail` | Reward | RNFail reward function |
+| `runtime/local` | Runtime | Single-process local execution |
+| `results/parquet` | Results | Parquet sink with defaults |
+| `telemetry/off` | Telemetry | Telemetry disabled |
+
+## Sweep engine
+
+The sweep engine supports **grid** (Cartesian product) and **zip** (paired)
+modes, with optional seed replication:
+
+```python
+from coleman4hcs.spec import SweepSpec, SweepAxis, expand_sweep, RunSpec
+
+base = RunSpec()
+sweep_spec = SweepSpec(
+    axes=[
+        SweepAxis(mode="grid", params={
+            "algorithm.ucb.rnfail.c": [0.1, 0.3, 0.5],
+            "execution.parallel_pool_size": [1, 4],
+        }),
+    ],
+    seeds=[0, 1, 2],
+)
+specs = expand_sweep(base, sweep_spec)
+# 3 × 2 × 3 seeds = 18 specs, deterministic order
+```
+
+- **Grid mode** — Cartesian product of all parameter lists
+- **Zip mode** — paired lists (must have equal length, raises `ValueError` otherwise)
+- **Seeds** — each base spec is replicated per seed; the seed is stored on `ExecutionSpec.seed` and affects `run_id`
+
+## Deterministic run_id
+
+Every `RunSpec` hashes to a deterministic 12-character identifier:
+
+```
+run_id = sha256(canonical_json(resolved_spec))[:12]
+```
+
+- **Canonical JSON**: sorted keys, compact separators (`json.dumps(sort_keys=True, separators=(",", ":"))`)
+- **Same config → same `run_id` → same output directory**
+- Provenance files and artifacts are written to `<out_dir>/<run_id>/`
+
+## Provenance
+
+Each run persists:
+
+| File | Contents |
+|------|----------|
+| `spec.resolved.json` | The fully resolved `RunSpec` as canonical JSON |
+| `provenance.json` | Git commit, dirty flag, Python version, `uv.lock` hash |
+
 # Installation
 
-To use this tool, follow these steps:
+## As a library (recommended for new projects)
+
+Install Coleman4HCS as a dependency in your project:
+
+```bash
+pip install coleman4hcs
+```
+
+Or with optional extras:
+
+```bash
+pip install coleman4hcs[telemetry]     # OpenTelemetry SDK
+pip install coleman4hcs[clickhouse]    # ClickHouse results sink
+```
+
+Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
+drive experiments — no repo checkout required.
+
+## From source (for development)
+
+To develop or modify the tool, follow these steps:
 
 1. Clone the repository:
 
@@ -132,15 +307,12 @@ uv sync
 uv pip install -e .
 ```
 
-5. Copy the `.env.example` file to `.env`:
+5. Create a YAML config file (see [Quick start](#quick-start) for
+   the config format) and run with the `coleman` CLI:
 
-```shell
-cp .env.example .env
+```bash
+coleman run --config my-experiment.yaml
 ```
-
-6. Edit the `.env` file and provide values for the following environment variables:
-
--   `CONFIG_FILE`: The path to your configuration file (e.g., `./config.toml`).
 
 # Development
 
@@ -164,14 +336,13 @@ The fastest way to start developing is with a [DevContainer](https://containers.
 
 1. Python 3.14 + uv + all dependencies (including telemetry & ClickHouse extras) are installed *(on create)*
 2. Pre-commit hooks are configured *(on create)*
-3. `.env` is seeded from `.env.example` *(on create)*
-4. The **observability stack** (OTel Collector + Prometheus + Grafana + ClickHouse) starts via Docker-in-Docker *(on every start)*
-5. **Telemetry is enabled** in `config.toml` so metrics flow to Grafana immediately *(on every start)*
+3. The **observability stack** (OTel Collector + Prometheus + Grafana + ClickHouse) starts via Docker-in-Docker *(on every start)*
+4. **Telemetry** can be enabled via the `telemetry/local` pack *(swap `telemetry/off` for `telemetry/local` in `run.yaml`)*
 
 After the container builds, just run your experiment:
 
 ```bash
-uv run python main.py
+coleman run --config run.yaml
 ```
 
 Grafana is already live at http://localhost:3000 — open it in your browser to see metrics in real-time.
@@ -208,12 +379,12 @@ make docs-serve     # preview docs locally
 | 9000 | ClickHouse (native) | — |
 
 > **ClickHouse sink remains optional.** The service is running in DevContainer,
-> but you still need `sink = "clickhouse"` in `config.toml` under `[results]`
-> if you want results persisted to ClickHouse instead of Parquet.
+> but you still need `sink: "clickhouse"` in your results config or use
+> a ClickHouse results pack if you want results persisted to ClickHouse instead of Parquet.
 
 # Architecture: Results, Checkpoints & Telemetry
 
-Coleman4HCS is **framework-first**: `python main.py` works with zero external
+Coleman4HCS is **framework-first**: `coleman run --config run.yaml` works with zero external
 services.  All monitoring is split into three independent layers that can be
 enabled or disabled individually:
 
@@ -228,28 +399,22 @@ near-zero overhead (`NullSink`, `NullCheckpointStore`, `NoOpTelemetry`).
 
 ## Configuration
 
-All settings live in `config.toml`.  The new sections are:
+All settings live in `run.yaml` and composable config packs under `packs/`.
+See [Configuration](docs/configuration.md) for the full YAML schema reference.
 
-```toml
-# ── Results (Fact data) ─────────────────────────────────────────────
-[results]
-enabled = true            # false → NullSink (discard all results)
-sink = "parquet"          # "parquet" (default) | "clickhouse" (requires extras)
-out_dir = "./runs"        # Root directory for partitioned Parquet output
-batch_size = 1000         # Rows buffered before flush
-top_k_prioritization = 0  # 0 = store hash only; >0 = also keep top-k entries
+```yaml
+# run.yaml — default configuration using packs
+packs:
+  - execution/default        # parallel_pool_size: 10, independent_executions: 10
+  - experiment/alibaba_druid # datasets, rewards, policies
+  - algorithm/defaults       # FRRMAB, UCB, EpsilonGreedy, LinUCB, SWLinUCB params
+  - results/parquet          # Parquet sink with default settings
+  - checkpoint/default       # checkpoint enabled, interval: 50000
+  - telemetry/off            # telemetry disabled (swap for telemetry/local to enable)
 
-# ── Checkpoints (Resume / Recovery) ────────────────────────────────
-[checkpoint]
-enabled = true
-interval = 50000          # Steps between checkpoint saves
-base_dir = "checkpoints"
-
-# ── Telemetry (Observability) ──────────────────────────────────────
-[telemetry]
-enabled = false                          # true → requires extras + running Collector
-otlp_endpoint = "http://localhost:4318"  # OTel Collector HTTP endpoint
-service_name = "coleman4hcs"
+# Inline overrides (applied on top of packs):
+# execution:
+#   parallel_pool_size: 4
 ```
 
 ## Optional extras
@@ -286,7 +451,7 @@ GROUP BY reward_function;
 
 # Observability
 
-> **Framework-first guarantee:** `python main.py` works without Docker or
+> **Framework-first guarantee:** `coleman run --config run.yaml` works without Docker or
 > any of these services.  The observability stack is **optional** for local
 > installs, but **enabled automatically** in the DevContainer.
 
@@ -299,14 +464,14 @@ If you develop inside the DevContainer, **everything is already running**.
 The post-start hook automatically:
 
 1. Starts the OTel Collector + Prometheus + Grafana + ClickHouse via Docker Compose
-2. Enables `[telemetry] enabled = true` in `config.toml`
+2. Telemetry can be enabled via the `telemetry/local` pack in `run.yaml`
 
 The `telemetry` and `clickhouse` pip extras are installed during container creation.
 
 Just run your experiment and open Grafana:
 
 ```bash
-uv run python main.py
+coleman run --config run.yaml
 # Open http://localhost:3000 → metrics appear in real-time
 ```
 
@@ -324,12 +489,11 @@ docker compose up -d
 # 2. Install telemetry extras
 uv pip install coleman4hcs[telemetry]
 
-# 3. Enable telemetry in config.toml
-#    [telemetry]
-#    enabled = true
+# 3. Enable telemetry in your run.yaml:
+#    Replace telemetry/off with telemetry/local in the packs list
 
 # 4. Run experiments — metrics flow to Grafana
-uv run python main.py
+coleman run --config run.yaml
 ```
 
 ## Port reference
@@ -370,16 +534,16 @@ cd examples/observability
 docker compose --profile clickhouse up -d
 ```
 
-Then switch the results sink in `config.toml`:
+Then switch the results sink in your `run.yaml`:
 
-```toml
-[results]
-sink = "clickhouse"
+```yaml
+results:
+  sink: clickhouse
 ```
 
 ```bash
 # Run experiments — results go to the coleman_results table
-uv run python main.py
+coleman run --config run.yaml
 ```
 
 The ClickHouse extras are already installed in the DevContainer.  For local
@@ -429,7 +593,7 @@ what kind of information can be used!
 
 ```mermaid
 flowchart TD
-    A[Config files and env vars: config.toml + .env] --> B[main.py orchestrator]
+    A[YAML config + packs: run.yaml] --> B[coleman CLI / library API]
     C["features-engineered.csv (data-variants.csv for HCS)"] --> D[Scenario Provider]
     B --> D
 
@@ -455,73 +619,31 @@ flowchart TD
 
 To use COLEMAN, you need to provide the necessary configurations. This includes setting up environment variables and configuration files.
 
-Configure the utility by editing the `config.toml` file located in the project's root directory.
-The file contains various sections for configuring Execution, Experiment, and Algorithms.
-Modify the values as per your project's requirements. Here's an example of the config.toml file:
+Configure the utility by editing the `run.yaml` file located in the project's root directory.
+The file uses composable config packs for a clean, modular setup — each pack provides
+defaults for one concern.  Add inline overrides below the `packs:` list to customise settings.
 
-```toml
-[execution]
-# Execution Configutation
-parallel_pool_size = 10
-independent_executions = 30
+Here's an example `run.yaml` file:
 
-[experiment]
-# Experiment Configuration
-scheduled_time_ratio = [0.1, 0.5, 0.8]
-datasets_dir = "example"
-#datasets = ["fakedata"]
-datasets = ["square@retrofit"]
+```yaml
+# run.yaml — Default Run Configuration
+packs:
+  - execution/default        # parallel_pool_size: 10, independent_executions: 10
+  - experiment/alibaba_druid # datasets, rewards, policies
+  - algorithm/defaults       # FRRMAB, UCB, EpsilonGreedy, LinUCB, SWLinUCB params
+  - results/parquet          # Parquet sink
+  - checkpoint/default       # checkpoint enabled
+  - telemetry/off            # telemetry disabled
+  - reward/rnfail            # RNFail reward
+  - hcs/off                  # HCS disabled
+  - contextual/default       # contextual information defaults
 
-# WTS Example
-#datasets_dir = "examples/core@dune-common"
-#datasets = ["dune@total"]
-
-# VTS Example
-#datasets_dir = "examples/core@dune-common"
-#datasets = ["dune@debian_10 clang-7-libcpp-17", "dune@debian_11 gcc-10-20", "dune@ubuntu_20_04 clang-10-20"]
-
-experiment_dir = "results/experiments/"
-rewards = ["RNFail", "TimeRank"]
-policies = ['Random', 'Greedy', 'EpsilonGreedy', 'UCB', 'FRRMAB', 'LinUCB', 'SWLinUCB']
-
-[algorithm.frrmab]
-# Algorithm Configuration for FRRMAB
-window_sizes = [100]
-timerank = { c = 0.5 }
-rnfail = { c = 0.3 }
-
-[algorithm.ucb]
-# Algorithm Configuration for UCB
-timerank = { c = 0.5 }
-rnfail = { c = 0.3 }
-
-[algorithm.epsilongreedy]
-# Algorithm Configuration for Epsilon-Greedy
-timerank = { epsilon = 0.5 }
-rnfail = { epsilon = 0.3 }
-
-[algorithm.linucb]
-# Algorithm Configuration for LinUCB
-timerank = { alpha = 0.5 }
-rnfail = { alpha = 0.5 }
-
-[algorithm.swlinucb]
-# Algorithm Configuration for SWLinUCB
-window_sizes = [100]
-timerank = { alpha = 0.5 }
-rnfail = { alpha = 0.5 }
-
-[hcs_configuration]
-# HCS Configuration
-wts_strategy = false
-
-[contextual_information.config]
-previous_build = ['Duration', 'NumRan', 'NumErrors']
-
-[contextual_information.feature_group]
-feature_group_name = "time_execution"
-feature_group_values = ['Duration', 'NumErrors']
-
+# Inline overrides (applied on top of packs):
+execution:
+  parallel_pool_size: 4
+experiment:
+  datasets:
+    - square@retrofit
 ```
 
 **where:**
@@ -579,15 +701,15 @@ Note: you can execute all the MAB and Contextual MAB policies together if you ha
 
 ## Running for Non-HCS System
 
-To execute **COLEMAN** for a non-HCS system, first update the variables in the provided **TOML** file:
+To execute **COLEMAN** for a non-HCS system, first update the experiment settings in your `run.yaml` (or override inline):
 
-- `datasets_dir = "examples"`
-- `datasets = ["fakedata"]`
+- `datasets_dir: examples`
+- `datasets: [fakedata]`
 
 Subsequently, you can run the program with the following command:
 
 ```
-uv run python main.py
+coleman run --config run.yaml
 ```
 
 ## Running for an HCS system
@@ -605,9 +727,9 @@ alongside the `wts_strategy` variable. For clarity, please inspect our example d
 ### Whole Test Set Strategy
 
 The **WTS** strategy prioritizes the test set composed by the union of the test cases of all variants.
-To employ this strategy, modify the **TOML** file as follows:
+To employ this strategy, set in your `run.yaml`:
 
-- `wts_strategy = True`;
+- `hcs_configuration.wts_strategy: true`
 
 For a practical demonstration, set `datasets = ["dune@total"]`
 (a dataset amalgamating test cases from all variants)
@@ -618,9 +740,9 @@ More details on the dataset are available under [Datasets](#datasets).
 ### Variant Test Set Strategy
 
 Contrastingly, the **VTS** approach evaluates each variant as an isolated system.
-To harness this strategy, adjust the **TOML** file accordingly:
+To harness this strategy, set in your `run.yaml`:
 
-- `wts_strategy = False`;
+- `hcs_configuration.wts_strategy: false`
 
 As example, use `datasets = ["dune@debian_10 clang-7-libcpp-17", "dune@debian_11 gcc-10-20",
 "dune@ubuntu_20_04 clang-10-20"]` and `datasets_dir = "examples/core@dune-common"`

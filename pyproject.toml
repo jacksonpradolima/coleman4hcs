@@ -11,11 +11,10 @@ dependencies = [
     "numpy",
     "polars",
     "pyarrow",
-    "python-dotenv",
     "scipy",
     "scikit-posthocs",
-    "toml",
-    "tomli",
+    "pydantic>=2.12.5",
+    "pyyaml>=6.0.3",
 ]
 
 [project.optional-dependencies]
@@ -56,6 +55,9 @@ clickhouse = [
     "clickhouse-connect",
 ]
 
+[project.scripts]
+coleman = "coleman4hcs.cli:main"
+
 [project.urls]
 homepage = "https://github.com/jacksonpradolima/coleman4hcs"
 repository = "https://github.com/jacksonpradolima/coleman4hcs"
@@ -85,6 +87,13 @@ pythonVersion = "3.14"
 typeCheckingMode = "basic"
 
 [tool.pytest.ini_options]
+addopts = [
+    "--durations=25",
+    "--durations-min=0.05",
+    "--benchmark-min-rounds=1",
+    "--benchmark-max-time=0.05",
+    "--benchmark-sort=mean",
+]
 markers = [
     "performance: Mark a test as a performance benchmark.",
 ]
