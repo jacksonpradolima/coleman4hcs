@@ -53,7 +53,7 @@ services:
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
-      GF_INSTALL_PLUGINS: "grafana-clickhouse-datasource"
+      GF_INSTALL_PLUGINS: "grafana-clickhouse-datasource 4.11.2"
     volumes:
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro

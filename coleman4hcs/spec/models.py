@@ -205,7 +205,7 @@ class TelemetrySpec(BaseModel):
     otlp_endpoint: str = "http://localhost:4318"
     service_name: str = "coleman4hcs"
     export_interval_millis: int = 5000
-    resource_attributes: dict[str, str] = {}
+    resource_attributes: dict[str, str] = Field(default_factory=dict)
 
 
 class RunSpec(BaseModel):

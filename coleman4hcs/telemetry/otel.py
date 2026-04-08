@@ -97,9 +97,8 @@ class Telemetry:
                 "opentelemetry SDK is required for Telemetry. Install it with: pip install coleman4hcs[telemetry]"
             )
 
-        attrs: dict[str, str] = {"service.name": service_name}
-        if resource_attributes:
-            attrs.update(resource_attributes)
+        attrs: dict[str, str] = dict(resource_attributes or {})
+        attrs["service.name"] = service_name
         resource = Resource.create(attrs)
 
         # Metrics
