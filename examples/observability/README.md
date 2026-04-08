@@ -59,7 +59,8 @@ and analysis, see [docs/workflow.py](docs/workflow.py).
 ## With ClickHouse
 
 ```bash
-OTEL_COLLECTOR_CONFIG=otel-collector-config-clickhouse.yaml \
+GF_INSTALL_PLUGINS="grafana-clickhouse-datasource 4.11.2" \
+  OTEL_COLLECTOR_CONFIG=otel-collector-config-clickhouse.yaml \
   docker compose --profile clickhouse up -d
 pip install coleman4hcs[telemetry,clickhouse]
 ```
