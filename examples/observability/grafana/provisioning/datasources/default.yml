@@ -28,4 +28,4 @@ datasources:
       traces:
         defaultDatabase: default
         defaultTable: otel_traces
-        durationUnit: ns
+        durationUnit: ns  # OTel span durations are in nanoseconds
