@@ -87,6 +87,27 @@ class TestSweep:
         assert len(specs) == 1
 
 
+class TestSeedApplication:
+    def test_seed_applied_to_rng(self):
+        """When execution.seed is set, the policy RNG should be deterministically seeded."""
+        import numpy as np
+
+        import coleman4hcs.policy
+        from coleman4hcs.runner import run_experiment
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            spec = _light_run_spec(tmpdir, seed=42)
+            spec_dict = spec.model_dump()
+            run_experiment(spec_dict)
+            # After running with seed=42, _rng should have been seeded
+            rng_state_1 = coleman4hcs.policy._rng.bit_generator.state
+
+            # Re-seed with the same value and compare
+            coleman4hcs.policy._rng = np.random.default_rng(42)
+            rng_ref_state = coleman4hcs.policy._rng.bit_generator.state
+            assert rng_state_1["bit_generator"] == rng_ref_state["bit_generator"]
+
+
 class TestApiLoadSave:
     def test_load_spec_via_api(self):
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as fh:

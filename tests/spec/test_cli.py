@@ -125,3 +125,41 @@ class TestCLISweep:
             captured = capsys.readouterr()
             assert "Generated 3 specs" in captured.out
             assert "run_id=" in captured.out
+
+    def test_sweep_multiple_grid_flags(self, capsys):
+        """Multiple --grid flags accumulate all sweep dimensions."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cfg_path = os.path.join(tmpdir, "base.yaml")
+            with open(cfg_path, "w") as fh:
+                yaml.dump(
+                    {
+                        "execution": {
+                            "parallel_pool_size": 1,
+                            "independent_executions": 1,
+                        },
+                        "experiment": {
+                            "scheduled_time_ratio": [0.1],
+                            "datasets_dir": "examples",
+                            "datasets": ["fakedata"],
+                            "rewards": ["RNFail"],
+                            "policies": ["Random"],
+                        },
+                        "results": {"out_dir": tmpdir},
+                    },
+                    fh,
+                )
+            main(
+                [
+                    "sweep",
+                    "--config",
+                    cfg_path,
+                    "--grid",
+                    "execution.seed=1,2",
+                    "--grid",
+                    "execution.parallel_pool_size=1,2",
+                    "--dry-run",
+                ]
+            )
+            captured = capsys.readouterr()
+            # 2 seeds × 2 pool sizes = 4 specs
+            assert "Generated 4 specs" in captured.out

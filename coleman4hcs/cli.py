@@ -76,9 +76,10 @@ def _cmd_sweep(args: argparse.Namespace) -> None:
     base = load_spec(args.config, packs_dir=args.packs_dir)
 
     params: dict[str, list[Any]] = {}
-    for expr in args.grid or []:
-        key, vals = _parse_kv(expr)
-        params[key] = vals
+    for group in args.grid or []:
+        for expr in group:
+            key, vals = _parse_kv(expr)
+            params[key] = vals
 
     sweep_spec = SweepSpec(
         axes=[SweepAxis(mode="grid", params=params)] if params else [],
@@ -130,7 +131,7 @@ def main(argv: list[str] | None = None) -> None:
     # --- sweep ---
     p_sweep = sub.add_parser("sweep", help="Execute a parameter sweep")
     p_sweep.add_argument("--config", required=True, help="Path to base YAML config")
-    p_sweep.add_argument("--grid", nargs="*", help="Grid params: key=v1,v2 or key=range(0,10)")
+    p_sweep.add_argument("--grid", action="append", nargs="+", help="Grid params: key=v1,v2 or key=range(0,10)")
     p_sweep.add_argument("--dry-run", action="store_true", help="Print specs without executing")
     p_sweep.add_argument("--workers", type=int, default=None, help="Max parallel workers")
 
