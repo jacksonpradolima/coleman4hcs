@@ -62,7 +62,8 @@ Two gates run in CI on every pull request:
 # Xenon complexity gate
 python -m xenon --max-absolute C --max-modules B --max-average A coleman4hcs/
 
-# Radon maintainability index (MI) — fail if any module < A
+# Radon maintainability index (MI) — list modules below the threshold;
+# CI fails if this command produces output
 python -m radon mi -s -n B coleman4hcs/
 ```
 
