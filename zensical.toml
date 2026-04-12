@@ -18,6 +18,7 @@ nav = [
   { "Workflow Notebook" = "workflow.py" },
   { "Configuration" = "configuration.md" },
   { "Setup & Architecture" = "setup.md" },
+  { "Code Cost Evaluation" = "code-cost.md" },
   { "Observability" = "observability.md" },
   { "API Reference" = [{ "Overview" = "api-reference.md" }, { "Agent" = "api/agent.md" }, { "Bandit" = "api/bandit.md" }, { "Environment" = "api/environment.md" }, { "Evaluation" = "api/evaluation.md" }, { "Policy" = "api/policy.md" }, { "Reward" = "api/reward.md" }, { "Scenarios" = "api/scenarios.md" }] }
 ]

@@ -1,0 +1,35 @@
+name: Code Cost — Structural checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+jobs:
+  xenon:
+    name: Xenon complexity gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        run: |
+          curl -Ls https://astral.sh/uv/install.sh | bash
+          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv venv .venv
+          uv sync --frozen --extra dev
+
+      - name: Run Xenon complexity gate
+        run: uv run xenon --max-absolute C --max-modules B --max-average A coleman4hcs/
+
+      - name: Run Radon cyclomatic complexity
+        run: uv run radon cc -s -a coleman4hcs/
+
+      - name: Run Radon maintainability index
+        run: uv run radon mi -s coleman4hcs/

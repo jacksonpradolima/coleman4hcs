@@ -11,7 +11,7 @@ export UV_LINK_MODE ?= copy
 
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve check-precommit clean interrogate build run
+.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve check-precommit clean interrogate build run cost-structural cost-complexity cost-maintainability cost-xenon cost-profile-scalene cost-energy
 
 ## —— Coleman4HCS Makefile ——————————————————————————————————
 
@@ -108,6 +108,25 @@ run: ensure-uv ## Remove runs/checkpoints and execute coleman run
 # ——— Pre-commit ———————————————————————————————————————————
 
 check-precommit: test typecheck interrogate ## Run tests, type checks, and docstring coverage (used by pre-commit)
+
+# ——— Code Cost ————————————————————————————————————————————
+
+cost-structural: cost-complexity cost-maintainability cost-xenon ## Run all structural cost checks
+
+cost-complexity: ensure-uv ## Report cyclomatic complexity (Radon CC)
+	$(UV) run radon cc -s -a coleman4hcs/
+
+cost-maintainability: ensure-uv ## Report maintainability index (Radon MI)
+	$(UV) run radon mi -s coleman4hcs/
+
+cost-xenon: ensure-uv ## Run Xenon complexity gate (CI threshold)
+	$(UV) run xenon --max-absolute C --max-modules B --max-average A coleman4hcs/
+
+cost-profile-scalene: ensure-uv ## Profile a representative workload with Scalene
+	$(UV) run scalene -m coleman4hcs.cli --help
+
+cost-energy: ensure-uv ## Estimate energy/carbon for a representative workload
+	$(UV) run python scripts/measure_energy.py
 
 # ——— Cleanup ——————————————————————————————————————————————
 

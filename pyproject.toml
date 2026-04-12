@@ -31,6 +31,11 @@ dev = [
     "pytest-mock",
     "pytest-profiling",
     "pytest-xdist",
+    "radon>=6.0.1",
+    "xenon>=0.9.3",
+    "scalene>=2.2.1",
+    "py-spy>=0.4.1",
+    "codecarbon>=3.2.6",
 ]
 docs = [
     "zensical",
@@ -78,6 +83,7 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "N", "D"]
 "notebooks/**" = ["D", "E501", "F821", "F841", "B023", "B905", "N", "UP", "SIM", "W"]
 "coleman4hcs/exceptions.py" = ["N818"]
 "examples/**" = ["D", "E501"]
+"scripts/**" = ["D"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
@@ -107,3 +113,4 @@ version_toml = ["pyproject.toml:project.version"]
 branch = "main"
 commit_message = "chore(release): {version}"
 build_command = "uv build"
+
