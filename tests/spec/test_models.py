@@ -3,6 +3,7 @@
 import json
 
 import pytest
+from pydantic import ValidationError
 
 from coleman4hcs.spec.models import (
     AlgorithmSpec,
@@ -81,6 +82,15 @@ class TestTelemetrySpec:
         spec = TelemetrySpec()
         assert spec.enabled is False
         assert spec.service_name == "coleman4hcs"
+        assert spec.resource_attributes == {}
+
+    def test_resource_attributes(self):
+        spec = TelemetrySpec(resource_attributes={"run_id": "abc123", "execution_id": "test|exp=1"})
+        assert spec.resource_attributes == {"run_id": "abc123", "execution_id": "test|exp=1"}
+
+    def test_resource_attributes_extra_fields_rejected(self):
+        with pytest.raises(ValidationError):
+            TelemetrySpec(unknown_field="bad")
 
 
 class TestRunSpec:
