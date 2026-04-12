@@ -139,15 +139,18 @@ def _(mo, pd):
     else:
         try:
             mi_data = _json.loads(mi_result.stdout)
+            parsed: dict[str, float] = {}
             for module, value in mi_data.items():
                 if isinstance(value, (int, float)):
-                    mi_scores[module] = float(value)
+                    parsed[module] = float(value)
                 elif isinstance(value, dict) and "mi" in value:
-                    mi_scores[module] = float(value["mi"])
+                    parsed[module] = float(value["mi"])
                 else:
                     mi_error = f"unexpected radon MI format for {module}: {value!r}"
                     break
-        except (ValueError, TypeError, KeyError):
+            else:
+                mi_scores = parsed
+        except (ValueError, TypeError):
             mi_error = "failed to parse radon MI output"
 
     mi_df = pd.DataFrame([{"module": m, "maintainability_index": s} for m, s in sorted(mi_scores.items())])
