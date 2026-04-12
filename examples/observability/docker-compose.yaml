@@ -10,8 +10,7 @@
 #   docker compose up -d
 #
 # With ClickHouse (optional, persistent telemetry + results):
-#   GF_INSTALL_PLUGINS="grafana-clickhouse-datasource 4.11.2" \
-#     OTEL_COLLECTOR_CONFIG=otel-collector-config-clickhouse.yaml \
+#   OTEL_COLLECTOR_CONFIG=otel-collector-config-clickhouse.yaml \
 #     docker compose --profile clickhouse up -d
 #
 # Tear down:
@@ -54,7 +53,7 @@ services:
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
-      GF_INSTALL_PLUGINS: "${GF_INSTALL_PLUGINS:-}"
+      GF_INSTALL_PLUGINS: "grafana-clickhouse-datasource 4.11.2"
     volumes:
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
