@@ -171,7 +171,7 @@ def _(mo, pd):
 @app.cell
 def _(checks_df, mi_df, mi_error, mi_result, mo):
     """Display structural cost gate results and maintainability scores."""
-    stderr = getattr(mi_result, "stderr", "") if mi_result is not None else ""
+    stderr = getattr(mi_result, "stderr", "")
     error_parts = [part.strip() for part in [mi_error, stderr] if part and part.strip()]
     error_text = "\n\n".join(error_parts)
     missing_dependency = any(
@@ -181,7 +181,6 @@ def _(checks_df, mi_df, mi_error, mi_result, mo):
             "modulenotfounderror",
             "command not found",
             "not recognized as an internal or external command",
-            "no such file or directory",
         ]
     )
 
