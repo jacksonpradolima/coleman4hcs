@@ -11,7 +11,7 @@ export UV_LINK_MODE ?= copy
 
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve check-precommit clean interrogate build run cost-structural cost-complexity cost-maintainability cost-xenon cost-wily cost-profile-scalene cost-energy
+.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve docs-export-workflow check-precommit clean interrogate build run cost-structural cost-complexity cost-maintainability cost-xenon cost-wily cost-profile-scalene cost-energy
 
 ## —— Coleman4HCS Makefile ——————————————————————————————————
 
@@ -93,6 +93,9 @@ docs: ensure-uv ## Build documentation with Zensical
 
 docs-serve: ensure-uv ## Serve documentation locally
 	$(UV) run --extra docs zensical serve
+
+docs-export-workflow: ensure-uv ## Export marimo workflow notebook to Markdown for Zensical
+	$(UV) run --extra notebook marimo export md docs/workflow.py -o docs/workflow.md --force
 
 # ——— Build ————————————————————————————————————————————————
 

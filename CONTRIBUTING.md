@@ -68,6 +68,37 @@ make typecheck
 make docs
 ```
 
+### Code Cost Evaluation
+
+Every pull request is checked by CI gates for structural complexity. Before
+submitting, verify your changes locally:
+
+```bash
+# Run all structural cost checks (cyclomatic complexity + maintainability + xenon gate)
+make cost-structural
+```
+
+If the CI reports a failure, check specific dimensions:
+
+```bash
+make cost-complexity        # Radon cyclomatic complexity
+make cost-maintainability   # Radon maintainability index
+make cost-xenon             # Xenon complexity gate (same thresholds as CI)
+make cost-wily              # Wily trend analysis across Git history
+```
+
+The CI thresholds are:
+
+| Gate | Threshold | Meaning |
+|------|-----------|---------|
+| Xenon `--max-absolute` | **C** | No single block worse than C |
+| Xenon `--max-modules` | **B** | No module average worse than B |
+| Xenon `--max-average` | **A** | Project-wide average must be A |
+| Radon MI | **A** (MI ≥ 20) | All modules must score A or above |
+
+See [Code Cost Evaluation](docs/code-cost.md) for the full guide including
+runtime profiling and energy estimation.
+
 ## Code Style
 
 - **Formatter**: [Ruff](https://docs.astral.sh/ruff/)

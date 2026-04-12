@@ -326,7 +326,34 @@ This project uses a `Makefile` to streamline common development tasks. Run `make
 | `make lint`              | Run the ruff linter                  |
 | `make format`            | Run the ruff formatter               |
 | `make docs`              | Build documentation with Zensical    |
+| `make cost-structural`   | Run all structural cost checks (CC + MI + Xenon) |
+| `make cost-energy`       | Estimate energy/carbon for a workload |
 | `make help`              | Show all available Make targets      |
+
+## Code Cost Evaluation
+
+Coleman4HCS enforces code quality through a **multi-dimensional cost scorecard**
+covering structural complexity, runtime profiling, and energy estimation.
+
+**CI gates** run automatically on every pull request:
+
+- **Xenon complexity gate** — fails if any block exceeds C, any module average exceeds B,
+  or the project average exceeds A.
+- **Radon maintainability index** — fails if any module scores below A (MI < 20).
+
+**Local evaluation commands:**
+
+```bash
+make cost-structural        # all structural checks (CC + MI + Xenon)
+make cost-complexity        # radon cyclomatic complexity
+make cost-maintainability   # radon maintainability index
+make cost-xenon             # xenon complexity gate
+make cost-wily              # wily trend analysis
+make cost-profile-scalene   # scalene CPU/memory profiling
+make cost-energy            # codecarbon energy estimation
+```
+
+See [Code Cost Evaluation](docs/code-cost.md) for full documentation.
 
 ## DevContainer (recommended)
 
