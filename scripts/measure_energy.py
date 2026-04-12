@@ -25,7 +25,10 @@ def workload() -> None:
 
 if __name__ == "__main__":
     tracker = EmissionsTracker()
+    emissions: float = 0.0
     tracker.start()
-    workload()
-    emissions: float = tracker.stop()
+    try:
+        workload()
+    finally:
+        emissions = tracker.stop()
     print(f"Estimated emissions (kg CO2eq): {emissions}")

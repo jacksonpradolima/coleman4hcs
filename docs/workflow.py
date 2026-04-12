@@ -133,12 +133,16 @@ def _(mo, pd):
     import json as _json
 
     mi_scores: dict[str, float] = {}
-    try:
-        mi_data = _json.loads(mi_result.stdout)
-        for module, score in mi_data.items():
-            mi_scores[module] = score
-    except (ValueError, TypeError):
-        pass
+    mi_error: str | None = None
+    if mi_result.returncode != 0:
+        mi_error = mi_result.stderr.strip() or "radon exited with a non-zero status"
+    else:
+        try:
+            mi_data = _json.loads(mi_result.stdout)
+            for module, score in mi_data.items():
+                mi_scores[module] = score
+        except (ValueError, TypeError):
+            mi_error = "failed to parse radon MI output"
 
     mi_df = pd.DataFrame([{"module": m, "maintainability_index": s} for m, s in sorted(mi_scores.items())])
 
@@ -151,7 +155,11 @@ def _(mo, pd):
         {
             "check": "Radon maintainability index",
             "threshold": "all modules ≥ A (MI ≥ 20)",
-            "status": "✅ pass" if all(s >= 20 for s in mi_scores.values()) else "❌ fail",
+            "status": (
+                "⚠️ error" if mi_error else
+                "❌ fail" if not mi_scores or not all(s >= 20 for s in mi_scores.values()) else
+                "✅ pass"
+            ),
         },
     ]
     checks_df = pd.DataFrame(checks)

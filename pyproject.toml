@@ -37,7 +37,7 @@ dev = [
     "py-spy>=0.4.1",
     "codecarbon>=3.2.6",
     "wily>=1.12.2",
-    "pyRAPL>=0.2.3.1",
+    "pyrapl>=0.2.3.1",
 ]
 docs = [
     "zensical",
