@@ -1,6 +1,6 @@
 # Coleman4HCS Workflow
 
-This page covers the full operational loop for running and analysing
+This page covers the full operational loop for running and analyzing
 experiments.  Each section maps to a cell in the interactive
 [marimo notebook](https://github.com/jacksonpradolima/coleman4hcs/blob/main/docs/workflow.py)
 (`docs/workflow.py`) — open it locally with `marimo edit docs/workflow.py`
