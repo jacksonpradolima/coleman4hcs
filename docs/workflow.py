@@ -165,17 +165,41 @@ def _(mo, pd):
     checks_df = pd.DataFrame(checks)
 
     mo.md("### Structural Cost — CI Gates")
-    return checks_df, mi_df, subprocess
+    return checks_df, mi_df, mi_error, mi_result, subprocess
 
 
 @app.cell
-def _(checks_df, mi_df, mo):
+def _(checks_df, mi_df, mi_error, mi_result, mo):
     """Display structural cost gate results and maintainability scores."""
+    stderr = getattr(mi_result, "stderr", "") if mi_result is not None else ""
+    error_parts = [part.strip() for part in [mi_error, stderr] if part and part.strip()]
+    error_text = "\n\n".join(error_parts)
+    missing_dependency = any(
+        token in error_text.lower()
+        for token in [
+            "no module named radon",
+            "modulenotfounderror",
+            "command not found",
+            "not recognized as an internal or external command",
+            "no such file or directory",
+        ]
+    )
+
+    if not mi_df.empty:
+        mi_content = mi_df
+    elif error_text:
+        message = f"Unable to compute maintainability index.\n\n```text\n{error_text}\n```"
+        if missing_dependency:
+            message += "\n\nRun `uv sync --extra dev` to install Radon."
+        mi_content = mo.md(message)
+    else:
+        mi_content = mo.md("Run `uv sync --extra dev` to install Radon.")
+
     mo.vstack(
         [
             checks_df,
             mo.md("### Maintainability Index per Module"),
-            mi_df if not mi_df.empty else mo.md("Run `uv sync --extra dev` to install Radon."),
+            mi_content,
         ]
     )
 
