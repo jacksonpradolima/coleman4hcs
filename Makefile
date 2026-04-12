@@ -11,7 +11,7 @@ export UV_LINK_MODE ?= copy
 
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve check-precommit clean interrogate build run cost-structural cost-complexity cost-maintainability cost-xenon cost-profile-scalene cost-energy
+.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve check-precommit clean interrogate build run cost-structural cost-complexity cost-maintainability cost-xenon cost-wily cost-profile-scalene cost-energy
 
 ## —— Coleman4HCS Makefile ——————————————————————————————————
 
@@ -121,6 +121,10 @@ cost-maintainability: ensure-uv ## Report maintainability index (Radon MI)
 
 cost-xenon: ensure-uv ## Run Xenon complexity gate (CI threshold)
 	$(UV) run xenon --max-absolute C --max-modules B --max-average A coleman4hcs/
+
+cost-wily: ensure-uv ## Build and report complexity trend with Wily
+	$(UV) run wily build coleman4hcs/
+	$(UV) run wily report coleman4hcs/
 
 cost-profile-scalene: ensure-uv ## Profile a representative workload with Scalene
 	$(UV) run scalene -m coleman4hcs.cli --help

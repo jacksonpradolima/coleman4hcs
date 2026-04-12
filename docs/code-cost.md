@@ -8,9 +8,9 @@ evaluating four complementary cost dimensions.
 
 | Dimension | What it measures | Primary tools |
 |-----------|-----------------|---------------|
-| **Structural cost** | Maintainability, complexity, and change risk | Radon, Xenon, Wily *(optional)* |
+| **Structural cost** | Maintainability, complexity, and change risk | Radon, Xenon, Wily |
 | **Runtime cost** | CPU time, execution hotspots, and memory pressure | Scalene, py-spy |
-| **Energy cost** | Estimated energy or carbon impact | CodeCarbon, pyRAPL *(optional)* |
+| **Energy cost** | Estimated energy or carbon impact | CodeCarbon, pyRAPL |
 | **Operational cost proxy** | Basis for translating hotspots into infrastructure effort | All of the above |
 
 ---
@@ -80,14 +80,12 @@ make cost-xenon
 make cost-structural
 ```
 
-### Trend analysis with Wily *(optional)*
+### Trend analysis with Wily
 
 [Wily](https://wily.readthedocs.io/) tracks complexity metrics across
-Git history.  It is **not** included as a project dependency — install it
-manually if you want trend analysis:
+Git history.  It is included as a dev dependency:
 
 ```bash
-uv add --dev wily
 uv run wily build coleman4hcs/
 uv run wily report coleman4hcs/
 uv run wily diff coleman4hcs/ -r HEAD^1
@@ -155,15 +153,14 @@ emissions = tracker.stop()
 print(f"Estimated emissions (kg CO2eq): {emissions}")
 ```
 
-### pyRAPL *(optional — Intel hardware only)*
+### pyRAPL (Intel hardware only)
 
 [pyRAPL](https://github.com/powerapi-ng/pyRAPL) reads Intel RAPL
-counters for direct energy measurement.  It is **not** included as a
-project dependency because it only works on supported Intel hardware and
-requires access to `/sys/class/powercap/`:
+counters for direct energy measurement.  It is included as a dev
+dependency but only works on supported Intel hardware:
 
 ```bash
-uv add --dev pyRAPL
+uv run python -c "import pyRAPL; pyRAPL.setup(); print('pyRAPL available')"
 ```
 
 !!! warning "Platform limitation"
@@ -177,10 +174,22 @@ uv add --dev pyRAPL
 
 The GitHub Actions workflow **Code Cost — Structural checks**
 (`.github/workflows/code-cost.yml`) runs automatically on every pull
-request and enforces the Xenon complexity gate.
+request and enforces two gates:
 
-The heavier tools (Scalene, py-spy, CodeCarbon) are intended for **local
-or manual use** and are not part of the CI pipeline.
+1. **Xenon complexity gate** — fails when cyclomatic complexity exceeds
+   the configured thresholds (see above).
+2. **Radon maintainability index gate** — fails when any module scores
+   below A (MI < 20).
+
+If either gate fails, the PR cannot be merged until the structural
+cost is addressed.
+
+Radon cyclomatic complexity is also reported (blocks with rank C or
+worse are highlighted) but does not fail the build — Xenon already
+covers this dimension.
+
+The heavier tools (Scalene, py-spy, CodeCarbon, pyRAPL) are intended
+for **local or manual use** and are not part of the CI pipeline.
 
 ---
 

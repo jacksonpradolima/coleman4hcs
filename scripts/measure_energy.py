@@ -1,7 +1,7 @@
-"""Estimate energy and carbon impact for a representative workload.
+"""Estimate energy and carbon impact for a coleman4hcs experiment run.
 
 This script uses CodeCarbon to track estimated CO2 emissions during
-a simple computational workload.  It serves as a starting point for
+an actual experiment execution.  It serves as a starting point for
 comparing implementations through their estimated energy cost.
 
 Usage
@@ -13,13 +13,14 @@ Usage
 
 from codecarbon import EmissionsTracker
 
+from coleman4hcs.api import load_spec, run
+
 
 def workload() -> None:
-    """Run a CPU-bound workload used for energy estimation."""
-    total = 0
-    for i in range(5_000_000):
-        total += i * i
-    print(f"Workload result: {total}")
+    """Run a coleman4hcs experiment as the measured workload."""
+    spec = load_spec("run.yaml")
+    result = run(spec)
+    print(f"Completed run_id={result.run_id}")
 
 
 if __name__ == "__main__":

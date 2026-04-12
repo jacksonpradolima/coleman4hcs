@@ -8,8 +8,8 @@ permissions:
   contents: read
 
 jobs:
-  xenon:
-    name: Xenon complexity gate
+  structural-cost:
+    name: Structural cost gate
     runs-on: ubuntu-latest
 
     steps:
@@ -28,11 +28,19 @@ jobs:
           uv venv .venv
           uv sync --frozen --extra dev
 
-      - name: Run Xenon complexity gate
+      - name: Xenon complexity gate
         run: uv run xenon --max-absolute C --max-modules B --max-average A coleman4hcs/
 
-      - name: Run Radon cyclomatic complexity
-        run: uv run radon cc -s -a coleman4hcs/
+      - name: Radon maintainability index gate
+        run: |
+          # Fail if any module scores below A (MI < 20)
+          uv run radon mi -s -n B coleman4hcs/ | tee /tmp/mi_issues.txt
+          if [ -s /tmp/mi_issues.txt ]; then
+            echo "::error::Modules below maintainability threshold (MI < 20):"
+            cat /tmp/mi_issues.txt
+            exit 1
+          fi
 
-      - name: Run Radon maintainability index
-        run: uv run radon mi -s coleman4hcs/
+      - name: Radon cyclomatic complexity report
+        if: always()
+        run: uv run radon cc -s -a -n C coleman4hcs/
