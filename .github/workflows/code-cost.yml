@@ -36,6 +36,7 @@ jobs:
 
       - name: Radon maintainability index gate
         run: |
+          set -o pipefail
           # Fail if any module scores below A (MI < 20)
           uv run radon mi -s -n B coleman4hcs/ | tee /tmp/mi_issues.txt
           if [ -s /tmp/mi_issues.txt ]; then
