@@ -1,6 +1,280 @@
 # CHANGELOG
 
 
+## v2.1.0 (2026-04-12)
+
+### Bug Fixes
+
+- Address code review feedback - use ValidationError, add durationUnit comment
+  ([`87fa20f`](https://github.com/jacksonpradolima/coleman4hcs/commit/87fa20f49da330578a58ad9165ef4efad3b01e0e))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/341b9eed-a788-4671-8ae7-a61fd4d887b2
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Address review feedback - Field(default_factory), service.name priority, pin plugin version,
+  telemetry extra
+  ([`1615e56`](https://github.com/jacksonpradolima/coleman4hcs/commit/1615e56ea328f030244c27ebb2fbd75e0d13b5d9))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/14da71b3-b350-4a22-aa27-32fab51710e0
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Always install Grafana ClickHouse plugin by default for devcontainer compatibility
+  ([`7c8e683`](https://github.com/jacksonpradolima/coleman4hcs/commit/7c8e683d32d893c80b74592f00c4a6f6bd1e631e))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/8bbe7f0f-52dd-45f9-8c53-c3063dded884
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Gate GF_INSTALL_PLUGINS behind env var so base stack works offline
+  ([`4106f19`](https://github.com/jacksonpradolima/coleman4hcs/commit/4106f196a1ef15e6e98a59ba9b33091dcd673940))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/c15c7cfa-0491-4096-8349-c1e21f13e5d8
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+### Chores
+
+- Update uv.lock for version 2.0.0
+  ([`ecc00b4`](https://github.com/jacksonpradolima/coleman4hcs/commit/ecc00b40dc4c76139217a869290b5d70a93ad4d4))
+
+- **deps**: Bump actions/deploy-pages from 4.0.5 to 5.0.0 in /.github/workflows
+  ([`1067d49`](https://github.com/jacksonpradolima/coleman4hcs/commit/1067d4985a444bc061c4a694fe57a17bbb97c68e))
+
+chore(deps): bump actions/deploy-pages from 4.0.5 to 5.0.0 in /.github/workflows
+
+- **deps**: Bump actions/deploy-pages in /.github/workflows
+  ([`edb79c8`](https://github.com/jacksonpradolima/coleman4hcs/commit/edb79c831f60261c4d46fc2e1a5f4785beb2b678))
+
+Bumps [actions/deploy-pages](https://github.com/actions/deploy-pages) from 4.0.5 to 5.0.0. -
+  [Release notes](https://github.com/actions/deploy-pages/releases) -
+  [Commits](https://github.com/actions/deploy-pages/compare/d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e...cd2ce8fcbc39b97be8ca5fce6e763baed58fa128)
+
+--- updated-dependencies: - dependency-name: actions/deploy-pages dependency-version: 5.0.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-major
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump anchore/sbom-action from 0.23.1 to 0.24.0 in /.github/workflows
+  ([`dc2e26b`](https://github.com/jacksonpradolima/coleman4hcs/commit/dc2e26bf9bb81069b7640bd6cb618eeec3f495bd))
+
+chore(deps): bump anchore/sbom-action from 0.23.1 to 0.24.0 in /.github/workflows
+
+- **deps**: Bump anchore/sbom-action in /.github/workflows
+  ([`67706c4`](https://github.com/jacksonpradolima/coleman4hcs/commit/67706c40a2861674e47853f6d9689b55b4215281))
+
+Bumps [anchore/sbom-action](https://github.com/anchore/sbom-action) from 0.23.1 to 0.24.0. -
+  [Release notes](https://github.com/anchore/sbom-action/releases) -
+  [Changelog](https://github.com/anchore/sbom-action/blob/main/RELEASE.md) -
+  [Commits](https://github.com/anchore/sbom-action/compare/57aae528053a48a3f6235f2d9461b05fbcb7366d...e22c389904149dbc22b58101806040fa8d37a610)
+
+--- updated-dependencies: - dependency-name: anchore/sbom-action dependency-version: 0.24.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump codecov/codecov-action from 5.5.3 to 6.0.0 in /.github/workflows
+  ([`993b3f4`](https://github.com/jacksonpradolima/coleman4hcs/commit/993b3f4e02daf1ca0547700095c9def23d54089e))
+
+chore(deps): bump codecov/codecov-action from 5.5.3 to 6.0.0 in /.github/workflows
+
+- **deps**: Bump codecov/codecov-action in /.github/workflows
+  ([`ef6ebee`](https://github.com/jacksonpradolima/coleman4hcs/commit/ef6ebee342323925e0690e854f77150875ee488a))
+
+Bumps [codecov/codecov-action](https://github.com/codecov/codecov-action) from 5.5.3 to 6.0.0. -
+  [Release notes](https://github.com/codecov/codecov-action/releases) -
+  [Changelog](https://github.com/codecov/codecov-action/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/codecov/codecov-action/compare/1af58845a975a7985b0beb0cbe6fbbb71a41dbad...57e3a136b779b570ffcdbf80b3bdc90e7fab3de2)
+
+--- updated-dependencies: - dependency-name: codecov/codecov-action dependency-version: 6.0.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-major
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump marimo from 0.20.4 to 0.21.1
+  ([`812bc40`](https://github.com/jacksonpradolima/coleman4hcs/commit/812bc403154b6b35f68d1aef61cddd9cce92254e))
+
+chore(deps): bump marimo from 0.20.4 to 0.21.1
+
+- **deps**: Bump marimo from 0.20.4 to 0.21.1
+  ([`c190fde`](https://github.com/jacksonpradolima/coleman4hcs/commit/c190fde8881848106f9df5dc5a8c7716414fcfdc))
+
+Bumps [marimo](https://github.com/marimo-team/marimo) from 0.20.4 to 0.21.1. - [Release
+  notes](https://github.com/marimo-team/marimo/releases) -
+  [Commits](https://github.com/marimo-team/marimo/compare/0.20.4...0.21.1)
+
+--- updated-dependencies: - dependency-name: marimo dependency-version: 0.21.1
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump mkdocs-jupyter from 0.25.1 to 0.26.1
+  ([`f4aff74`](https://github.com/jacksonpradolima/coleman4hcs/commit/f4aff745d3737551434996fec903446535ac9ee3))
+
+chore(deps): bump mkdocs-jupyter from 0.25.1 to 0.26.1
+
+- **deps**: Bump mkdocs-jupyter from 0.25.1 to 0.26.1
+  ([`aa1751b`](https://github.com/jacksonpradolima/coleman4hcs/commit/aa1751beaf46e85a0411ec06888f87a536a095ba))
+
+Bumps [mkdocs-jupyter](https://github.com/danielfrg/mkdocs-jupyter) from 0.25.1 to 0.26.1. -
+  [Changelog](https://github.com/danielfrg/mkdocs-jupyter/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/danielfrg/mkdocs-jupyter/compare/0.25.1...0.26.1)
+
+--- updated-dependencies: - dependency-name: mkdocs-jupyter dependency-version: 0.26.1
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump pytest-cov from 7.0.0 to 7.1.0
+  ([`e4e0b4a`](https://github.com/jacksonpradolima/coleman4hcs/commit/e4e0b4a6dfd2577f5780101d79062541203ff948))
+
+chore(deps): bump pytest-cov from 7.0.0 to 7.1.0
+
+- **deps**: Bump pytest-cov from 7.0.0 to 7.1.0
+  ([`64dd1a9`](https://github.com/jacksonpradolima/coleman4hcs/commit/64dd1a911b4db0d3a35b5370c408cfc258f9e01b))
+
+Bumps [pytest-cov](https://github.com/pytest-dev/pytest-cov) from 7.0.0 to 7.1.0. -
+  [Changelog](https://github.com/pytest-dev/pytest-cov/blob/master/CHANGELOG.rst) -
+  [Commits](https://github.com/pytest-dev/pytest-cov/compare/v7.0.0...v7.1.0)
+
+--- updated-dependencies: - dependency-name: pytest-cov dependency-version: 7.1.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump requests from 2.32.5 to 2.33.0 in the uv group across 1 directory
+  ([`8f6b5d8`](https://github.com/jacksonpradolima/coleman4hcs/commit/8f6b5d81808328b2142728abde883b0f5da44816))
+
+chore(deps): bump requests from 2.32.5 to 2.33.0 in the uv group across 1 directory
+
+- **deps**: Bump requests in the uv group across 1 directory
+  ([`df1f5ab`](https://github.com/jacksonpradolima/coleman4hcs/commit/df1f5ab18ac4954b6f99ae2406239fd923eb9fba))
+
+Bumps the uv group with 1 update in the / directory: [requests](https://github.com/psf/requests).
+
+Updates `requests` from 2.32.5 to 2.33.0 - [Release notes](https://github.com/psf/requests/releases)
+  - [Changelog](https://github.com/psf/requests/blob/main/HISTORY.md) -
+  [Commits](https://github.com/psf/requests/compare/v2.32.5...v2.33.0)
+
+--- updated-dependencies: - dependency-name: requests dependency-version: 2.33.0
+
+dependency-type: indirect
+
+dependency-group: uv
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump ruff from 0.15.7 to 0.15.8
+  ([`400ae30`](https://github.com/jacksonpradolima/coleman4hcs/commit/400ae30071fd40f52af1e0eba8b525502c406c7f))
+
+chore(deps): bump ruff from 0.15.7 to 0.15.8
+
+- **deps**: Bump ruff from 0.15.7 to 0.15.8
+  ([`169f867`](https://github.com/jacksonpradolima/coleman4hcs/commit/169f867e1e995485901adda053d614ecd3bd62a7))
+
+Bumps [ruff](https://github.com/astral-sh/ruff) from 0.15.7 to 0.15.8. - [Release
+  notes](https://github.com/astral-sh/ruff/releases) -
+  [Changelog](https://github.com/astral-sh/ruff/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/astral-sh/ruff/compare/0.15.7...0.15.8)
+
+--- updated-dependencies: - dependency-name: ruff dependency-version: 0.15.8
+
+dependency-type: direct:production
+
+update-type: version-update:semver-patch
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump sigstore/gh-action-sigstore-python
+  ([`f81a54b`](https://github.com/jacksonpradolima/coleman4hcs/commit/f81a54bdaa16760915a0a91b85d4bc61211102ce))
+
+Bumps [sigstore/gh-action-sigstore-python](https://github.com/sigstore/gh-action-sigstore-python)
+  from 3.2.0 to 3.3.0. - [Release
+  notes](https://github.com/sigstore/gh-action-sigstore-python/releases) -
+  [Changelog](https://github.com/sigstore/gh-action-sigstore-python/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/sigstore/gh-action-sigstore-python/compare/a5caf349bc536fbef3668a10ed7f5cd309a4b53d...04cffa1d795717b140764e8b640de88853c92acc)
+
+--- updated-dependencies: - dependency-name: sigstore/gh-action-sigstore-python dependency-version:
+  3.3.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump sigstore/gh-action-sigstore-python from 3.2.0 to 3.3.0 in /.github/workflows
+  ([`a399392`](https://github.com/jacksonpradolima/coleman4hcs/commit/a3993924d1a129b8e0e5718b38c1664bfd7b2ba7))
+
+chore(deps): bump sigstore/gh-action-sigstore-python from 3.2.0 to 3.3.0 in /.github/workflows
+
+### Features
+
+- Enable optional ClickHouse backend for OpenTelemetry + Grafana ClickHouse datasource
+  ([`f2cd059`](https://github.com/jacksonpradolima/coleman4hcs/commit/f2cd05925b9fa1ac8bc23bfefa35607c3ee5c9b7))
+
+feat: enable optional ClickHouse backend for OpenTelemetry + Grafana ClickHouse datasource
+
+- Enable optional ClickHouse backend for OTel telemetry + Grafana datasource
+  ([`8cf2a78`](https://github.com/jacksonpradolima/coleman4hcs/commit/8cf2a785e1e47d4320c47fdc126b253b0d94f6f5))
+
+- Create otel-collector-config-clickhouse.yaml with ClickHouse exporter for metrics, traces, and
+  logs pipelines - Update docker-compose.yaml to support config file selection via
+  OTEL_COLLECTOR_CONFIG env var and install Grafana ClickHouse plugin - Provision ClickHouse
+  datasource in Grafana with logs/traces config for Explore correlation workflows - Add
+  resource_attributes parameter to Telemetry and get_telemetry() for passing execution_id/run_id as
+  OTel resource attributes - Add resource_attributes field to TelemetrySpec model - Pass
+  resource_attributes from Environment to get_telemetry() - Update observability README with
+  ClickHouse mode documentation - Add tests for new resource_attributes functionality - Update
+  golden run_id hash for new TelemetrySpec schema
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/341b9eed-a788-4671-8ae7-a61fd4d887b2
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+
 ## v2.0.0 (2026-04-08)
 
 ### Bug Fixes
