@@ -82,7 +82,7 @@ If the CI reports a failure, check specific dimensions:
 
 ```bash
 make cost-complexity        # Radon cyclomatic complexity
-make cost-maintainability   # Radon maintainability index
+make cost-maintainability   # Radon MI gate (fails if any module < 20)
 make cost-xenon             # Xenon complexity gate (same thresholds as CI)
 make cost-wily              # Wily trend analysis across Git history
 ```

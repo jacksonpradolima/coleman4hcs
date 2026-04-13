@@ -346,7 +346,7 @@ covering structural complexity, runtime profiling, and energy estimation.
 ```bash
 make cost-structural        # all structural checks (CC + MI + Xenon)
 make cost-complexity        # radon cyclomatic complexity
-make cost-maintainability   # radon maintainability index
+make cost-maintainability   # radon MI gate (fails if any module < 20)
 make cost-xenon             # xenon complexity gate
 make cost-wily              # wily trend analysis
 make cost-profile-scalene   # scalene CPU/memory profiling

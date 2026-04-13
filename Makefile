@@ -119,8 +119,15 @@ cost-structural: cost-complexity cost-maintainability cost-xenon ## Run all stru
 cost-complexity: ensure-uv ## Report cyclomatic complexity (Radon CC)
 	$(UV) run radon cc -s -a coleman4hcs/
 
-cost-maintainability: ensure-uv ## Report maintainability index (Radon MI)
-	$(UV) run radon mi -s coleman4hcs/
+cost-maintainability: ensure-uv ## Enforce maintainability index gate (Radon MI ≥ 20)
+	@$(UV) run radon mi -s -n B coleman4hcs/ > /tmp/mi_issues.txt; \
+	if [ -s /tmp/mi_issues.txt ]; then \
+		echo "❌ Modules below maintainability threshold (MI < 20):"; \
+		cat /tmp/mi_issues.txt; \
+		exit 1; \
+	else \
+		echo "✅ All modules meet MI ≥ 20"; \
+	fi
 
 cost-xenon: ensure-uv ## Run Xenon complexity gate (CI threshold)
 	$(UV) run xenon --max-absolute C --max-modules B --max-average A coleman4hcs/
