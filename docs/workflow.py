@@ -110,12 +110,12 @@ def _(mo):
 
 def _parse_radon_mi(result):
     """Parse radon MI subprocess result into (scores, error)."""
-    import json as _json
+    import json
 
     if result.returncode != 0:
         return {}, result.stderr.strip() or "radon exited with a non-zero status"
     try:
-        mi_data = _json.loads(result.stdout)
+        mi_data = json.loads(result.stdout)
     except (ValueError, TypeError):
         return {}, "failed to parse radon MI output"
     parsed: dict[str, float] = {}
