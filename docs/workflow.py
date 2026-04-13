@@ -114,6 +114,26 @@ def _(mo, pd):
     import subprocess
     import sys
 
+    def _parse_radon_mi(result):
+        """Parse radon MI subprocess result into (scores, error)."""
+        import json as _json
+
+        if result.returncode != 0:
+            return {}, result.stderr.strip() or "radon exited with a non-zero status"
+        try:
+            mi_data = _json.loads(result.stdout)
+        except (ValueError, TypeError):
+            return {}, "failed to parse radon MI output"
+        parsed: dict[str, float] = {}
+        for module, value in mi_data.items():
+            if isinstance(value, (int, float)):
+                parsed[module] = float(value)
+            elif isinstance(value, dict) and "mi" in value:
+                parsed[module] = float(value["mi"])
+            else:
+                return {}, f"unexpected radon MI format for {module}: {value!r}"
+        return parsed, None
+
     radon_mi_cmd = [sys.executable, "-m", "radon", "mi", "-s", "-j", "coleman4hcs/"]
     xenon_cmd = [
         sys.executable,
@@ -131,45 +151,28 @@ def _(mo, pd):
     mi_result = subprocess.run(radon_mi_cmd, capture_output=True, text=True)
     xenon_result = subprocess.run(xenon_cmd, capture_output=True, text=True)
 
-    import json as _json
-
-    mi_scores: dict[str, float] = {}
-    mi_error: str | None = None
-    if mi_result.returncode != 0:
-        mi_error = mi_result.stderr.strip() or "radon exited with a non-zero status"
-    else:
-        try:
-            mi_data = _json.loads(mi_result.stdout)
-            parsed: dict[str, float] = {}
-            for module, value in mi_data.items():
-                if isinstance(value, (int, float)):
-                    parsed[module] = float(value)
-                elif isinstance(value, dict) and "mi" in value:
-                    parsed[module] = float(value["mi"])
-                else:
-                    mi_error = f"unexpected radon MI format for {module}: {value!r}"
-                    break
-            else:
-                mi_scores = parsed
-        except (ValueError, TypeError):
-            mi_error = "failed to parse radon MI output"
-
+    mi_scores, mi_error = _parse_radon_mi(mi_result)
     mi_df = pd.DataFrame([{"module": m, "maintainability_index": s} for m, s in sorted(mi_scores.items())])
+
+    xenon_status = "✅ pass" if xenon_result.returncode == 0 else "❌ fail"
+    mi_passed = bool(mi_scores) and all(s >= 20 for s in mi_scores.values())
+    if mi_error:
+        mi_status = "⚠️ error"
+    elif mi_passed:
+        mi_status = "✅ pass"
+    else:
+        mi_status = "❌ fail"
 
     checks = [
         {
             "check": "Xenon complexity gate",
             "threshold": "max-absolute=C, max-modules=B, max-average=A",
-            "status": "✅ pass" if xenon_result.returncode == 0 else "❌ fail",
+            "status": xenon_status,
         },
         {
             "check": "Radon maintainability index",
             "threshold": "all modules ≥ A (MI ≥ 20)",
-            "status": (
-                "⚠️ error" if mi_error else
-                "❌ fail" if not mi_scores or not all(s >= 20 for s in mi_scores.values()) else
-                "✅ pass"
-            ),
+            "status": mi_status,
         },
     ]
     checks_df = pd.DataFrame(checks)
