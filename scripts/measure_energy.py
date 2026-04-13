@@ -11,14 +11,18 @@ Usage
     uv run python scripts/measure_energy.py
 """
 
+from pathlib import Path
+
 from codecarbon import EmissionsTracker
 
 from coleman4hcs.api import load_spec, run
 
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
 
 def workload() -> None:
     """Run a coleman4hcs experiment as the measured workload."""
-    spec = load_spec("run.yaml")
+    spec = load_spec(_REPO_ROOT / "run.yaml")
     result = run(spec)
     print(f"Completed run_id={result.run_id}")
 

@@ -129,7 +129,7 @@ cost-wily: ensure-uv ## Build and report complexity trend with Wily
 	$(UV) run wily build coleman4hcs/
 	$(UV) run wily report coleman4hcs/
 
-cost-profile-scalene: ensure-uv ## Profile a representative workload with Scalene
+cost-profile-scalene: ensure-uv ## Smoke-test Scalene against the CLI entrypoint
 	$(UV) run scalene -m coleman4hcs.cli --help
 
 cost-energy: ensure-uv ## Estimate energy/carbon for a representative workload

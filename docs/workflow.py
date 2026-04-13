@@ -112,10 +112,11 @@ def _(mo):
 def _(mo, pd):
     """Run structural cost checks and display the results."""
     import subprocess
+    import sys
 
-    radon_mi_cmd = ["python", "-m", "radon", "mi", "-s", "-j", "coleman4hcs/"]
+    radon_mi_cmd = [sys.executable, "-m", "radon", "mi", "-s", "-j", "coleman4hcs/"]
     xenon_cmd = [
-        "python",
+        sys.executable,
         "-m",
         "xenon",
         "--max-absolute",
@@ -174,7 +175,7 @@ def _(mo, pd):
     checks_df = pd.DataFrame(checks)
 
     mo.md("### Structural Cost — CI Gates")
-    return checks_df, mi_df, mi_error, mi_result, subprocess
+    return checks_df, mi_df, mi_error, mi_result
 
 
 @app.cell
