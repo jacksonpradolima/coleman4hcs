@@ -108,31 +108,32 @@ def _(mo):
     )
 
 
+def _parse_radon_mi(result):
+    """Parse radon MI subprocess result into (scores, error)."""
+    import json as _json
+
+    if result.returncode != 0:
+        return {}, result.stderr.strip() or "radon exited with a non-zero status"
+    try:
+        mi_data = _json.loads(result.stdout)
+    except (ValueError, TypeError):
+        return {}, "failed to parse radon MI output"
+    parsed: dict[str, float] = {}
+    for module, value in mi_data.items():
+        if isinstance(value, (int, float)):
+            parsed[module] = float(value)
+        elif isinstance(value, dict) and "mi" in value:
+            parsed[module] = float(value["mi"])
+        else:
+            return {}, f"unexpected radon MI format for {module}: {value!r}"
+    return parsed, None
+
+
 @app.cell
 def _(mo, pd):
     """Run structural cost checks and display the results."""
     import subprocess
     import sys
-
-    def _parse_radon_mi(result):
-        """Parse radon MI subprocess result into (scores, error)."""
-        import json as _json
-
-        if result.returncode != 0:
-            return {}, result.stderr.strip() or "radon exited with a non-zero status"
-        try:
-            mi_data = _json.loads(result.stdout)
-        except (ValueError, TypeError):
-            return {}, "failed to parse radon MI output"
-        parsed: dict[str, float] = {}
-        for module, value in mi_data.items():
-            if isinstance(value, (int, float)):
-                parsed[module] = float(value)
-            elif isinstance(value, dict) and "mi" in value:
-                parsed[module] = float(value["mi"])
-            else:
-                return {}, f"unexpected radon MI format for {module}: {value!r}"
-        return parsed, None
 
     radon_mi_cmd = [sys.executable, "-m", "radon", "mi", "-s", "-j", "coleman4hcs/"]
     xenon_cmd = [
