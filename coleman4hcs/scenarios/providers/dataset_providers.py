@@ -8,7 +8,7 @@ from typing import cast
 
 import polars as pl
 
-from .virtual import VirtualContextScenario, VirtualHCSScenario, VirtualScenario
+from ..virtual import VirtualContextScenario, VirtualHCSScenario, VirtualScenario
 
 
 class IndustrialDatasetScenarioProvider:

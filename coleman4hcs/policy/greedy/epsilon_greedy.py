@@ -87,37 +87,3 @@ class GreedyPolicy(EpsilonGreedyPolicy):
         """
         return "Greedy"
 
-
-class RandomPolicy(Policy):
-    """Random policy that randomly selects from all available actions.
-
-    No consideration is given to which action is apparently best. This is a
-    special case of EpsilonGreedy where epsilon = 1 (always explore).
-    """
-
-    def __str__(self):
-        """Return a string representation of the policy.
-
-        Returns
-        -------
-        str
-            The policy name.
-        """
-        return "Random"
-
-    def choose_all(self, agent: Agent):
-        """Choose all actions randomly.
-
-        Parameters
-        ----------
-        agent : Agent
-            The agent whose actions are to be shuffled.
-
-        Returns
-        -------
-        list of str
-            Randomly ordered list of action names.
-        """
-        actions = agent.actions["Name"].to_numpy()
-        _rng.shuffle(actions)
-        return actions.tolist()

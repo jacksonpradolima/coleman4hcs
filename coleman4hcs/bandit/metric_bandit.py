@@ -2,7 +2,7 @@
 
 from coleman4hcs.evaluation import EvaluationMetric
 
-from .base import DynamicBandit
+from .dynamic import DynamicBandit
 
 
 class EvaluationMetricBandit(DynamicBandit):

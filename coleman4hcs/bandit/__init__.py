@@ -23,7 +23,8 @@ prioritization strategies that can react to changes in the testing environment o
 under test.
 """
 
-from .base import BANDIT_SCHEMA, Bandit, DynamicBandit
+from .base import BANDIT_SCHEMA, Bandit
+from .dynamic import DynamicBandit
 from .metric_bandit import EvaluationMetricBandit
 
 __all__ = ["BANDIT_SCHEMA", "Bandit", "DynamicBandit", "EvaluationMetricBandit"]
