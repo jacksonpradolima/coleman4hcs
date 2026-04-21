@@ -6,13 +6,13 @@ Coleman4HCS is framework-first: the default installation works without any
 external services.
 
 ```bash
-pip install coleman4hcs
+pip install coleman
 ```
 
 Use the library API or the `coleman` CLI to run experiments:
 
 ```python
-from coleman4hcs.api import run, load_spec
+from coleman.api import run, load_spec
 
 spec = load_spec("my-experiment.yaml")
 result = run(spec)
@@ -90,10 +90,10 @@ coleman run --config experiment.yaml
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-pip install coleman4hcs[telemetry]
+pip install coleman[telemetry]
 
 # ClickHouse sink
-pip install coleman4hcs[clickhouse]
+pip install coleman[clickhouse]
 ```
 
 ## Optional observability stack

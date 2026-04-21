@@ -5,9 +5,9 @@ import threading
 
 import pyarrow.parquet as pq
 
-from coleman4hcs.results.parquet_sink import ParquetSink, _hash_order, _top_k
-from coleman4hcs.results.sink_base import NullSink, ResultsSink
-from coleman4hcs.results.writer import ResultsWriter
+from coleman.results.parquet_sink import ParquetSink, _hash_order, _top_k
+from coleman.results.sink_base import NullSink, ResultsSink
+from coleman.results.writer import ResultsWriter
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -247,7 +247,7 @@ class TestResultsWriter:
 class TestDuckDBCatalog:
     def test_create_view_and_query(self, tmp_path):
         """DuckDBCatalog should create a view over Parquet and return query results."""
-        from coleman4hcs.results.duckdb_catalog import DuckDBCatalog
+        from coleman.results.duckdb_catalog import DuckDBCatalog
 
         # Write some rows via ParquetSink first
         sink = ParquetSink(out_dir=str(tmp_path / "runs"), batch_size=100)
@@ -262,7 +262,7 @@ class TestDuckDBCatalog:
 
     def test_query_aggregation(self, tmp_path):
         """DuckDBCatalog should support aggregation queries over the view."""
-        from coleman4hcs.results.duckdb_catalog import DuckDBCatalog
+        from coleman.results.duckdb_catalog import DuckDBCatalog
 
         sink = ParquetSink(out_dir=str(tmp_path / "runs"), batch_size=100)
         for i in range(3):
@@ -276,7 +276,7 @@ class TestDuckDBCatalog:
 
     def test_close(self, tmp_path):
         """DuckDBCatalog.close() should not raise."""
-        from coleman4hcs.results.duckdb_catalog import DuckDBCatalog
+        from coleman.results.duckdb_catalog import DuckDBCatalog
 
         sink = ParquetSink(out_dir=str(tmp_path / "runs"), batch_size=100)
         sink.write_row(_make_row())

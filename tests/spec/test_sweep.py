@@ -2,9 +2,9 @@
 
 import pytest
 
-from coleman4hcs.spec.models import RunSpec
-from coleman4hcs.spec.run_id import compute_run_id
-from coleman4hcs.spec.sweep import SweepAxis, SweepSpec, _expand_axis, _set_nested, expand_sweep
+from coleman.spec.models import RunSpec
+from coleman.spec.run_id import compute_run_id
+from coleman.spec.sweep import SweepAxis, SweepSpec, _expand_axis, _set_nested, expand_sweep
 
 
 class TestSetNested:

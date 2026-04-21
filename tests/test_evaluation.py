@@ -1,8 +1,8 @@
 """
-Unit tests for the coleman4hcs evaluation module.
+Unit tests for the coleman evaluation module.
 
 This test suite validates the correctness and robustness of the evaluation metrics
-implemented in the coleman4hcs library, including NAPFDMetric and NAPFDVerdictMetric.
+implemented in the coleman library, including NAPFDMetric and NAPFDVerdictMetric.
 
 Tests cover various scenarios, including:
 - Standard test cases with faults and verdicts.
@@ -31,7 +31,7 @@ Run the tests using pytest to verify the functionality of evaluation metrics.
 
 import pytest
 
-from coleman4hcs.evaluation import EvaluationMetric, NAPFDMetric, NAPFDVerdictMetric
+from coleman.evaluation import EvaluationMetric, NAPFDMetric, NAPFDVerdictMetric
 
 # Constants for error messages
 NAPFD_FITNESS_NON_NEGATIVE = "NAPFD fitness should be non-negative."

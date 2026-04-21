@@ -1,7 +1,7 @@
 """
-coleman4hcs/tests/test_bandit.py
+coleman/tests/test_bandit.py
 
-Unit and performance tests for the Bandit classes in the coleman4hcs package. This module tests the functionality of
+Unit and performance tests for the Bandit classes in the coleman package. This module tests the functionality of
 the `Bandit`, `DynamicBandit`, and `EvaluationMetricBandit` classes, including:
 
 - Initialization and management of arms (test cases).
@@ -36,8 +36,8 @@ from unittest.mock import MagicMock
 import polars as pl
 import pytest
 
-from coleman4hcs.bandit import Bandit, DynamicBandit, EvaluationMetricBandit
-from coleman4hcs.evaluation import EvaluationMetric
+from coleman.bandit import Bandit, DynamicBandit, EvaluationMetricBandit
+from coleman.evaluation import EvaluationMetric
 
 
 class MockBandit(Bandit):

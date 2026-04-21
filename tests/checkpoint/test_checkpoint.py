@@ -2,8 +2,8 @@
 
 import json
 
-from coleman4hcs.checkpoint.checkpoint_store import CheckpointStore, LocalCheckpointStore, NullCheckpointStore
-from coleman4hcs.checkpoint.state import CheckpointPayload
+from coleman.checkpoint.checkpoint_store import CheckpointStore, LocalCheckpointStore, NullCheckpointStore
+from coleman.checkpoint.state import CheckpointPayload
 
 # ============================================================================
 # NullCheckpointStore

@@ -46,8 +46,8 @@ No manual steps required — skip to [Running Experiments](#running-experiments)
 #### Install
 
 ```bash
-git clone https://github.com/jacksonpradolima/coleman4hcs.git
-cd coleman4hcs
+git clone https://github.com/jacksonpradolima/coleman.git
+cd coleman
 uv sync
 uv pip install -e .
 ```
@@ -96,7 +96,7 @@ coleman run --config my-experiment.yaml
 Or use the library API:
 
 ```python
-from coleman4hcs.api import run, load_spec
+from coleman.api import run, load_spec
 
 spec = load_spec("my-experiment.yaml")
 result = run(spec)
@@ -522,6 +522,6 @@ names and cardinality rules.
 
 ---
 
-See the [README](https://github.com/jacksonpradolima/coleman4hcs#readme) for
+See the [README](https://github.com/jacksonpradolima/coleman#readme) for
 detailed usage instructions covering HCS strategies, contextual bandits, and
 dataset preparation.

@@ -23,14 +23,14 @@ environments.
 ## Quick Start
 
 ```bash
-pip install coleman4hcs
+pip install coleman
 coleman run --config my-experiment.yaml
 ```
 
 Or use the library API:
 
 ```python
-from coleman4hcs.api import run, load_spec
+from coleman.api import run, load_spec
 
 spec = load_spec("my-experiment.yaml")
 result = run(spec)

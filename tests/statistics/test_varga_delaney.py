@@ -1,8 +1,8 @@
 """
-Unit tests for the coleman4hcs evaluation metrics module.
+Unit tests for the coleman evaluation metrics module.
 
 This test suite covers the functionality of the evaluation metrics implemented
-in the coleman4hcs package, specifically the NAPFDMetric and NAPFDVerdictMetric classes.
+in the coleman package, specifically the NAPFDMetric and NAPFDVerdictMetric classes.
 It ensures that the metrics behave as expected under various scenarios, including:
 
 - Standard test records
@@ -30,7 +30,7 @@ import numpy as np
 import polars as pl
 import pytest
 
-from coleman4hcs.statistics.vargha_delaney import reduce, vd_a, vd_a_df
+from coleman.statistics.vargha_delaney import reduce, vd_a, vd_a_df
 
 
 def test_vd_a():

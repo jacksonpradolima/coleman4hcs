@@ -5,10 +5,10 @@ import tempfile
 
 import yaml
 
-from coleman4hcs.api import RunResult, load_spec, run, run_many, save_resolved, sweep
-from coleman4hcs.spec.models import ExecutionSpec, ExperimentSpec, ResultsSpec, RunSpec
-from coleman4hcs.spec.run_id import compute_run_id
-from coleman4hcs.spec.sweep import SweepAxis, SweepSpec
+from coleman.api import RunResult, load_spec, run, run_many, save_resolved, sweep
+from coleman.spec.models import ExecutionSpec, ExperimentSpec, ResultsSpec, RunSpec
+from coleman.spec.run_id import compute_run_id
+from coleman.spec.sweep import SweepAxis, SweepSpec
 
 
 def _light_run_spec(tmpdir: str, **execution_overrides) -> RunSpec:
@@ -92,8 +92,8 @@ class TestSeedApplication:
         """When execution.seed is set, the policy RNG should be deterministically seeded."""
         import numpy as np
 
-        import coleman4hcs.policy
-        from coleman4hcs.runner import run_experiment
+        import coleman.policy
+        from coleman.runner import run_experiment
 
         with tempfile.TemporaryDirectory() as tmpdir:
             spec = _light_run_spec(tmpdir, seed=42)
@@ -103,7 +103,7 @@ class TestSeedApplication:
             # After running, re-seed with same value and verify the generator
             # type matches (proves the seed path was taken).
             ref_rng = np.random.default_rng(42)
-            actual = coleman4hcs.policy._rng.bit_generator.state
+            actual = coleman.policy._rng.bit_generator.state
             expected = ref_rng.bit_generator.state
             assert actual["bit_generator"] == expected["bit_generator"]
 
@@ -111,11 +111,11 @@ class TestSeedApplication:
         """Without execution.seed the policy RNG stays in its default state."""
         import numpy as np
 
-        import coleman4hcs.policy
-        from coleman4hcs.runner import run_experiment
+        import coleman.policy
+        from coleman.runner import run_experiment
 
         # Reset to a known-seed baseline so the test is reproducible
-        coleman4hcs.policy._rng = np.random.default_rng(0)
+        coleman.policy._rng = np.random.default_rng(0)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             spec = _light_run_spec(tmpdir)
@@ -123,7 +123,7 @@ class TestSeedApplication:
             spec_dict = spec.model_dump()
             run_experiment(spec_dict)
             # RNG should still be a default_rng (PCG64) — no error
-            state = coleman4hcs.policy._rng.bit_generator.state
+            state = coleman.policy._rng.bit_generator.state
             assert state["bit_generator"] == "PCG64"
 
 

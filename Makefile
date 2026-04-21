@@ -7,7 +7,7 @@ PYTHON_REAL := $(shell readlink -f $(PYTHON))
 PYSPY := .venv/bin/py-spy
 PROFILE_VENV := .venv-pyspy
 PROFILE_PYTHON := $(PROFILE_VENV)/bin/python
-WILY_FILE ?= coleman4hcs/runner.py
+WILY_FILE ?= coleman/runner.py
 PYTEST := .venv/bin/pytest
 PRE_COMMIT := .venv/bin/pre-commit
 
@@ -60,11 +60,11 @@ format-check: ensure-uv ## Check ruff formatting without changing files
 
 typecheck: ensure-uv ## Run pyright and ty type checkers
 	# Run both static type checkers
-	$(UV) run --python $(PYTHON) --no-project pyright coleman4hcs
-	$(UV) run --python $(PYTHON) --no-project ty check coleman4hcs tests
+	$(UV) run --python $(PYTHON) --no-project pyright coleman
+	$(UV) run --python $(PYTHON) --no-project ty check coleman tests
 
 interrogate: ensure-uv ## Check docstring coverage with interrogate
-	$(UV) run interrogate coleman4hcs/ -v
+	$(UV) run interrogate coleman/ -v
 
 # ——— Testing ——————————————————————————————————————————————
 
@@ -79,13 +79,13 @@ test: ensure-uv install ## Run tests with pytest in parallel if xdist is availab
 test-cov: ensure-uv install ## Run tests with coverage report in parallel if xdist is available; otherwise, run serially
 	@if $(UV) run --python $(PYTHON) --no-project python -c 'import xdist' >/dev/null 2>&1; then \
 	  $(UV) run --python $(PYTHON) --no-project pytest -n auto \
-	    --cov=coleman4hcs --cov-branch \
+	    --cov=coleman --cov-branch \
 	    --cov-report=term-missing:skip-covered \
 	    --cov-report=xml \
 	    --cov-report=html; \
 	else \
 	  $(UV) run --python $(PYTHON) --no-project pytest \
-	    --cov=coleman4hcs --cov-branch \
+	    --cov=coleman --cov-branch \
 	    --cov-report=term-missing:skip-covered \
 	    --cov-report=xml \
 	    --cov-report=html; \
@@ -122,10 +122,10 @@ check-precommit: test typecheck interrogate ## Run tests, type checks, and docst
 cost-structural: cost-complexity cost-maintainability cost-xenon ## Run all structural cost checks
 
 cost-complexity: ensure-uv ## Report cyclomatic complexity (Radon CC)
-	$(UV) run radon cc -s -a coleman4hcs/
+	$(UV) run radon cc -s -a coleman/
 
 cost-maintainability: ensure-uv ## Enforce maintainability index gate (Radon MI ≥ 20)
-	@$(UV) run radon mi -s -n B coleman4hcs/ > /tmp/mi_issues.txt; \
+	@$(UV) run radon mi -s -n B coleman/ > /tmp/mi_issues.txt; \
 	if [ -s /tmp/mi_issues.txt ]; then \
 		echo "❌ Modules below maintainability threshold (MI < 20):"; \
 		cat /tmp/mi_issues.txt; \
@@ -135,10 +135,10 @@ cost-maintainability: ensure-uv ## Enforce maintainability index gate (Radon MI 
 	fi
 
 cost-raw: ensure-uv ## Report raw source metrics (LOC, SLOC, comments) with Radon
-	$(UV) run radon raw coleman4hcs/
+	$(UV) run radon raw coleman/
 
 cost-xenon: ensure-uv ## Run Xenon complexity gate (CI threshold)
-	$(UV) run xenon --max-absolute C --max-modules B --max-average A coleman4hcs/
+	$(UV) run xenon --max-absolute C --max-modules B --max-average A coleman/
 
 cost-wily: ensure-uv ## Build and report complexity trend with Wily
 	@archiver=git; \
@@ -146,7 +146,7 @@ cost-wily: ensure-uv ## Build and report complexity trend with Wily
 		archiver=filesystem; \
 		echo "INFO: Dirty repository detected; using Wily filesystem archiver."; \
 	fi; \
-	$(UV) run wily build -a $$archiver coleman4hcs
+	$(UV) run wily build -a $$archiver coleman
 	$(UV) run wily index
 	$(UV) run wily report $(WILY_FILE)
 
@@ -156,12 +156,12 @@ cost-wily-file: ensure-uv ## Build Wily history and report a specific file (use 
 		archiver=filesystem; \
 		echo "INFO: Dirty repository detected; using Wily filesystem archiver."; \
 	fi; \
-	$(UV) run wily build -a $$archiver coleman4hcs
+	$(UV) run wily build -a $$archiver coleman
 	$(UV) run wily index
 	$(UV) run wily report $(WILY_FILE)
 
 cost-profile-scalene: ensure-uv ## Smoke-test Scalene against the CLI entrypoint
-	$(UV) run scalene run coleman4hcs/cli.py --- --help
+	$(UV) run scalene run coleman/cli.py --- --help
 
 cost-profile-pyspy: ensure-uv ## Record a py-spy profile using a dedicated Python 3.13 profiling venv
 	$(UV) python install 3.13
@@ -172,7 +172,7 @@ cost-profile-pyspy: ensure-uv ## Record a py-spy profile using a dedicated Pytho
 	status=0; \
 	set +e; \
 	set -o pipefail; \
-	PYTHONPATH=. $(PYSPY) record --rate 20 --subprocesses -o profile.svg -- $(PROFILE_PYTHON) -m coleman4hcs.cli run --config run.yaml \
+	PYTHONPATH=. $(PYSPY) record --rate 20 --subprocesses -o profile.svg -- $(PROFILE_PYTHON) -m coleman.cli run --config run.yaml \
 		2>&1 | tee /tmp/pyspy-cost-profile.log; \
 	status=$${PIPESTATUS[0]}; \
 	set -e; \

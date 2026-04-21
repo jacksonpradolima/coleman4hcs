@@ -2,7 +2,7 @@
 Unit and integration tests for the experiment runner logic.
 
 This module contains unit and integration tests to verify the functionality
-of various core functions present in the ``coleman4hcs.runner`` module. The
+of various core functions present in the ``coleman.runner`` module. The
 tests cover a wide range of behaviors, including logging setup, managing
 agents, loading classes dynamically, working with experiments, and scenario
 providers.
@@ -43,11 +43,11 @@ from unittest.mock import Mock, patch
 import polars as pl
 import pytest
 
-import coleman4hcs.policy
-from coleman4hcs.agent import ContextualAgent, RewardSlidingWindowAgent
-from coleman4hcs.environment import Environment
-from coleman4hcs.policy import FRRMABPolicy, SWLinUCBPolicy
-from coleman4hcs.runner import (
+import coleman.policy
+from coleman.agent import ContextualAgent, RewardSlidingWindowAgent
+from coleman.environment import Environment
+from coleman.policy import FRRMABPolicy, SWLinUCBPolicy
+from coleman.runner import (
     EnvironmentBuildConfig,
     ExecutionPlan,
     _effective_parallel_pool_size,
@@ -59,7 +59,7 @@ from coleman4hcs.runner import (
     load_class_from_module,
     run_parallel_executions,
 )
-from coleman4hcs.scenarios import IndustrialDatasetScenarioProvider
+from coleman.scenarios import IndustrialDatasetScenarioProvider
 
 # ------------------------
 # Unit Tests
@@ -85,8 +85,8 @@ def test_create_logger():
     logger.handlers.clear()
 
 
-@patch("coleman4hcs.runner.create_logger")
-@patch("coleman4hcs.runner.Environment")
+@patch("coleman.runner.create_logger")
+@patch("coleman.runner.Environment")
 def test_exp_run_industrial_dataset(mock_environment, mock_create_logger, tmpdir):
     """Test that a single experiment run executes the expected environment methods."""
     mock_env = mock_environment.return_value
@@ -202,7 +202,7 @@ def test_run_parallel_executions_dispatches_unique_execution_plans():
         ),
     ]
 
-    with patch("coleman4hcs.runner.get_context", return_value=FakeContext()):
+    with patch("coleman.runner.get_context", return_value=FakeContext()):
         run_parallel_executions(2, build_config, plans)
 
     assert captured["pool_size"] == 2
@@ -221,14 +221,14 @@ def test_run_parallel_executions_dispatches_unique_execution_plans():
 
 def test_load_class_from_module_valid():
     """Test that a valid class is loaded correctly from a module."""
-    policy_class = load_class_from_module(coleman4hcs.policy, "FRRMABPolicy")
+    policy_class = load_class_from_module(coleman.policy, "FRRMABPolicy")
     assert policy_class.__name__ == "FRRMABPolicy"
 
 
 def test_load_class_from_module_invalid():
     """Test that a ValueError is raised when an invalid class name is provided."""
     with pytest.raises(ValueError, match="Class 'InvalidPolicy' not found"):
-        load_class_from_module(coleman4hcs.policy, "InvalidPolicy")
+        load_class_from_module(coleman.policy, "InvalidPolicy")
 
 
 def test_create_agents_frrmab():
@@ -313,8 +313,8 @@ def test_get_scenario_provider_prefers_parquet(tmp_path):
 # ------------------------
 
 
-@patch("coleman4hcs.runner.create_logger")
-@patch("coleman4hcs.runner.Environment")
+@patch("coleman.runner.create_logger")
+@patch("coleman.runner.Environment")
 def test_end_to_end_execution(mock_environment, mock_create_logger, tmpdir):
     """Test end-to-end execution using mocked environment and logger."""
     mock_env = mock_environment.return_value

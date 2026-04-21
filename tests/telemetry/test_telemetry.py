@@ -1,6 +1,6 @@
 """Tests for the telemetry module (no-op adapter and factory)."""
 
-from coleman4hcs.telemetry.otel import NoOpTelemetry, get_telemetry
+from coleman.telemetry.otel import NoOpTelemetry, get_telemetry
 
 # ============================================================================
 # NoOpTelemetry

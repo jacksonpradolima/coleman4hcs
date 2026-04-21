@@ -3,7 +3,7 @@
 import polars as pl
 import pytest
 
-from coleman4hcs.scenarios import (
+from coleman.scenarios import (
     IndustrialDatasetContextScenarioProvider,
     IndustrialDatasetHCSScenarioProvider,
     IndustrialDatasetScenarioProvider,

@@ -31,7 +31,7 @@ mitigation plan within **7 days** of confirmation.
 
 ## Scope
 
-This policy applies to the `coleman4hcs` Python package and its dependencies as
+This policy applies to the `coleman` Python package and its dependencies as
 distributed through this repository. Third-party dependencies are managed via
 `uv` and pinned in `uv.lock`.
 

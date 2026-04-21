@@ -1,6 +1,6 @@
 """Tests for deterministic run_id computation."""
 
-from coleman4hcs.spec.models import (
+from coleman.spec.models import (
     AlgorithmSpec,
     CheckpointSpec,
     ExecutionSpec,
@@ -9,7 +9,7 @@ from coleman4hcs.spec.models import (
     RunSpec,
     TelemetrySpec,
 )
-from coleman4hcs.spec.run_id import _canonical_json, compute_run_id
+from coleman.spec.run_id import _canonical_json, compute_run_id
 
 
 class TestCanonicalJson:

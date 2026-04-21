@@ -2,7 +2,7 @@
 
 import time
 
-from coleman4hcs.telemetry.resources import ProcessResourceTracker
+from coleman.telemetry.resources import ProcessResourceTracker
 
 
 def test_process_resource_tracker_returns_monotonic_samples():

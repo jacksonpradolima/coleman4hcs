@@ -5,7 +5,7 @@ import tempfile
 
 import yaml
 
-from coleman4hcs.cli import _parse_kv, main
+from coleman.cli import _parse_kv, main
 
 
 class TestParseKv:

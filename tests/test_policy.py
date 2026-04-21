@@ -2,7 +2,7 @@
 Unit tests for `policy.py`.
 
 This module provides comprehensive unit tests for all policy implementations
-in the `coleman4hcs.policy` module. Each test ensures that the policies behave
+in the `coleman.policy` module. Each test ensures that the policies behave
 correctly under various scenarios, including edge cases.
 
 Policies Tested:
@@ -29,8 +29,8 @@ import numpy as np
 import polars as pl
 import pytest
 
-from coleman4hcs.agent import Agent, ContextualAgent, SlidingWindowContextualAgent
-from coleman4hcs.policy import (
+from coleman.agent import Agent, ContextualAgent, SlidingWindowContextualAgent
+from coleman.policy import (
     EpsilonGreedyPolicy,
     FRRMABPolicy,
     GreedyPolicy,

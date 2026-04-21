@@ -6,8 +6,8 @@ import tempfile
 
 import yaml
 
-from coleman4hcs.spec.io import load_spec, save_resolved
-from coleman4hcs.spec.models import ExecutionSpec, RunSpec
+from coleman.spec.io import load_spec, save_resolved
+from coleman.spec.models import ExecutionSpec, RunSpec
 
 
 class TestLoadSpec:

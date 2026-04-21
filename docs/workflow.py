@@ -135,7 +135,7 @@ def _(mo, pd):
     import subprocess
     import sys
 
-    radon_mi_cmd = [sys.executable, "-m", "radon", "mi", "-s", "-j", "coleman4hcs/"]
+    radon_mi_cmd = [sys.executable, "-m", "radon", "mi", "-s", "-j", "coleman/"]
     xenon_cmd = [
         sys.executable,
         "-m",
@@ -146,7 +146,7 @@ def _(mo, pd):
         "B",
         "--max-average",
         "A",
-        "coleman4hcs/",
+        "coleman/",
     ]
 
     mi_result = subprocess.run(radon_mi_cmd, capture_output=True, text=True)

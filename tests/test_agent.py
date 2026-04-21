@@ -1,5 +1,5 @@
 """
-coleman4hcs.agent.tests
+coleman.agent.tests
 -----------------------
 
 This module contains unit and performance tests for the `Agent` module in the Coleman4HCS framework.
@@ -29,15 +29,15 @@ from unittest.mock import MagicMock
 import polars as pl
 import pytest
 
-from coleman4hcs.agent import (
+from coleman.agent import (
     Agent,
     ContextualAgent,
     RewardAgent,
     RewardSlidingWindowAgent,
     SlidingWindowContextualAgent,
 )
-from coleman4hcs.bandit import Bandit
-from coleman4hcs.evaluation import EvaluationMetric
+from coleman.bandit import Bandit
+from coleman.evaluation import EvaluationMetric
 
 
 @pytest.fixture

@@ -1,12 +1,12 @@
 # Coleman4HCS
 
-[![Docs](https://img.shields.io/badge/Docs-Coleman4HCS%20Site-3D9970?style=flat-square)](https://jacksonpradolima.github.io/coleman4hcs/)
+[![Docs](https://img.shields.io/badge/Docs-Coleman4HCS%20Site-3D9970?style=flat-square)](https://jacksonpradolima.github.io/coleman/)
 ![](https://img.shields.io/badge/python-3.14+-blue.svg)
-[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=bugs)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
-[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
-[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
-[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
-[![codecov](https://codecov.io/github/jacksonpradolima/coleman4hcs/branch/main/graph/badge.svg?token=BW04LB0B5Y)](https://codecov.io/github/jacksonpradolima/coleman4hcs)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman&metric=bugs)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman)
+[![codecov](https://codecov.io/github/jacksonpradolima/coleman/branch/main/graph/badge.svg?token=BW04LB0B5Y)](https://codecov.io/github/jacksonpradolima/coleman)
 
 
 ### Solving the Test Case Prioritization using Multi-Armed Bandit Algorithms
@@ -58,7 +58,7 @@ In order to use this `version`, use any Contextual-MAB available, for instance, 
 
 # Getting started
 
-- [Coleman4HCS](#coleman4hcs)
+- [Coleman4HCS](#coleman)
     - [Solving the Test Case Prioritization using Multi-Armed Bandit Algorithms](#solving-the-test-case-prioritization-using-multi-armed-bandit-algorithms)
 - [Getting started](#getting-started)
 - [Citation](#citation)
@@ -76,13 +76,13 @@ In order to use this `version`, use any Contextual-MAB available, for instance, 
 - [Datasets](#datasets)
 - [About the files input](#about-the-files-input)
 - [Using the tool](#using-the-tool)
-  - [How data flows through Coleman4HCS](#how-data-flows-through-coleman4hcs)
+  - [How data flows through Coleman4HCS](#how-data-flows-through-coleman)
   - [MAB Policies Available](#mab-policies-available)
   - [Running for Non-HCS System](#running-for-non-hcs-system)
   - [Running for an HCS system](#running-for-an-hcs-system)
     - [Whole Test Set Strategy](#whole-test-set-strategy)
     - [Variant Test Set Strategy](#variant-test-set-strategy)
-- [Analysis of COLEMAN4HCS Performance](#analysis-of-coleman4hcs-performance)
+- [Analysis of COLEMAN4HCS Performance](#analysis-of-coleman-performance)
   - [Performance Metrics](#performance-metrics)
   - [Methodologies](#methodologies)
   - [Visualizations](#visualizations)
@@ -118,12 +118,12 @@ If this tool contributes to a project which leads to a scientific publication, I
 
 Coleman4HCS ships a **typed, library-first experiment system** with
 YAML configs, composable config packs, a sweep engine, and deterministic
-`run_id` hashing.  External projects can `pip install coleman4hcs` and
+`run_id` hashing.  External projects can `pip install coleman` and
 drive experiments programmatically **or** via the `coleman` CLI — no repo
 checkout required.
 
 The library namespace is now available as `coleman` (preferred). Legacy
-imports from `coleman4hcs` continue to work during the deprecation window.
+imports from `coleman` continue to work during the deprecation window.
 
 > **Breaking change** — the `CONFIG_FILE` environment variable, raw TOML
 > dict workflow, and `main.py` entry-point are removed.  Configuration is now
@@ -224,7 +224,7 @@ The sweep engine supports **grid** (Cartesian product) and **zip** (paired)
 modes, with optional seed replication:
 
 ```python
-from coleman4hcs.spec import SweepSpec, SweepAxis, expand_sweep, RunSpec
+from coleman.spec import SweepSpec, SweepAxis, expand_sweep, RunSpec
 
 base = RunSpec()
 sweep_spec = SweepSpec(
@@ -272,14 +272,14 @@ Each run persists:
 Install Coleman4HCS as a dependency in your project:
 
 ```bash
-pip install coleman4hcs
+pip install coleman
 ```
 
 Or with optional extras:
 
 ```bash
-pip install coleman4hcs[telemetry]     # OpenTelemetry SDK
-pip install coleman4hcs[clickhouse]    # ClickHouse results sink
+pip install coleman[telemetry]     # OpenTelemetry SDK
+pip install coleman[clickhouse]    # ClickHouse results sink
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -292,8 +292,8 @@ To develop or modify the tool, follow these steps:
 1. Clone the repository:
 
 ```shell
-git clone git@github.com:jacksonpradolima/coleman4hcs.git
-cd coleman4hcs
+git clone git@github.com:jacksonpradolima/coleman.git
+cd coleman
 ```
 
 2. Install [UV](https://docs.astral.sh/uv/) – a fast Python package manager.
@@ -451,10 +451,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-pip install coleman4hcs[telemetry]
+pip install coleman[telemetry]
 
 # ClickHouse results sink
-pip install coleman4hcs[clickhouse]
+pip install coleman[clickhouse]
 ```
 
 ## Querying results
@@ -517,7 +517,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install coleman4hcs[telemetry]
+uv pip install coleman[telemetry]
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list
@@ -577,7 +577,7 @@ coleman run --config run.yaml
 ```
 
 The ClickHouse extras are already installed in the DevContainer.  For local
-installs run `uv pip install coleman4hcs[clickhouse]` first.
+installs run `uv pip install coleman[clickhouse]` first.
 
 ## Tear down
 
@@ -824,6 +824,6 @@ For vulnerability reports, refer to our [Security Policy](SECURITY.md).
 
 - 👨‍💻 Jackson Antonio do Prado Lima <a href="mailto:jacksonpradolima@gmail.com">:e-mail:</a>
 
-<a href="https://github.com/jacksonpradolima/coleman4hcs/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=jacksonpradolima/coleman4hcs" />
+<a href="https://github.com/jacksonpradolima/coleman/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=jacksonpradolima/coleman" />
 </a>

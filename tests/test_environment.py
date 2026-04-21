@@ -3,7 +3,7 @@ Unit tests for the Environment class and related components.
 
 This module contains a suite of unit tests to validate the functionality of
 the `Environment` class as well as the associated functionalities in the
-`coleman4hcs` package. These tests cover the behaviors, interactions, and
+`coleman` package. These tests cover the behaviors, interactions, and
 edge cases for:
 
 - Initialization of `Environment` objects.
@@ -32,15 +32,15 @@ import numpy as np
 import polars as pl
 import pytest
 
-from coleman4hcs.agent import ContextualAgent
-from coleman4hcs.bandit import EvaluationMetricBandit
-from coleman4hcs.checkpoint.checkpoint_store import NullCheckpointStore
-from coleman4hcs.checkpoint.state import CheckpointPayload
-from coleman4hcs.environment import Environment
-from coleman4hcs.environment_base import AbstractEnvironment
-from coleman4hcs.results.sink_base import NullSink
-from coleman4hcs.scenarios import IndustrialDatasetHCSScenarioProvider
-from coleman4hcs.utils.monitor import MonitorCollector
+from coleman.agent import ContextualAgent
+from coleman.bandit import EvaluationMetricBandit
+from coleman.checkpoint.checkpoint_store import NullCheckpointStore
+from coleman.checkpoint.state import CheckpointPayload
+from coleman.environment import Environment
+from coleman.environment_base import AbstractEnvironment
+from coleman.results.sink_base import NullSink
+from coleman.scenarios import IndustrialDatasetHCSScenarioProvider
+from coleman.utils.monitor import MonitorCollector
 
 
 # Fixtures for common dependencies
@@ -275,7 +275,7 @@ def test_load_experiment_returns_none_when_no_checkpoint(environment):
 
 def test_load_experiment_returns_payload(environment, tmp_path):
     """Test load_experiment returns a CheckpointPayload when checkpoint exists."""
-    from coleman4hcs.checkpoint.checkpoint_store import LocalCheckpointStore
+    from coleman.checkpoint.checkpoint_store import LocalCheckpointStore
 
     store = LocalCheckpointStore(base_dir=str(tmp_path / "ckpts"))
     environment.checkpoint_store = store
@@ -348,7 +348,7 @@ def test_run_prioritization_hcs(environment):
 
 def test_environment_with_results_config(mock_agent, mock_scenario_provider, mock_evaluation_metric, tmp_path):
     """Test Environment creation with results config produces a ParquetSink."""
-    from coleman4hcs.results.parquet_sink import ParquetSink
+    from coleman.results.parquet_sink import ParquetSink
 
     env = Environment(
         agents=[mock_agent],

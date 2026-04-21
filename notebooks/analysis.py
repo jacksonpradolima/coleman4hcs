@@ -21,7 +21,7 @@ with app.setup:
     import seaborn as sns
     from scipy.stats import kruskal
 
-    from coleman4hcs.statistics import vargha_delaney
+    from coleman.statistics import vargha_delaney
 
     plt.style.use("ggplot")
     sns.set_style("whitegrid")

@@ -1,5 +1,5 @@
 [project]
-name = "coleman4hcs"
+name = "coleman"
 version = "2.3.0"
 description = "Multi-Armed Bandit based test case prioritization for continuous integration environments"
 license = "MIT"
@@ -63,18 +63,18 @@ clickhouse = [
 ]
 
 [project.scripts]
-coleman = "coleman4hcs.cli:main"
+coleman = "coleman.cli:main"
 
 [project.urls]
-homepage = "https://github.com/jacksonpradolima/coleman4hcs"
-repository = "https://github.com/jacksonpradolima/coleman4hcs"
+homepage = "https://github.com/jacksonpradolima/coleman"
+repository = "https://github.com/jacksonpradolima/coleman"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["coleman4hcs", "coleman"]
+packages = ["coleman", "coleman4hcs"]
 
 [tool.ruff]
 target-version = "py313"
@@ -86,7 +86,7 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "N", "D"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D100", "D101", "D102", "D103", "D104", "D107", "D200", "D205", "D400", "D401"]
 "notebooks/**" = ["D", "E501", "F821", "F841", "B023", "B905", "N", "UP", "SIM", "W"]
-"coleman4hcs/exceptions.py" = ["N818"]
+"coleman/exceptions.py" = ["N818"]
 "examples/**" = ["D", "E501"]
 "scripts/**" = ["D"]
 

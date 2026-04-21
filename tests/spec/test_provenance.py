@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 
-from coleman4hcs.spec.provenance import build_provenance, save_provenance
+from coleman.spec.provenance import build_provenance, save_provenance
 
 
 class TestBuildProvenance:

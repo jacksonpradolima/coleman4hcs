@@ -2,7 +2,7 @@
 
 This page covers the full operational loop for running and analyzing
 experiments.  Each section maps to a cell in the interactive
-[marimo notebook](https://github.com/jacksonpradolima/coleman4hcs/blob/main/docs/workflow.py)
+[marimo notebook](https://github.com/jacksonpradolima/coleman/blob/main/docs/workflow.py)
 (`docs/workflow.py`) — open it locally with `marimo edit docs/workflow.py`
 for a live, executable version.
 
@@ -60,11 +60,11 @@ Two gates run in CI on every pull request:
 
 ```bash
 # Xenon complexity gate
-python -m xenon --max-absolute C --max-modules B --max-average A coleman4hcs/
+python -m xenon --max-absolute C --max-modules B --max-average A coleman/
 
 # Radon maintainability index (MI) — lists modules below the threshold;
 # CI fails if this command reports such modules or exits with an error
-python -m radon mi -s -n B coleman4hcs/
+python -m radon mi -s -n B coleman/
 ```
 
 ### Running code cost checks locally

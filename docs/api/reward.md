@@ -1,3 +1,3 @@
 # Reward
 
-::: coleman4hcs.reward
+::: coleman.reward
