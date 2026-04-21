@@ -7,6 +7,7 @@ PYTHON_REAL := $(shell readlink -f $(PYTHON))
 PYSPY := .venv/bin/py-spy
 PROFILE_VENV := .venv-pyspy
 PROFILE_PYTHON := $(PROFILE_VENV)/bin/python
+WILY_FILE ?= coleman4hcs/runner.py
 PYTEST := .venv/bin/pytest
 PRE_COMMIT := .venv/bin/pre-commit
 
@@ -15,7 +16,7 @@ export UV_LINK_MODE ?= copy
 
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve docs-export-workflow check-precommit clean interrogate build run cost-structural cost-complexity cost-maintainability cost-xenon cost-wily cost-profile-scalene cost-profile-pyspy cost-energy
+.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve docs-export-workflow check-precommit clean interrogate build run cost-structural cost-complexity cost-maintainability cost-xenon cost-wily cost-wily-file cost-profile-scalene cost-profile-pyspy cost-energy
 
 ## —— Coleman4HCS Makefile ——————————————————————————————————
 
@@ -140,8 +141,24 @@ cost-xenon: ensure-uv ## Run Xenon complexity gate (CI threshold)
 	$(UV) run xenon --max-absolute C --max-modules B --max-average A coleman4hcs/
 
 cost-wily: ensure-uv ## Build and report complexity trend with Wily
-	$(UV) run wily build coleman4hcs/
-	$(UV) run wily report coleman4hcs/
+	@archiver=git; \
+	if [ -n "$$(git status --porcelain 2>/dev/null)" ]; then \
+		archiver=filesystem; \
+		echo "INFO: Dirty repository detected; using Wily filesystem archiver."; \
+	fi; \
+	$(UV) run wily build -a $$archiver coleman4hcs
+	$(UV) run wily index
+	$(UV) run wily report $(WILY_FILE)
+
+cost-wily-file: ensure-uv ## Build Wily history and report a specific file (use WILY_FILE=path)
+	@archiver=git; \
+	if [ -n "$$(git status --porcelain 2>/dev/null)" ]; then \
+		archiver=filesystem; \
+		echo "INFO: Dirty repository detected; using Wily filesystem archiver."; \
+	fi; \
+	$(UV) run wily build -a $$archiver coleman4hcs
+	$(UV) run wily index
+	$(UV) run wily report $(WILY_FILE)
 
 cost-profile-scalene: ensure-uv ## Smoke-test Scalene against the CLI entrypoint
 	$(UV) run scalene run coleman4hcs/cli.py --- --help
