@@ -1,6 +1,359 @@
 # CHANGELOG
 
 
+## v2.2.0 (2026-04-21)
+
+### Bug Fixes
+
+- Add permissions block to code-cost workflow
+  ([`39e0681`](https://github.com/jacksonpradolima/coleman4hcs/commit/39e06812f1fe313f5491d0e85e538d9dbf4f5e7b))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/5633ad91-543d-4dac-927d-66e9abe79ef4
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Add pipefail to radon MI step to prevent masking exit status
+  ([`c578209`](https://github.com/jacksonpradolima/coleman4hcs/commit/c578209304e51674c35276f0b33cdf882d2f32db))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/be1c7929-9610-4c66-acb8-7c32947dfc27
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Address review feedback — real workload, wily/pyRAPL deps, CI gates, workflow notebook
+  ([`6fb80b0`](https://github.com/jacksonpradolima/coleman4hcs/commit/6fb80b02f7a1369a6be01cd9cf70d43dca75fa17))
+
+- scripts/measure_energy.py: use actual coleman4hcs experiment run instead of toy example -
+  pyproject.toml: add wily and pyRAPL as dev dependencies (no longer optional) - docs/code-cost.md:
+  mark Wily and pyRAPL as included; document dual CI gates - .github/workflows/code-cost.yml:
+  enforce Radon MI threshold (fail if any module < A); Xenon remains primary gate; CC report runs
+  always for visibility - docs/workflow.py: add code cost evaluation section to e2e workflow
+  notebook - Makefile: add cost-wily target
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/4507e4d5-5347-46d9-9ccd-3e405b276ef8
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Apply review feedback — sys.executable, clean returns, script path, docs
+  ([`92888ba`](https://github.com/jacksonpradolima/coleman4hcs/commit/92888baf4de4dad78d9e5ae971c19da255b51de8))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/e234b086-5883-4d02-993b-849c90699f90
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Apply review suggestions — pin Python 3.14, handle radon errors, try/finally tracker, lowercase
+  pyrapl
+  ([`bd23c00`](https://github.com/jacksonpradolima/coleman4hcs/commit/bd23c00802d1c494dcd47030d924c8ba695a6294))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/2ee4097d-694c-4fe1-a8bb-31d5df86aaca
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Correct spelling of 'analysing' to 'analyzing' in workflow.md
+  ([`9d48ce0`](https://github.com/jacksonpradolima/coleman4hcs/commit/9d48ce02316a179b87ebdbeac01182d16808c3da))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/3186cde3-5a74-4e14-97a0-8f89d82d04c1
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Enforce MI threshold in cost-maintainability target to match CI
+  ([`bbd0d83`](https://github.com/jacksonpradolima/coleman4hcs/commit/bbd0d83b9860da5eb3a372b58ccbab42d2158d3c))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/99984111-1110-4745-a017-1044a8721aa2
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Parse radon MI JSON defensively and fix workflow.md comment
+  ([`ebdd696`](https://github.com/jacksonpradolima/coleman4hcs/commit/ebdd69685bb2307eb92e7db6a4e4b8faf100ad3b))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/774bf8da-1e43-45c4-b066-9442d24b9837
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Pin checkout hash, add docs-export-workflow target, update README and CONTRIBUTING with code cost
+  ([`0259972`](https://github.com/jacksonpradolima/coleman4hcs/commit/025997281d40f762d0e797fba75d91b941fdd807))
+
+- Use commit hash (de0fac2e) for actions/checkout in code-cost.yml - Add `make docs-export-workflow`
+  to auto-generate workflow.md from marimo notebook - Add Code Cost Evaluation section to README.md
+  (CI gates + make targets) - Add Code Cost Evaluation section to CONTRIBUTING.md (local checks + CI
+  thresholds)
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/589c0583-815d-4ede-9ca4-873ec3e219c5
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Prevent partial mi_scores on unexpected radon format
+  ([`5df95bf`](https://github.com/jacksonpradolima/coleman4hcs/commit/5df95bfa65b61edfe70379eeb6f9905776dfbe3f))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/774bf8da-1e43-45c4-b066-9442d24b9837
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Render workflow as markdown in Zensical instead of downloading .py
+  ([`35736ee`](https://github.com/jacksonpradolima/coleman4hcs/commit/35736ee397e664ee1e0f7248d365d5eb64c2627a))
+
+Zensical's Rust-based renderer doesn't execute Python plugins like mkdocs-jupyter, so .py/.ipynb nav
+  entries were served as raw downloads.
+
+- Add docs/workflow.md with all notebook content rendered as markdown - Update zensical.toml nav to
+  point to workflow.md - Keep docs/workflow.py for interactive marimo use (marimo edit
+  docs/workflow.py)
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/3186cde3-5a74-4e14-97a0-8f89d82d04c1
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Show actual radon error instead of always suggesting install
+  ([`0f5df34`](https://github.com/jacksonpradolima/coleman4hcs/commit/0f5df3488fd2006021b88d4d8a31b43ddf818e6d))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/702ef268-24b6-4518-8a18-90dcde34ed83
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Use make commands in CI and fix scalene/pyspy/pyRAPL docs
+  ([`b307fc4`](https://github.com/jacksonpradolima/coleman4hcs/commit/b307fc49cd214b73089318805d8ecac9d1d0ddaa))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/c04883f1-dfd1-49a5-a736-8b125de5c03f
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+### Chores
+
+- Update uv.lock for version 2.1.0
+  ([`d488102`](https://github.com/jacksonpradolima/coleman4hcs/commit/d4881025420122e2cb9c84da8f48cd356945bf6d))
+
+- **deps**: Bump actions/github-script from 8.0.0 to 9.0.0 in /.github/workflows
+  ([`66163b9`](https://github.com/jacksonpradolima/coleman4hcs/commit/66163b93bde8db91c8dc5980646d300e2f895221))
+
+chore(deps): bump actions/github-script from 8.0.0 to 9.0.0 in /.github/workflows
+
+- **deps**: Bump actions/github-script in /.github/workflows
+  ([`437e77d`](https://github.com/jacksonpradolima/coleman4hcs/commit/437e77d5f6b1a47de2c827d2fe8a5f368893b721))
+
+Bumps [actions/github-script](https://github.com/actions/github-script) from 8.0.0 to 9.0.0. -
+  [Release notes](https://github.com/actions/github-script/releases) -
+  [Commits](https://github.com/actions/github-script/compare/ed597411d8f924073f98dfc5c65a23a2325f34cd...3a2844b7e9c422d3c10d287c895573f7108da1b3)
+
+--- updated-dependencies: - dependency-name: actions/github-script dependency-version: 9.0.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-major
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump codelytv/pr-size-labeler from 1.10.3 to 1.10.4 in /.github/workflows
+  ([`cf2339d`](https://github.com/jacksonpradolima/coleman4hcs/commit/cf2339dbe3938057f7e5eefb74301ec631775f17))
+
+chore(deps): bump codelytv/pr-size-labeler from 1.10.3 to 1.10.4 in /.github/workflows
+
+- **deps**: Bump codelytv/pr-size-labeler in /.github/workflows
+  ([`877b425`](https://github.com/jacksonpradolima/coleman4hcs/commit/877b4250868b3ebb793b7284c00fe6a115c966a4))
+
+Bumps [codelytv/pr-size-labeler](https://github.com/codelytv/pr-size-labeler) from 1.10.3 to 1.10.4.
+  - [Release notes](https://github.com/codelytv/pr-size-labeler/releases) -
+  [Commits](https://github.com/codelytv/pr-size-labeler/compare/4ec67706cd878fbc1c8db0a5dcd28b6bb412e85a...095a41fca88b8764fd9e008ad269bcdb82bb38b9)
+
+--- updated-dependencies: - dependency-name: codelytv/pr-size-labeler dependency-version: 1.10.4
+
+dependency-type: direct:production
+
+update-type: version-update:semver-patch
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump marimo from 0.22.5 to 0.23.0 in the uv group across 1 directory
+  ([`53ec0f6`](https://github.com/jacksonpradolima/coleman4hcs/commit/53ec0f69177c03e54b0cc70d8ee42ba644012d09))
+
+chore(deps): bump marimo from 0.22.5 to 0.23.0 in the uv group across 1 directory
+
+- **deps**: Bump marimo in the uv group across 1 directory
+  ([`36032db`](https://github.com/jacksonpradolima/coleman4hcs/commit/36032db263b3e872012fc0283924176d9ce1e4d9))
+
+Bumps the uv group with 1 update in the / directory:
+  [marimo](https://github.com/marimo-team/marimo).
+
+Updates `marimo` from 0.22.5 to 0.23.0 - [Release
+  notes](https://github.com/marimo-team/marimo/releases) -
+  [Commits](https://github.com/marimo-team/marimo/compare/0.22.5...0.23.0)
+
+--- updated-dependencies: - dependency-name: marimo dependency-version: 0.23.0
+
+dependency-type: direct:production
+
+dependency-group: uv
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump opentelemetry-api from 1.40.0 to 1.41.0
+  ([`ac33be3`](https://github.com/jacksonpradolima/coleman4hcs/commit/ac33be30e228559dca53d88e35a2aba00fed05ed))
+
+chore(deps): bump opentelemetry-api from 1.40.0 to 1.41.0
+
+- **deps**: Bump opentelemetry-api from 1.40.0 to 1.41.0
+  ([`713cc09`](https://github.com/jacksonpradolima/coleman4hcs/commit/713cc09a10d82d9f553e8217bba697850c4e02ad))
+
+Bumps [opentelemetry-api](https://github.com/open-telemetry/opentelemetry-python) from 1.40.0 to
+  1.41.0. - [Release notes](https://github.com/open-telemetry/opentelemetry-python/releases) -
+  [Changelog](https://github.com/open-telemetry/opentelemetry-python/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/open-telemetry/opentelemetry-python/compare/v1.40.0...v1.41.0)
+
+--- updated-dependencies: - dependency-name: opentelemetry-api dependency-version: 1.41.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump opentelemetry-exporter-otlp-proto-http
+  ([`f37d837`](https://github.com/jacksonpradolima/coleman4hcs/commit/f37d837e812e9d285ea2ea2af16fd85eab2007d7))
+
+Bumps
+  [opentelemetry-exporter-otlp-proto-http](https://github.com/open-telemetry/opentelemetry-python)
+  from 1.40.0 to 1.41.0. - [Release
+  notes](https://github.com/open-telemetry/opentelemetry-python/releases) -
+  [Changelog](https://github.com/open-telemetry/opentelemetry-python/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/open-telemetry/opentelemetry-python/compare/v1.40.0...v1.41.0)
+
+--- updated-dependencies: - dependency-name: opentelemetry-exporter-otlp-proto-http
+  dependency-version: 1.41.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump opentelemetry-exporter-otlp-proto-http from 1.40.0 to 1.41.0
+  ([`dd83903`](https://github.com/jacksonpradolima/coleman4hcs/commit/dd839039d0bda95615dbd03bb87469d7975d0818))
+
+chore(deps): bump opentelemetry-exporter-otlp-proto-http from 1.40.0 to 1.41.0
+
+- **deps**: Bump pytest from 9.0.2 to 9.0.3
+  ([`78ae841`](https://github.com/jacksonpradolima/coleman4hcs/commit/78ae8418ea0cef29c0845f09491983ca79a3afc6))
+
+chore(deps): bump pytest from 9.0.2 to 9.0.3
+
+- **deps**: Bump pytest from 9.0.2 to 9.0.3
+  ([`7b4b47c`](https://github.com/jacksonpradolima/coleman4hcs/commit/7b4b47c8f49e7e157b85ab2d04a5e8f42a298a8c))
+
+Bumps [pytest](https://github.com/pytest-dev/pytest) from 9.0.2 to 9.0.3. - [Release
+  notes](https://github.com/pytest-dev/pytest/releases) -
+  [Changelog](https://github.com/pytest-dev/pytest/blob/main/CHANGELOG.rst) -
+  [Commits](https://github.com/pytest-dev/pytest/compare/9.0.2...9.0.3)
+
+--- updated-dependencies: - dependency-name: pytest dependency-version: 9.0.3
+
+dependency-type: direct:production
+
+update-type: version-update:semver-patch
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+### Code Style
+
+- Simplify json import alias in module-level _parse_radon_mi
+  ([`4001905`](https://github.com/jacksonpradolima/coleman4hcs/commit/400190587ce067be0f97f4dcf090fca4270b4b25))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/f3aacc22-849a-4932-b2cc-eee7d1b419ae
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+### Documentation
+
+- Add example outputs and explanations to code-cost.md; fix scalene command; add cost-raw and
+  cost-profile-pyspy make targets
+  ([`584aab2`](https://github.com/jacksonpradolima/coleman4hcs/commit/584aab2d48fc9c8178de050d9a64cb1093ac6fd7))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/97882284-249d-4885-9cca-adb64e37ad30
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+### Features
+
+- Add force_sequential_under_scalene option for Scalene profiling stability
+  ([`aca6e74`](https://github.com/jacksonpradolima/coleman4hcs/commit/aca6e74e603ff09b0fad888a79f68afe0f73772c))
+
+- Add Python 3.13 profiling workflow with py-spy in Makefile and update documentation
+  ([`29ad762`](https://github.com/jacksonpradolima/coleman4hcs/commit/29ad7623f565581c09cb447dc44401f94f7fc3e6))
+
+- Establish code cost evaluation workflow
+  ([`5fbd76b`](https://github.com/jacksonpradolima/coleman4hcs/commit/5fbd76b35ed3f13c9007845e6956caddb675cf2f))
+
+feat: establish code cost evaluation workflow
+
+- Establish code cost evaluation workflow
+  ([`0fa954e`](https://github.com/jacksonpradolima/coleman4hcs/commit/0fa954e279f73654483b3200a82cc5edab794aae))
+
+Add radon, xenon, scalene, py-spy, and codecarbon as dev dependencies. Create
+  scripts/measure_energy.py for energy estimation. Add GitHub Actions workflow for Xenon structural
+  checks. Add Makefile targets for cost-structural, cost-complexity, cost-maintainability,
+  cost-xenon, cost-profile-scalene, and cost-energy. Create docs/code-cost.md documenting all cost
+  dimensions. Update .gitignore for CodeCarbon output files.
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/5633ad91-543d-4dac-927d-66e9abe79ef4
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+### Refactoring
+
+- Move _parse_radon_mi to module level to reduce cell cognitive complexity to ≤15
+  ([`062a2f8`](https://github.com/jacksonpradolima/coleman4hcs/commit/062a2f811256dc846c2160c599388b9896884653))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/f3aacc22-849a-4932-b2cc-eee7d1b419ae
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Reduce cognitive complexity in workflow.py structural cost cell
+  ([`82126d8`](https://github.com/jacksonpradolima/coleman4hcs/commit/82126d8d1c29037b6833c35910ad4e3b422fb042))
+
+- Extract MI parsing into local _parse_radon_mi helper function - Extract nested conditional
+  expression into mi_passed variable and if/elif/else chain for mi_status - Extract xenon_status for
+  consistency
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/312e716b-c96a-434b-b9d6-ab82002fe0c6
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+- Simplify getattr and remove overly generic error token
+  ([`6ddf59c`](https://github.com/jacksonpradolima/coleman4hcs/commit/6ddf59c84f33283c9574e799afe30dba0d3de7d4))
+
+Agent-Logs-Url:
+  https://github.com/jacksonpradolima/coleman4hcs/sessions/702ef268-24b6-4518-8a18-90dcde34ed83
+
+Co-authored-by: jacksonpradolima <7774063+jacksonpradolima@users.noreply.github.com>
+
+
 ## v2.1.0 (2026-04-12)
 
 ### Bug Fixes
