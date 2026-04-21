@@ -30,7 +30,15 @@ def _canonical_json(spec: RunSpec) -> str:
     str
         Canonical JSON with sorted keys and compact separators.
     """
-    return json.dumps(spec.model_dump(), sort_keys=True, separators=(",", ":"))
+    payload = spec.model_dump()
+
+    # Backward compatibility: the new execution-level Scalene safeguard
+    # should not change run_id when left at its default behavior (True).
+    execution = payload.get("execution")
+    if isinstance(execution, dict) and execution.get("force_sequential_under_scalene", True):
+        execution.pop("force_sequential_under_scalene", None)
+
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
 def compute_run_id(spec: RunSpec) -> str:

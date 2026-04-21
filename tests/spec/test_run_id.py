@@ -1,6 +1,14 @@
 """Tests for deterministic run_id computation."""
 
-from coleman4hcs.spec.models import CheckpointSpec, ExecutionSpec, ExperimentSpec, ResultsSpec, RunSpec, TelemetrySpec
+from coleman4hcs.spec.models import (
+    AlgorithmSpec,
+    CheckpointSpec,
+    ExecutionSpec,
+    ExperimentSpec,
+    ResultsSpec,
+    RunSpec,
+    TelemetrySpec,
+)
 from coleman4hcs.spec.run_id import _canonical_json, compute_run_id
 
 
@@ -41,9 +49,19 @@ class TestComputeRunId:
         assert compute_run_id(spec1) != compute_run_id(spec2)
 
     def test_algorithm_params_affect_id(self):
-        spec1 = RunSpec(algorithm={"ucb": {"timerank": {"c": 0.5}}})
-        spec2 = RunSpec(algorithm={"ucb": {"timerank": {"c": 0.3}}})
+        spec1 = RunSpec(algorithm=AlgorithmSpec.model_validate({"ucb": {"timerank": {"c": 0.5}}}))
+        spec2 = RunSpec(algorithm=AlgorithmSpec.model_validate({"ucb": {"timerank": {"c": 0.3}}}))
         assert compute_run_id(spec1) != compute_run_id(spec2)
+
+    def test_scalene_default_flag_does_not_change_id(self):
+        base = RunSpec(execution=ExecutionSpec(parallel_pool_size=2))
+        explicit_default = RunSpec(execution=ExecutionSpec(parallel_pool_size=2, force_sequential_under_scalene=True))
+        assert compute_run_id(base) == compute_run_id(explicit_default)
+
+    def test_scalene_override_flag_changes_id(self):
+        base = RunSpec(execution=ExecutionSpec(parallel_pool_size=2))
+        override = RunSpec(execution=ExecutionSpec(parallel_pool_size=2, force_sequential_under_scalene=False))
+        assert compute_run_id(base) != compute_run_id(override)
 
     def test_golden_determinism(self):
         """Same spec must always produce the same run_id (golden test).
@@ -53,7 +71,7 @@ class TestComputeRunId:
         spec = RunSpec(
             execution=ExecutionSpec(parallel_pool_size=1, independent_executions=1, verbose=False),
             experiment=ExperimentSpec(datasets=["test@proj"], rewards=["RNFail"], policies=["UCB"]),
-            algorithm={"ucb": {"rnfail": {"c": 0.3}}},
+            algorithm=AlgorithmSpec.model_validate({"ucb": {"rnfail": {"c": 0.3}}}),
             results=ResultsSpec(enabled=False),
             checkpoint=CheckpointSpec(enabled=False),
             telemetry=TelemetrySpec(enabled=False),

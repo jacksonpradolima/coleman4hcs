@@ -208,3 +208,6 @@ prof/
 # Ignore runs and checkpoints output
 runs/
 checkpoints/
+
+# CodeCarbon emissions tracking
+emissions.csv

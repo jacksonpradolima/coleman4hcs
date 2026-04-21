@@ -3,6 +3,10 @@ SHELL := /bin/bash
 # Resolve uv path: if not found in PATH, default to ~/.local/bin/uv (where installer places it)
 UV := $(shell command -v uv 2>/dev/null || echo $(HOME)/.local/bin/uv)
 PYTHON := .venv/bin/python
+PYTHON_REAL := $(shell readlink -f $(PYTHON))
+PYSPY := .venv/bin/py-spy
+PROFILE_VENV := .venv-pyspy
+PROFILE_PYTHON := $(PROFILE_VENV)/bin/python
 PYTEST := .venv/bin/pytest
 PRE_COMMIT := .venv/bin/pre-commit
 
@@ -11,7 +15,7 @@ export UV_LINK_MODE ?= copy
 
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve check-precommit clean interrogate build run
+.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve docs-export-workflow check-precommit clean interrogate build run cost-structural cost-complexity cost-maintainability cost-xenon cost-wily cost-profile-scalene cost-profile-pyspy cost-energy
 
 ## —— Coleman4HCS Makefile ——————————————————————————————————
 
@@ -94,6 +98,9 @@ docs: ensure-uv ## Build documentation with Zensical
 docs-serve: ensure-uv ## Serve documentation locally
 	$(UV) run --extra docs zensical serve
 
+docs-export-workflow: ensure-uv ## Export marimo workflow notebook to Markdown for Zensical
+	$(UV) run --extra notebook marimo export md docs/workflow.py -o docs/workflow.md --force
+
 # ——— Build ————————————————————————————————————————————————
 
 build: ensure-uv ## Build the package
@@ -108,6 +115,56 @@ run: ensure-uv ## Remove runs/checkpoints and execute coleman run
 # ——— Pre-commit ———————————————————————————————————————————
 
 check-precommit: test typecheck interrogate ## Run tests, type checks, and docstring coverage (used by pre-commit)
+
+# ——— Code Cost ————————————————————————————————————————————
+
+cost-structural: cost-complexity cost-maintainability cost-xenon ## Run all structural cost checks
+
+cost-complexity: ensure-uv ## Report cyclomatic complexity (Radon CC)
+	$(UV) run radon cc -s -a coleman4hcs/
+
+cost-maintainability: ensure-uv ## Enforce maintainability index gate (Radon MI ≥ 20)
+	@$(UV) run radon mi -s -n B coleman4hcs/ > /tmp/mi_issues.txt; \
+	if [ -s /tmp/mi_issues.txt ]; then \
+		echo "❌ Modules below maintainability threshold (MI < 20):"; \
+		cat /tmp/mi_issues.txt; \
+		exit 1; \
+	else \
+		echo "✅ All modules meet MI ≥ 20"; \
+	fi
+
+cost-raw: ensure-uv ## Report raw source metrics (LOC, SLOC, comments) with Radon
+	$(UV) run radon raw coleman4hcs/
+
+cost-xenon: ensure-uv ## Run Xenon complexity gate (CI threshold)
+	$(UV) run xenon --max-absolute C --max-modules B --max-average A coleman4hcs/
+
+cost-wily: ensure-uv ## Build and report complexity trend with Wily
+	$(UV) run wily build coleman4hcs/
+	$(UV) run wily report coleman4hcs/
+
+cost-profile-scalene: ensure-uv ## Smoke-test Scalene against the CLI entrypoint
+	$(UV) run scalene run coleman4hcs/cli.py --- --help
+
+cost-profile-pyspy: ensure-uv ## Record a py-spy profile using a dedicated Python 3.13 profiling venv
+	$(UV) python install 3.13
+	$(UV) venv $(PROFILE_VENV) --python 3.13 --allow-existing
+	$(UV) pip install --python $(PROFILE_PYTHON) duckdb numpy polars pyarrow scipy scikit-posthocs "pydantic>=2.12.5" "pyyaml>=6.0.3"
+	@set -e; \
+	rm -f profile.svg /tmp/pyspy-cost-profile.log; \
+	status=0; \
+	PYTHONPATH=. $(PYSPY) record --rate 20 --subprocesses -o profile.svg -- $(PROFILE_PYTHON) -m coleman4hcs.cli run --config run.yaml \
+		2>&1 | tee /tmp/pyspy-cost-profile.log || status=$$?; \
+	if [ "$$status" -ne 0 ]; then \
+		if [ -f profile.svg ] && grep -q "Wrote flamegraph data to 'profile.svg'" /tmp/pyspy-cost-profile.log; then \
+			echo "INFO: py-spy returned a non-zero exit during teardown, but profile.svg was written successfully."; \
+			exit 0; \
+		fi; \
+		exit $$status; \
+	fi
+
+cost-energy: ensure-uv ## Estimate energy/carbon for a representative workload
+	$(UV) run python scripts/measure_energy.py
 
 # ——— Cleanup ——————————————————————————————————————————————
 

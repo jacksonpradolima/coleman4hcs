@@ -1,7 +1,7 @@
 """Coleman4HCS workflow notebook.
 
-Official marimo notebook covering configuration, observability,
-resume/recovery, result export, and final analysis.
+Official marimo notebook covering configuration, code cost evaluation,
+observability, resume/recovery, result export, and final analysis.
 """
 
 import marimo
@@ -39,11 +39,12 @@ def _(mo):
         This official notebook covers the full operational loop:
 
         1. Read active settings from `run.yaml`
-        2. Inspect live behavior in Grafana
-        3. Inspect checkpoint progress for resume and recovery
-        4. Read final experiment results from Parquet
-        5. Export compact summaries for reports or papers
-        6. Compare policies by quality and resource cost
+        2. Evaluate code cost (structural, runtime, and energy)
+        3. Inspect live behavior in Grafana
+        4. Inspect checkpoint progress for resume and recovery
+        5. Read final experiment results from Parquet
+        6. Export compact summaries for reports or papers
+        7. Compare policies by quality and resource cost
         """
     )
 
@@ -85,6 +86,158 @@ def _(mo, path_class, pd, yaml):
 def _(settings_df):
     """Display the active configuration table."""
     return settings_df
+
+
+@app.cell
+def _(mo):
+    """Introduce the code cost evaluation scorecard."""
+    mo.md(
+        """
+        ## Code Cost Evaluation
+
+        Coleman4HCS measures code cost as a **multi-dimensional scorecard**
+        with four dimensions:
+
+        | Dimension | What it measures | Tools |
+        |-----------|-----------------|-------|
+        | **Structural** | Maintainability, complexity, change risk | Radon, Xenon, Wily |
+        | **Runtime** | CPU time, hotspots, memory pressure | Scalene, py-spy |
+        | **Energy** | Estimated energy / carbon impact | CodeCarbon, pyRAPL |
+        | **Operational** | Infrastructure effort proxy | All of the above |
+        """
+    )
+
+
+def _parse_radon_mi(result):
+    """Parse radon MI subprocess result into (scores, error)."""
+    import json
+
+    if result.returncode != 0:
+        return {}, result.stderr.strip() or "radon exited with a non-zero status"
+    try:
+        mi_data = json.loads(result.stdout)
+    except (ValueError, TypeError):
+        return {}, "failed to parse radon MI output"
+    parsed: dict[str, float] = {}
+    for module, value in mi_data.items():
+        if isinstance(value, (int, float)):
+            parsed[module] = float(value)
+        elif isinstance(value, dict) and "mi" in value:
+            parsed[module] = float(value["mi"])
+        else:
+            return {}, f"unexpected radon MI format for {module}: {value!r}"
+    return parsed, None
+
+
+@app.cell
+def _(mo, pd):
+    """Run structural cost checks and display the results."""
+    import subprocess
+    import sys
+
+    radon_mi_cmd = [sys.executable, "-m", "radon", "mi", "-s", "-j", "coleman4hcs/"]
+    xenon_cmd = [
+        sys.executable,
+        "-m",
+        "xenon",
+        "--max-absolute",
+        "C",
+        "--max-modules",
+        "B",
+        "--max-average",
+        "A",
+        "coleman4hcs/",
+    ]
+
+    mi_result = subprocess.run(radon_mi_cmd, capture_output=True, text=True)
+    xenon_result = subprocess.run(xenon_cmd, capture_output=True, text=True)
+
+    mi_scores, mi_error = _parse_radon_mi(mi_result)
+    mi_df = pd.DataFrame([{"module": m, "maintainability_index": s} for m, s in sorted(mi_scores.items())])
+
+    xenon_status = "✅ pass" if xenon_result.returncode == 0 else "❌ fail"
+    mi_passed = bool(mi_scores) and all(s >= 20 for s in mi_scores.values())
+    if mi_error:
+        mi_status = "⚠️ error"
+    elif mi_passed:
+        mi_status = "✅ pass"
+    else:
+        mi_status = "❌ fail"
+
+    checks = [
+        {
+            "check": "Xenon complexity gate",
+            "threshold": "max-absolute=C, max-modules=B, max-average=A",
+            "status": xenon_status,
+        },
+        {
+            "check": "Radon maintainability index",
+            "threshold": "all modules ≥ A (MI ≥ 20)",
+            "status": mi_status,
+        },
+    ]
+    checks_df = pd.DataFrame(checks)
+
+    mo.md("### Structural Cost — CI Gates")
+    return checks_df, mi_df, mi_error, mi_result
+
+
+@app.cell
+def _(checks_df, mi_df, mi_error, mi_result, mo):
+    """Display structural cost gate results and maintainability scores."""
+    stderr = getattr(mi_result, "stderr", "")
+    error_parts = [part.strip() for part in [mi_error, stderr] if part and part.strip()]
+    error_text = "\n\n".join(error_parts)
+    missing_dependency = any(
+        token in error_text.lower()
+        for token in [
+            "no module named radon",
+            "modulenotfounderror",
+            "command not found",
+            "not recognized as an internal or external command",
+        ]
+    )
+
+    if not mi_df.empty:
+        mi_content = mi_df
+    elif error_text:
+        message = f"Unable to compute maintainability index.\n\n```text\n{error_text}\n```"
+        if missing_dependency:
+            message += "\n\nRun `uv sync --extra dev` to install Radon."
+        mi_content = mo.md(message)
+    else:
+        mi_content = mo.md("Run `uv sync --extra dev` to install Radon.")
+
+    mo.vstack(
+        [
+            checks_df,
+            mo.md("### Maintainability Index per Module"),
+            mi_content,
+        ]
+    )
+
+
+@app.cell
+def _(mo):
+    """Show code cost CLI commands for local evaluation."""
+    mo.md(
+        """
+        ### Running Code Cost Checks Locally
+
+        ```bash
+        # All structural checks (complexity + maintainability + xenon gate)
+        make cost-structural
+
+        # Runtime profiling with Scalene
+        make cost-profile-scalene
+
+        # Energy estimation with CodeCarbon
+        make cost-energy
+        ```
+
+        See [Code Cost Evaluation](code-cost.md) for full documentation.
+        """
+    )
 
 
 @app.cell
@@ -294,6 +447,8 @@ def _(mo):
         ## Suggested Next Steps
 
         * Run `coleman run --config run.yaml` to generate fresh experiment data
+        * Run `make cost-structural` to evaluate structural cost before and after changes
+        * Run `make cost-energy` to compare energy impact of different implementations
         * Open Grafana to inspect live execution behavior while the run is active
         * Use the Parquet summary above for final comparisons and report export
         * Inspect `./checkpoints/` to verify resume and recovery progress

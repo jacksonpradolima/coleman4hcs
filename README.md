@@ -326,7 +326,34 @@ This project uses a `Makefile` to streamline common development tasks. Run `make
 | `make lint`              | Run the ruff linter                  |
 | `make format`            | Run the ruff formatter               |
 | `make docs`              | Build documentation with Zensical    |
+| `make cost-structural`   | Run all structural cost checks (CC + MI + Xenon) |
+| `make cost-energy`       | Estimate energy/carbon for a workload |
 | `make help`              | Show all available Make targets      |
+
+## Code Cost Evaluation
+
+Coleman4HCS enforces code quality through a **multi-dimensional cost scorecard**
+covering structural complexity, runtime profiling, and energy estimation.
+
+**CI gates** run automatically on every pull request:
+
+- **Xenon complexity gate** — fails if any block exceeds C, any module average exceeds B,
+  or the project average exceeds A.
+- **Radon maintainability index** — fails if any module scores below A (MI < 20).
+
+**Local evaluation commands:**
+
+```bash
+make cost-structural        # all structural checks (CC + MI + Xenon)
+make cost-complexity        # radon cyclomatic complexity
+make cost-maintainability   # radon MI gate (fails if any module < 20)
+make cost-xenon             # xenon complexity gate
+make cost-wily              # wily trend analysis
+make cost-profile-scalene   # scalene CPU/memory profiling
+make cost-energy            # codecarbon energy estimation
+```
+
+See [Code Cost Evaluation](docs/code-cost.md) for full documentation.
 
 ## DevContainer (recommended)
 
@@ -648,8 +675,9 @@ experiment:
 
 **where:**
 - Execution Configuration:
-  - `parallel_pool_size` is the number of threads to run **COLEMAN** in parallel.
+  - `parallel_pool_size` is the number of worker processes to run **COLEMAN** in parallel.
   - `independent_executions` is the number of independent experiments we desire to run.
+  - `force_sequential_under_scalene` forces sequential execution while Scalene is active to improve profiling stability and avoid missing per-thread attribution issues.
 - Experiment Configuration:
   - `scheduled_time_ratio` represents the Schedule Time Ratio, that is, time constraints that represents the time available to run the tests. **Default**: 0.1 (10%), 0.5 (50%), and 0.8 (80%) of the time available.
   - `datasets_dir` is the directory that contains your system. For instance, we desire to run the algorithm for the systems that are inside the directory **data**.

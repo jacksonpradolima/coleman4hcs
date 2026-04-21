@@ -22,12 +22,19 @@ class TestExecutionSpec:
         assert spec.parallel_pool_size == 10
         assert spec.independent_executions == 10
         assert spec.verbose is False
+        assert spec.force_sequential_under_scalene is True
 
     def test_custom_values(self):
-        spec = ExecutionSpec(parallel_pool_size=4, independent_executions=5, verbose=True)
+        spec = ExecutionSpec(
+            parallel_pool_size=4,
+            independent_executions=5,
+            verbose=True,
+            force_sequential_under_scalene=False,
+        )
         assert spec.parallel_pool_size == 4
         assert spec.independent_executions == 5
         assert spec.verbose is True
+        assert spec.force_sequential_under_scalene is False
 
     def test_from_dict(self):
         spec = ExecutionSpec.model_validate({"parallel_pool_size": 2})
@@ -90,7 +97,7 @@ class TestTelemetrySpec:
 
     def test_resource_attributes_extra_fields_rejected(self):
         with pytest.raises(ValidationError):
-            TelemetrySpec(unknown_field="bad")
+            TelemetrySpec.model_validate({"unknown_field": "bad"})
 
 
 class TestRunSpec:
@@ -131,7 +138,7 @@ class TestRunSpec:
         assert spec == spec2
 
     def test_algorithm_freeform(self):
-        spec = RunSpec(algorithm={"ucb": {"timerank": {"c": 0.5}}})
+        spec = RunSpec(algorithm=AlgorithmSpec.model_validate({"ucb": {"timerank": {"c": 0.5}}}))
         dumped = spec.algorithm.model_dump()
         assert dumped["ucb"]["timerank"]["c"] == pytest.approx(0.5)
 

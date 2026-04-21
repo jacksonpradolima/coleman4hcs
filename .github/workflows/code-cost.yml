@@ -1,0 +1,42 @@
+name: Code Cost — Structural checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  structural-cost:
+    name: Structural cost gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        run: |
+          curl -Ls https://astral.sh/uv/install.sh | bash
+          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+
+      - name: Create venv (Python 3.14)
+        run: |
+          uv python install 3.14
+          uv venv .venv --python 3.14
+
+      - name: Install dependencies
+        run: uv sync --frozen --extra dev
+
+      - name: Xenon complexity gate
+        run: make cost-xenon
+
+      - name: Radon maintainability index gate
+        run: make cost-maintainability
+
+      - name: Radon cyclomatic complexity report
+        if: always()
+        run: make cost-complexity

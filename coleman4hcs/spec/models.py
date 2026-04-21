@@ -23,6 +23,10 @@ class ExecutionSpec(BaseModel):
         Random seed for this execution (``None`` = use default/global behavior).
     verbose : bool
         Enable verbose logging.
+    force_sequential_under_scalene : bool
+        When ``True`` and Scalene is active, force ``parallel_pool_size=1``.
+        This improves profiling stability and avoids multiprocessing issues
+        observed on Python 3.14.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -31,6 +35,7 @@ class ExecutionSpec(BaseModel):
     independent_executions: int = 10
     seed: int | None = None
     verbose: bool = False
+    force_sequential_under_scalene: bool = True
 
 
 class ExperimentSpec(BaseModel):
