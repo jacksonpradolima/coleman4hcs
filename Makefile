@@ -170,8 +170,12 @@ cost-profile-pyspy: ensure-uv ## Record a py-spy profile using a dedicated Pytho
 	@set -e; \
 	rm -f profile.svg /tmp/pyspy-cost-profile.log; \
 	status=0; \
+	set +e; \
+	set -o pipefail; \
 	PYTHONPATH=. $(PYSPY) record --rate 20 --subprocesses -o profile.svg -- $(PROFILE_PYTHON) -m coleman4hcs.cli run --config run.yaml \
-		2>&1 | tee /tmp/pyspy-cost-profile.log || status=$$?; \
+		2>&1 | tee /tmp/pyspy-cost-profile.log; \
+	status=$${PIPESTATUS[0]}; \
+	set -e; \
 	if [ "$$status" -ne 0 ]; then \
 		if [ -f profile.svg ] && grep -q "Wrote flamegraph data to 'profile.svg'" /tmp/pyspy-cost-profile.log; then \
 			echo "INFO: py-spy returned a non-zero exit during teardown, but profile.svg was written successfully."; \
