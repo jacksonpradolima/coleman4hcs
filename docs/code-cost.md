@@ -207,14 +207,14 @@ memory allocation, and copy volume line-by-line:
 ```bash
 make cost-profile-scalene
 # or
-uv run scalene run -m coleman4hcs.cli --help
+uv run scalene run coleman4hcs/cli.py --- --help
 ```
 
 Replace `--help` with a real workload for meaningful results.  For
 example, profile an actual experiment run:
 
 ```bash
-uv run scalene run -m coleman4hcs.cli run --config run.yaml
+uv run scalene run coleman4hcs/cli.py --- run --config run.yaml
 ```
 
 ### py-spy (sampling profiler)
@@ -230,6 +230,13 @@ uv run py-spy top -- python -m coleman4hcs.cli --help
 
 !!! note
     `py-spy` may require elevated privileges (`sudo`) on some systems.
+    `py-spy top` shows a live sampling view while the target process runs;
+    short-lived commands (such as `--help`) will exit before meaningful
+    samples are collected.  For full profiling use a real workload:
+
+    ```bash
+    uv run py-spy record -o profile.svg -- python -m coleman4hcs.cli run --config run.yaml
+    ```
 
 ---
 
@@ -304,10 +311,12 @@ meter.end()
 meter.result.export(pyRAPL.outputs.CSVOutput("energy_results.csv"))
 ```
 
-!!! warning "Platform limitation"
+!!! warning "Platform and Python version limitation"
     pyRAPL requires an Intel CPU with RAPL support **and** read access to
     `/sys/class/powercap/intel-rapl/`.  It does not work on AMD, ARM, or
-    virtualised environments without RAPL passthrough.  Use CodeCarbon
+    virtualised environments without RAPL passthrough.  Additionally, pyRAPL
+    is not compatible with Python 3.14 (invalid escape sequences + missing
+    `pymongo` dependency cause import errors on startup).  Use CodeCarbon
     (via `make cost-energy`) as the portable fallback on all platforms.
 
 ---
@@ -350,7 +359,7 @@ For more realistic profiling, replace `--help` with an actual experiment
 configuration:
 
 ```bash
-uv run scalene run -m coleman4hcs.cli run --config run.yaml
+uv run scalene run coleman4hcs/cli.py --- run --config run.yaml
 ```
 
 ---

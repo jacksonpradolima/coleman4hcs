@@ -140,7 +140,7 @@ cost-wily: ensure-uv ## Build and report complexity trend with Wily
 	$(UV) run wily report coleman4hcs/
 
 cost-profile-scalene: ensure-uv ## Smoke-test Scalene against the CLI entrypoint
-	$(UV) run scalene run -m coleman4hcs.cli --help
+	$(UV) run scalene run coleman4hcs/cli.py --- --help
 
 cost-profile-pyspy: ensure-uv ## Sample live process with py-spy (may need sudo on some systems)
 	$(UV) run py-spy top -- python -m coleman4hcs.cli --help

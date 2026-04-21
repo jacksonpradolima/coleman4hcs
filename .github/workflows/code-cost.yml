@@ -32,19 +32,11 @@ jobs:
         run: uv sync --frozen --extra dev
 
       - name: Xenon complexity gate
-        run: uv run xenon --max-absolute C --max-modules B --max-average A coleman4hcs/
+        run: make cost-xenon
 
       - name: Radon maintainability index gate
-        run: |
-          set -o pipefail
-          # Fail if any module scores below A (MI < 20)
-          uv run radon mi -s -n B coleman4hcs/ | tee /tmp/mi_issues.txt
-          if [ -s /tmp/mi_issues.txt ]; then
-            echo "::error::Modules below maintainability threshold (MI < 20):"
-            cat /tmp/mi_issues.txt
-            exit 1
-          fi
+        run: make cost-maintainability
 
       - name: Radon cyclomatic complexity report
         if: always()
-        run: uv run radon cc -s -a -n C coleman4hcs/
+        run: make cost-complexity
