@@ -594,14 +594,14 @@ Besides that, you can extract relevant information about each system using our t
 
 # About the files input
 
-**COLEMAN** now uses Parquet as the primary scenario input format
-(`features-engineered.parquet` and `data-variants.parquet`). CSV inputs are still
-accepted for compatibility, but they are deprecated and emit warnings.
+**COLEMAN** now uses Parquet files (`features-engineered.parquet` and
+`data-variants.parquet`) as the primary scenario input format. CSV inputs are
+still accepted for compatibility, but they are deprecated and emit warnings.
 
 The second file, **data-variants** (Parquet/CSV), is used by the HCS, and it represents all results from all variants.
 The information is organized by commit and variant.
 
-- **features-engineered.csv** contains the following information:
+- **features-engineered.parquet** (or legacy `features-engineered.csv`) contains the following information:
   - **Id**: unique numeric identifier of the test execution;
   - **Name**: unique numeric identifier of the test case;
   - **BuildId**: a value uniquely identifying the build;
@@ -609,11 +609,11 @@ The information is organized by commit and variant.
   - **LastRun**: previous last execution of the test case as *DateTime*;
   - **Verdict**: test verdict of this test execution (Failed: 1, Passed: 0).
 
-- **data-variants.csv** contains all information that **features-engineered.csv** has, and in addition the following information:
+- **data-variants.parquet** (or legacy `data-variants.csv`) contains all information that **features-engineered.parquet** has, and in addition the following information:
   - **Variant**: variant name.
 
-In this way,  **features-engineered.csv** organize the information for a single system or variant, and
-**data-variants.csv** track the information for all variants used during the software life-cycle (for each commit).
+In this way, **features-engineered** organizes the information for a single system or variant, and
+**data-variants** tracks the information for all variants used during the software life-cycle (for each commit).
 
 During the **COLEMAN**'s execution, we use **data-variants** to identify the variants used in a current commit and apply the **WTS** strategy.
 

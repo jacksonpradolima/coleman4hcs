@@ -36,6 +36,7 @@ Tested Functionalities:
 """
 
 import logging
+import warnings
 from typing import Any, cast
 from unittest.mock import Mock, patch
 
@@ -275,9 +276,9 @@ def test_get_scenario_provider_prefers_parquet(tmp_path):
     dataset_dir = datasets_dir / "toy"
     dataset_dir.mkdir(parents=True)
 
-    df = pl.DataFrame(
+    csv_df = pl.DataFrame(
         {
-            "Name": ["TC1"],
+            "Name": ["TC_FROM_CSV"],
             "Duration": [1.0],
             "CalcPrio": [0],
             "LastRun": ["2023-01-01"],
@@ -285,21 +286,26 @@ def test_get_scenario_provider_prefers_parquet(tmp_path):
             "BuildId": [1],
         }
     )
-    df.write_csv(dataset_dir / "features-engineered.csv", separator=";")
-    df.write_parquet(dataset_dir / "features-engineered.parquet")
+    parquet_df = csv_df.with_columns(pl.lit("TC_FROM_PARQUET").alias("Name"))
+    csv_df.write_csv(dataset_dir / "features-engineered.csv", separator=";")
+    parquet_df.write_parquet(dataset_dir / "features-engineered.parquet")
 
-    scenario_provider = get_scenario_provider(
-        str(datasets_dir),
-        "toy",
-        0.5,
-        use_hcs=False,
-        use_context=False,
-        context_config={},
-        feature_groups={},
-    )
+    with warnings.catch_warnings(record=True) as recorded_warnings:
+        warnings.simplefilter("always")
+        scenario_provider = get_scenario_provider(
+            str(datasets_dir),
+            "toy",
+            0.5,
+            use_hcs=False,
+            use_context=False,
+            context_config={},
+            feature_groups={},
+        )
+        first_scenario = next(scenario_provider)
 
-    first_scenario = next(scenario_provider)
+    assert not any(issubclass(w.category, DeprecationWarning) for w in recorded_warnings)
     assert len(first_scenario.get_testcases()) == 1
+    assert first_scenario.get_testcases()[0]["Name"] == "TC_FROM_PARQUET"
 
 
 # ------------------------

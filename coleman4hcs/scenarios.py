@@ -264,11 +264,9 @@ class IndustrialDatasetScenarioProvider:
         self.total_build_duration = 0.0
         self.scenario: VirtualScenario | None = None
 
-        self._tcdf_lazy = self._read_testcases(tcfile)
-        # Backward compatibility: keep legacy attribute name available.
-        self.tcdf = self._tcdf_lazy
+        self._testcases_lazy = self._read_testcases(tcfile)
         max_builds = cast(
-            int | None, self._tcdf_lazy.select(pl.col("BuildId").max().cast(pl.Int64)).collect().item()
+            int | None, self._testcases_lazy.select(pl.col("BuildId").max().cast(pl.Int64)).collect().item()
         )
         self.max_builds = max_builds if max_builds is not None else 0
 
@@ -307,7 +305,7 @@ class IndustrialDatasetScenarioProvider:
             pl.col("Duration").cast(pl.Float64, strict=False).fill_null(0.0),
         ]
 
-        schema_names = set(df.collect_schema().names())
+        schema_names = df.collect_schema().names()
 
         if "LastRun" in schema_names:
             expressions.append(pl.col("LastRun").cast(pl.Utf8, strict=False).fill_null(""))
@@ -319,10 +317,27 @@ class IndustrialDatasetScenarioProvider:
 
     def _collect_build(self, build_id: int, columns: list[str] | None = None) -> pl.DataFrame:
         """Collect one build slice using lazy filtering/projection."""
-        query = self._tcdf_lazy.filter(pl.col("BuildId") == build_id)
+        query = self._testcases_lazy.filter(pl.col("BuildId") == build_id)
         if columns:
             query = query.select(columns)
         return query.collect()
+
+    @property
+    def tcdf(self) -> pl.DataFrame:
+        """Legacy eager view of scenario data.
+
+        Returns
+        -------
+        polars.DataFrame
+            Materialized DataFrame. Prefer lazy internal access for scalability.
+        """
+        warnings.warn(
+            "The `tcdf` eager DataFrame attribute is deprecated. "
+            "Use provider iteration APIs instead (e.g., iterate the provider with `for scenario in provider`).",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._testcases_lazy.collect()
 
     def get_avail_time_ratio(self) -> float:
         """Return the available time ratio.
@@ -456,10 +471,13 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
         """
         super().__init__(tcfile, sched_time_ratio)
 
-        self.variants = self._read_variants(variantsfile)
+        self._variants_lazy = self._read_variants(variantsfile)
+        self._variant_names = cast(
+            list[str], self._variants_lazy.select(pl.col("Variant").unique()).collect().to_series().to_list()
+        )
 
-    def _read_variants(self, variantsfile: str) -> pl.DataFrame:
-        """Read the variants from a provided CSV file.
+    def _read_variants(self, variantsfile: str) -> pl.LazyFrame:
+        """Read the variants from a provided dataset file.
 
         Parameters
         ----------
@@ -468,13 +486,13 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
 
         Returns
         -------
-        polars.DataFrame
-            DataFrame containing variant data.
+        polars.LazyFrame
+            LazyFrame containing variant data.
         """
         # Read the variants (additional file)
         suffix = Path(variantsfile).suffix.lower()
         if suffix == ".parquet":
-            df = pl.scan_parquet(variantsfile).collect()
+            df = pl.scan_parquet(variantsfile)
         elif suffix == ".csv":
             warnings.warn(
                 "CSV variants files are deprecated and will be removed in a future release. "
@@ -482,15 +500,24 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
                 DeprecationWarning,
                 stacklevel=2,
             )
-            df = pl.scan_csv(variantsfile, separator=";", try_parse_dates=True).collect()
+            df = pl.scan_csv(variantsfile, separator=";", try_parse_dates=True)
         else:
             msg = f"Unsupported variants file format: {variantsfile!r}. Supported formats: .parquet, .csv"
             raise ValueError(msg)
 
         # We remove weird characters
-        df = df.with_columns([pl.col("Variant").str.replace_all(r"[!#$%^&*()\[\]{};:,.<>?|`~=+]", "_")])
+        return df.with_columns([pl.col("Variant").str.replace_all(r"[!#$%^&*()\[\]{};:,.<>?|`~=+]", "_")])
 
-        return df
+    @property
+    def variants(self) -> pl.DataFrame:
+        """Legacy eager view of variants data."""
+        warnings.warn(
+            "The `variants` eager DataFrame attribute is deprecated. "
+            "Use scenario-provider APIs instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._variants_lazy.collect()
 
     def get_total_variants(self):
         """Return the number of unique variants.
@@ -500,7 +527,7 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
         int
             The number of unique variants.
         """
-        return self.variants["Variant"].n_unique()
+        return len(self._variant_names)
 
     def get_all_variants(self):
         """Return all unique variant names as a list.
@@ -510,7 +537,7 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
         list of str
             List of unique variant names.
         """
-        return self.variants["Variant"].unique().to_list()
+        return list(self._variant_names)
 
     def get(self) -> VirtualHCSScenario | None:
         """Get the next virtual HCS scenario.
@@ -529,7 +556,7 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
             return None
 
         # Match variants to the current build
-        variants = self.variants.filter(pl.col("BuildId") == self.current_build)
+        variants = self._variants_lazy.filter(pl.col("BuildId") == self.current_build).collect()
 
         self.scenario = VirtualHCSScenario(**base_scenario.__dict__, variants=variants)
 

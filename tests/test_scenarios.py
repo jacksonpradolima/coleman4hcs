@@ -184,7 +184,9 @@ def test_industrial_dataset_scenario_provider_csv_deprecation_warning(mock_csv_d
 
     with pytest.warns(DeprecationWarning, match="CSV scenario files are deprecated"):
         provider = IndustrialDatasetScenarioProvider(str(csv_file), sched_time_ratio=0.5)
-        next(provider)
+        scenario = next(provider)
+
+    assert len(scenario.get_testcases()) == 2
 
 
 def test_provider_stop_iteration(mock_csv_data, tmp_path):
