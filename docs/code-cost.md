@@ -167,11 +167,20 @@ Git history.  It is included as a dev dependency:
 
 ```bash
 make cost-wily
+# custom file:
+make cost-wily-file WILY_FILE=coleman4hcs/bandit.py
+
 # or individually:
-uv run wily build coleman4hcs/
-uv run wily report coleman4hcs/
-uv run wily diff coleman4hcs/ -r HEAD^1
+uv run wily build coleman4hcs
+uv run wily index
+uv run wily report coleman4hcs/runner.py
+uv run wily diff coleman4hcs/runner.py -r HEAD^1
 ```
+
+!!! note
+    `wily` with the `git` archiver requires a clean repository. The Makefile
+    targets auto-detect a dirty worktree and switch to the `filesystem`
+    archiver so reports still work without forcing commit/stash.
 
 **Example output:**
 
@@ -230,9 +239,10 @@ uv run scalene run coleman4hcs/cli.py --- run --config run.yaml
       parallel_pool_size: 4
       force_sequential_under_scalene: true
     ```
-
-### py-spy (sampling profiler)
-
+    uv run wily build coleman4hcs
+    uv run wily index
+    uv run wily report coleman4hcs/runner.py
+    uv run wily diff coleman4hcs/runner.py -r HEAD^1
 [py-spy](https://github.com/benfred/py-spy) is a sampling profiler that
 attaches to a running process with minimal overhead:
 
