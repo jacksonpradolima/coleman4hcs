@@ -129,6 +129,9 @@ cost-maintainability: ensure-uv ## Enforce maintainability index gate (Radon MI 
 		echo "✅ All modules meet MI ≥ 20"; \
 	fi
 
+cost-raw: ensure-uv ## Report raw source metrics (LOC, SLOC, comments) with Radon
+	$(UV) run radon raw coleman4hcs/
+
 cost-xenon: ensure-uv ## Run Xenon complexity gate (CI threshold)
 	$(UV) run xenon --max-absolute C --max-modules B --max-average A coleman4hcs/
 
@@ -137,7 +140,10 @@ cost-wily: ensure-uv ## Build and report complexity trend with Wily
 	$(UV) run wily report coleman4hcs/
 
 cost-profile-scalene: ensure-uv ## Smoke-test Scalene against the CLI entrypoint
-	$(UV) run scalene -m coleman4hcs.cli --help
+	$(UV) run scalene run -m coleman4hcs.cli --help
+
+cost-profile-pyspy: ensure-uv ## Sample live process with py-spy (may need sudo on some systems)
+	$(UV) run py-spy top -- python -m coleman4hcs.cli --help
 
 cost-energy: ensure-uv ## Estimate energy/carbon for a representative workload
 	$(UV) run python scripts/measure_energy.py
