@@ -214,17 +214,24 @@ def get_scenario_provider(  # pylint: disable=too-many-positional-arguments
 or IndustrialDatasetContextScenarioProvider
         An instance of the scenario provider based on the given configuration.
     """
-    base_tcfile = f"{datasets_dir}/{dataset}/features-engineered.csv"
+    def _prefer_parquet(base_path_without_ext: str) -> str:
+        parquet_path = f"{base_path_without_ext}.parquet"
+        csv_path = f"{base_path_without_ext}.csv"
+        if os.path.exists(parquet_path):
+            return parquet_path
+        return csv_path
+
+    base_tcfile = _prefer_parquet(f"{datasets_dir}/{dataset}/features-engineered")
 
     if use_hcs and not use_context:
-        variants_file = f"{datasets_dir}/{dataset}/data-variants.csv"
+        variants_file = _prefer_parquet(f"{datasets_dir}/{dataset}/data-variants")
         return IndustrialDatasetHCSScenarioProvider(base_tcfile, variants_file, sched_time_ratio)
 
     if use_hcs and use_context:
         raise NotImplementedError
 
     if use_context:
-        contextual_tcfile = f"{datasets_dir}/{dataset}/features-engineered-contextual.csv"
+        contextual_tcfile = _prefer_parquet(f"{datasets_dir}/{dataset}/features-engineered-contextual")
         feature_group_name = str(feature_groups["feature_group_name"])
 
         feature_group_values_raw = feature_groups["feature_group_values"]

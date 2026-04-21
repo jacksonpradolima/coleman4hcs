@@ -33,6 +33,7 @@ from coleman4hcs.agent import ContextualAgent, SlidingWindowContextualAgent
 from coleman4hcs.bandit import EvaluationMetricBandit
 from coleman4hcs.checkpoint.checkpoint_store import CheckpointStore, NullCheckpointStore
 from coleman4hcs.checkpoint.state import CheckpointPayload
+from coleman4hcs.environment_base import AbstractEnvironment
 from coleman4hcs.results.parquet_sink import ParquetSink
 from coleman4hcs.results.sink_base import NullSink, ResultsSink
 from coleman4hcs.scenarios import IndustrialDatasetHCSScenarioProvider, VirtualHCSScenario
@@ -46,7 +47,7 @@ logger = logging.getLogger(__name__)
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
-class Environment:
+class Environment(AbstractEnvironment):
     """The environment class that simulates the agent's interactions and collects results.
 
     Parameters

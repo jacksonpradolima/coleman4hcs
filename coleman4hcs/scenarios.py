@@ -23,7 +23,9 @@ IndustrialDatasetContextScenarioProvider
 """
 
 import os
+import warnings
 from decimal import Decimal
+from pathlib import Path
 from typing import cast
 
 import polars as pl
@@ -262,25 +264,42 @@ class IndustrialDatasetScenarioProvider:
         self.total_build_duration = 0.0
         self.scenario: VirtualScenario | None = None
 
-        self.tcdf = self._read_testcases(tcfile)
-        max_builds = cast(int | None, self.tcdf["BuildId"].max())
+        self._tcdf_lazy = self._read_testcases(tcfile)
+        # Backward compatibility: keep legacy attribute name available.
+        self.tcdf = self._tcdf_lazy
+        max_builds = cast(
+            int | None, self._tcdf_lazy.select(pl.col("BuildId").max().cast(pl.Int64)).collect().item()
+        )
         self.max_builds = max_builds if max_builds is not None else 0
 
-    def _read_testcases(self, tcfile: str) -> pl.DataFrame:
-        """Read the test cases from a provided CSV file.
+    def _read_testcases(self, tcfile: str) -> pl.LazyFrame:
+        """Read the test cases from a provided dataset file.
 
         Parameters
         ----------
         tcfile : str
-            Path to the CSV file.
+            Path to the test case file (Parquet preferred, CSV supported).
 
         Returns
         -------
-        polars.DataFrame
-            DataFrame containing the test case data.
+        polars.LazyFrame
+            LazyFrame containing normalized test case data.
         """
-        # We use ';' separated values to avoid issues with thousands
-        df = pl.read_csv(tcfile, separator=";", try_parse_dates=True)
+        suffix = Path(tcfile).suffix.lower()
+        if suffix == ".parquet":
+            df = pl.scan_parquet(tcfile)
+        elif suffix == ".csv":
+            warnings.warn(
+                "CSV scenario files are deprecated and will be removed in a future release. "
+                "Please migrate to Parquet files.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # We use ';' separated values to avoid issues with thousands.
+            df = pl.scan_csv(tcfile, separator=";", try_parse_dates=True)
+        else:
+            msg = f"Unsupported scenario file format: {tcfile!r}. Supported formats: .parquet, .csv"
+            raise ValueError(msg)
 
         # Normalize core fields to the types expected by the rest of the pipeline.
         expressions = [
@@ -288,15 +307,22 @@ class IndustrialDatasetScenarioProvider:
             pl.col("Duration").cast(pl.Float64, strict=False).fill_null(0.0),
         ]
 
-        if "LastRun" in df.columns:
+        schema_names = set(df.collect_schema().names())
+
+        if "LastRun" in schema_names:
             expressions.append(pl.col("LastRun").cast(pl.Utf8, strict=False).fill_null(""))
 
-        if "LastResults" in df.columns:
+        if "LastResults" in schema_names:
             expressions.append(pl.col("LastResults").cast(pl.Utf8, strict=False).fill_null(""))
 
-        df = df.with_columns(expressions)
+        return df.with_columns(expressions)
 
-        return df
+    def _collect_build(self, build_id: int, columns: list[str] | None = None) -> pl.DataFrame:
+        """Collect one build slice using lazy filtering/projection."""
+        query = self._tcdf_lazy.filter(pl.col("BuildId") == build_id)
+        if columns:
+            query = query.select(columns)
+        return query.collect()
 
     def get_avail_time_ratio(self) -> float:
         """Return the available time ratio.
@@ -336,7 +362,7 @@ class IndustrialDatasetScenarioProvider:
             return None
 
         # Select the data for the current build
-        build_df = self.tcdf.filter(pl.col("BuildId") == self.current_build)
+        build_df = self._collect_build(self.current_build)
 
         # Convert the solutions to a list of dict
         testcases = build_df.select(self.REQUIRED_COLUMNS).to_dicts()
@@ -446,7 +472,20 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
             DataFrame containing variant data.
         """
         # Read the variants (additional file)
-        df = pl.read_csv(variantsfile, separator=";", try_parse_dates=True)
+        suffix = Path(variantsfile).suffix.lower()
+        if suffix == ".parquet":
+            df = pl.scan_parquet(variantsfile).collect()
+        elif suffix == ".csv":
+            warnings.warn(
+                "CSV variants files are deprecated and will be removed in a future release. "
+                "Please migrate to Parquet files.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            df = pl.scan_csv(variantsfile, separator=";", try_parse_dates=True).collect()
+        else:
+            msg = f"Unsupported variants file format: {variantsfile!r}. Supported formats: .parquet, .csv"
+            raise ValueError(msg)
 
         # We remove weird characters
         df = df.with_columns([pl.col("Variant").str.replace_all(r"[!#$%^&*()\[\]{};:,.<>?|`~=+]", "_")])
@@ -592,7 +631,7 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         previous_features = list(set(self.previous_build).intersection(self.features))
 
         # Extract data for the previous build
-        previous_build_df = self.tcdf.filter(pl.col("BuildId") == self.current_build - 1)
+        previous_build_df = self._collect_build(self.current_build - 1)
 
         # Start with the current build's features
         merged_df = build_df.select(["Name"] + list(current_features))
@@ -652,7 +691,7 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         if not base_scenario:
             return None
 
-        build_df = self.tcdf.filter(pl.col("BuildId") == self.current_build)
+        build_df = self._collect_build(self.current_build)
         context_features = self._merge_context_features(build_df)
 
         # This test set is a "scenario" that must be evaluated.

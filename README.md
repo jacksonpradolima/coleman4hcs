@@ -122,6 +122,9 @@ YAML configs, composable config packs, a sweep engine, and deterministic
 drive experiments programmatically **or** via the `coleman` CLI — no repo
 checkout required.
 
+The library namespace is now available as `coleman` (preferred). Legacy
+imports from `coleman4hcs` continue to work during the deprecation window.
+
 > **Breaking change** — the `CONFIG_FILE` environment variable, raw TOML
 > dict workflow, and `main.py` entry-point are removed.  Configuration is now
 > handled via YAML configs, typed Pydantic v2 models, config packs, and
@@ -130,8 +133,8 @@ checkout required.
 ## Library API
 
 ```python
-from coleman4hcs.spec import RunSpec, SweepSpec, SweepAxis, compute_run_id
-from coleman4hcs.api  import run, run_many, sweep
+from coleman.spec import RunSpec, SweepSpec, SweepAxis, compute_run_id
+from coleman.api import run, run_many, sweep
 
 # 1. Define a spec
 spec = RunSpec(
@@ -591,8 +594,11 @@ Besides that, you can extract relevant information about each system using our t
 
 # About the files input
 
-**COLEMAN** considers two kind of *csv files*: **features-engineered** and **data-variants**.
-The second file, **data-variants.csv**, is used by the HCS, and it represents all results from all variants.
+**COLEMAN** now uses Parquet as the primary scenario input format
+(`features-engineered.parquet` and `data-variants.parquet`). CSV inputs are still
+accepted for compatibility, but they are deprecated and emit warnings.
+
+The second file, **data-variants** (Parquet/CSV), is used by the HCS, and it represents all results from all variants.
 The information is organized by commit and variant.
 
 - **features-engineered.csv** contains the following information:

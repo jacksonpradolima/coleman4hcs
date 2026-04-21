@@ -166,6 +166,27 @@ def test_industrial_dataset_scenario_provider_casts_name_to_string(tmp_path):
     assert scenario.get_testcases()[1]["Name"] == "2"
 
 
+def test_industrial_dataset_scenario_provider_parquet_first(mock_csv_data, tmp_path):
+    """Test that providers support Parquet datasets without CSV fallback."""
+    parquet_file = tmp_path / "testcases.parquet"
+    mock_csv_data.write_parquet(parquet_file)
+
+    provider = IndustrialDatasetScenarioProvider(str(parquet_file), sched_time_ratio=0.5)
+    scenario = next(provider)
+
+    assert len(scenario.get_testcases()) == 2
+
+
+def test_industrial_dataset_scenario_provider_csv_deprecation_warning(mock_csv_data, tmp_path):
+    """Test that CSV inputs remain supported with a deprecation warning."""
+    csv_file = tmp_path / "testcases.csv"
+    mock_csv_data.write_csv(csv_file, separator=";")
+
+    with pytest.warns(DeprecationWarning, match="CSV scenario files are deprecated"):
+        provider = IndustrialDatasetScenarioProvider(str(csv_file), sched_time_ratio=0.5)
+        next(provider)
+
+
 def test_provider_stop_iteration(mock_csv_data, tmp_path):
     """Test StopIteration after all scenarios are retrieved."""
     csv_file = tmp_path / "testcases.csv"

@@ -37,6 +37,7 @@ from coleman4hcs.bandit import EvaluationMetricBandit
 from coleman4hcs.checkpoint.checkpoint_store import NullCheckpointStore
 from coleman4hcs.checkpoint.state import CheckpointPayload
 from coleman4hcs.environment import Environment
+from coleman4hcs.environment_base import AbstractEnvironment
 from coleman4hcs.results.sink_base import NullSink
 from coleman4hcs.scenarios import IndustrialDatasetHCSScenarioProvider
 from coleman4hcs.utils.monitor import MonitorCollector
@@ -82,6 +83,7 @@ def test_initialization(environment, mock_agent, mock_scenario_provider, mock_ev
     assert environment.evaluation_metric == mock_evaluation_metric
     assert isinstance(environment.monitor, MonitorCollector)
     assert isinstance(environment.checkpoint_store, NullCheckpointStore)
+    assert isinstance(environment, AbstractEnvironment)
 
 
 def test_reset(environment, mock_agent, mock_scenario_provider):
