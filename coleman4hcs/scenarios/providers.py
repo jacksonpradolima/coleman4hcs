@@ -1,26 +1,4 @@
-"""
-coleman4hcs.scenarios - Scenario Management for the Coleman4HCS Framework.
-
-This module provides utilities for managing and processing different scenarios in the context
-of the Coleman4HCS framework. This includes virtual scenarios for commits, scenarios specific
-to HCS context, and scenarios that consider context information for each commit. The module
-also provides utilities to process CSV files for experimental evaluations.
-
-Classes
--------
-VirtualScenario
-    Basic virtual scenario to manipulate data for each commit.
-VirtualHCSScenario
-    Extends VirtualScenario to handle HCS context.
-VirtualContextScenario
-    Extends VirtualScenario to handle context information.
-IndustrialDatasetScenarioProvider
-    Provider to process CSV files for experiments.
-IndustrialDatasetHCSScenarioProvider
-    Extends IndustrialDatasetScenarioProvider to handle HCS scenarios.
-IndustrialDatasetContextScenarioProvider
-    Extends IndustrialDatasetScenarioProvider to handle context scenarios.
-"""
+"""Industrial dataset scenario providers."""
 
 import os
 import warnings
@@ -30,185 +8,7 @@ from typing import cast
 
 import polars as pl
 
-
-class VirtualScenario:
-    """Virtual scenario used to manipulate data for each commit.
-
-    Parameters
-    ----------
-    available_time : float
-        The time available to execute tests.
-    testcases : list of dict
-        The test cases for the scenario.
-    build_id : int
-        The build identifier.
-    total_build_duration : float
-        The total duration of the build.
-
-    Attributes
-    ----------
-    available_time : float
-        The time available to execute tests.
-    testcases : list of dict
-        The test cases for the scenario.
-    build_id : int
-        The build identifier.
-    total_build_duration : float
-        The total duration of the build.
-    """
-
-    def __init__(self, available_time: float, testcases: list[dict], build_id: int, total_build_duration: float):
-        """Initialize the VirtualScenario.
-
-        Parameters
-        ----------
-        available_time : float
-            The time available to execute tests.
-        testcases : list of dict
-            The test cases for the scenario.
-        build_id : int
-            The build identifier.
-        total_build_duration : float
-            The total duration of the build.
-        """
-        self.available_time = available_time
-        self.testcases = testcases
-        self.build_id = build_id
-        self.total_build_duration = total_build_duration
-        self.reset()
-
-    def reset(self) -> None:
-        """Reset the priorities for all test cases in the scenario."""
-        # Reset the priorities
-        for testcase in self.testcases:
-            testcase["CalcPrio"] = 0
-
-    def get_available_time(self) -> float:
-        """Return the available time to execute the tests.
-
-        Returns
-        -------
-        float
-            The available time.
-        """
-        return self.available_time
-
-    def get_testcases(self) -> list[dict]:
-        """Return the test cases for the scenario.
-
-        Returns
-        -------
-        list of dict
-            The test cases.
-        """
-        return self.testcases
-
-
-class VirtualHCSScenario(VirtualScenario):
-    """Extends VirtualScenario to handle data in an HCS-specific context.
-
-    Parameters
-    ----------
-    *args
-        Positional arguments passed to ``VirtualScenario``.
-    variants : polars.DataFrame
-        DataFrame containing variant information.
-    **kwargs
-        Keyword arguments passed to ``VirtualScenario``.
-
-    Attributes
-    ----------
-    variants : polars.DataFrame
-        DataFrame containing variant information.
-    """
-
-    def __init__(self, *args, variants: pl.DataFrame, **kwargs):
-        """Initialize the VirtualHCSScenario.
-
-        Parameters
-        ----------
-        *args
-            Positional arguments passed to ``VirtualScenario``.
-        variants : polars.DataFrame
-            DataFrame containing variant information.
-        **kwargs
-            Keyword arguments passed to ``VirtualScenario``.
-        """
-        super().__init__(*args, **kwargs)
-        self.variants = variants
-
-    def get_variants(self):
-        """Return the variants associated with the system.
-
-        Returns
-        -------
-        polars.DataFrame
-            DataFrame containing variant information.
-        """
-        return self.variants
-
-
-class VirtualContextScenario(VirtualScenario):
-    """Extends VirtualScenario to include context-specific features for each commit.
-
-    Parameters
-    ----------
-    *args
-        Positional arguments passed to ``VirtualScenario``.
-    feature_group : str
-        The name of the feature group.
-    features : list of str
-        The feature names.
-    context_features : polars.DataFrame
-        DataFrame containing context features.
-    **kwargs
-        Keyword arguments passed to ``VirtualScenario``.
-
-    Attributes
-    ----------
-    feature_group : str
-        The name of the feature group.
-    features : list of str
-        The feature names.
-    context_features : polars.DataFrame
-        DataFrame containing context features.
-    """
-
-    def __init__(self, *args, feature_group: str, features: list[str], context_features: pl.DataFrame, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.feature_group = feature_group
-        self.features = features
-        self.context_features = context_features
-
-    def get_feature_group(self) -> str:
-        """Return the feature group.
-
-        Returns
-        -------
-        str
-            The feature group name.
-        """
-        return self.feature_group
-
-    def get_features(self) -> list[str]:
-        """Return the features associated with the scenario.
-
-        Returns
-        -------
-        list of str
-            The feature names.
-        """
-        return self.features
-
-    def get_context_features(self) -> pl.DataFrame:
-        """Return the context features associated with the scenario.
-
-        Returns
-        -------
-        polars.DataFrame
-            DataFrame containing context features.
-        """
-        return self.context_features
+from .virtual import VirtualContextScenario, VirtualHCSScenario, VirtualScenario
 
 
 class IndustrialDatasetScenarioProvider:
@@ -239,13 +39,6 @@ class IndustrialDatasetScenarioProvider:
         The maximum number of builds in the dataset.
     """
 
-    # ColName | Description
-    # Name | Unique numeric identifier of the test case
-    # Duration | Approximated runtime of the test case
-    # CalcPrio | Priority of the test case, calculated by the prioritization algorithm(output column, initially 0)
-    # LastRun | Previous last execution of the test case as date - time - string(Format: `YYYY - MM - DD HH: ii`)
-    # LastResults | List of previous test results (Failed: 1, Passed: 0), ordered by ascending age
-    # Verdict | Test Case result (Failed: 1, Passed: 0)
     REQUIRED_COLUMNS = ["Name", "Duration", "CalcPrio", "LastRun", "Verdict"]
 
     def __init__(self, tcfile: str, sched_time_ratio: float = 0.5) -> None:
@@ -293,13 +86,11 @@ class IndustrialDatasetScenarioProvider:
                 DeprecationWarning,
                 stacklevel=2,
             )
-            # We use ';' separated values to avoid issues with thousands.
             df = pl.scan_csv(tcfile, separator=";", try_parse_dates=True)
         else:
             msg = f"Unsupported scenario file format: {tcfile!r}. Supported formats: .parquet, .csv"
             raise ValueError(msg)
 
-        # Normalize core fields to the types expected by the rest of the pipeline.
         expressions = [
             pl.col("Name").cast(pl.Utf8, strict=False),
             pl.col("Duration").cast(pl.Float64, strict=False).fill_null(0.0),
@@ -372,21 +163,17 @@ class IndustrialDatasetScenarioProvider:
         """
         self.current_build += 1
 
-        # Stop when reaches the max build
         if self.current_build > self.max_builds:
             return None
 
-        # Select the data for the current build
         build_df = self._collect_build(self.current_build)
 
-        # Convert the solutions to a list of dict
         testcases = build_df.select(self.REQUIRED_COLUMNS).to_dicts()
 
         total_build_duration = cast(int | float | Decimal | None, build_df["Duration"].sum())
         self.total_build_duration = float(total_build_duration or 0.0)
         available_time = self.total_build_duration * self.avail_time_ratio
 
-        # This test set is a "scenario" that must be evaluated.
         self.scenario = VirtualScenario(
             available_time=available_time,
             testcases=testcases,
@@ -489,7 +276,6 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
         polars.LazyFrame
             LazyFrame containing variant data.
         """
-        # Read the variants (additional file)
         suffix = Path(variantsfile).suffix.lower()
         if suffix == ".parquet":
             df = pl.scan_parquet(variantsfile)
@@ -505,7 +291,6 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
             msg = f"Unsupported variants file format: {variantsfile!r}. Supported formats: .parquet, .csv"
             raise ValueError(msg)
 
-        # We remove weird characters
         return df.with_columns([pl.col("Variant").str.replace_all(r"[!#$%^&*()\[\]{};:,.<>?|`~=+]", "_")])
 
     @property
@@ -555,7 +340,6 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
         if not base_scenario:
             return None
 
-        # Match variants to the current build
         variants = self._variants_lazy.filter(pl.col("BuildId") == self.current_build).collect()
 
         self.scenario = VirtualHCSScenario(**base_scenario.__dict__, variants=variants)
@@ -622,7 +406,6 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         """
         super().__init__(tcfile, sched_time_ratio)
         self.feature_group = feature_group_name
-        # List of columns that are features
         self.features = feature_group_values
         self.previous_build = previous_build
 
@@ -652,24 +435,17 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         if self.current_build == 1:
             return self._initialize_first_build_features(build_df)
 
-        # Compute intersections of features for current and previous builds
         current_features = list(set(self.features).difference(self.previous_build))
-        # Previous features are those shared between `self.features` and `previous_build`
         previous_features = list(set(self.previous_build).intersection(self.features))
 
-        # Extract data for the previous build
         previous_build_df = self._collect_build(self.current_build - 1)
 
-        # Start with the current build's features
         merged_df = build_df.select(["Name"] + list(current_features))
 
-        # Merge features from the previous build if any are relevant
         if previous_features:
             previous_data = previous_build_df.select(["Name"] + list(previous_features))
             merged_df = merged_df.join(previous_data, on="Name", how="left")
 
-        # Fill missing values for previous features using their mean values from the previous build
-        # Precompute mean values for efficiency
         if previous_features:
             feature_means_df = previous_build_df.select(previous_features).mean()
             fill_exprs = []
@@ -721,7 +497,6 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         build_df = self._collect_build(self.current_build)
         context_features = self._merge_context_features(build_df)
 
-        # This test set is a "scenario" that must be evaluated.
         self.scenario = VirtualContextScenario(
             **base_scenario.__dict__,
             feature_group=self.feature_group,

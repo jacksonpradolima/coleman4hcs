@@ -1,34 +1,9 @@
-"""
-coleman4hcs.bandit - Multi-Armed Bandit Models for Test Case Prioritization.
-
-This module provides implementations of different multi-armed bandit (MAB) models to be used in
-the context of software testing. Specifically, it provides a general Bandit class, a dynamic
-version that allows for the addition and removal of arms, and an extension that incorporates
-evaluation metrics to provide feedback on the selected arms.
-
-Classes
--------
-Bandit
-    Represents the classic multi-armed bandit model.
-DynamicBandit
-    An extension of the basic Bandit that supports dynamic management of its arms.
-EvaluationMetricBandit
-    A dynamic bandit that provides feedback based on a given evaluation metric.
-
-Notes
------
-The module facilitates the use of MAB models for test case prioritization in software testing
-scenarios. By integrating feedback from evaluation metrics, it allows for adaptive
-prioritization strategies that can react to changes in the testing environment or system
-under test.
-"""
+"""Base classes and schema for multi-armed bandits."""
 
 from abc import ABC, abstractmethod
 
 import numpy as np
 import polars as pl
-
-from coleman4hcs.evaluation import EvaluationMetric
 
 #: Schema for the bandit arms DataFrame.
 #: Columns follow the standard test-case fieldnames used throughout the framework.
@@ -70,14 +45,6 @@ class Bandit(ABC):
             The arms of the bandit (test case records). Required columns are
             defined by ``tc_fieldnames``.
         """
-        # ColName | Description
-        # Name | Unique numeric identifier of the test case
-        # Duration | Approximated runtime of the test case
-        # CalcPrio | Priority of the test case, calculated by the prioritization algorithm(output column, initially 0)
-        # LastRun | Previous last execution of the test case as date - time - string(Format: `YYYY - MM - DD HH: ii`)
-        # NumRan | Test runs
-        # NumErrors | Test errors revealed
-        # LastResults | List of previous test results(Failed: 1, Passed: 0), ordered by ascending age
         self.tc_fieldnames = [
             "Name",
             "Duration",
@@ -167,81 +134,5 @@ class DynamicBandit(Bandit, ABC):
         arms : list of dict
             The new set of arms to replace the current ones.
         """
-        # I can replace all arms because the bandit don't need to maintain a "history"
-        # The agent needs to maintain the "history"
         self.reset()
-
-        # Add new arms
         self.add_arms(arms)
-
-
-class EvaluationMetricBandit(DynamicBandit):
-    """A Dynamic Bandit that provides feedback based on an evaluation metric.
-
-    Parameters
-    ----------
-    arms : list of dict
-        The arms of the bandit (test case records).
-    evaluation_metric : EvaluationMetric
-        The evaluation metric used to provide feedback.
-
-    Attributes
-    ----------
-    evaluation_metric : EvaluationMetric
-        The evaluation metric instance.
-    """
-
-    def __init__(self, arms: list[dict], evaluation_metric: EvaluationMetric):
-        """Initialize the EvaluationMetricBandit.
-
-        Parameters
-        ----------
-        arms : list of dict
-            The arms of the bandit (test case records).
-        evaluation_metric : EvaluationMetric
-            The evaluation metric used to provide feedback.
-        """
-        super().__init__(arms)
-        self.evaluation_metric = evaluation_metric
-
-    def __str__(self):
-        """Return a string representation of the bandit.
-
-        Returns
-        -------
-        str
-            String representation of the evaluation metric.
-        """
-        return str(self.evaluation_metric)
-
-    def pull(self, action):
-        """Submit prioritized test set for evaluation and get new measurements.
-
-        Parameters
-        ----------
-        action : list of str
-            The prioritized test suite list.
-
-        Returns
-        -------
-        EvaluationMetric
-            The result ("state") of an evaluation by the evaluation metric.
-
-        Raises
-        ------
-        ValueError
-            If the action list is empty.
-        """
-        if not action:
-            raise ValueError("Action list cannot be empty")
-
-        super().update_priority(action)
-
-        # After, we need to order the test cases based on the priorities
-        # Sort tc by Prio ASC (for backwards scheduling)
-        sorted_indices = self.arms["CalcPrio"].to_numpy().argsort(kind="stable")
-        self.arms = self.arms[[int(i) for i in sorted_indices]]
-
-        self.evaluation_metric.evaluate(self.arms.to_dicts())
-
-        return self.evaluation_metric
