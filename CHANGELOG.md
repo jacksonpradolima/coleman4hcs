@@ -1,6 +1,29 @@
 # CHANGELOG
 
 
+## v2.3.0 (2026-04-21)
+
+### Bug Fixes
+
+- Improve error handling in cost-profile-pyspy target for py-spy profiling
+  ([`197ff7c`](https://github.com/jacksonpradolima/coleman4hcs/commit/197ff7cf3da07fc73eebfa3f22c430927254bef4))
+
+### Chores
+
+- Update uv.lock for version 2.2.0
+  ([`2b4ee2b`](https://github.com/jacksonpradolima/coleman4hcs/commit/2b4ee2b68f98bcb790e573a5de2ade367fa3ca8c))
+
+### Features
+
+- Add Wily file reporting and improve py-spy error handling
+  ([`b4fa83b`](https://github.com/jacksonpradolima/coleman4hcs/commit/b4fa83b2688f74bc3dab14b48e0a04810a89a189))
+
+feat: add Wily file reporting and improve py-spy error handling
+
+- Add Wily file reporting targets and update documentation for custom file usage
+  ([`53e5850`](https://github.com/jacksonpradolima/coleman4hcs/commit/53e5850398a5d2b918ff848e1c96ef975c2ccc1e))
+
+
 ## v2.2.0 (2026-04-21)
 
 ### Bug Fixes
