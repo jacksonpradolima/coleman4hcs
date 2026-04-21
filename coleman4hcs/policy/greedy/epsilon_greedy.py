@@ -4,7 +4,7 @@ import polars as pl
 
 from coleman4hcs.agent import Agent
 
-from .base import Policy, _rng
+from ..base import Policy, _rng
 
 
 class EpsilonGreedyPolicy(Policy):

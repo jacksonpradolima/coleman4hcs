@@ -6,7 +6,7 @@ import polars as pl
 from coleman4hcs.agent import Agent, ContextualAgent, SlidingWindowContextualAgent
 from coleman4hcs.exceptions import QException
 
-from .base import Policy
+from ..base import Policy
 
 
 class LinUCBPolicy(Policy):

@@ -51,10 +51,9 @@ References
 """
 
 from .base import Policy
-from .epsilon_greedy import EpsilonGreedyPolicy, GreedyPolicy, RandomPolicy
-from .frrmab import FRRMABPolicy
-from .linucb import LinUCBPolicy, SWLinUCBPolicy
-from .slmab import SlMABPolicy
+from .contextual import LinUCBPolicy, SWLinUCBPolicy
+from .greedy import EpsilonGreedyPolicy, GreedyPolicy, RandomPolicy
+from .mab import FRRMABPolicy, SlMABPolicy
 from .ucb import UCB1Policy, UCBPolicy, UCBPolicyBase
 
 __all__ = [

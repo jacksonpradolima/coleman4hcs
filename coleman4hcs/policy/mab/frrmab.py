@@ -5,7 +5,7 @@ import polars as pl
 
 from coleman4hcs.agent import HISTORY_SCHEMA, Agent, RewardSlidingWindowAgent
 
-from .base import Policy
+from ..base import Policy
 
 
 class FRRMABPolicy(Policy):
