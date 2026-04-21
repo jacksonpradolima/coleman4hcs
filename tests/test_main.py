@@ -36,7 +36,7 @@ Tested Functionalities:
 """
 
 import logging
-from typing import TypedDict, cast
+from typing import Any, cast
 from unittest.mock import Mock, patch
 
 import pytest
@@ -48,6 +48,7 @@ from coleman4hcs.policy import FRRMABPolicy, SWLinUCBPolicy
 from coleman4hcs.runner import (
     EnvironmentBuildConfig,
     ExecutionPlan,
+    _effective_parallel_pool_size,
     build_runtime_metadata,
     create_agents,
     create_logger,
@@ -113,22 +114,37 @@ def test_build_runtime_metadata_is_unique_per_execution():
     assert metadata_a["execution_id"] != metadata_b["execution_id"]
 
 
+def test_effective_parallel_pool_size_keeps_parallel_when_not_profiled():
+    """Without profiler instrumentation, pool size should be preserved."""
+    with patch.dict("os.environ", {}, clear=True):
+        assert _effective_parallel_pool_size(4) == 4
+
+
+def test_effective_parallel_pool_size_forces_sequential_under_scalene():
+    """Scalene instrumentation should force sequential execution for stability."""
+    with patch.dict("os.environ", {"SCALENE_ALLOCATION_SAMPLING_WINDOW": "1024"}, clear=True):
+        assert _effective_parallel_pool_size(4) == 1
+
+
+def test_effective_parallel_pool_size_allows_scalene_parallel_override():
+    """Users may opt out of Scalene fallback via execution config."""
+    with patch.dict("os.environ", {"SCALENE_ALLOCATION_SAMPLING_WINDOW": "1024"}, clear=True):
+        assert _effective_parallel_pool_size(4, force_sequential_under_scalene=False) == 4
+
+
 def test_run_parallel_executions_dispatches_unique_execution_plans():
     """Parallel dispatch should preserve per-worker isolation metadata."""
-
-    class CapturedData(TypedDict, total=False):
-        pool_size: int
-        args: list[tuple[EnvironmentBuildConfig, ExecutionPlan]]
-
-    captured: CapturedData = {}
+    captured: dict[str, Any] = {}
 
     class FakeAsyncResult:
         def get(self, timeout=None):  # noqa: ARG002
             return None
 
     class FakePool:
-        def __init__(self, size):
+        def __init__(self, size, maxtasksperchild=None):
             captured["pool_size"] = size
+            if maxtasksperchild is not None:
+                captured["maxtasksperchild"] = maxtasksperchild
 
         def __enter__(self):
             return self
@@ -147,8 +163,8 @@ def test_run_parallel_executions_dispatches_unique_execution_plans():
             return None
 
     class FakeContext:
-        def Pool(self, size):  # noqa: N802
-            return FakePool(size)
+        def Pool(self, size, maxtasksperchild=None):  # noqa: N802
+            return FakePool(size, maxtasksperchild=maxtasksperchild)
 
     build_config = EnvironmentBuildConfig(
         datasets_dir="examples",
@@ -188,6 +204,7 @@ def test_run_parallel_executions_dispatches_unique_execution_plans():
         run_parallel_executions(2, build_config, plans)
 
     assert captured["pool_size"] == 2
+    assert captured["maxtasksperchild"] == 1
     assert len(captured["args"]) == 2
 
     dispatched_first_plan = captured["args"][0][1]

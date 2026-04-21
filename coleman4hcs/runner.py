@@ -33,6 +33,7 @@ run_parallel_executions
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import time
 from dataclasses import dataclass
@@ -370,7 +371,9 @@ def run_parallel_executions(
     execution_plans : list[ExecutionPlan]
         Task parameters for worker execution.
     """
-    with get_context("spawn").Pool(parallel_pool_size) as pool:
+    # Recycle workers after one task to avoid intermittent queue-unpickling
+    # corruption seen with spawn pools on Python 3.14 under heavy I/O.
+    with get_context("spawn").Pool(parallel_pool_size, maxtasksperchild=1) as pool:
         async_result = pool.starmap_async(
             exp_run_industrial_dataset_isolated,
             [(build_config, execution_plan) for execution_plan in execution_plans],
@@ -417,6 +420,32 @@ def _dispatch_executions(
             exp_run_industrial_dataset_isolated(build_config, execution_plan)
 
 
+def _is_scalene_active() -> bool:
+    """Return True when running under Scalene profiler instrumentation."""
+    return any(key.startswith("SCALENE_") for key in os.environ)
+
+
+def _effective_parallel_pool_size(
+    parallel_pool_size: int,
+    *,
+    force_sequential_under_scalene: bool = True,
+) -> int:
+    """Return the safe pool size for the current runtime.
+
+    Scalene + Python 3.14 can intermittently corrupt multiprocessing spawn
+    queues, causing ``_pickle.UnpicklingError`` in worker bootstrap. By
+    default we force sequential execution for profiling stability.
+    """
+    if parallel_pool_size > 1 and _is_scalene_active() and force_sequential_under_scalene:
+        logging.warning(
+            "Scalene profiling detected; forcing sequential execution "
+            "(parallel_pool_size=1) to avoid multiprocessing instability "
+            "and incomplete per-thread tracking."
+        )
+        return 1
+    return parallel_pool_size
+
+
 def run_experiment(spec_dict: dict[str, Any]) -> None:
     """Run a full experiment from a resolved spec dictionary.
 
@@ -444,6 +473,7 @@ def run_experiment(spec_dict: dict[str, Any]) -> None:
     independent_executions = execution.get("independent_executions", 10)
     seed = execution.get("seed")
     verbose = execution.get("verbose", False)
+    force_sequential_under_scalene = execution.get("force_sequential_under_scalene", True)
 
     # Apply seed to the module-level RNG for reproducibility.
     if seed is not None:
@@ -469,6 +499,11 @@ def run_experiment(spec_dict: dict[str, Any]) -> None:
 
     level = logging.DEBUG if verbose else logging.INFO
     create_logger(level)
+
+    effective_parallel_pool_size = _effective_parallel_pool_size(
+        parallel_pool_size,
+        force_sequential_under_scalene=force_sequential_under_scalene,
+    )
 
     for tr in sched_time_ratio:
         experiment_directory = f"{experiment_dir}time_ratio_{int(tr * 100)}/"
@@ -505,7 +540,7 @@ def run_experiment(spec_dict: dict[str, Any]) -> None:
                 trials,
             )
 
-            parallel_mode = "process" if parallel_pool_size > 1 else "sequential"
+            parallel_mode = "process" if effective_parallel_pool_size > 1 else "sequential"
             execution_plans = [
                 ExecutionPlan(
                     iteration=i + 1,
@@ -519,6 +554,6 @@ def run_experiment(spec_dict: dict[str, Any]) -> None:
             ]
 
             start = time.time()
-            _dispatch_executions(parallel_pool_size, build_config, execution_plans)
+            _dispatch_executions(effective_parallel_pool_size, build_config, execution_plans)
             end = time.time()
             logging.info("Time spent running the experiments: %s\n\n", end - start)

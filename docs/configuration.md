@@ -17,6 +17,7 @@ execution:
   independent_executions: 30
   seed: 42                     # optional — deterministic RNG seed
   verbose: false
+  force_sequential_under_scalene: true
 
 experiment:
   scheduled_time_ratio: [0.1, 0.5, 0.8]
@@ -78,7 +79,7 @@ the following typed sub-specs:
 
 | Section | Model | Key fields |
 |---------|-------|------------|
-| `execution` | `ExecutionSpec` | `parallel_pool_size`, `independent_executions`, `seed`, `verbose` |
+| `execution` | `ExecutionSpec` | `parallel_pool_size`, `independent_executions`, `seed`, `verbose`, `force_sequential_under_scalene` |
 | `experiment` | `ExperimentSpec` | `scheduled_time_ratio`, `datasets_dir`, `datasets`, `experiment_dir`, `rewards`, `policies` |
 | `algorithm` | `AlgorithmSpec` | Free-form nested dict — any algorithm can store its own parameters |
 | `hcs_configuration` | `HCSConfigurationSpec` | `wts_strategy` |

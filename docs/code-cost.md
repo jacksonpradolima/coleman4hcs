@@ -217,6 +217,20 @@ example, profile an actual experiment run:
 uv run scalene run coleman4hcs/cli.py --- run --config run.yaml
 ```
 
+!!! note
+    For profiling runs with Scalene, prefer sequential execution.
+    Multiprocessing and heavy concurrency can produce incomplete attribution
+    (for example, what each thread executed) and, on Python 3.14, may trigger
+    intermittent spawn-pool serialization errors.
+
+    Use this in your run config:
+
+    ```yaml
+    execution:
+      parallel_pool_size: 4
+      force_sequential_under_scalene: true
+    ```
+
 ### py-spy (sampling profiler)
 
 [py-spy](https://github.com/benfred/py-spy) is a sampling profiler that
