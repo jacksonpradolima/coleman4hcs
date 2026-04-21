@@ -239,17 +239,30 @@ attaches to a running process with minimal overhead:
 ```bash
 make cost-profile-pyspy
 # or
-uv run py-spy top -- python -m coleman4hcs.cli --help
+uv python install 3.13
+uv venv .venv-pyspy --python 3.13
+uv pip install --python .venv-pyspy/bin/python duckdb numpy polars pyarrow scipy scikit-posthocs "pydantic>=2.12.5" "pyyaml>=6.0.3"
+PYTHONPATH=. .venv/bin/py-spy record --rate 20 --subprocesses -o profile.svg -- .venv-pyspy/bin/python -m coleman4hcs.cli run --config run.yaml
 ```
 
 !!! note
     `py-spy` may require elevated privileges (`sudo`) on some systems.
-    `py-spy top` shows a live sampling view while the target process runs;
-    short-lived commands (such as `--help`) will exit before meaningful
-    samples are collected.  For full profiling use a real workload:
+    With Python 3.14 standalone runtimes, `py-spy` may fail with
+    "Failed to find python version from target process".
+    The workflow above uses a dedicated Python 3.13 profiling venv,
+    while your main project environment can remain on Python 3.14.
+    For this workload, `--rate 20` avoids severe sampler lag and
+    `--subprocesses` captures worker processes spawned by the experiment runner.
+    Some `py-spy` runs may still report a teardown error after writing
+    `profile.svg`; when the flamegraph is written successfully, the generated
+    profile can still be used.
+
+    Prefer `py-spy record` with a real workload. Commands like `--help`
+    end too quickly and can fail before samples are collected.
+    If you want a live view instead of a saved report, run:
 
     ```bash
-    uv run py-spy record -o profile.svg -- python -m coleman4hcs.cli run --config run.yaml
+    PYTHONPATH=. .venv/bin/py-spy top --rate 20 --subprocesses -- .venv-pyspy/bin/python -m coleman4hcs.cli run --config run.yaml
     ```
 
 ---
