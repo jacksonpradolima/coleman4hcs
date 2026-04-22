@@ -4,7 +4,8 @@ import polars as pl
 
 from coleman.agent import Agent
 
-from ..base import Policy, _rng
+from .. import base as _policy_base
+from ..base import Policy
 
 
 class EpsilonGreedyPolicy(Policy):
@@ -59,7 +60,7 @@ class EpsilonGreedyPolicy(Policy):
             List of action names ordered by the epsilon-greedy strategy.
         """
         actions = agent.actions.clone()
-        actions = actions.with_columns([pl.Series("is_random", _rng.random(len(actions)) < self.epsilon)])
+        actions = actions.with_columns([pl.Series("is_random", _policy_base._rng.random(len(actions)) < self.epsilon)])
 
         actions = actions.sort(["is_random", "Q"], descending=[True, True])
 

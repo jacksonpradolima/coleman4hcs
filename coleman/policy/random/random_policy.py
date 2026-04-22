@@ -2,7 +2,8 @@
 
 from coleman.agent import Agent
 
-from ..base import Policy, _rng
+from .. import base as _policy_base
+from ..base import Policy
 
 
 class RandomPolicy(Policy):
@@ -35,5 +36,5 @@ class RandomPolicy(Policy):
             Randomly ordered list of action names.
         """
         actions = agent.actions["Name"].to_numpy()
-        _rng.shuffle(actions)
+        _policy_base._rng.shuffle(actions)
         return actions.tolist()

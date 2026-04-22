@@ -42,8 +42,10 @@ from typing import Any
 from uuid import uuid4
 
 import numpy as np
+import polars as pl
 
 import coleman.policy
+import coleman.policy.base
 import coleman.reward
 from coleman.agent import (
     ContextualAgent,
@@ -484,7 +486,8 @@ def run_experiment(spec_dict: dict[str, Any]) -> None:
 
     # Apply seed to the module-level RNG for reproducibility.
     if seed is not None:
-        coleman.policy._rng = np.random.default_rng(seed)
+        coleman.policy.base._rng = np.random.default_rng(seed)
+        pl.set_random_seed(seed)
 
     sched_time_ratio = experiment.get("scheduled_time_ratio", [0.1, 0.5, 0.8])
     datasets_dir = experiment.get("datasets_dir", "examples")

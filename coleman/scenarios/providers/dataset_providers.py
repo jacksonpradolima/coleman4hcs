@@ -92,6 +92,7 @@ class IndustrialDatasetScenarioProvider:
             raise ValueError(msg)
 
         expressions = [
+            pl.col("BuildId").cast(pl.Int64, strict=False),
             pl.col("Name").cast(pl.Utf8, strict=False),
             pl.col("Duration").cast(pl.Float64, strict=False).fill_null(0.0),
         ]
