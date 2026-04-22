@@ -299,8 +299,7 @@ class HCSScenarioLoader(ScenarioLoader):
     def variants(self) -> pl.DataFrame:
         """Legacy eager view of variants data."""
         warnings.warn(
-            "The `variants` eager DataFrame attribute is deprecated. "
-            "Use scenario-loader APIs instead.",
+            "The `variants` eager DataFrame attribute is deprecated. Use scenario-loader APIs instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -437,7 +436,7 @@ class ContextScenarioLoader(ScenarioLoader):
         if self.current_build == 1:
             return self._initialize_first_build_features(build_df)
 
-        current_features = list(set(self.features).difference(self.previous_build))
+        current_features = set(self.features).difference(self.previous_build)
         previous_features = list(set(self.previous_build).intersection(self.features))
 
         previous_build_df = self._collect_build(self.current_build - 1)

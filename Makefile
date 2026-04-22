@@ -122,10 +122,10 @@ check-precommit: test typecheck interrogate ## Run tests, type checks, and docst
 cost-structural: cost-complexity cost-maintainability cost-xenon ## Run all structural cost checks
 
 cost-complexity: ensure-uv ## Report cyclomatic complexity (Radon CC)
-	$(UV) run radon cc -s -a coleman/
+	$(UV) run --extra dev radon cc -s -a coleman/
 
 cost-maintainability: ensure-uv ## Enforce maintainability index gate (Radon MI ≥ 20)
-	@$(UV) run radon mi -s -n B coleman/ > /tmp/mi_issues.txt; \
+	@$(UV) run --extra dev radon mi -s -n B coleman/ > /tmp/mi_issues.txt; \
 	if [ -s /tmp/mi_issues.txt ]; then \
 		echo "❌ Modules below maintainability threshold (MI < 20):"; \
 		cat /tmp/mi_issues.txt; \
@@ -135,10 +135,10 @@ cost-maintainability: ensure-uv ## Enforce maintainability index gate (Radon MI 
 	fi
 
 cost-raw: ensure-uv ## Report raw source metrics (LOC, SLOC, comments) with Radon
-	$(UV) run radon raw coleman/
+	$(UV) run --extra dev radon raw coleman/
 
 cost-xenon: ensure-uv ## Run Xenon complexity gate (CI threshold)
-	$(UV) run xenon --max-absolute C --max-modules B --max-average A coleman/
+	$(UV) run --extra dev xenon --max-absolute C --max-modules B --max-average A coleman/
 
 cost-wily: ensure-uv ## Build and report complexity trend with Wily
 	@archiver=git; \

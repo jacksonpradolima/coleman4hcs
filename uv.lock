@@ -310,7 +310,7 @@ wheels = [
 ]
 
 [[package]]
-name = "coleman4hcs"
+name = "coleman"
 version = "2.3.0"
 source = { editable = "." }
 dependencies = [

@@ -5,7 +5,8 @@ import polars as pl
 
 from coleman.agent import Agent
 
-_rng = np.random.default_rng()
+_DEFAULT_POLICY_SEED = 0
+_rng = np.random.default_rng(_DEFAULT_POLICY_SEED)
 
 
 class Policy:
