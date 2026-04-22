@@ -191,10 +191,7 @@ class Environment(AbstractEnvironment):
         self.monitor = MonitorCollector(sink=self._sink)
         self.variant_monitors = {}
 
-        if (
-            isinstance(self.scenario_provider, HCSScenarioLoader)
-            and self.scenario_provider.get_total_variants() > 0
-        ):
+        if isinstance(self.scenario_provider, HCSScenarioLoader) and self.scenario_provider.get_total_variants() > 0:
             for variant in self.scenario_provider.get_all_variants():
                 self.variant_monitors[variant] = MonitorCollector(sink=self._sink)
 

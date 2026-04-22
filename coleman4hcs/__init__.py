@@ -3,6 +3,7 @@
 This package re-exports everything from ``coleman`` so that existing code
 importing ``coleman4hcs`` continues to work without changes.
 """
+
 from __future__ import annotations
 
 import importlib

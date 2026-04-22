@@ -213,6 +213,7 @@ def get_scenario_provider(  # pylint: disable=too-many-positional-arguments
     ScenarioLoader or HCSScenarioLoader or ContextScenarioLoader
         An instance of the scenario loader based on the given configuration.
     """
+
     def _prefer_parquet(base_path_without_ext: str) -> str:
         parquet_path = f"{base_path_without_ext}.parquet"
         csv_path = f"{base_path_without_ext}.csv"
@@ -281,7 +282,12 @@ def build_agents_from_config(
     ]
 
 
-def build_runtime_metadata(dataset: str, sched_time_ratio: float, iteration: int, parallel_mode: str) -> dict[str, str]:
+def build_runtime_metadata(
+    dataset: str,
+    sched_time_ratio: float,
+    iteration: int,
+    parallel_mode: str,
+) -> dict[str, str]:
     """Build stable execution metadata for telemetry and persisted results."""
     execution_id = f"{dataset}|tr={sched_time_ratio:.2f}|exp={iteration}|{uuid4().hex[:8]}"
     return {

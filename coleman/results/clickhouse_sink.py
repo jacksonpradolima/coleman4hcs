@@ -123,11 +123,14 @@ class ClickHouseSink(ResultsSink):
             clickhouse_connect = importlib.import_module("clickhouse_connect")
         except ImportError as exc:
             raise ImportError(
-                "clickhouse-connect is required for ClickHouseSink. "
-                "Install it with: pip install coleman[clickhouse]"
+                "clickhouse-connect is required for ClickHouseSink. Install it with: pip install coleman[clickhouse]"
             ) from exc
 
-        self._client = clickhouse_connect.get_client(host=host, port=port, database=database)
+        self._client = clickhouse_connect.get_client(
+            host=host,
+            port=port,
+            database=database,
+        )
         self._client.command(_CREATE_TABLE_SQL)
         self._ensure_schema()
         self.batch_size = batch_size

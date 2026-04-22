@@ -118,6 +118,3 @@ class Bandit(ABC):
         action_map = {name: priority for priority, name in enumerate(action, start=1)}
         priorities = np.vectorize(action_map.get)(self.arms["Name"].to_numpy())
         self.arms = self.arms.with_columns([pl.Series("CalcPrio", priorities, dtype=pl.Int32)])
-
-
-

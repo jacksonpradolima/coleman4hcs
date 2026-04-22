@@ -60,7 +60,14 @@ class EpsilonGreedyPolicy(Policy):
             List of action names ordered by the epsilon-greedy strategy.
         """
         actions = agent.actions.clone()
-        actions = actions.with_columns([pl.Series("is_random", _policy_base._rng.random(len(actions)) < self.epsilon)])
+        actions = actions.with_columns(
+            [
+                pl.Series(
+                    "is_random",
+                    _policy_base._rng.random(len(actions)) < self.epsilon,
+                )
+            ]
+        )
 
         actions = actions.sort(["is_random", "Q"], descending=[True, True])
 
@@ -87,4 +94,3 @@ class GreedyPolicy(EpsilonGreedyPolicy):
             The policy name.
         """
         return "Greedy"
-
