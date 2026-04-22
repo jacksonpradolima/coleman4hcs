@@ -4,7 +4,7 @@ import importlib
 
 
 def test_coleman_namespace_aliases_new_modules():
-    """coleman compat namespace should expose the same objects as coleman."""
+    """Coleman compat namespace should expose the same objects as coleman."""
     new_env_module = importlib.import_module("coleman.environment")
     legacy_env_module = importlib.import_module("coleman.environment")
     new_api_module = importlib.import_module("coleman.api")
