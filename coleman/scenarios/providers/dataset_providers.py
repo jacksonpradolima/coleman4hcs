@@ -56,6 +56,7 @@ class IndustrialDatasetScenarioProvider:
         self.current_build = 0
         self.total_build_duration = 0.0
         self.scenario: VirtualScenario | None = None
+        self._current_build_df: pl.DataFrame | None = None
 
         self._testcases_lazy = self._read_testcases(tcfile)
         max_builds = cast(
@@ -167,11 +168,11 @@ class IndustrialDatasetScenarioProvider:
         if self.current_build > self.max_builds:
             return None
 
-        build_df = self._collect_build(self.current_build)
+        self._current_build_df = self._collect_build(self.current_build)
 
-        testcases = build_df.select(self.REQUIRED_COLUMNS).to_dicts()
+        testcases = self._current_build_df.select(self.REQUIRED_COLUMNS).to_dicts()
 
-        total_build_duration = cast(int | float | Decimal | None, build_df["Duration"].sum())
+        total_build_duration = cast(int | float | Decimal | None, self._current_build_df["Duration"].sum())
         self.total_build_duration = float(total_build_duration or 0.0)
         available_time = self.total_build_duration * self.avail_time_ratio
 
@@ -495,8 +496,7 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         if not base_scenario:
             return None
 
-        build_df = self._collect_build(self.current_build)
-        context_features = self._merge_context_features(build_df)
+        context_features = self._merge_context_features(self._current_build_df)
 
         self.scenario = VirtualContextScenario(
             **base_scenario.__dict__,
