@@ -484,7 +484,9 @@ def run_experiment(spec_dict: dict[str, Any]) -> None:
     verbose = execution.get("verbose", False)
     force_sequential_under_scalene = execution.get("force_sequential_under_scalene", True)
 
-    # Apply seed to the module-level RNG for reproducibility.
+    # Apply seed to both RNGs for full reproducibility:
+    # - numpy RNG is used by policy modules (RandomPolicy, EpsilonGreedyPolicy)
+    # - polars RNG is used by Agent.choose() at t=0 via Series.shuffle()
     if seed is not None:
         coleman.policy.base._rng = np.random.default_rng(seed)
         pl.set_random_seed(seed)
