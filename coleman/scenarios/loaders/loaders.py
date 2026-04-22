@@ -59,9 +59,11 @@ class ScenarioLoader:
         self._current_build_df: pl.DataFrame | None = None
 
         self._testcases_lazy = self._read_testcases(tcfile)
-        max_builds = cast(
-            int | None, self._testcases_lazy.select(pl.col("BuildId").max().cast(pl.Int64)).collect().item()
+        max_builds_df = cast(
+            pl.DataFrame,
+            self._testcases_lazy.select(pl.col("BuildId").max().cast(pl.Int64)).collect(),
         )
+        max_builds = cast(int | None, max_builds_df.row(0)[0])
         self.max_builds = max_builds if max_builds is not None else 0
 
     def _read_testcases(self, tcfile: str) -> pl.LazyFrame:
@@ -113,7 +115,7 @@ class ScenarioLoader:
         query = self._testcases_lazy.filter(pl.col("BuildId") == build_id)
         if columns:
             query = query.select(columns)
-        return query.collect()
+        return cast(pl.DataFrame, query.collect())
 
     @property
     def tcdf(self) -> pl.DataFrame:
@@ -130,7 +132,7 @@ class ScenarioLoader:
             DeprecationWarning,
             stacklevel=2,
         )
-        return self._testcases_lazy.collect()
+        return cast(pl.DataFrame, self._testcases_lazy.collect())
 
     def get_avail_time_ratio(self) -> float:
         """Return the available time ratio.
@@ -261,9 +263,8 @@ class HCSScenarioLoader(ScenarioLoader):
         super().__init__(tcfile, sched_time_ratio)
 
         self._variants_lazy = self._read_variants(variantsfile)
-        self._variant_names = cast(
-            list[str], self._variants_lazy.select(pl.col("Variant").unique()).collect().to_series().to_list()
-        )
+        variants_df = cast(pl.DataFrame, self._variants_lazy.select(pl.col("Variant").unique()).collect())
+        self._variant_names = cast(list[str], variants_df.get_column("Variant").to_list())
 
     def _read_variants(self, variantsfile: str) -> pl.LazyFrame:
         """Read the variants from a provided dataset file.
@@ -303,7 +304,7 @@ class HCSScenarioLoader(ScenarioLoader):
             DeprecationWarning,
             stacklevel=2,
         )
-        return self._variants_lazy.collect()
+        return cast(pl.DataFrame, self._variants_lazy.collect())
 
     def get_total_variants(self):
         """Return the number of unique variants.
@@ -341,7 +342,7 @@ class HCSScenarioLoader(ScenarioLoader):
         if not base_scenario:
             return None
 
-        variants = self._variants_lazy.filter(pl.col("BuildId") == self.current_build).collect()
+        variants = cast(pl.DataFrame, self._variants_lazy.filter(pl.col("BuildId") == self.current_build).collect())
 
         self.scenario = VirtualHCSScenario(**base_scenario.__dict__, variants=variants)
 

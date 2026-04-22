@@ -50,7 +50,7 @@ References
    ACM/SIGAPP Symposium on Applied Computing (SAC '19), April 8-12, 2019, Limassol, Cyprus.
 """
 
-from .base import Policy
+from .base import Policy, _rng
 from .contextual import LinUCBPolicy, SWLinUCBPolicy
 from .greedy import EpsilonGreedyPolicy, GreedyPolicy
 from .mab import FRRMABPolicy, SlMABPolicy
@@ -58,6 +58,7 @@ from .random import RandomPolicy
 from .ucb import UCB1Policy, UCBPolicy, UCBPolicyBase
 
 __all__ = [
+    "_rng",
     "Policy",
     "EpsilonGreedyPolicy",
     "GreedyPolicy",
