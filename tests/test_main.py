@@ -59,7 +59,7 @@ from coleman.runner import (
     load_class_from_module,
     run_parallel_executions,
 )
-from coleman.scenarios import IndustrialDatasetScenarioProvider
+from coleman.scenarios import ScenarioLoader
 
 # ------------------------
 # Unit Tests
@@ -254,7 +254,7 @@ def test_create_agents_swlinucb():
 
 
 def test_get_scenario_provider_basic():
-    """Test that get_scenario_provider returns an IndustrialDatasetScenarioProvider instance."""
+    """Test that get_scenario_provider returns a ScenarioLoader instance."""
     datasets_dir = "examples"
     dataset = "fakedata"
     sched_time_ratio = 0.5
@@ -267,7 +267,7 @@ def test_get_scenario_provider_basic():
         datasets_dir, dataset, sched_time_ratio, use_hcs, use_context, context_config, feature_groups
     )
 
-    assert isinstance(scenario_provider, IndustrialDatasetScenarioProvider)
+    assert isinstance(scenario_provider, ScenarioLoader)
 
 
 def test_get_scenario_provider_prefers_parquet(tmp_path):

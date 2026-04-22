@@ -13,11 +13,15 @@ from typing import Any, Protocol
 from coleman.evaluation import EvaluationMetric
 
 
-class ScenarioProviderLike(Protocol):
+class ScenarioLoaderLike(Protocol):
     """Minimum interface needed by MonitorCollector during collection."""
 
     name: str
     avail_time_ratio: float
+
+
+# Backward-compatible alias
+ScenarioProviderLike = ScenarioLoaderLike
 
 
 @dataclass
@@ -26,8 +30,8 @@ class CollectParams:
 
     Parameters
     ----------
-    scenario_provider : ScenarioProviderLike
-        Any object satisfying the ``ScenarioProviderLike`` protocol (must
+    scenario_provider : ScenarioLoaderLike
+        Any object satisfying the ``ScenarioLoaderLike`` protocol (must
         expose ``name: str`` and ``avail_time_ratio: float``).
     available_time : float
         The time available for scheduling or execution.
@@ -69,7 +73,7 @@ class CollectParams:
         The variant name (for HCS systems).  ``None`` for non-variant runs.
     """
 
-    scenario_provider: ScenarioProviderLike
+    scenario_provider: ScenarioLoaderLike
     available_time: float
     experiment: int
     t: int

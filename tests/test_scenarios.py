@@ -4,13 +4,18 @@ import polars as pl
 import pytest
 
 from coleman.scenarios import (
-    IndustrialDatasetContextScenarioProvider,
-    IndustrialDatasetHCSScenarioProvider,
-    IndustrialDatasetScenarioProvider,
+    ContextScenarioLoader,
+    HCSScenarioLoader,
+    ScenarioLoader,
     VirtualContextScenario,
     VirtualHCSScenario,
     VirtualScenario,
 )
+
+# Backward-compatible aliases used in test comments/labels
+IndustrialDatasetScenarioProvider = ScenarioLoader
+IndustrialDatasetHCSScenarioProvider = HCSScenarioLoader
+IndustrialDatasetContextScenarioProvider = ContextScenarioLoader
 
 # ------------------------ Fixtures for Mock Data ------------------------
 

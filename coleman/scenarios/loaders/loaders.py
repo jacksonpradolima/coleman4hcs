@@ -1,4 +1,4 @@
-"""Industrial dataset scenario providers."""
+"""Scenario loaders that read build-level test datasets and yield virtual scenarios."""
 
 import os
 import warnings
@@ -11,13 +11,13 @@ import polars as pl
 from ..virtual import VirtualContextScenario, VirtualHCSScenario, VirtualScenario
 
 
-class IndustrialDatasetScenarioProvider:
-    """Base class for scenario providers that process test case data from CSV files.
+class ScenarioLoader:
+    """Base class for scenario loaders that process test case data from dataset files.
 
     Parameters
     ----------
     tcfile : str
-        Path to the test case CSV file.
+        Path to the test case dataset file (Parquet preferred, CSV supported).
     sched_time_ratio : float, optional
         Ratio of scheduled time to total build time. Default is 0.5.
 
@@ -42,12 +42,12 @@ class IndustrialDatasetScenarioProvider:
     REQUIRED_COLUMNS = ["Name", "Duration", "CalcPrio", "LastRun", "Verdict"]
 
     def __init__(self, tcfile: str, sched_time_ratio: float = 0.5) -> None:
-        """Initialize the IndustrialDatasetScenarioProvider.
+        """Initialize the ScenarioLoader.
 
         Parameters
         ----------
         tcfile : str
-            Path to the test case CSV file.
+            Path to the test case dataset file.
         sched_time_ratio : float, optional
             Ratio of scheduled time to total build time. Default is 0.5.
         """
@@ -126,7 +126,7 @@ class IndustrialDatasetScenarioProvider:
         """
         warnings.warn(
             "The `tcdf` eager DataFrame attribute is deprecated. "
-            "Use provider iteration APIs instead (e.g., iterate the provider with `for scenario in provider`).",
+            "Use loader iteration APIs instead (e.g., iterate the loader with `for scenario in loader`).",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -186,21 +186,21 @@ class IndustrialDatasetScenarioProvider:
         return self.scenario
 
     def __str__(self) -> str:
-        """Return the name of the scenario provider.
+        """Return the name of the scenario loader.
 
         Returns
         -------
         str
-            The scenario provider name.
+            The scenario loader name.
         """
         return self.name
 
     def __iter__(self):
-        """Return the iterator for the scenario provider.
+        """Return the iterator for the scenario loader.
 
         Returns
         -------
-        IndustrialDatasetScenarioProvider
+        ScenarioLoader
             The iterator instance.
         """
         return self
@@ -226,17 +226,17 @@ class IndustrialDatasetScenarioProvider:
         return sc
 
 
-class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
-    """Scenario provider for HCS-specific data.
+class HCSScenarioLoader(ScenarioLoader):
+    """Scenario loader for HCS-specific data.
 
-    Extends the base scenario provider to support variant-specific data.
+    Extends the base scenario loader to support variant-specific data.
 
     Parameters
     ----------
     tcfile : str
-        Path to the test case CSV file.
+        Path to the test case dataset file.
     variantsfile : str
-        Path to the variants CSV file.
+        Path to the variants dataset file.
     sched_time_ratio : float, optional
         Ratio of scheduled time to total build time. Default is 0.5.
 
@@ -247,14 +247,14 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
     """
 
     def __init__(self, tcfile: str, variantsfile: str, sched_time_ratio=0.5) -> None:
-        """Initialize the IndustrialDatasetHCSScenarioProvider.
+        """Initialize the HCSScenarioLoader.
 
         Parameters
         ----------
         tcfile : str
-            Path to the test case CSV file.
+            Path to the test case dataset file.
         variantsfile : str
-            Path to the variants CSV file.
+            Path to the variants dataset file.
         sched_time_ratio : float, optional
             Ratio of scheduled time to total build time. Default is 0.5.
         """
@@ -271,7 +271,7 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
         Parameters
         ----------
         variantsfile : str
-            Path to the variants CSV file.
+            Path to the variants dataset file.
 
         Returns
         -------
@@ -300,7 +300,7 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
         """Legacy eager view of variants data."""
         warnings.warn(
             "The `variants` eager DataFrame attribute is deprecated. "
-            "Use scenario-provider APIs instead.",
+            "Use scenario-loader APIs instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -356,8 +356,8 @@ class IndustrialDatasetHCSScenarioProvider(IndustrialDatasetScenarioProvider):
         return sc
 
 
-class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider):
-    """Scenario provider for context-aware data.
+class ContextScenarioLoader(ScenarioLoader):
+    """Scenario loader for context-aware data.
 
     Parameters
     ----------
@@ -390,7 +390,7 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         previous_build: list[str],
         sched_time_ratio: float = 0.5,
     ):
-        """Initialize the context-aware scenario provider.
+        """Initialize the context-aware scenario loader.
 
         Parameters
         ----------
@@ -412,12 +412,12 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         self.previous_build = previous_build
 
     def __str__(self):
-        """Return the name of the scenario provider.
+        """Return the name of the scenario loader.
 
         Returns
         -------
         str
-            The scenario provider name.
+            The scenario loader name.
         """
         return self.name
 
@@ -513,3 +513,9 @@ class IndustrialDatasetContextScenarioProvider(IndustrialDatasetScenarioProvider
         if sc is None:
             raise StopIteration()
         return sc
+
+
+# Backward-compatible aliases for the old IndustrialDataset* names
+IndustrialDatasetScenarioProvider = ScenarioLoader
+IndustrialDatasetHCSScenarioProvider = HCSScenarioLoader
+IndustrialDatasetContextScenarioProvider = ContextScenarioLoader

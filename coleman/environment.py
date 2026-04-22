@@ -36,7 +36,7 @@ from coleman.checkpoint.state import CheckpointPayload
 from coleman.environment_base import AbstractEnvironment
 from coleman.results.parquet_sink import ParquetSink
 from coleman.results.sink_base import NullSink, ResultsSink
-from coleman.scenarios import IndustrialDatasetHCSScenarioProvider, VirtualHCSScenario
+from coleman.scenarios import HCSScenarioLoader, VirtualHCSScenario
 from coleman.telemetry.otel import get_telemetry
 from coleman.telemetry.resources import ProcessResourceTracker, ResourceSnapshot
 from coleman.utils.monitor import MonitorCollector
@@ -192,7 +192,7 @@ class Environment(AbstractEnvironment):
         self.variant_monitors = {}
 
         if (
-            isinstance(self.scenario_provider, IndustrialDatasetHCSScenarioProvider)
+            isinstance(self.scenario_provider, HCSScenarioLoader)
             and self.scenario_provider.get_total_variants() > 0
         ):
             for variant in self.scenario_provider.get_all_variants():

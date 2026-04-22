@@ -57,9 +57,9 @@ from coleman.environment import Environment
 from coleman.evaluation import NAPFDVerdictMetric
 from coleman.policy import FRRMABPolicy, LinUCBPolicy, SWLinUCBPolicy
 from coleman.scenarios import (
-    IndustrialDatasetContextScenarioProvider,
-    IndustrialDatasetHCSScenarioProvider,
-    IndustrialDatasetScenarioProvider,
+    ContextScenarioLoader,
+    HCSScenarioLoader,
+    ScenarioLoader,
 )
 
 
@@ -183,15 +183,13 @@ def get_scenario_provider(  # pylint: disable=too-many-positional-arguments
     use_context: bool,
     context_config: dict[str, Any],
     feature_groups: dict[str, Any],
-) -> (
-    IndustrialDatasetScenarioProvider | IndustrialDatasetHCSScenarioProvider | IndustrialDatasetContextScenarioProvider
-):
-    """Return the appropriate scenario provider based on the given configuration.
+) -> ScenarioLoader | HCSScenarioLoader | ContextScenarioLoader:
+    """Return the appropriate scenario loader based on the given configuration.
 
-    The function selects the scenario provider based on whether the
+    The function selects the scenario loader based on whether the
     HCS (Highly-Configurable System) configuration is used. It constructs the
     appropriate paths for the dataset files and initializes the scenario
-    provider with these paths.
+    loader with these paths.
 
     Parameters
     ----------
@@ -202,9 +200,9 @@ def get_scenario_provider(  # pylint: disable=too-many-positional-arguments
     sched_time_ratio : float
         The ratio of scheduled time to be used in the scenario.
     use_hcs : bool
-        If True, returns an ``IndustrialDatasetHCSScenarioProvider`` instance.
+        If True, returns an ``HCSScenarioLoader`` instance.
     use_context : bool
-        If True, returns an ``IndustrialDatasetContextScenarioProvider`` instance.
+        If True, returns a ``ContextScenarioLoader`` instance.
     context_config : dict
         Configuration for contextual information.
     feature_groups : dict
@@ -212,9 +210,8 @@ def get_scenario_provider(  # pylint: disable=too-many-positional-arguments
 
     Returns
     -------
-    IndustrialDatasetScenarioProvider or IndustrialDatasetHCSScenarioProvider \
-or IndustrialDatasetContextScenarioProvider
-        An instance of the scenario provider based on the given configuration.
+    ScenarioLoader or HCSScenarioLoader or ContextScenarioLoader
+        An instance of the scenario loader based on the given configuration.
     """
     def _prefer_parquet(base_path_without_ext: str) -> str:
         parquet_path = f"{base_path_without_ext}.parquet"
@@ -227,7 +224,7 @@ or IndustrialDatasetContextScenarioProvider
 
     if use_hcs and not use_context:
         variants_file = _prefer_parquet(f"{datasets_dir}/{dataset}/data-variants")
-        return IndustrialDatasetHCSScenarioProvider(base_tcfile, variants_file, sched_time_ratio)
+        return HCSScenarioLoader(base_tcfile, variants_file, sched_time_ratio)
 
     if use_hcs and use_context:
         raise NotImplementedError
@@ -247,7 +244,7 @@ or IndustrialDatasetContextScenarioProvider
         if not isinstance(previous_build_raw, list) or not all(isinstance(value, str) for value in previous_build_raw):
             raise TypeError("previous_build must be a list[str]")
 
-        return IndustrialDatasetContextScenarioProvider(
+        return ContextScenarioLoader(
             contextual_tcfile,
             feature_group_name,
             feature_group_values_raw,
@@ -255,7 +252,7 @@ or IndustrialDatasetContextScenarioProvider
             sched_time_ratio,
         )
 
-    return IndustrialDatasetScenarioProvider(base_tcfile, sched_time_ratio)
+    return ScenarioLoader(base_tcfile, sched_time_ratio)
 
 
 def build_agents_from_config(

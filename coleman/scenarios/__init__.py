@@ -4,7 +4,7 @@ coleman.scenarios - Scenario Management for the Coleman Framework.
 This module provides utilities for managing and processing different scenarios in the context
 of the Coleman framework. This includes virtual scenarios for commits, scenarios specific
 to HCS context, and scenarios that consider context information for each commit. The module
-also provides utilities to process CSV files for experimental evaluations.
+also provides utilities to load dataset files for experimental evaluations.
 
 Classes
 -------
@@ -14,12 +14,12 @@ VirtualHCSScenario
     Extends VirtualScenario to handle HCS context.
 VirtualContextScenario
     Extends VirtualScenario to handle context information.
-IndustrialDatasetScenarioProvider
-    Provider to process CSV files for experiments.
-IndustrialDatasetHCSScenarioProvider
-    Extends IndustrialDatasetScenarioProvider to handle HCS scenarios.
-IndustrialDatasetContextScenarioProvider
-    Extends IndustrialDatasetScenarioProvider to handle context scenarios.
+ScenarioLoader
+    Loader that reads a build dataset and yields scenarios.
+HCSScenarioLoader
+    Extends ScenarioLoader to handle HCS scenarios.
+ContextScenarioLoader
+    Extends ScenarioLoader to handle context scenarios.
 
 Short Aliases
 -------------
@@ -29,21 +29,24 @@ HCSScenario
     Alias for VirtualHCSScenario.
 ContextScenario
     Alias for VirtualContextScenario.
-ScenarioProvider
-    Alias for IndustrialDatasetScenarioProvider.
-HCSScenarioProvider
-    Alias for IndustrialDatasetHCSScenarioProvider.
-ContextScenarioProvider
-    Alias for IndustrialDatasetContextScenarioProvider.
+
+Backward-Compatible Names
+-------------------------
+IndustrialDatasetScenarioProvider
+    Alias for ScenarioLoader.
+IndustrialDatasetHCSScenarioProvider
+    Alias for HCSScenarioLoader.
+IndustrialDatasetContextScenarioProvider
+    Alias for ContextScenarioLoader.
 """
 
-from .providers import (
-    ContextScenarioProvider,
-    HCSScenarioProvider,
+from .loaders import (
+    ContextScenarioLoader,
+    HCSScenarioLoader,
     IndustrialDatasetContextScenarioProvider,
     IndustrialDatasetHCSScenarioProvider,
     IndustrialDatasetScenarioProvider,
-    ScenarioProvider,
+    ScenarioLoader,
 )
 from .virtual import (
     ContextScenario,
@@ -54,18 +57,28 @@ from .virtual import (
     VirtualScenario,
 )
 
+# Keep old ScenarioProvider short aliases for backward compatibility
+ScenarioProvider = ScenarioLoader
+HCSScenarioProvider = HCSScenarioLoader
+ContextScenarioProvider = ContextScenarioLoader
+
 __all__ = [
-    # Original names (backward-compatible)
+    # Virtual scenario classes
     "VirtualScenario",
     "VirtualHCSScenario",
     "VirtualContextScenario",
-    "IndustrialDatasetScenarioProvider",
-    "IndustrialDatasetHCSScenarioProvider",
-    "IndustrialDatasetContextScenarioProvider",
-    # Short aliases
+    # Short aliases for virtual scenarios
     "Scenario",
     "HCSScenario",
     "ContextScenario",
+    # Primary loader names
+    "ScenarioLoader",
+    "HCSScenarioLoader",
+    "ContextScenarioLoader",
+    # Backward-compatible names
+    "IndustrialDatasetScenarioProvider",
+    "IndustrialDatasetHCSScenarioProvider",
+    "IndustrialDatasetContextScenarioProvider",
     "ScenarioProvider",
     "HCSScenarioProvider",
     "ContextScenarioProvider",

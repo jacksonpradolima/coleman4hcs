@@ -13,7 +13,7 @@ edge cases for:
 
 Fixtures:
 - `mock_agent`: A fixture for a mocked `ContextualAgent`.
-- `mock_scenario_provider`: A fixture for a mocked `IndustrialDatasetHCSScenarioProvider`.
+- `mock_scenario_provider`: A fixture for a mocked `HCSScenarioLoader`.
 - `mock_evaluation_metric`: A fixture for a mocked evaluation metric.
 - `environment`: A fixture for an initialized instance of the `Environment` class.
 
@@ -39,7 +39,7 @@ from coleman.checkpoint.state import CheckpointPayload
 from coleman.environment import Environment
 from coleman.environment_base import AbstractEnvironment
 from coleman.results.sink_base import NullSink
-from coleman.scenarios import IndustrialDatasetHCSScenarioProvider
+from coleman.scenarios import HCSScenarioLoader
 from coleman.utils.monitor import MonitorCollector
 
 
@@ -53,7 +53,7 @@ def mock_agent():
 @pytest.fixture
 def mock_scenario_provider():
     """Fixture for creating a mock scenario provider."""
-    mock_provider = MagicMock(spec=IndustrialDatasetHCSScenarioProvider)
+    mock_provider = MagicMock(spec=HCSScenarioLoader)
     mock_provider.get_total_variants.return_value = 0
     mock_provider.get_avail_time_ratio.return_value = 0.5
     return mock_provider
