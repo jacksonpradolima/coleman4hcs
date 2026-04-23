@@ -58,7 +58,7 @@ In order to use this `version`, use any Contextual-MAB available, for instance, 
 
 # Getting started
 
-- [Coleman4HCS](#coleman)
+- [Coleman4HCS](#coleman4hcs)
     - [Solving the Test Case Prioritization using Multi-Armed Bandit Algorithms](#solving-the-test-case-prioritization-using-multi-armed-bandit-algorithms)
 - [Getting started](#getting-started)
 - [Citation](#citation)
@@ -76,13 +76,13 @@ In order to use this `version`, use any Contextual-MAB available, for instance, 
 - [Datasets](#datasets)
 - [About the files input](#about-the-files-input)
 - [Using the tool](#using-the-tool)
-  - [How data flows through Coleman4HCS](#how-data-flows-through-coleman)
+  - [How data flows through Coleman4HCS](#how-data-flows-through-coleman4hcs)
   - [MAB Policies Available](#mab-policies-available)
   - [Running for Non-HCS System](#running-for-non-hcs-system)
   - [Running for an HCS system](#running-for-an-hcs-system)
     - [Whole Test Set Strategy](#whole-test-set-strategy)
     - [Variant Test Set Strategy](#variant-test-set-strategy)
-- [Analysis of COLEMAN4HCS Performance](#analysis-of-coleman-performance)
+- [Analysis of COLEMAN4HCS Performance](#analysis-of-coleman4hcs-performance)
   - [Performance Metrics](#performance-metrics)
   - [Methodologies](#methodologies)
   - [Visualizations](#visualizations)
@@ -123,7 +123,7 @@ drive experiments programmatically **or** via the `coleman` CLI — no repo
 checkout required.
 
 The library namespace is now available as `coleman` (preferred). Legacy
-imports from `coleman` continue to work during the deprecation window.
+imports from `coleman4hcs` continue to work during the deprecation window.
 
 > **Breaking change** — the `CONFIG_FILE` environment variable, raw TOML
 > dict workflow, and `main.py` entry-point are removed.  Configuration is now

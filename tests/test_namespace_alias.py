@@ -1,18 +1,18 @@
-"""Tests for the ``coleman`` backward-compatibility namespace."""
+"""Tests for the ``coleman4hcs`` backward-compatibility namespace."""
 
 import importlib
 
 
 def test_coleman_namespace_aliases_new_modules():
-    """Coleman compat namespace should expose the same objects as coleman."""
+    """coleman4hcs compat namespace should expose the same objects as coleman."""
     new_env_module = importlib.import_module("coleman.environment")
-    legacy_env_module = importlib.import_module("coleman.environment")
+    legacy_env_module = importlib.import_module("coleman4hcs.environment")
     new_api_module = importlib.import_module("coleman.api")
-    legacy_api_module = importlib.import_module("coleman.api")
+    legacy_api_module = importlib.import_module("coleman4hcs.api")
     new_runner_module = importlib.import_module("coleman.runner")
-    legacy_runner_module = importlib.import_module("coleman.runner")
+    legacy_runner_module = importlib.import_module("coleman4hcs.runner")
     new_scenarios_module = importlib.import_module("coleman.scenarios")
-    legacy_scenarios_module = importlib.import_module("coleman.scenarios")
+    legacy_scenarios_module = importlib.import_module("coleman4hcs.scenarios")
 
     assert new_env_module.Environment is legacy_env_module.Environment
     assert new_api_module.run is legacy_api_module.run

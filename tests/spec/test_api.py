@@ -92,7 +92,7 @@ class TestSeedApplication:
         """When execution.seed is set, the policy RNG should be deterministically seeded."""
         import numpy as np
 
-        import coleman.policy
+        import coleman.policy.base
         from coleman.runner import run_experiment
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -103,7 +103,7 @@ class TestSeedApplication:
             # After running, re-seed with same value and verify the generator
             # type matches (proves the seed path was taken).
             ref_rng = np.random.default_rng(42)
-            actual = coleman.policy._rng.bit_generator.state
+            actual = coleman.policy.base._rng.bit_generator.state
             expected = ref_rng.bit_generator.state
             assert actual["bit_generator"] == expected["bit_generator"]
 
@@ -111,11 +111,11 @@ class TestSeedApplication:
         """Without execution.seed the policy RNG stays in its default state."""
         import numpy as np
 
-        import coleman.policy
+        import coleman.policy.base
         from coleman.runner import run_experiment
 
         # Reset to a known-seed baseline so the test is reproducible
-        coleman.policy._rng = np.random.default_rng(0)
+        coleman.policy.base._rng = np.random.default_rng(0)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             spec = _light_run_spec(tmpdir)
@@ -123,7 +123,7 @@ class TestSeedApplication:
             spec_dict = spec.model_dump()
             run_experiment(spec_dict)
             # RNG should still be a default_rng (PCG64) — no error
-            state = coleman.policy._rng.bit_generator.state
+            state = coleman.policy.base._rng.bit_generator.state
             assert state["bit_generator"] == "PCG64"
 
 
