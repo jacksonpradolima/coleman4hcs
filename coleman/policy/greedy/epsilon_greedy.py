@@ -67,20 +67,14 @@ class EpsilonGreedyPolicy(Policy):
         actions = agent.actions.clone()
         n = len(actions)
         rand_vals = _policy_base._rng.random(n)
-        is_random = rand_vals < self.epsilon
-
-        # Sort key: use the raw random value for exploration actions so that
-        # they appear in a truly random order (not sorted by Q).  Use Q for
-        # exploitation actions so the best-known action comes first.
-        sort_key = [
-            float(r) if ir else float(q)
-            for r, ir, q in zip(rand_vals, is_random, actions["Q"].to_list())
-        ]
-
+        actions = actions.with_columns([pl.Series("rand_val", rand_vals)])
         actions = actions.with_columns(
             [
-                pl.Series("is_random", is_random),
-                pl.Series("sort_key", sort_key),
+                (pl.col("rand_val") < self.epsilon).alias("is_random"),
+                pl.when(pl.col("rand_val") < self.epsilon)
+                .then(pl.col("rand_val"))
+                .otherwise(pl.col("Q"))
+                .alias("sort_key"),
             ]
         )
         actions = actions.sort(["is_random", "sort_key"], descending=[True, True])

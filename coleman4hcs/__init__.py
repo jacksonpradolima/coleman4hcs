@@ -26,8 +26,11 @@ class _AliasLoader(Loader):
 
     def create_module(self, spec: ModuleSpec):  # noqa: ARG002
         # Return the already-imported (or freshly imported) canonical module.
-        # Using sys.modules.get first avoids re-executing the module body.
-        return sys.modules.get(self._canonical) or importlib.import_module(self._canonical)
+        # Checking sys.modules first avoids re-executing the module body.
+        mod = sys.modules.get(self._canonical)
+        if mod is None:
+            mod = importlib.import_module(self._canonical)
+        return mod
 
     def exec_module(self, module) -> None:  # noqa: ARG002
         # The module was fully populated by create_module; nothing to do here.
