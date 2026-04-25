@@ -64,7 +64,7 @@ make pre-commit-install
 
 ## Configuration
 
-Coleman4HCS uses YAML configuration files with typed Pydantic v2 models.
+Coleman uses YAML configuration files with typed Pydantic v2 models.
 You can compose configs with **config packs** and override specific settings
 inline.
 
@@ -154,7 +154,7 @@ The final experiment facts are stored separately:
 
 ### What happens if you run experiments again?
 
-By default, Coleman4HCS **appends** new final results instead of replacing the
+By default, Coleman **appends** new final results instead of replacing the
 old ones.
 
 For the default Parquet sink this means:
@@ -475,7 +475,7 @@ print('coleman_results truncated')
 
 ### Resume and recovery
 
-If checkpoints are enabled, Coleman4HCS writes one directory per run under
+If checkpoints are enabled, Coleman writes one directory per run under
 `./checkpoints/`. Each experiment keeps a `progress_ex<N>.json` file pointing
 to the last durable checkpoint.
 

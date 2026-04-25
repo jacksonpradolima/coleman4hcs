@@ -1,6 +1,6 @@
-# Contributing to Coleman4HCS
+# Contributing to Coleman
 
-Thank you for your interest in contributing to **Coleman4HCS**! This document
+Thank you for your interest in contributing to **Coleman**! This document
 provides guidelines and instructions for contributing.
 
 ## Getting Started

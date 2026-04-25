@@ -1,6 +1,6 @@
 # Configuration
 
-Coleman4HCS uses **YAML configuration files** with typed
+Coleman uses **YAML configuration files** with typed
 [Pydantic v2](https://docs.pydantic.dev/) models for validation.  Configs
 are loaded via `load_spec()` (library) or `coleman --config` (CLI).
 

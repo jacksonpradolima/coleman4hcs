@@ -1,6 +1,6 @@
-"""Coleman4HCS Analysis Notebook.
+"""Coleman Analysis Notebook.
 
-Marimo notebook for analyzing Coleman4HCS experiment results.
+Marimo notebook for analyzing Coleman experiment results.
 Includes performance metrics, visualizations, and statistical tests.
 """
 

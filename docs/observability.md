@@ -1,7 +1,7 @@
 # Observability
 
 This page describes the **optional** local observability stack for
-debugging and profiling Coleman4HCS experiments.
+debugging and profiling Coleman experiments.
 
 !!! note "Framework-first guarantee"
     `coleman run --config run.yaml` works without Docker or any of these services.

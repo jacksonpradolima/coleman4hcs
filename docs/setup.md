@@ -2,7 +2,7 @@
 
 ## Default run (no Docker required)
 
-Coleman4HCS is framework-first: the default installation works without any
+Coleman is framework-first: the default installation works without any
 external services.
 
 ```bash
@@ -32,7 +32,7 @@ results unless you explicitly remove `./runs/` or choose another `out_dir`.
 
 ## Architecture overview
 
-Coleman4HCS separates three concerns:
+Coleman separates three concerns:
 
 | Layer | Purpose | Default | Optional |
 |-------|---------|---------|----------|
@@ -51,7 +51,7 @@ with near-zero overhead:
 
 ## Configuration system
 
-Coleman4HCS uses **YAML configuration files** validated against typed
+Coleman uses **YAML configuration files** validated against typed
 Pydantic v2 models.  See the [Configuration guide](configuration.md) for
 the full schema reference, config packs, sweep engine, and determinism
 contract.

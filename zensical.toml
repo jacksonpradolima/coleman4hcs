@@ -1,7 +1,7 @@
 [project]
 
 # Project information
-site_name = "Coleman4HCS"
+site_name = "Coleman"
 site_description = "Multi-Armed Bandit based test case prioritization for CI environments"
 site_author = "Jackson Antonio do Prado Lima"
 site_url = "https://jacksonpradolima.github.io/coleman/"

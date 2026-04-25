@@ -2,7 +2,7 @@
 coleman.agent.tests
 -----------------------
 
-This module contains unit and performance tests for the `Agent` module in the Coleman4HCS framework.
+This module contains unit and performance tests for the `Agent` module in the Coleman framework.
 
 Tests ensure the functionality and efficiency of the following classes:
 - `Agent`: Base class for agents, including action management, selection, and reward observation.

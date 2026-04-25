@@ -1,8 +1,8 @@
-# Coleman4HCS
+# Coleman
 
 **Multi-Armed Bandit based Test Case Prioritization for Continuous Integration**
 
-Coleman4HCS is a framework that applies Multi-Armed Bandit (MAB) algorithms to
+Coleman is a framework that applies Multi-Armed Bandit (MAB) algorithms to
 solve the Test Case Prioritization problem in Continuous Integration (CI)
 environments.
 

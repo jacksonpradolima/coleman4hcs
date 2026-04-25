@@ -1,6 +1,6 @@
 # Code Cost Evaluation
 
-Coleman4HCS treats code cost as a **multi-dimensional scorecard**, not a
+Coleman treats code cost as a **multi-dimensional scorecard**, not a
 single number.  This guide explains the tooling and commands available for
 evaluating four complementary cost dimensions.
 

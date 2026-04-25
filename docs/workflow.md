@@ -1,4 +1,4 @@
-# Coleman4HCS Workflow
+# Coleman Workflow
 
 This page covers the full operational loop for running and analyzing
 experiments.  Each section maps to a cell in the interactive
@@ -44,7 +44,7 @@ Key settings you should inspect:
 
 ## 2 — Code Cost Evaluation
 
-Coleman4HCS measures code cost as a **multi-dimensional scorecard**
+Coleman measures code cost as a **multi-dimensional scorecard**
 with four dimensions:
 
 | Dimension        | What it measures                      | Tools                  |

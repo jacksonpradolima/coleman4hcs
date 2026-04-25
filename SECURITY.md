@@ -8,7 +8,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in **Coleman4HCS**, please report it
+If you discover a security vulnerability in **Coleman**, please report it
 responsibly.
 
 **Do not open a public GitHub issue.**
@@ -47,4 +47,4 @@ The experiment system adds two new direct dependencies:
 All YAML loading uses `yaml.safe_load()` — untrusted YAML with arbitrary
 Python constructors is never evaluated.
 
-Thank you for helping keep Coleman4HCS safe.
+Thank you for helping keep Coleman safe.
