@@ -118,3 +118,10 @@ version_toml = ["pyproject.toml:project.version"]
 branch = "main"
 commit_message = "chore(release): {version}"
 build_command = "uv build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "pytest-benchmark>=5.2.3",
+    "ruff>=0.15.9",
+]

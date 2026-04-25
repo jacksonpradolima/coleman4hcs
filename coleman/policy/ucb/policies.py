@@ -30,6 +30,8 @@ class UCBPolicyBase(Policy):
         c : float
             Exploration parameter controlling the width of the confidence bound.
         """
+        if c <= 0:
+            raise ValueError(f"Exploration parameter c must be positive, got {c!r}")
         self.c = c
 
     def choose_all(self, agent: Agent) -> list:

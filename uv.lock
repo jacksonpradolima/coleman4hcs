@@ -369,6 +369,13 @@ telemetry = [
     { name = "opentelemetry-sdk" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-benchmark" },
+    { name = "ruff" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "clickhouse-connect", marker = "extra == 'clickhouse'" },
@@ -412,6 +419,13 @@ requires-dist = [
     { name = "zensical", marker = "extra == 'docs'" },
 ]
 provides-extras = ["dev", "docs", "release", "notebook", "telemetry", "clickhouse"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pytest-benchmark", specifier = ">=5.2.3" },
+    { name = "ruff", specifier = ">=0.15.9" },
+]
 
 [[package]]
 name = "colorama"
