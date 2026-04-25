@@ -128,8 +128,8 @@ class LinUCBPolicy(Policy):
 
             p_t = theta_a.T.dot(x_i) + self.alpha * np.sqrt(x_i.T.dot(a_inv).dot(x_i))
 
-            if len(p_t) > 1:
-                raise QException("[LinUCB] q is more than 1: {q}")
+            if p_t.size > 1:
+                raise QException(f"[LinUCB] q is more than 1: shape={p_t.shape}, value={p_t}")
 
             q_values.append((a, p_t[0, 0]))
 
@@ -223,7 +223,7 @@ class SWLinUCBPolicy(LinUCBPolicy):
 
             q *= 1 - occ / agent.window_size
 
-            if len(q) > 1:
+            if q.size > 1:
                 raise QException(f"[SWLinUCB] Q computation resulted in unexpected shape: {q.shape}")
 
             q_values.append((a, q[0, 0]))

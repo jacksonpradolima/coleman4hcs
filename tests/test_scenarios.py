@@ -6,16 +6,14 @@ import pytest
 from coleman.scenarios import (
     ContextScenarioLoader,
     HCSScenarioLoader,
+    IndustrialDatasetContextScenarioProvider,
+    IndustrialDatasetHCSScenarioProvider,
+    IndustrialDatasetScenarioProvider,
     ScenarioLoader,
     VirtualContextScenario,
     VirtualHCSScenario,
     VirtualScenario,
 )
-
-# Backward-compatible aliases used in test comments/labels
-IndustrialDatasetScenarioProvider = ScenarioLoader
-IndustrialDatasetHCSScenarioProvider = HCSScenarioLoader
-IndustrialDatasetContextScenarioProvider = ContextScenarioLoader
 
 # ------------------------ Fixtures for Mock Data ------------------------
 
