@@ -122,8 +122,7 @@ YAML configs, composable config packs, a sweep engine, and deterministic
 drive experiments programmatically **or** via the `coleman` CLI — no repo
 checkout required.
 
-The library namespace is now available as `coleman` (preferred). Legacy
-imports from `coleman4hcs` continue to work during the deprecation window.
+The library namespace is now `coleman`.
 
 > **Breaking change** — the `CONFIG_FILE` environment variable, raw TOML
 > dict workflow, and `main.py` entry-point are removed.  Configuration is now

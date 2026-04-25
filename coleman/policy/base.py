@@ -20,7 +20,7 @@ class Policy:
         str
             The policy name.
         """
-        return "Untreat"
+        return "Untreated"
 
     def choose_all(self, agent: Agent):
         """Return all actions in their default (untreated) order.
