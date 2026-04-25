@@ -129,7 +129,7 @@ class LinUCBPolicy(Policy):
             p_t = theta_a.T.dot(x_i) + self.alpha * np.sqrt(x_i.T.dot(a_inv).dot(x_i))
 
             if p_t.size > 1:
-                raise QException(f"[LinUCB] q is more than 1: shape={p_t.shape}, value={p_t}")
+                raise QException(f"[LinUCB] p_t is more than 1: shape={p_t.shape}, value={p_t}")
 
             q_values.append((a, p_t[0, 0]))
 

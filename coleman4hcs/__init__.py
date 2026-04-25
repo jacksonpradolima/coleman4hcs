@@ -49,11 +49,15 @@ class _Coleman4HCSFinder(MetaPathFinder):
         canonical = self._CANONICAL_PREFIX + fullname[len(self._PREFIX):]
         try:
             importlib.import_module(canonical)
-        except ImportError:
-            return None
+        except ModuleNotFoundError as exc:
+            if exc.name == canonical:
+                return None
+            raise
         return ModuleSpec(fullname, _AliasLoader(canonical))
 
 
 # Install the finder at position 0 so it takes priority over the default
 # file-system finders (which would otherwise fail to find coleman4hcs sub-modules).
-sys.meta_path.insert(0, _Coleman4HCSFinder())
+# Guard against duplicate insertion on repeated imports / reloads.
+if not any(isinstance(f, _Coleman4HCSFinder) for f in sys.meta_path):
+    sys.meta_path.insert(0, _Coleman4HCSFinder())
