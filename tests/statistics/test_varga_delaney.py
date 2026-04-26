@@ -91,7 +91,7 @@ def test_reduce():
 
 
 def test_reduce_includes_bigstar_for_best_comparison():
-    """Covers get_symbol() branch returning '$\\bigstar$'."""
+    r"""Covers get_symbol() branch returning '$\\bigstar$'."""
     data = pl.DataFrame(
         {
             "base": ["A", "B"],

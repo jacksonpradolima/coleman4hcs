@@ -97,8 +97,7 @@ def test_get_peak_rss_mib_none_when_no_resource_module():
 
 
 def test_get_peak_rss_mib_darwin_divides_by_megabyte():
-    """macOS path (sys.platform == 'darwin') divides ru_maxrss by 1024*1024."""
-    import sys
+    """MacOS path (sys.platform == 'darwin') divides ru_maxrss by 1024*1024."""
     from unittest.mock import MagicMock
 
     fake_resource = MagicMock()

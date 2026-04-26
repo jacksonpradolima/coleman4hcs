@@ -40,30 +40,27 @@ dev = [
     "pyrapl==0.2.3.1",
 ]
 docs = [
-    "zensical",
-    "mkdocstrings[python]",
-    "mkdocs-jupyter",
+    "zensical==0.0.28",
+    "mkdocstrings[python]==1.0.3",
+    "mkdocs-jupyter==0.26.1",
 ]
 release = [
-    "python-semantic-release",
+    "python-semantic-release==10.5.3",
 ]
 notebook = [
-    "marimo",
-    "matplotlib",
-    "pandas",
-    "seaborn",
+    "marimo==0.23.0",
+    "matplotlib==3.10.8",
+    "pandas==3.0.1",
+    "seaborn==0.13.2",
 ]
 telemetry = [
-    "opentelemetry-api",
-    "opentelemetry-sdk",
-    "opentelemetry-exporter-otlp-proto-http",
+    "opentelemetry-api==1.41.0",
+    "opentelemetry-sdk==1.41.0",
+    "opentelemetry-exporter-otlp-proto-http==1.41.0",
 ]
 clickhouse = [
-    "clickhouse-connect",
+    "clickhouse-connect==0.13.0",
 ]
-
-[project.scripts]
-coleman = "coleman.cli:main"
 
 [project.urls]
 homepage = "https://github.com/jacksonpradolima/coleman"

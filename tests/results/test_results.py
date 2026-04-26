@@ -7,8 +7,7 @@ import pyarrow.parquet as pq
 
 from coleman.results.parquet_sink import ParquetSink, _hash_order, _top_k
 from coleman.results.sink_base import NullSink, ResultsSink
-from coleman.results.writer import ResultsWriter
-from coleman.results.writer import _SENTINEL
+from coleman.results.writer import _SENTINEL, ResultsWriter
 
 # ---------------------------------------------------------------------------
 # Helpers

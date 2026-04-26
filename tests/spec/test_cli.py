@@ -175,7 +175,6 @@ class TestCLISweep:
     def test_sweep_non_dry_run_prints_run_ids(self, capsys):
         """Lines 105-107: non-dry-run sweep prints run_ids."""
         from coleman.api import RunResult
-        from coleman.spec.models import RunSpec
 
         fake_result = MagicMock(spec=RunResult)
         fake_result.run_id = "abc123"
