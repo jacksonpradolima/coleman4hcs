@@ -5,10 +5,14 @@ from pathlib import Path
 import polars as pl
 import pytest
 
+from coleman.runner import get_scenario_provider
 from coleman.scenarios import (
+    ContextScenarioLoader,
+    HCSScenarioLoader,
     IndustrialDatasetContextScenarioProvider,
     IndustrialDatasetHCSScenarioProvider,
     IndustrialDatasetScenarioProvider,
+    ScenarioLoader,
     VirtualContextScenario,
     VirtualHCSScenario,
     VirtualScenario,
@@ -331,6 +335,80 @@ def test_smoke_examples_parquet_hcs_scenario():
             variants_found = True
             break
     assert variants_found, "No build in dune@total/data-variants.parquet has variant rows"
+
+
+@pytest.mark.parametrize(
+    "datasets_dir,dataset,use_hcs,use_context,context_config,feature_groups,expected_type",
+    [
+        # --- base mode: every dataset available ---
+        ("examples", "alibaba@druid", False, False, {}, {}, ScenarioLoader),
+        ("examples", "square@retrofit", False, False, {}, {}, ScenarioLoader),
+        ("examples", "fakedata", False, False, {}, {}, ScenarioLoader),
+        ("examples", "core@dune-common/dune@total", False, False, {}, {}, ScenarioLoader),
+        # --- HCS mode ---
+        ("examples", "core@dune-common/dune@total", True, False, {}, {}, HCSScenarioLoader),
+        # --- context mode ---
+        (
+            "examples",
+            "alibaba@druid",
+            False,
+            True,
+            {"previous_build": ["Duration", "NumErrors"]},
+            {"feature_group_name": "time_execution", "feature_group_values": ["Duration", "NumErrors"]},
+            ContextScenarioLoader,
+        ),
+        (
+            "examples",
+            "square@retrofit",
+            False,
+            True,
+            {"previous_build": ["Duration", "NumErrors"]},
+            {"feature_group_name": "time_execution", "feature_group_values": ["Duration", "NumErrors"]},
+            ContextScenarioLoader,
+        ),
+    ],
+)
+def test_smoke_get_scenario_provider_path_resolution(
+    datasets_dir, dataset, use_hcs, use_context, context_config, feature_groups, expected_type
+):
+    """Smoke test: get_scenario_provider resolves Parquet-first paths and returns a working provider.
+
+    Validates that:
+    - The resolved ``features-engineered`` path is a .parquet file (Parquet-first guarantee).
+    - No DeprecationWarning is emitted (CSV fallback did NOT occur).
+    - The returned provider is of the expected concrete type.
+    - The provider successfully yields at least one scenario.
+    """
+    expected_tc_path = Path(datasets_dir) / dataset / "features-engineered.parquet"
+    assert expected_tc_path.exists(), (
+        f"Parquet-first assumption violated: {expected_tc_path} not found. "
+        "Run the dataset conversion scripts or check examples/ layout."
+    )
+
+    import warnings
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        provider = get_scenario_provider(
+            datasets_dir=datasets_dir,
+            dataset=dataset,
+            sched_time_ratio=0.5,
+            use_hcs=use_hcs,
+            use_context=use_context,
+            context_config=context_config,
+            feature_groups=feature_groups,
+        )
+
+    # No DeprecationWarning should be emitted; that would mean CSV fallback occurred.
+    csv_warnings = [w for w in caught if issubclass(w.category, DeprecationWarning) and "CSV" in str(w.message)]
+    assert not csv_warnings, (
+        f"get_scenario_provider fell back to CSV despite a .parquet file being available: {csv_warnings}"
+    )
+
+    assert isinstance(provider, expected_type), f"Expected {expected_type.__name__}, got {type(provider).__name__}"
+
+    scenario = next(iter(provider))
+    assert scenario is not None
 
 
 # ------------------------ Benchmark Tests ------------------------

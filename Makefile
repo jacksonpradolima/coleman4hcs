@@ -39,13 +39,13 @@ setup: ensure-uv ## Setup Python 3.14 for local development
 	$(UV) python pin 3.14
 	$(UV) venv .venv --python 3.14 --allow-existing
 
-install: ensure-uv setup ## Install all dependencies from uv.lock (including dev, docs, notebook extras) into .venv
+pre-commit-install: ## Install pre-commit hooks
+	$(UV) run pre-commit install --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
+
+install: ensure-uv setup pre-commit-install ## Install all dependencies from uv.lock (including dev, docs, notebook extras) into .venv
 	$(UV) sync --frozen --extra dev --extra docs --extra notebook --extra telemetry --extra clickhouse
 	# Ensure project is installed in editable mode
 	$(UV) run --python $(PYTHON) --no-project pip install -e .
-
-pre-commit-install: ## Install pre-commit hooks
-	$(UV) run pre-commit install --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
 
 # ——— Quality ——————————————————————————————————————————————
 
