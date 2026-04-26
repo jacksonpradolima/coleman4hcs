@@ -215,6 +215,7 @@ def get_scenario_provider(  # pylint: disable=too-many-positional-arguments
     """
 
     def _prefer_parquet(base_path_without_ext: str) -> str:
+        """Return the Parquet path if it exists, else fall back to CSV."""
         parquet_path = f"{base_path_without_ext}.parquet"
         csv_path = f"{base_path_without_ext}.csv"
         if os.path.exists(parquet_path):

@@ -111,7 +111,7 @@ markers = [
 
 [tool.interrogate]
 ignore-init-module = true
-fail-under = 80
+fail-under = 100
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]

@@ -38,6 +38,15 @@ class DuckDBCatalog:
     """
 
     def __init__(self, parquet_root: str, db_path: str = ":memory:") -> None:
+        """Initialise the catalog and create the ``results`` view.
+
+        Parameters
+        ----------
+        parquet_root : str
+            Root directory of the Hive-partitioned Parquet dataset.
+        db_path : str
+            DuckDB database path.  Default ``:memory:`` (ephemeral).
+        """
         self.parquet_root = parquet_root
         self.conn = duckdb.connect(db_path)
         self._create_view()

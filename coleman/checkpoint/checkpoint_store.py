@@ -110,6 +110,13 @@ class LocalCheckpointStore(CheckpointStore):
     """
 
     def __init__(self, base_dir: str = "checkpoints") -> None:
+        """Initialise the store and create *base_dir* if it does not exist.
+
+        Parameters
+        ----------
+        base_dir : str
+            Root directory for checkpoint storage.
+        """
         self.base_dir = base_dir
         os.makedirs(base_dir, exist_ok=True)
 

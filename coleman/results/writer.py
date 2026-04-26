@@ -46,6 +46,15 @@ class ResultsWriter:
     """
 
     def __init__(self, sink: ResultsSink, max_queue_size: int = 10_000) -> None:
+        """Initialise the writer with a target sink and queue capacity.
+
+        Parameters
+        ----------
+        sink : ResultsSink
+            The target results sink.
+        max_queue_size : int
+            Maximum number of rows that can be queued before the caller blocks.
+        """
         self.sink = sink
         self._queue: queue.Queue[_QueueItem] = queue.Queue(maxsize=max_queue_size)
         self._thread: threading.Thread | None = None

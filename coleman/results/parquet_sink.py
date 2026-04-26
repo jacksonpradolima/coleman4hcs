@@ -137,6 +137,20 @@ class ParquetSink(ResultsSink):
         top_k: int | None = None,
         partition_cols: list[str] | None = None,
     ) -> None:
+        """Initialise the sink and create *out_dir* if it does not exist.
+
+        Parameters
+        ----------
+        out_dir : str
+            Root directory for Hive-style partitioned output.
+        batch_size : int
+            Maximum rows buffered in memory before an automatic flush.
+        top_k : int or None
+            If set, store the first *k* entries of ``prioritization_order``.
+        partition_cols : list[str] or None
+            Hive partition columns.  Defaults to
+            ``["scenario", "policy", "reward_function"]``.
+        """
         self.out_dir = out_dir
         self.batch_size = batch_size
         self.top_k = top_k

@@ -175,6 +175,7 @@ def reduce(df: pl.DataFrame, best: str, symbols: bool = True) -> pl.DataFrame:
     # Get magnitude symbol (in latex) for each comparison
     # The best has the bigstar symbol
     def get_symbol(row):
+        """Return the LaTeX effect-size symbol for one comparison row."""
         temp = row["temp"]
         if temp == best:
             return "$\\bigstar$"

@@ -55,12 +55,26 @@ class RunResult:
         metrics: dict[str, Any] | None = None,
         artifacts_dir: str | None = None,
     ) -> None:
+        """Initialise a RunResult.
+
+        Parameters
+        ----------
+        run_id : str
+            Deterministic run identifier.
+        spec : RunSpec
+            The resolved spec that was executed.
+        metrics : dict[str, Any] or None
+            Summary metrics.  Defaults to empty dict.
+        artifacts_dir : str or None
+            Path to the run artefact directory, if any.
+        """
         self.run_id = run_id
         self.spec = spec
         self.metrics = metrics or {}
         self.artifacts_dir = artifacts_dir
 
-    def __repr__(self) -> str:  # noqa: D105
+    def __repr__(self) -> str:
+        """Return a concise string representation of the result."""
         return f"RunResult(run_id={self.run_id!r}, metrics_keys={list(self.metrics.keys())})"
 
 

@@ -92,6 +92,24 @@ class Telemetry:
         export_interval_millis: int = 5000,
         resource_attributes: dict[str, str] | None = None,
     ) -> None:
+        """Initialise OpenTelemetry metrics and traces providers.
+
+        Parameters
+        ----------
+        service_name : str
+            OTLP service/resource name.
+        otlp_endpoint : str
+            OTLP HTTP endpoint base URL.
+        export_interval_millis : int
+            Metric export interval in milliseconds.
+        resource_attributes : dict[str, str] or None
+            Extra OTel resource attributes merged with ``service.name``.
+
+        Raises
+        ------
+        ImportError
+            If the ``opentelemetry`` SDK is not installed.
+        """
         if not _HAS_OTEL:
             raise ImportError(
                 "opentelemetry SDK is required for Telemetry. Install it with: pip install coleman[telemetry]"

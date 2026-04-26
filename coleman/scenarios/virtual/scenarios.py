@@ -146,6 +146,21 @@ class VirtualContextScenario(VirtualScenario):
     """
 
     def __init__(self, *args, feature_group: str, features: list[str], context_features: pl.DataFrame, **kwargs):
+        """Initialise the VirtualContextScenario.
+
+        Parameters
+        ----------
+        *args
+            Positional arguments passed to ``VirtualScenario``.
+        feature_group : str
+            The name of the feature group.
+        features : list of str
+            The feature names.
+        context_features : polars.DataFrame
+            DataFrame containing context features.
+        **kwargs
+            Keyword arguments passed to ``VirtualScenario``.
+        """
         super().__init__(*args, **kwargs)
         self.feature_group = feature_group
         self.features = features

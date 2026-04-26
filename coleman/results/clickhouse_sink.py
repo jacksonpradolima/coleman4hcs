@@ -119,6 +119,24 @@ class ClickHouseSink(ResultsSink):
         database: str = "default",
         batch_size: int = 1000,
     ) -> None:
+        """Initialise the ClickHouse client and ensure the results table exists.
+
+        Parameters
+        ----------
+        host : str
+            ClickHouse server hostname.
+        port : int
+            ClickHouse HTTP interface port.
+        database : str
+            Target database name.
+        batch_size : int
+            Rows buffered before an automatic insert.
+
+        Raises
+        ------
+        ImportError
+            If ``clickhouse-connect`` is not installed.
+        """
         try:
             clickhouse_connect = importlib.import_module("clickhouse_connect")
         except ImportError as exc:

@@ -38,6 +38,7 @@ class ProcessResourceTracker:
     """
 
     def __init__(self) -> None:
+        """Initialise the tracker and record the start wall and CPU times."""
         self._start_wall = time.perf_counter()
         self._start_cpu = time.process_time()
         self._last_wall = self._start_wall
