@@ -18,7 +18,7 @@ export UV_LINK_MODE ?= copy
 
 .PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve docs-export-workflow check-precommit clean interrogate build run cost-structural cost-complexity cost-maintainability cost-xenon cost-wily cost-wily-file cost-profile-scalene cost-profile-pyspy cost-energy
 
-## —— Coleman4HCS Makefile ——————————————————————————————————
+## —— Coleman Makefile ——————————————————————————————————
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
