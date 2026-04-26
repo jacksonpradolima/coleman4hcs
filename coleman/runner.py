@@ -145,7 +145,7 @@ def load_class_from_module(module, class_name: str):
     raise ValueError(f"Class '{class_name}' not found in {module.__name__}!")
 
 
-def create_agents(policy, rew_fun, window_sizes):
+def create_agents(policy, rew_fun, window_sizes, seed: int | None = None):
     """Create agent instances based on the policy type.
 
     Parameters
@@ -157,6 +157,10 @@ def create_agents(policy, rew_fun, window_sizes):
     window_sizes : list
         List of window sizes (only relevant for policies that use Sliding
         Window such as FRRMABPolicy).
+    seed : int, optional
+        Seed for the agents' internal RNG, which controls the random initial
+        shuffle at ``t=0``.  When provided, repeated runs with the same seed
+        and scenario produce identical prioritization sequences.
 
     Returns
     -------
@@ -164,15 +168,15 @@ def create_agents(policy, rew_fun, window_sizes):
         A list of agent instances.
     """
     if isinstance(policy, FRRMABPolicy):
-        return [RewardSlidingWindowAgent(policy, rew_fun, w) for w in window_sizes]
+        return [RewardSlidingWindowAgent(policy, rew_fun, w, seed=seed) for w in window_sizes]
 
     if isinstance(policy, SWLinUCBPolicy):
-        return [SlidingWindowContextualAgent(policy, rew_fun, w) for w in window_sizes]
+        return [SlidingWindowContextualAgent(policy, rew_fun, w, seed=seed) for w in window_sizes]
 
     if isinstance(policy, LinUCBPolicy):
-        return [ContextualAgent(policy, rew_fun)]
+        return [ContextualAgent(policy, rew_fun, seed=seed)]
 
-    return [RewardAgent(policy, rew_fun)]
+    return [RewardAgent(policy, rew_fun, seed=seed)]
 
 
 def get_scenario_provider(  # pylint: disable=too-many-positional-arguments

@@ -25,7 +25,7 @@ class RewardAgent(Agent):
         The last reward received by the agent.
     """
 
-    def __init__(self, policy, reward_function):
+    def __init__(self, policy, reward_function, seed: int | None = None):
         """Initialize the RewardAgent.
 
         Parameters
@@ -34,8 +34,10 @@ class RewardAgent(Agent):
             The policy used by the agent to choose an action.
         reward_function : object
             The reward function used by the agent to evaluate outcomes.
+        seed : int, optional
+            Seed forwarded to :class:`Agent` for reproducible initial shuffle.
         """
-        super().__init__(policy)
+        super().__init__(policy, seed=seed)
         self.reward_function = reward_function
         self.last_reward = 0
 

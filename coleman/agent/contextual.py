@@ -27,7 +27,7 @@ class ContextualAgent(RewardAgent):
         The features used for decision-making.
     """
 
-    def __init__(self, policy, reward_function):
+    def __init__(self, policy, reward_function, seed: int | None = None):
         """Initialize the ContextualAgent.
 
         Parameters
@@ -36,8 +36,10 @@ class ContextualAgent(RewardAgent):
             The policy used by the agent to choose an action.
         reward_function : object
             The reward function used by the agent to evaluate outcomes.
+        seed : int, optional
+            Seed forwarded to :class:`RewardAgent` for reproducible initial shuffle.
         """
-        super().__init__(policy, reward_function)
+        super().__init__(policy, reward_function, seed=seed)
 
         self.context_features: pl.DataFrame = pl.DataFrame()
         self.features: list[str] = []

@@ -112,7 +112,7 @@ class ScenarioLoader:
 
     def _collect_build(self, build_id: int, columns: list[str] | None = None) -> pl.DataFrame:
         """Collect one build slice using lazy filtering/projection."""
-        query = self._testcases_lazy.filter(pl.col("BuildId") == build_id)
+        query = self._testcases_lazy.filter(pl.col("BuildId") == build_id).sort("Name")
         if columns:
             query = query.select(columns)
         return cast(pl.DataFrame, query.collect())

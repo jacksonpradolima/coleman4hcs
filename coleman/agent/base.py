@@ -35,7 +35,7 @@ class Agent:
         A DataFrame tracking the agent's actions and their respective outcomes.
     """
 
-    def __init__(self, policy, bandit: Bandit | None = None):
+    def __init__(self, policy, bandit: Bandit | None = None, seed: int | None = None):
         """Initialize the Agent.
 
         Parameters
@@ -44,12 +44,18 @@ class Agent:
             The policy used by the agent to choose an action. For instance, FRRMAB.
         bandit : Bandit, optional
             The bandit instance the agent interacts with.
+        seed : int, optional
+            Seed for the internal RNG used for the random initial shuffle at t=0.
+            When provided, repeated runs with the same seed produce identical
+            prioritization sequences.  When ``None``, the shuffle is non-deterministic.
         """
         self.policy = policy
         self.bandit: Bandit | None = bandit
         self.last_prioritization: list[str] = []
         self.t = 0
         self.actions = pl.DataFrame(schema=ACTIONS_SCHEMA)
+        self._seed = seed
+        self._rng = np.random.default_rng(seed)
 
         self.reset()
 
@@ -111,7 +117,7 @@ class Agent:
         if new_actions:
             new_actions_df = pl.DataFrame(
                 {
-                    "Name": list(new_actions),
+                    "Name": sorted(new_actions),
                     "ActionAttempts": [0.0] * len(new_actions),
                     "ValueEstimates": [0.0] * len(new_actions),
                     "Q": [0.0] * len(new_actions),
@@ -146,7 +152,8 @@ class Agent:
             List of test cases in ascending order of priority.
         """
         if self.t == 0:
-            self.last_prioritization = self.actions["Name"].shuffle().to_list()
+            polars_seed = int(self._rng.integers(0, 2**31))
+            self.last_prioritization = self.actions["Name"].shuffle(seed=polars_seed).to_list()
         else:
             self.actions = self.actions.with_columns([pl.col("Q").fill_null(0.0)])
             self.last_prioritization = self.policy.choose_all(self)

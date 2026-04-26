@@ -29,7 +29,7 @@ class RewardSlidingWindowAgent(RewardAgent):
         History of actions taken by the agent.
     """
 
-    def __init__(self, policy, reward_function, window_size):
+    def __init__(self, policy, reward_function, window_size, seed: int | None = None):
         """Initialize the RewardSlidingWindowAgent.
 
         Parameters
@@ -40,8 +40,10 @@ class RewardSlidingWindowAgent(RewardAgent):
             The reward function used by the agent.
         window_size : int
             The size of the sliding window.
+        seed : int, optional
+            Seed forwarded to :class:`RewardAgent` for reproducible initial shuffle.
         """
-        super().__init__(policy, reward_function)
+        super().__init__(policy, reward_function, seed=seed)
         self.window_size = window_size
 
         self.history = pl.DataFrame(schema=HISTORY_SCHEMA)
@@ -128,7 +130,7 @@ class SlidingWindowContextualAgent(ContextualAgent):
         History of actions taken by the agent.
     """
 
-    def __init__(self, policy, reward_function, window_size):
+    def __init__(self, policy, reward_function, window_size, seed: int | None = None):
         """Initialize the SlidingWindowContextualAgent.
 
         Parameters
@@ -139,8 +141,10 @@ class SlidingWindowContextualAgent(ContextualAgent):
             The reward function used by the agent.
         window_size : int
             The size of the sliding window.
+        seed : int, optional
+            Seed forwarded to :class:`ContextualAgent` for reproducible initial shuffle.
         """
-        super().__init__(policy, reward_function)
+        super().__init__(policy, reward_function, seed=seed)
 
         self.window_size = window_size
 
