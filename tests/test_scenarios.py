@@ -1,5 +1,7 @@
 """Tests for the monitor utility module."""
 
+from pathlib import Path
+
 import polars as pl
 import pytest
 
@@ -242,6 +244,93 @@ def test_industrial_dataset_context_scenario_provider(mock_csv_data, tmp_path):
 
     assert scenario.get_features() == ["CalcPrio", "Duration"], "Features should match."
     assert scenario.get_context_features().height > 0, "Context features should not be empty."
+
+
+@pytest.mark.parametrize(
+    "relative_path",
+    [
+        "alibaba@druid/features-engineered.parquet",
+        "square@retrofit/features-engineered.parquet",
+        "fakedata/features-engineered.parquet",
+        "core@dune-common/dune@debian_10 clang-7-libcpp-17/features-engineered.parquet",
+        "core@dune-common/dune@debian_11 gcc-10-20/features-engineered.parquet",
+        "core@dune-common/dune@ubuntu_20_04 clang-10-20/features-engineered.parquet",
+        "core@dune-common/dune@total/features-engineered.parquet",
+    ],
+)
+def test_smoke_examples_parquet_base_scenarios(relative_path):
+    """Smoke test: every base examples parquet can be loaded by ScenarioLoader."""
+    tcfile = Path("examples") / relative_path
+    assert tcfile.exists(), f"Missing example dataset file: {tcfile}"
+
+    provider = IndustrialDatasetScenarioProvider(str(tcfile), sched_time_ratio=0.5)
+    scenario = next(provider)
+
+    assert isinstance(scenario, VirtualScenario)
+    assert len(scenario.get_testcases()) > 0
+    assert scenario.total_build_duration >= 0
+
+
+@pytest.mark.parametrize(
+    "relative_path",
+    [
+        "alibaba@druid/features-engineered-contextual.parquet",
+        "square@retrofit/features-engineered-contextual.parquet",
+    ],
+)
+def test_smoke_examples_parquet_context_scenarios(relative_path):
+    """Smoke test: contextual examples parquet can be loaded by ContextScenarioLoader."""
+    tcfile = Path("examples") / relative_path
+    assert tcfile.exists(), f"Missing example contextual dataset file: {tcfile}"
+
+    provider = IndustrialDatasetContextScenarioProvider(
+        str(tcfile),
+        feature_group_name="time_execution",
+        feature_group_values=["Duration", "NumErrors"],
+        previous_build=["Duration", "NumErrors"],
+        sched_time_ratio=0.5,
+    )
+    scenario = next(provider)
+
+    assert isinstance(scenario, VirtualContextScenario)
+    assert scenario.get_context_features().height > 0
+    for feature in ["Duration", "NumErrors"]:
+        assert feature in scenario.get_context_features().columns
+
+
+def test_smoke_examples_parquet_hcs_scenario():
+    """Smoke test: HCS parquet datasets can be loaded by HCSScenarioLoader.
+
+    Validates that:
+    - The loader initialises without error.
+    - At least one scenario is iterable and of the correct type.
+    - The variants file is non-empty at the provider level (get_total_variants).
+    - At least one build across the whole dataset carries variant rows.
+
+    Note: individual builds may legitimately have zero variant rows,
+    so the per-scenario check uses the provider-level count.
+    """
+    tcfile = Path("examples/core@dune-common/dune@total/features-engineered.parquet")
+    variants_file = Path("examples/core@dune-common/dune@total/data-variants.parquet")
+
+    assert tcfile.exists(), f"Missing HCS features dataset file: {tcfile}"
+    assert variants_file.exists(), f"Missing HCS variants dataset file: {variants_file}"
+
+    provider = IndustrialDatasetHCSScenarioProvider(str(tcfile), str(variants_file), sched_time_ratio=0.5)
+
+    # Provider-level variant count comes from the whole file, not per-build.
+    assert provider.get_total_variants() > 0, "data-variants.parquet has no unique variants"
+
+    scenario = next(provider)
+    assert isinstance(scenario, VirtualHCSScenario)
+
+    # At least one build across the dataset must contain variant rows.
+    variants_found = scenario.get_variants().height > 0
+    for sc in provider:
+        if sc.get_variants().height > 0:
+            variants_found = True
+            break
+    assert variants_found, "No build in dune@total/data-variants.parquet has variant rows"
 
 
 # ------------------------ Benchmark Tests ------------------------
