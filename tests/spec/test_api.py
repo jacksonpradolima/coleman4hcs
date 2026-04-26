@@ -3,6 +3,7 @@
 import os
 import tempfile
 
+import pytest
 import yaml
 
 from coleman.api import RunResult, load_spec, run, run_many, save_resolved, sweep
@@ -143,3 +144,27 @@ class TestApiLoadSave:
         with tempfile.TemporaryDirectory() as tmpdir:
             out = save_resolved(spec, os.path.join(tmpdir, "spec.json"))
             assert out.exists()
+
+
+class TestRunManyEdgeCases:
+    def test_duplicate_run_ids_raise_in_parallel(self):
+        """run_many with max_workers > 1 must raise ValueError for duplicate run_ids."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Two identical specs produce the same run_id
+            spec = _light_run_spec(tmpdir)
+            with pytest.raises(ValueError, match="Duplicate run_id"):
+                run_many([spec, spec], max_workers=2)
+
+    def test_run_many_empty_specs(self):
+        """run_many with an empty list should return an empty list."""
+        results = run_many([], max_workers=1)
+        assert results == []
+
+    def test_run_many_parallel_with_unique_specs(self):
+        """run_many with max_workers > 1 and unique specs should succeed."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            specs = [_light_run_spec(tmpdir, seed=i) for i in range(2)]
+            results = run_many(specs, max_workers=2)
+            assert len(results) == 2
+            ids = [r.run_id for r in results]
+            assert len(set(ids)) == 2

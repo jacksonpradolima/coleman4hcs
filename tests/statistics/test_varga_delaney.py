@@ -252,3 +252,74 @@ def test_vd_a_distribution_comparisons():
     # Ensure the magnitude is valid for all cases
     assert magnitude_uniform in valid_magnitudes, f"Unexpected magnitude: {magnitude_uniform}"
     assert magnitude_normal in valid_magnitudes, f"Unexpected magnitude: {magnitude_normal}"
+
+
+# ---------------------------------------------------------------------------
+# Additional edge-case coverage
+# ---------------------------------------------------------------------------
+
+
+def test_reduce_symbols_false():
+    """reduce(symbols=False) should return filtered rows without the effect_size_symbol column."""
+    data = pl.DataFrame(
+        {
+            "base": ["A", "A", "B"],
+            "compared_with": ["B", "C", "C"],
+            "estimate": [0.7, 0.6, 0.4],
+            "magnitude": ["medium", "small", "negligible"],
+        }
+    )
+    result = reduce(data, best="A", symbols=False)
+    assert "effect_size_symbol" not in result.columns
+    assert all((result["base"] == "A") | (result["compared_with"] == "A"))
+
+
+def test_reduce_best_not_in_data_returns_empty():
+    """Return empty result when best value is absent from the DataFrame."""
+    data = pl.DataFrame(
+        {
+            "base": ["A", "B"],
+            "compared_with": ["B", "C"],
+            "estimate": [0.6, 0.4],
+            "magnitude": ["small", "negligible"],
+        }
+    )
+    result = reduce(data, best="X", symbols=False)
+    assert result.height == 0
+
+
+def test_vd_a_df_raises_without_val_col():
+    """vd_a_df should raise ValueError when val_col is not provided."""
+    data = pl.DataFrame({"values": [1, 2, 3, 4], "group": ["A", "A", "B", "B"]})
+    with pytest.raises(ValueError, match="val_col"):
+        vd_a_df(data, group_col="group")
+
+
+def test_vd_a_df_raises_without_group_col():
+    """vd_a_df should raise ValueError when group_col is not provided."""
+    data = pl.DataFrame({"values": [1, 2, 3, 4], "group": ["A", "A", "B", "B"]})
+    with pytest.raises(ValueError, match="group_col"):
+        vd_a_df(data, val_col="values")
+
+
+def test_vd_a_df_sort_false():
+    """vd_a_df with sort=False should still return valid pairwise comparisons."""
+    data = pl.DataFrame({"values": [1.0, 2.0, 3.0, 4.0], "group": ["A", "A", "B", "B"]})
+    result = vd_a_df(data, val_col="values", group_col="group", sort=False)
+    assert result.height == 1
+    assert set(result.columns) >= {"base", "compared_with", "estimate", "magnitude"}
+
+
+def test_reduce_symbol_for_best_itself():
+    r"""When the 'best' column matches itself, the symbol should be \bigstar."""
+    data = pl.DataFrame(
+        {
+            "base": ["A"],
+            "compared_with": ["A"],
+            "estimate": [0.5],
+            "magnitude": ["negligible"],
+        }
+    )
+    result = reduce(data, best="A", symbols=True)
+    assert result.height == 1
+    assert result["effect_size_symbol"][0] == "$\\bigstar$"

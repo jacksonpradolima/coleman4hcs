@@ -104,6 +104,23 @@ addopts = [
     "--benchmark-min-rounds=1",
     "--benchmark-max-time=0.05",
     "--benchmark-sort=mean",
+    "--cov=coleman",
+    "--cov-report=term-missing",
+    "--cov-report=xml:coverage.xml",
+]
+
+[tool.coverage.run]
+source = ["coleman"]
+omit = ["*/__init__.py", "*/py.typed"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abc.abstractmethod",
 ]
 markers = [
     "performance: Mark a test as a performance benchmark.",
