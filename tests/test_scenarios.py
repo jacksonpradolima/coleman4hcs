@@ -195,6 +195,36 @@ def test_industrial_dataset_scenario_provider_csv_deprecation_warning(mock_csv_d
     assert len(scenario.get_testcases()) == 2
 
 
+def test_scenario_loader_unsupported_format_raises(tmp_path):
+    """Unsupported tcfile suffix should raise ValueError."""
+    bad_file = tmp_path / "testcases.txt"
+    bad_file.write_text("not used", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Unsupported scenario file format"):
+        ScenarioLoader(str(bad_file), sched_time_ratio=0.5)
+
+
+def test_scenario_loader_collect_build_with_columns(mock_csv_data, tmp_path):
+    """Exercise _collect_build projection path with explicit columns."""
+    parquet_file = tmp_path / "testcases.parquet"
+    mock_csv_data.write_parquet(parquet_file)
+
+    loader = ScenarioLoader(str(parquet_file), sched_time_ratio=0.5)
+    build_df = loader._collect_build(1, columns=["Name", "Duration"])  # pylint: disable=protected-access
+    assert build_df.columns == ["Name", "Duration"]
+
+
+def test_scenario_loader_tcdf_property_warns_and_returns_df(mock_csv_data, tmp_path):
+    """Cover deprecated tcdf property warning/return path (lines 129-135)."""
+    parquet_file = tmp_path / "testcases.parquet"
+    mock_csv_data.write_parquet(parquet_file)
+
+    loader = ScenarioLoader(str(parquet_file), sched_time_ratio=0.5)
+    with pytest.warns(DeprecationWarning, match="tcdf"):
+        eager_df = loader.tcdf
+    assert eager_df.height > 0
+
+
 def test_provider_stop_iteration(mock_csv_data, tmp_path):
     """Test StopIteration after all scenarios are retrieved."""
     csv_file = tmp_path / "testcases.csv"
@@ -205,6 +235,93 @@ def test_provider_stop_iteration(mock_csv_data, tmp_path):
     assert len(scenarios) == 2, "Should return scenarios for unique BuildIds."
     with pytest.raises(StopIteration):
         next(provider)
+
+
+def test_hcs_loader_variants_csv_deprecation_warning(mock_csv_data, mock_variants, tmp_path):
+    """CSV variants inputs should emit deprecation warnings."""
+    tc_file = tmp_path / "testcases.parquet"
+    variants_file = tmp_path / "variants.csv"
+    mock_csv_data.write_parquet(tc_file)
+    mock_variants.write_csv(variants_file, separator=";")
+
+    with pytest.warns(DeprecationWarning, match="CSV variants files are deprecated"):
+        loader = HCSScenarioLoader(str(tc_file), str(variants_file), sched_time_ratio=0.5)
+        assert loader.get_total_variants() > 0
+
+
+def test_hcs_loader_variants_unsupported_format_raises(mock_csv_data, tmp_path):
+    """Unsupported variants suffix should raise ValueError."""
+    tc_file = tmp_path / "testcases.parquet"
+    variants_file = tmp_path / "variants.unsupported"
+    mock_csv_data.write_parquet(tc_file)
+    variants_file.write_text("irrelevant", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Unsupported variants file format"):
+        HCSScenarioLoader(str(tc_file), str(variants_file), sched_time_ratio=0.5)
+
+
+def test_hcs_loader_variants_property_warns(mock_csv_data, mock_variants, tmp_path):
+    """Accessing legacy variants property emits deprecation warning."""
+    tc_file = tmp_path / "testcases.parquet"
+    variants_file = tmp_path / "variants.parquet"
+    mock_csv_data.write_parquet(tc_file)
+    mock_variants.write_parquet(variants_file)
+
+    loader = HCSScenarioLoader(str(tc_file), str(variants_file), sched_time_ratio=0.5)
+    with pytest.warns(DeprecationWarning, match="variants"):
+        variants_df = loader.variants
+    assert variants_df.height > 0
+
+
+def test_hcs_loader_next_raises_stop_iteration_when_exhausted(mock_csv_data, mock_variants, tmp_path):
+    """Cover HCS __next__ StopIteration branch (line 327)."""
+    tc_file = tmp_path / "testcases.parquet"
+    variants_file = tmp_path / "variants.parquet"
+    mock_csv_data.write_parquet(tc_file)
+    mock_variants.write_parquet(variants_file)
+
+    loader = HCSScenarioLoader(str(tc_file), str(variants_file), sched_time_ratio=0.5)
+    list(loader)
+    with pytest.raises(StopIteration):
+        next(loader)
+
+
+def test_hcs_loader_get_all_variants_returns_list(mock_csv_data, mock_variants, tmp_path):
+    """Cover get_all_variants return path (line 327)."""
+    tc_file = tmp_path / "testcases.parquet"
+    variants_file = tmp_path / "variants.parquet"
+    mock_csv_data.write_parquet(tc_file)
+    mock_variants.write_parquet(variants_file)
+
+    loader = HCSScenarioLoader(str(tc_file), str(variants_file), sched_time_ratio=0.5)
+    variants = loader.get_all_variants()
+    assert isinstance(variants, list)
+    assert len(variants) > 0
+
+
+def test_context_loader_str_returns_dataset_name(tmp_path):
+    """Cover ContextScenarioLoader.__str__ return path (line 422)."""
+    tc_file = tmp_path / "ctx.parquet"
+    pl.DataFrame(
+        {
+            "BuildId": [1],
+            "Name": ["A"],
+            "Duration": [1.0],
+            "CalcPrio": [0],
+            "LastRun": ["2023-01-01"],
+            "Verdict": [1],
+            "LastResults": ["P"],
+        }
+    ).write_parquet(tc_file)
+
+    loader = IndustrialDatasetContextScenarioProvider(
+        str(tc_file),
+        feature_group_name="ctx",
+        feature_group_values=["Duration"],
+        previous_build=["Duration"],
+        sched_time_ratio=0.5,
+    )
+    assert str(loader) == tc_file.parent.name
 
 
 # IndustrialDatasetHCSScenarioProvider

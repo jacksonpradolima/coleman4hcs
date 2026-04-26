@@ -51,6 +51,7 @@ from coleman.runner import (
     EnvironmentBuildConfig,
     ExecutionPlan,
     _effective_parallel_pool_size,
+    build_agents_from_config,
     build_runtime_metadata,
     create_agents,
     create_logger,
@@ -219,6 +220,146 @@ def test_run_parallel_executions_dispatches_unique_execution_plans():
     assert dispatched_first_plan.execution_id != dispatched_second_plan.execution_id
 
 
+def test_run_parallel_executions_keyboard_interrupt_terminates_pool():
+    """Cover runner KeyboardInterrupt handling path (lines 404-410)."""
+    captured: dict[str, Any] = {"terminated": False, "joined": False}
+
+    class FakeAsyncResult:
+        def get(self, timeout=None):  # noqa: ARG002
+            raise KeyboardInterrupt
+
+    class FakePool:
+        def __init__(self, size, maxtasksperchild=None):  # noqa: ARG002
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):  # noqa: ARG002
+            return False
+
+        def starmap_async(self, func, args_list):  # noqa: ARG002
+            return FakeAsyncResult()
+
+        def terminate(self):
+            captured["terminated"] = True
+
+        def join(self):
+            captured["joined"] = True
+
+    class FakeContext:
+        def Pool(self, size, maxtasksperchild=None):  # noqa: N802
+            return FakePool(size, maxtasksperchild=maxtasksperchild)
+
+    build_config = EnvironmentBuildConfig(
+        datasets_dir="examples",
+        dataset="fakedata",
+        sched_time_ratio=0.5,
+        use_hcs=False,
+        use_context=False,
+        context_config={},
+        feature_groups={},
+        results_config={},
+        checkpoint_config={},
+        telemetry_config={},
+        algorithm_configs={},
+        rewards_names=["RNFail"],
+        policy_names=["Random"],
+    )
+    plans = [ExecutionPlan(iteration=1, trials=1, level=20, execution_id="e", worker_id="1", parallel_mode="p")]
+
+    with patch("coleman.runner.get_context", return_value=FakeContext()), pytest.raises(SystemExit) as exc:
+        run_parallel_executions(1, build_config, plans)
+
+    assert exc.value.code == 130
+    assert captured["terminated"] is True
+    assert captured["joined"] is True
+
+
+def test_run_parallel_executions_retries_on_timeout_then_completes():
+    """Cover TimeoutError continue branch in run_parallel_executions (line 405)."""
+    from multiprocessing import TimeoutError as MPTimeoutError
+
+    class FakeAsyncResult:
+        def __init__(self):
+            self.calls = 0
+
+        def get(self, timeout=None):  # noqa: ARG002
+            self.calls += 1
+            if self.calls == 1:
+                raise MPTimeoutError
+            return None
+
+    class FakePool:
+        def __init__(self, size, maxtasksperchild=None):  # noqa: ARG002
+            self.result = FakeAsyncResult()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):  # noqa: ARG002
+            return False
+
+        def starmap_async(self, func, args_list):  # noqa: ARG002
+            return self.result
+
+        def terminate(self):
+            return None
+
+        def join(self):
+            return None
+
+    class FakeContext:
+        def Pool(self, size, maxtasksperchild=None):  # noqa: N802
+            return FakePool(size, maxtasksperchild=maxtasksperchild)
+
+    build_config = EnvironmentBuildConfig(
+        datasets_dir="examples",
+        dataset="fakedata",
+        sched_time_ratio=0.5,
+        use_hcs=False,
+        use_context=False,
+        context_config={},
+        feature_groups={},
+        results_config={},
+        checkpoint_config={},
+        telemetry_config={},
+        algorithm_configs={},
+        rewards_names=["RNFail"],
+        policy_names=["Random"],
+    )
+    plans = [ExecutionPlan(iteration=1, trials=1, level=20, execution_id="e", worker_id="1", parallel_mode="p")]
+
+    with patch("coleman.runner.get_context", return_value=FakeContext()):
+        run_parallel_executions(1, build_config, plans)
+
+
+def test_run_experiment_sets_seeds_when_config_seed_present(tmp_path):
+    """Cover seed assignment branch in run_experiment (runner lines 499-500)."""
+    from coleman.runner import run_experiment
+
+    cfg = {
+        "execution": {"seed": 7, "independent_executions": 1, "parallel_pool_size": 1, "verbose": False},
+        "experiment": {
+            "scheduled_time_ratio": [0.1],
+            "datasets_dir": "examples",
+            "datasets": ["fakedata"],
+            "rewards": ["RNFail"],
+            "policies": ["Random"],
+        },
+        "results": {"enabled": False, "out_dir": str(tmp_path)},
+    }
+
+    with (
+        patch("coleman.runner.get_scenario_provider"),
+        patch("coleman.runner.build_agents_from_config", return_value=[]),
+        patch("coleman.runner.Environment"),
+        patch("coleman.runner.exp_run_industrial_dataset"),
+        patch("coleman.runner.run_parallel_executions"),
+    ):
+        run_experiment(cfg)
+
+
 def test_load_class_from_module_valid():
     """Test that a valid class is loaded correctly from a module."""
     policy_class = load_class_from_module(coleman.policy, "FRRMABPolicy")
@@ -306,6 +447,54 @@ def test_get_scenario_provider_prefers_parquet(tmp_path):
     assert not any(issubclass(w.category, DeprecationWarning) for w in recorded_warnings)
     assert len(first_scenario.get_testcases()) == 1
     assert first_scenario.get_testcases()[0]["Name"] == "TC_FROM_PARQUET"
+
+
+def test_get_scenario_provider_falls_back_to_csv_when_parquet_missing(tmp_path):
+    """If Parquet is absent, provider should use CSV fallback path."""
+    datasets_dir = tmp_path / "datasets"
+    dataset_dir = datasets_dir / "toycsv"
+    dataset_dir.mkdir(parents=True)
+
+    csv_df = pl.DataFrame(
+        {
+            "Name": ["TC_ONLY_CSV"],
+            "Duration": [1.0],
+            "CalcPrio": [0],
+            "LastRun": ["2023-01-01"],
+            "Verdict": [1],
+            "BuildId": [1],
+        }
+    )
+    csv_df.write_csv(dataset_dir / "features-engineered.csv", separator=";")
+
+    with warnings.catch_warnings(record=True) as recorded_warnings:
+        warnings.simplefilter("always")
+        scenario_provider = get_scenario_provider(
+            str(datasets_dir),
+            "toycsv",
+            0.5,
+            use_hcs=False,
+            use_context=False,
+            context_config={},
+            feature_groups={},
+        )
+        first_scenario = next(scenario_provider)
+
+    assert len(first_scenario.get_testcases()) == 1
+    assert first_scenario.get_testcases()[0]["Name"] == "TC_ONLY_CSV"
+    assert any(issubclass(w.category, DeprecationWarning) for w in recorded_warnings)
+
+
+def test_build_agents_from_config_creates_windowed_agents():
+    """build_agents_from_config should create one agent per FRRMAB window size."""
+    agents = build_agents_from_config(
+        algorithm_configs={"frrmab": {"window_sizes": [3, 7], "rnfail": {"c": 0.3, "decayed_factor": 0.9}}},
+        policy_names=["FRRMAB"],
+        rewards_names=["RNFail"],
+    )
+
+    assert len(agents) == 2
+    assert all(isinstance(agent, RewardSlidingWindowAgent) for agent in agents)
 
 
 # ------------------------

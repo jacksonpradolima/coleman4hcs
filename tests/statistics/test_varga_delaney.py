@@ -90,6 +90,36 @@ def test_reduce():
     assert "effect_size_symbol" in reduced_data.columns
 
 
+def test_reduce_includes_bigstar_for_best_comparison():
+    """Covers get_symbol() branch returning '$\\bigstar$'."""
+    data = pl.DataFrame(
+        {
+            "base": ["A", "B"],
+            "compared_with": ["A", "A"],
+            "estimate": [0.5, 0.6],
+            "magnitude": ["negligible", "small"],
+        }
+    )
+
+    reduced_data = reduce(data, best="A", symbols=True)
+    assert "$\\bigstar$" in reduced_data["effect_size_symbol"].to_list()
+
+
+def test_reduce_fallback_symbol_empty_when_temp_not_matchable():
+    """Cover fallback branch returning empty symbol (line 187)."""
+    data = pl.DataFrame(
+        {
+            "base": ["A"],
+            "compared_with": [None],
+            "estimate": [0.5],
+            "magnitude": ["negligible"],
+        }
+    )
+
+    reduced_data = reduce(data, best="A", symbols=True)
+    assert "" in reduced_data["effect_size_symbol"].to_list()
+
+
 def test_vd_a_negligible():
     """
     Test vd_a function for negligible effect size.

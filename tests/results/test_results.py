@@ -8,6 +8,7 @@ import pyarrow.parquet as pq
 from coleman.results.parquet_sink import ParquetSink, _hash_order, _top_k
 from coleman.results.sink_base import NullSink, ResultsSink
 from coleman.results.writer import ResultsWriter
+from coleman.results.writer import _SENTINEL
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -237,6 +238,32 @@ class TestResultsWriter:
         for i in range(10):
             writer.enqueue(_make_row(step=i))
         writer.stop()  # should not raise
+
+    def test_drain_writes_remaining_items_after_stop_signal(self):
+        """Cover branch where _drain sees stop marker before remaining queue items."""
+
+        class RecordingSink(NullSink):
+            def __init__(self):
+                self.rows = []
+                self.flushed = False
+
+            def write_row(self, row):
+                self.rows.append(row)
+
+            def flush(self):
+                self.flushed = True
+
+        sink = RecordingSink()
+        writer = ResultsWriter(sink, max_queue_size=10)
+
+        # Drive _drain deterministically without background thread.
+        writer._queue.put(_SENTINEL)  # pylint: disable=protected-access
+        writer._queue.put(_make_row(step=99))  # pylint: disable=protected-access
+        writer._drain()  # pylint: disable=protected-access
+
+        assert len(sink.rows) == 1
+        assert sink.rows[0]["step"] == 99
+        assert sink.flushed is True
 
 
 # ============================================================================

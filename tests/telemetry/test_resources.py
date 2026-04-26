@@ -4,6 +4,8 @@ import os
 import time
 from unittest.mock import patch
 
+import pytest
+
 from coleman.telemetry.resources import (
     ProcessResourceTracker,
     ResourceSnapshot,
@@ -92,3 +94,54 @@ def test_get_peak_rss_mib_none_when_no_resource_module():
     """If the resource module is absent, _get_peak_rss_mib returns None."""
     with patch("coleman.telemetry.resources.resource_module", None):
         assert _get_peak_rss_mib() is None
+
+
+def test_get_peak_rss_mib_darwin_divides_by_megabyte():
+    """macOS path (sys.platform == 'darwin') divides ru_maxrss by 1024*1024."""
+    import sys
+    from unittest.mock import MagicMock
+
+    fake_resource = MagicMock()
+    fake_resource.getrusage.return_value.ru_maxrss = 1024 * 1024 * 128  # 128 MiB in bytes
+
+    with (
+        patch("coleman.telemetry.resources.resource_module", fake_resource),
+        patch("coleman.telemetry.resources.sys") as mock_sys,
+    ):
+        mock_sys.platform = "darwin"
+        result = _get_peak_rss_mib()
+
+    assert result == pytest.approx(128.0)
+
+
+def test_get_current_rss_mib_ioerror_on_read():
+    """Returns None when the /proc/self/statm file exists but reading raises OSError."""
+    with (
+        patch("coleman.telemetry.resources.os.path.exists", return_value=True),
+        patch("builtins.open", side_effect=OSError("permission denied")),
+    ):
+        result = _get_current_rss_mib()
+    assert result is None
+
+
+def test_get_peak_rss_mib_returns_none_on_getrusage_error():
+    """Cover _get_peak_rss_mib except branch (lines 94-95)."""
+    from unittest.mock import MagicMock
+
+    fake_resource = MagicMock()
+    fake_resource.RUSAGE_SELF = 0
+    fake_resource.getrusage.side_effect = OSError("boom")
+
+    with patch("coleman.telemetry.resources.resource_module", fake_resource):
+        assert _get_peak_rss_mib() is None
+
+
+def test_get_current_rss_mib_returns_none_for_short_statm_fields():
+    """Cover len(fields) < 2 branch (line 78)."""
+    from unittest.mock import mock_open
+
+    with (
+        patch("coleman.telemetry.resources.os.path.exists", return_value=True),
+        patch("builtins.open", mock_open(read_data="123")),
+    ):
+        assert _get_current_rss_mib() is None
