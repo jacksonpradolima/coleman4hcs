@@ -67,9 +67,8 @@ class EvaluationMetricBandit(DynamicBandit):
 
         super().update_priority(action)
 
-        sorted_indices = self.arms["CalcPrio"].to_numpy().argsort(kind="stable")
-        self.arms = self.arms[[int(i) for i in sorted_indices]]
+        self.arms = self.arms.sort("CalcPrio", descending=False)
 
-        self.evaluation_metric.evaluate(self.arms.to_dicts())
+        self.evaluation_metric.evaluate(self.arms)
 
         return self.evaluation_metric

@@ -539,7 +539,7 @@ class Environment(AbstractEnvironment):
             self.evaluation_metric.update_available_time(total_time)
 
             # Submit prioritized test cases for evaluation step and get new measurements
-            self.evaluation_metric.evaluate(df.to_dicts())
+            self.evaluation_metric.evaluate(df)
 
             # Save the information (collect the data)
             params = CollectParams(

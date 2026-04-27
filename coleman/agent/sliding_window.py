@@ -70,13 +70,10 @@ class RewardSlidingWindowAgent(RewardAgent):
 
         self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
 
-        reward_map = {
-            name: self.last_reward[self.last_prioritization.index(name)]
-            for name in self.actions["Name"].to_list()
-            if name in self.last_prioritization
-        }
-
+        prio_index: dict[str, int] = {name: i for i, name in enumerate(self.last_prioritization)}
         name_list = self.actions["Name"].to_list()
+        reward_map = {name: self.last_reward[prio_index[name]] for name in name_list if name in prio_index}
+
         new_estimates = [reward_map.get(name, 0.0) for name in name_list]
 
         self.actions = self.actions.with_columns([pl.Series("ValueEstimates", new_estimates)])
@@ -92,13 +89,10 @@ class RewardSlidingWindowAgent(RewardAgent):
         If the length of the history exceeds the window size, the oldest
         entries are removed to maintain the specified window size.
         """
-        temp_hist = self.actions.clone()
-        temp_hist = temp_hist.with_columns([pl.lit(self.t, dtype=pl.Int64).alias("T")])
-
-        self.history = pl.concat([self.history, temp_hist], how="vertical")
+        new_rows = self.actions.with_columns(pl.lit(self.t, dtype=pl.Int64).alias("T"))
+        self.history = pl.concat([self.history, new_rows], how="vertical")
 
         unique_t = self.history["T"].unique().to_list()
-
         if len(unique_t) > self.window_size:
             min_t = max(unique_t) - self.window_size
             self.history = self.history.filter(pl.col("T") > min_t)
@@ -175,13 +169,10 @@ class SlidingWindowContextualAgent(ContextualAgent):
 
         self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
 
-        reward_map = {
-            name: self.last_reward[self.last_prioritization.index(name)]
-            for name in self.actions["Name"].to_list()
-            if name in self.last_prioritization
-        }
-
+        prio_index: dict[str, int] = {name: i for i, name in enumerate(self.last_prioritization)}
         name_list = self.actions["Name"].to_list()
+        reward_map = {name: self.last_reward[prio_index[name]] for name in name_list if name in prio_index}
+
         new_estimates = [reward_map.get(name, 0.0) for name in name_list]
 
         self.actions = self.actions.with_columns([pl.Series("ValueEstimates", new_estimates)])
@@ -197,13 +188,10 @@ class SlidingWindowContextualAgent(ContextualAgent):
         If the length of the history exceeds the window size, the oldest
         entries are removed to maintain the specified window size.
         """
-        temp_hist = self.actions.clone()
-        temp_hist = temp_hist.with_columns([pl.lit(self.t, dtype=pl.Int64).alias("T")])
-
-        self.history = pl.concat([self.history, temp_hist], how="vertical")
+        new_rows = self.actions.with_columns(pl.lit(self.t, dtype=pl.Int64).alias("T"))
+        self.history = pl.concat([self.history, new_rows], how="vertical")
 
         unique_t = self.history["T"].unique().to_list()
-
         if len(unique_t) > self.window_size:
             min_t = max(unique_t) - self.window_size
             self.history = self.history.filter(pl.col("T") > min_t)

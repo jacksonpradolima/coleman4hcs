@@ -1,5 +1,7 @@
 """Base evaluation metric class."""
 
+import polars as pl
+
 
 class EvaluationMetric:
     """Base class for evaluation metrics.
@@ -64,6 +66,25 @@ class EvaluationMetric:
         self.detected_failures = self.undetected_failures = 0
         self.recall = self.avg_precision = 0
 
+    def _as_suite_frame(self, test_suite, error_key: str) -> pl.DataFrame:
+        """Normalize test-suite input to a Polars DataFrame.
+
+        Supports both list-of-dicts and ``polars.DataFrame`` inputs so metric
+        implementations can use a single vectorized code path.
+        """
+        suite_df = pl.DataFrame(test_suite)
+
+        if suite_df.is_empty() and suite_df.width == 0:
+            return pl.DataFrame({"Name": [], "Duration": [], "Verdict": [], error_key: []})
+
+        required_columns = {"Name", "Duration", "Verdict", error_key}
+        missing = required_columns.difference(set(suite_df.columns))
+        if missing:
+            missing_str = ", ".join(sorted(missing))
+            raise KeyError(f"Missing required test-suite columns: {missing_str}")
+
+        return suite_df
+
     def process_test_suite(self, test_suite, error_key):
         """Process the test suite and return the costs and total failure count.
 
@@ -83,36 +104,45 @@ class EvaluationMetric:
         total_failed_tests : int
             Total number of test cases that failed.
         """
-        rank_counter = 1
-        total_failure_count = total_failed_tests = scheduled_time = 0
-        costs = []
+        suite_df = self._as_suite_frame(test_suite, error_key)
+        if suite_df.is_empty():
+            return [], 0, 0
 
-        for test_case in test_suite:
-            failure_count = test_case[error_key]
-            total_failure_count += failure_count
-            total_failed_tests += test_case["Verdict"]
-            costs.append(test_case["Duration"])
+        enriched = suite_df.with_row_index("_row_rank", offset=1).with_columns(
+            [
+                pl.col("Duration").cum_sum().alias("_cum_duration"),
+                (pl.col("Duration").cum_sum() <= self.available_time).alias("_scheduled"),
+                (pl.col("Duration").cum_sum() <= self.available_time).cast(pl.Int64).cum_sum().alias("_scheduled_rank"),
+            ]
+        )
 
-            if not self.detection_ranks_time:
-                self.ttf_duration += test_case["Duration"]
+        scheduled_df = enriched.filter(pl.col("_scheduled"))
+        unscheduled_df = enriched.filter(~pl.col("_scheduled"))
+        detected_df = enriched.filter(pl.col("_scheduled") & (pl.col(error_key) > 0))
 
-            if scheduled_time + test_case["Duration"] <= self.available_time:
-                if failure_count:
-                    self.detected_failures += failure_count * rank_counter
-                    self.detection_ranks.append(rank_counter)
+        self.scheduled_testcases = scheduled_df["Name"].to_list()
+        self.unscheduled_testcases = unscheduled_df["Name"].to_list()
+        self.detection_ranks = [int(v) for v in detected_df["_scheduled_rank"].to_list()]
+        self.detection_ranks_failures = detected_df[error_key].to_list()
+        self.detection_ranks_time = detected_df["Duration"].to_list()
 
-                    self.detection_ranks_failures.append(failure_count)
-                    self.detection_ranks_time.append(test_case["Duration"])
+        first_detection_rank = int(detected_df["_row_rank"][0]) if detected_df.height > 0 else None
+        if first_detection_rank is not None:
+            ttf_df = enriched.filter(pl.col("_row_rank") <= first_detection_rank)
+            self.ttf_duration = float(ttf_df["Duration"].sum() or 0.0)
+        else:
+            self.ttf_duration = float(enriched["Duration"].sum() or 0.0)
 
-                scheduled_time += test_case["Duration"]
-                self.scheduled_testcases.append(test_case["Name"])
-                rank_counter += 1
-            else:
-                self.unscheduled_testcases.append(test_case["Name"])
-                self.undetected_failures += failure_count
+        total_failure_count = int(enriched[error_key].sum() or 0)
+        total_failed_tests = int(enriched["Verdict"].sum() or 0)
+        self.undetected_failures = int(unscheduled_df[error_key].sum() or 0)
 
-        self.detected_failures = len(self.detection_ranks) if error_key == "Verdict" else self.detected_failures
+        if error_key == "Verdict":
+            self.detected_failures = len(self.detection_ranks)
+        else:
+            self.detected_failures = int((detected_df[error_key] * detected_df["_scheduled_rank"]).sum() or 0)
 
+        costs = enriched["Duration"].to_list()
         return costs, total_failure_count, total_failed_tests
 
     def evaluate(self, test_suite):

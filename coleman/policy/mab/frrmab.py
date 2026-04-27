@@ -1,6 +1,7 @@
 """FRRMAB policy."""
 
-import numpy as np
+import math
+
 import polars as pl
 
 from coleman.agent import HISTORY_SCHEMA, Agent, RewardSlidingWindowAgent
@@ -101,26 +102,31 @@ class FRRMABPolicy(Policy):
         )
 
         self.history = self.history.sort("ValueEstimates", descending=True)
-        reward_arm = self.history["ValueEstimates"].to_numpy()
-        ranking = np.arange(1, len(reward_arm) + 1)
-
-        decay_values = np.power(self.decayed_factor, ranking) * reward_arm
-
-        decay_total = decay_values.sum()
-        frr = np.zeros_like(decay_values, dtype=float) if np.isclose(decay_total, 0.0) else decay_values / decay_total
-
-        selected_times = self.history["T"].to_numpy()
-
-        log_selected_times = np.log1p(selected_times.sum())
-
-        exploration = np.sqrt((2 * log_selected_times) / selected_times)
-        exploration = np.nan_to_num(exploration, nan=0.0, posinf=0.0, neginf=0.0)
-        self.history = self.history.with_columns(
-            pl.Series("frr", frr),
-            pl.Series("exploration", exploration),
+        self.history = self.history.with_row_index("rank", offset=1).with_columns(
+            [(pl.col("ValueEstimates") * (pl.lit(float(self.decayed_factor)).pow(pl.col("rank")))).alias("_decay")]
         )
+
+        decay_total = float(self.history["_decay"].sum()) if self.history.height > 0 else 0.0
+        selected_times_total = float(self.history["T"].sum()) if self.history.height > 0 else 0.0
+        log_selected_times = math.log1p(selected_times_total) if selected_times_total > 0 else 0.0
+
+        self.history = self.history.with_columns(
+            [
+                (
+                    pl.when(pl.lit(abs(decay_total) <= 1e-12))
+                    .then(0.0)
+                    .otherwise(pl.col("_decay") / pl.lit(decay_total))
+                ).alias("frr"),
+                (
+                    pl.when(pl.col("T") > 0)
+                    .then((pl.lit(2.0 * log_selected_times) / pl.col("T")).sqrt())
+                    .otherwise(0.0)
+                ).alias("exploration"),
+            ]
+        )
+
         self.history = (
             self.history.with_columns((pl.col("frr") + self.c * pl.col("exploration")).alias("Q"))
-            .drop(["frr", "exploration"])
+            .drop(["rank", "_decay", "frr", "exploration"])
             .select(list(HISTORY_SCHEMA.keys()))
         )

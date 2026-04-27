@@ -54,17 +54,19 @@ class ScenarioLoader:
         self.name = os.path.split(os.path.dirname(tcfile))[1]
         self.avail_time_ratio = sched_time_ratio
         self.current_build = 0
+        self._build_index = -1
         self.total_build_duration = 0.0
         self.scenario: VirtualScenario | None = None
         self._current_build_df: pl.DataFrame | None = None
 
         self._testcases_lazy = self._read_testcases(tcfile)
-        max_builds_df = cast(
-            pl.DataFrame,
-            self._testcases_lazy.select(pl.col("BuildId").max().cast(pl.Int64)).collect(),
-        )
-        max_builds = cast(int | None, max_builds_df.row(0)[0])
-        self.max_builds = max_builds if max_builds is not None else 0
+        _eager = cast(pl.DataFrame, self._testcases_lazy.collect())
+        self._builds_map: dict[int, pl.DataFrame] = {}
+        for _part in _eager.partition_by("BuildId", maintain_order=False, include_key=True):
+            _bid = int(_part["BuildId"][0])
+            self._builds_map[_bid] = _part.sort("Name")
+        self._build_ids = sorted(self._builds_map.keys())
+        self.max_builds = len(self._build_ids)
 
     def _read_testcases(self, tcfile: str) -> pl.LazyFrame:
         """Read the test cases from a provided dataset file.
@@ -111,11 +113,11 @@ class ScenarioLoader:
         return df.with_columns(expressions)
 
     def _collect_build(self, build_id: int, columns: list[str] | None = None) -> pl.DataFrame:
-        """Collect one build slice using lazy filtering/projection."""
-        query = self._testcases_lazy.filter(pl.col("BuildId") == build_id).sort("Name")
+        """Return a build slice from the in-memory build map (O(1) dict lookup)."""
+        df = self._builds_map.get(build_id, pl.DataFrame(schema=self._testcases_lazy.collect_schema()))
         if columns:
-            query = query.select(columns)
-        return cast(pl.DataFrame, query.collect())
+            df = df.select(columns)
+        return df
 
     @property
     def tcdf(self) -> pl.DataFrame:
@@ -152,7 +154,14 @@ class ScenarioLoader:
         build : int
             The build number to set.
         """
-        self.current_build = build
+        if build <= 0:
+            self._build_index = -1
+            self.current_build = 0
+            return
+
+        # `build` is a processed-step count (1..N), not a raw BuildId.
+        self._build_index = min(build - 1, self.max_builds - 1)
+        self.current_build = self._build_ids[self._build_index] if self._build_index >= 0 else 0
 
     def get(self) -> VirtualScenario | None:
         """Get the next virtual scenario.
@@ -165,10 +174,12 @@ class ScenarioLoader:
         VirtualScenario or None
             The next scenario, or None if no more builds remain.
         """
-        self.current_build += 1
+        self._build_index += 1
 
-        if self.current_build > self.max_builds:
+        if self._build_index >= self.max_builds:
             return None
+
+        self.current_build = self._build_ids[self._build_index]
 
         self._current_build_df = self._collect_build(self.current_build)
 
@@ -263,8 +274,12 @@ class HCSScenarioLoader(ScenarioLoader):
         super().__init__(tcfile, sched_time_ratio)
 
         self._variants_lazy = self._read_variants(variantsfile)
-        variants_df = cast(pl.DataFrame, self._variants_lazy.select(pl.col("Variant").unique()).collect())
-        self._variant_names = cast(list[str], variants_df.get_column("Variant").to_list())
+        _v_eager = cast(pl.DataFrame, self._variants_lazy.collect())
+        self._variants_map: dict[int, pl.DataFrame] = {}
+        for _vpart in _v_eager.partition_by("BuildId", maintain_order=False, include_key=True):
+            _vbid = int(_vpart["BuildId"][0])
+            self._variants_map[_vbid] = _vpart
+        self._variant_names = cast(list[str], _v_eager.get_column("Variant").unique().to_list())
 
     def _read_variants(self, variantsfile: str) -> pl.LazyFrame:
         """Read the variants from a provided dataset file.
@@ -342,7 +357,7 @@ class HCSScenarioLoader(ScenarioLoader):
         if not base_scenario:
             return None
 
-        variants = cast(pl.DataFrame, self._variants_lazy.filter(pl.col("BuildId") == self.current_build).collect())
+        variants = self._variants_map.get(self.current_build, pl.DataFrame(schema=self._variants_lazy.collect_schema()))
 
         self.scenario = VirtualHCSScenario(**base_scenario.__dict__, variants=variants)
 
@@ -434,13 +449,14 @@ class ContextScenarioLoader(ScenarioLoader):
         polars.DataFrame
             DataFrame with merged context features.
         """
-        if self.current_build == 1:
+        if self._build_index == 0:
             return self._initialize_first_build_features(build_df)
 
         current_features = set(self.features).difference(self.previous_build)
         previous_features = list(set(self.previous_build).intersection(self.features))
 
-        previous_build_df = self._collect_build(self.current_build - 1)
+        previous_build_id = self._build_ids[self._build_index - 1]
+        previous_build_df = self._collect_build(previous_build_id)
 
         merged_df = build_df.select(["Name"] + list(current_features))
 

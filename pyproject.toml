@@ -62,6 +62,9 @@ clickhouse = [
     "clickhouse-connect==0.13.0",
 ]
 
+[project.scripts]
+coleman = "coleman4hcs.cli:main"
+
 [project.urls]
 homepage = "https://github.com/jacksonpradolima/coleman"
 repository = "https://github.com/jacksonpradolima/coleman"

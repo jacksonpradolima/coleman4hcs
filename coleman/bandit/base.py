@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 
-import numpy as np
 import polars as pl
 
 #: Schema for the bandit arms DataFrame.
@@ -116,5 +115,6 @@ class Bandit(ABC):
             List of test cases in order of prioritization.
         """
         action_map = {name: priority for priority, name in enumerate(action, start=1)}
-        priorities = np.vectorize(action_map.get)(self.arms["Name"].to_numpy())
-        self.arms = self.arms.with_columns([pl.Series("CalcPrio", priorities, dtype=pl.Int32)])
+        self.arms = self.arms.with_columns(
+            [pl.col("Name").replace_strict(action_map, default=0).cast(pl.Int32).alias("CalcPrio")]
+        )

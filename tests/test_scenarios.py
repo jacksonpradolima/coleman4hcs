@@ -214,6 +214,59 @@ def test_scenario_loader_collect_build_with_columns(mock_csv_data, tmp_path):
     assert build_df.columns == ["Name", "Duration"]
 
 
+def test_scenario_loader_uses_existing_build_ids_when_sparse(tmp_path):
+    """Sparse BuildId datasets should iterate only over real builds."""
+    parquet_file = tmp_path / "sparse_builds.parquet"
+    pl.DataFrame(
+        {
+            "BuildId": [10, 10, 20],
+            "Name": ["TC1", "TC2", "TC1"],
+            "Duration": [1.0, 2.0, 3.0],
+            "CalcPrio": [0, 0, 0],
+            "LastRun": ["2023-01-01", "2023-01-01", "2023-01-02"],
+            "Verdict": [1, 0, 1],
+        }
+    ).write_parquet(parquet_file)
+
+    loader = ScenarioLoader(str(parquet_file), sched_time_ratio=0.5)
+    scenarios = list(loader)
+
+    assert loader.max_builds == 2
+    assert [sc.build_id for sc in scenarios] == [10, 20]
+
+
+def test_last_build_positive_sets_build_index_and_current_build(tmp_path):
+    """last_build(n>0) must set _build_index and current_build to the n-th real BuildId."""
+    parquet_file = tmp_path / "lb_positive.parquet"
+    pl.DataFrame(
+        {
+            "BuildId": [5, 5, 15, 25],
+            "Name": ["TC1", "TC2", "TC1", "TC1"],
+            "Duration": [1.0, 2.0, 3.0, 4.0],
+            "CalcPrio": [0, 0, 0, 0],
+            "LastRun": ["2023-01-01"] * 4,
+            "Verdict": [1, 0, 1, 1],
+        }
+    ).write_parquet(parquet_file)
+
+    loader = ScenarioLoader(str(parquet_file), sched_time_ratio=0.5)
+
+    # last_build(1) → first real BuildId (5)
+    loader.last_build(1)
+    assert loader._build_index == 0  # pylint: disable=protected-access
+    assert loader.current_build == 5
+
+    # last_build(2) → second real BuildId (15)
+    loader.last_build(2)
+    assert loader._build_index == 1  # pylint: disable=protected-access
+    assert loader.current_build == 15
+
+    # last_build beyond max clamps to last available
+    loader.last_build(999)
+    assert loader._build_index == 2  # pylint: disable=protected-access
+    assert loader.current_build == 25
+
+
 def test_scenario_loader_tcdf_property_warns_and_returns_df(mock_csv_data, tmp_path):
     """Cover deprecated tcdf property warning/return path (lines 129-135)."""
     parquet_file = tmp_path / "testcases.parquet"
@@ -365,6 +418,35 @@ def test_industrial_dataset_context_scenario_provider(mock_csv_data, tmp_path):
 
     assert scenario.get_features() == ["CalcPrio", "Duration"], "Features should match."
     assert scenario.get_context_features().height > 0, "Context features should not be empty."
+
+
+def test_context_loader_uses_previous_existing_build_when_sparse(tmp_path):
+    """Context merging must use previous existing build, not (BuildId - 1)."""
+    parquet_file = tmp_path / "context_sparse_builds.parquet"
+    pl.DataFrame(
+        {
+            "BuildId": [10, 20],
+            "Name": ["TC1", "TC1"],
+            "Duration": [4.0, 7.0],
+            "CalcPrio": [0, 0],
+            "LastRun": ["2023-01-01", "2023-01-02"],
+            "Verdict": [1, 1],
+        }
+    ).write_parquet(parquet_file)
+
+    loader = IndustrialDatasetContextScenarioProvider(
+        str(parquet_file),
+        feature_group_name="context",
+        feature_group_values=["Duration"],
+        previous_build=["Duration"],
+        sched_time_ratio=0.5,
+    )
+
+    first = next(loader)
+    assert first.get_context_features()["Duration"][0] == 1
+
+    second = next(loader)
+    assert second.get_context_features()["Duration"][0] == pytest.approx(4.0)
 
 
 @pytest.mark.parametrize(

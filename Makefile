@@ -161,7 +161,7 @@ cost-wily-file: ensure-uv ## Build Wily history and report a specific file (use 
 	$(UV) run wily report $(WILY_FILE)
 
 cost-profile-scalene: ensure-uv ## Smoke-test Scalene against the CLI entrypoint
-	$(UV) run scalene run coleman/cli.py --- --help
+	$(UV) run scalene run coleman/cli.py --- run --config run.yaml
 
 cost-profile-pyspy: ensure-uv ## Record a py-spy profile using a dedicated Python 3.13 profiling venv
 	$(UV) python install 3.13

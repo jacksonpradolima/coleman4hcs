@@ -29,6 +29,7 @@ Usage:
 Run the tests using pytest to verify the functionality of evaluation metrics.
 """
 
+import polars as pl
 import pytest
 
 from coleman.evaluation import EvaluationMetric, NAPFDMetric, NAPFDVerdictMetric
@@ -135,6 +136,112 @@ def test_napfd_verdict_metric_no_failures(available_time):
 
     assert napfd_v.fitness == 1, "NAPFD-V fitness should be 1 when no failures are present."
     assert napfd_v.cost == 1, "NAPFD-V cost should be 1 when no failures are present."
+
+
+def test_napfd_metric_accepts_polars_dataframe(sample_records, available_time):
+    """NAPFDMetric should accept a Polars DataFrame without list-of-dicts conversion."""
+    napfd = NAPFDMetric()
+    napfd.update_available_time(available_time * 0.5)
+    napfd.evaluate(pl.DataFrame(sample_records))
+
+    assert napfd.fitness >= 0, NAPFD_FITNESS_NON_NEGATIVE
+    assert napfd.fitness <= 1, NAPFD_FITNESS_NOT_EXCEED_ONE
+    assert napfd.cost >= 0, NAPFD_COST_NON_NEGATIVE
+
+
+def test_napfd_verdict_metric_accepts_polars_dataframe(sample_records, available_time):
+    """NAPFDVerdictMetric should accept a Polars DataFrame without list-of-dicts conversion."""
+    napfd_v = NAPFDVerdictMetric()
+    napfd_v.update_available_time(available_time * 0.5)
+    napfd_v.evaluate(pl.DataFrame(sample_records))
+
+    assert napfd_v.fitness >= 0, NAPFD_FITNESS_NON_NEGATIVE
+    assert napfd_v.fitness <= 1, NAPFD_FITNESS_NOT_EXCEED_ONE
+    assert napfd_v.cost >= 0, NAPFD_COST_NON_NEGATIVE
+
+
+def test_napfd_metric_list_and_dataframe_are_equivalent(sample_records, available_time):
+    """NAPFDMetric should produce identical results for list-of-dicts and DataFrame inputs."""
+    metric_list = NAPFDMetric()
+    metric_df = NAPFDMetric()
+
+    budget = available_time * 0.5
+    metric_list.update_available_time(budget)
+    metric_df.update_available_time(budget)
+
+    metric_list.evaluate(sample_records)
+    metric_df.evaluate(pl.DataFrame(sample_records))
+
+    assert metric_list.scheduled_testcases == metric_df.scheduled_testcases
+    assert metric_list.unscheduled_testcases == metric_df.unscheduled_testcases
+    assert metric_list.detection_ranks == metric_df.detection_ranks
+    assert metric_list.detection_ranks_failures == metric_df.detection_ranks_failures
+    assert metric_list.detection_ranks_time == metric_df.detection_ranks_time
+    assert metric_list.detected_failures == metric_df.detected_failures
+    assert metric_list.undetected_failures == metric_df.undetected_failures
+    assert metric_list.ttf_duration == pytest.approx(metric_df.ttf_duration)
+    assert metric_list.fitness == pytest.approx(metric_df.fitness)
+    assert metric_list.cost == pytest.approx(metric_df.cost)
+
+
+def test_napfd_verdict_list_and_dataframe_are_equivalent(sample_records, available_time):
+    """NAPFDVerdictMetric should produce identical results for list-of-dicts and DataFrame inputs."""
+    metric_list = NAPFDVerdictMetric()
+    metric_df = NAPFDVerdictMetric()
+
+    budget = available_time * 0.5
+    metric_list.update_available_time(budget)
+    metric_df.update_available_time(budget)
+
+    metric_list.evaluate(sample_records)
+    metric_df.evaluate(pl.DataFrame(sample_records))
+
+    assert metric_list.scheduled_testcases == metric_df.scheduled_testcases
+    assert metric_list.unscheduled_testcases == metric_df.unscheduled_testcases
+    assert metric_list.detection_ranks == metric_df.detection_ranks
+    assert metric_list.detection_ranks_failures == metric_df.detection_ranks_failures
+    assert metric_list.detection_ranks_time == metric_df.detection_ranks_time
+    assert metric_list.detected_failures == metric_df.detected_failures
+    assert metric_list.undetected_failures == metric_df.undetected_failures
+    assert metric_list.ttf_duration == pytest.approx(metric_df.ttf_duration)
+    assert metric_list.fitness == pytest.approx(metric_df.fitness)
+    assert metric_list.cost == pytest.approx(metric_df.cost)
+
+
+def test_napfd_metric_dataframe_matches_list_results(sample_records, available_time):
+    """Vectorized DataFrame path must preserve list-input metric semantics."""
+    metric_list = NAPFDMetric()
+    metric_df = NAPFDMetric()
+    budget = available_time * 0.5
+    metric_list.update_available_time(budget)
+    metric_df.update_available_time(budget)
+
+    metric_list.evaluate(sample_records)
+    metric_df.evaluate(pl.DataFrame(sample_records))
+
+    assert metric_df.fitness == pytest.approx(metric_list.fitness)
+    assert metric_df.cost == pytest.approx(metric_list.cost)
+    assert metric_df.detected_failures == metric_list.detected_failures
+    assert metric_df.undetected_failures == metric_list.undetected_failures
+    assert metric_df.detection_ranks == metric_list.detection_ranks
+
+
+def test_napfd_verdict_metric_dataframe_matches_list_results(sample_records, available_time):
+    """Verdict metric should match between list and DataFrame inputs."""
+    metric_list = NAPFDVerdictMetric()
+    metric_df = NAPFDVerdictMetric()
+    budget = available_time * 0.5
+    metric_list.update_available_time(budget)
+    metric_df.update_available_time(budget)
+
+    metric_list.evaluate(sample_records)
+    metric_df.evaluate(pl.DataFrame(sample_records))
+
+    assert metric_df.fitness == pytest.approx(metric_list.fitness)
+    assert metric_df.cost == pytest.approx(metric_list.cost)
+    assert metric_df.detected_failures == metric_list.detected_failures
+    assert metric_df.undetected_failures == metric_list.undetected_failures
+    assert metric_df.detection_ranks == metric_list.detection_ranks
 
 
 def _common_test_napfd(records, available_time):

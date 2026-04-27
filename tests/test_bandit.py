@@ -204,6 +204,7 @@ def test_evaluation_metric_bandit_pull(sample_arms, mock_evaluation_metric):
     action = ["Test2", "Test1", "Test3"]
     result = bandit.pull(action)
     mock_evaluation_metric.evaluate.assert_called_once()
+    assert isinstance(mock_evaluation_metric.evaluate.call_args.args[0], pl.DataFrame)
     assert result == mock_evaluation_metric
 
 
