@@ -2,9 +2,11 @@
 
 import json
 import os
+import subprocess
 import tempfile
+from unittest.mock import patch
 
-from coleman4hcs.spec.provenance import build_provenance, save_provenance
+from coleman.spec.provenance import build_provenance, save_provenance
 
 
 class TestBuildProvenance:
@@ -21,6 +23,33 @@ class TestBuildProvenance:
         git = prov["git"]
         assert "commit" in git
         assert "dirty" in git
+
+    def test_git_info_failure_returns_none_fields(self):
+        """When git is unavailable lines 46-48 are covered."""
+        with patch("subprocess.check_output", side_effect=FileNotFoundError("git not found")):
+            prov = build_provenance()
+        assert prov["git"]["commit"] is None
+        assert prov["git"]["dirty"] is None
+
+    def test_git_info_called_process_error_returns_none_fields(self):
+        """CalledProcessError is also handled gracefully."""
+        with patch(
+            "subprocess.check_output",
+            side_effect=subprocess.CalledProcessError(128, "git"),
+        ):
+            prov = build_provenance()
+        assert prov["git"]["commit"] is None
+
+    def test_lock_hash_returns_none_when_uv_lock_absent(self):
+        """Line 65 in provenance.py: _lock_hash returns None."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            original_dir = os.getcwd()
+            try:
+                os.chdir(tmpdir)  # no uv.lock here
+                prov = build_provenance()
+                assert prov["uv_lock_hash"] is None
+            finally:
+                os.chdir(original_dir)
 
 
 class TestSaveProvenance:

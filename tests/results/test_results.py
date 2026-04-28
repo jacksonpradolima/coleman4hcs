@@ -5,9 +5,9 @@ import threading
 
 import pyarrow.parquet as pq
 
-from coleman4hcs.results.parquet_sink import ParquetSink, _hash_order, _top_k
-from coleman4hcs.results.sink_base import NullSink, ResultsSink
-from coleman4hcs.results.writer import ResultsWriter
+from coleman.results.parquet_sink import ParquetSink, _hash_order, _top_k
+from coleman.results.sink_base import NullSink, ResultsSink
+from coleman.results.writer import _SENTINEL, ResultsWriter
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -238,6 +238,32 @@ class TestResultsWriter:
             writer.enqueue(_make_row(step=i))
         writer.stop()  # should not raise
 
+    def test_drain_writes_remaining_items_after_stop_signal(self):
+        """Cover branch where _drain sees stop marker before remaining queue items."""
+
+        class RecordingSink(NullSink):
+            def __init__(self):
+                self.rows = []
+                self.flushed = False
+
+            def write_row(self, row):
+                self.rows.append(row)
+
+            def flush(self):
+                self.flushed = True
+
+        sink = RecordingSink()
+        writer = ResultsWriter(sink, max_queue_size=10)
+
+        # Drive _drain deterministically without background thread.
+        writer._queue.put(_SENTINEL)  # pylint: disable=protected-access
+        writer._queue.put(_make_row(step=99))  # pylint: disable=protected-access
+        writer._drain()  # pylint: disable=protected-access
+
+        assert len(sink.rows) == 1
+        assert sink.rows[0]["step"] == 99
+        assert sink.flushed is True
+
 
 # ============================================================================
 # DuckDBCatalog
@@ -247,7 +273,7 @@ class TestResultsWriter:
 class TestDuckDBCatalog:
     def test_create_view_and_query(self, tmp_path):
         """DuckDBCatalog should create a view over Parquet and return query results."""
-        from coleman4hcs.results.duckdb_catalog import DuckDBCatalog
+        from coleman.results.duckdb_catalog import DuckDBCatalog
 
         # Write some rows via ParquetSink first
         sink = ParquetSink(out_dir=str(tmp_path / "runs"), batch_size=100)
@@ -262,7 +288,7 @@ class TestDuckDBCatalog:
 
     def test_query_aggregation(self, tmp_path):
         """DuckDBCatalog should support aggregation queries over the view."""
-        from coleman4hcs.results.duckdb_catalog import DuckDBCatalog
+        from coleman.results.duckdb_catalog import DuckDBCatalog
 
         sink = ParquetSink(out_dir=str(tmp_path / "runs"), batch_size=100)
         for i in range(3):
@@ -276,7 +302,7 @@ class TestDuckDBCatalog:
 
     def test_close(self, tmp_path):
         """DuckDBCatalog.close() should not raise."""
-        from coleman4hcs.results.duckdb_catalog import DuckDBCatalog
+        from coleman.results.duckdb_catalog import DuckDBCatalog
 
         sink = ParquetSink(out_dir=str(tmp_path / "runs"), batch_size=100)
         sink.write_row(_make_row())

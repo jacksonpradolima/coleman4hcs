@@ -1,12 +1,12 @@
-# Coleman4HCS
+# Coleman
 
-[![Docs](https://img.shields.io/badge/Docs-Coleman4HCS%20Site-3D9970?style=flat-square)](https://jacksonpradolima.github.io/coleman4hcs/)
+[![Docs](https://img.shields.io/badge/Docs-Coleman%20Site-3D9970?style=flat-square)](https://jacksonpradolima.github.io/coleman/)
 ![](https://img.shields.io/badge/python-3.14+-blue.svg)
-[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=bugs)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
-[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
-[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
-[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
-[![codecov](https://codecov.io/github/jacksonpradolima/coleman4hcs/branch/main/graph/badge.svg?token=BW04LB0B5Y)](https://codecov.io/github/jacksonpradolima/coleman4hcs)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman&metric=bugs)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman)
+[![codecov](https://codecov.io/github/jacksonpradolima/coleman/branch/main/graph/badge.svg?token=BW04LB0B5Y)](https://codecov.io/github/jacksonpradolima/coleman)
 
 
 ### Solving the Test Case Prioritization using Multi-Armed Bandit Algorithms
@@ -58,7 +58,7 @@ In order to use this `version`, use any Contextual-MAB available, for instance, 
 
 # Getting started
 
-- [Coleman4HCS](#coleman4hcs)
+- [Coleman](#coleman)
     - [Solving the Test Case Prioritization using Multi-Armed Bandit Algorithms](#solving-the-test-case-prioritization-using-multi-armed-bandit-algorithms)
 - [Getting started](#getting-started)
 - [Citation](#citation)
@@ -76,13 +76,13 @@ In order to use this `version`, use any Contextual-MAB available, for instance, 
 - [Datasets](#datasets)
 - [About the files input](#about-the-files-input)
 - [Using the tool](#using-the-tool)
-  - [How data flows through Coleman4HCS](#how-data-flows-through-coleman4hcs)
+  - [How data flows through Coleman](#how-data-flows-through-coleman)
   - [MAB Policies Available](#mab-policies-available)
   - [Running for Non-HCS System](#running-for-non-hcs-system)
   - [Running for an HCS system](#running-for-an-hcs-system)
     - [Whole Test Set Strategy](#whole-test-set-strategy)
     - [Variant Test Set Strategy](#variant-test-set-strategy)
-- [Analysis of COLEMAN4HCS Performance](#analysis-of-coleman4hcs-performance)
+- [Analysis of COLEMAN Performance](#analysis-of-coleman-performance)
   - [Performance Metrics](#performance-metrics)
   - [Methodologies](#methodologies)
   - [Visualizations](#visualizations)
@@ -116,11 +116,13 @@ If this tool contributes to a project which leads to a scientific publication, I
 
 # Quick start
 
-Coleman4HCS ships a **typed, library-first experiment system** with
+Coleman ships a **typed, library-first experiment system** with
 YAML configs, composable config packs, a sweep engine, and deterministic
-`run_id` hashing.  External projects can `pip install coleman4hcs` and
+`run_id` hashing.  External projects can `pip install coleman` and
 drive experiments programmatically **or** via the `coleman` CLI — no repo
 checkout required.
+
+The library namespace is now `coleman`.
 
 > **Breaking change** — the `CONFIG_FILE` environment variable, raw TOML
 > dict workflow, and `main.py` entry-point are removed.  Configuration is now
@@ -130,8 +132,8 @@ checkout required.
 ## Library API
 
 ```python
-from coleman4hcs.spec import RunSpec, SweepSpec, SweepAxis, compute_run_id
-from coleman4hcs.api  import run, run_many, sweep
+from coleman.spec import RunSpec, SweepSpec, SweepAxis, compute_run_id
+from coleman.api import run, run_many, sweep
 
 # 1. Define a spec
 spec = RunSpec(
@@ -221,7 +223,7 @@ The sweep engine supports **grid** (Cartesian product) and **zip** (paired)
 modes, with optional seed replication:
 
 ```python
-from coleman4hcs.spec import SweepSpec, SweepAxis, expand_sweep, RunSpec
+from coleman.spec import SweepSpec, SweepAxis, expand_sweep, RunSpec
 
 base = RunSpec()
 sweep_spec = SweepSpec(
@@ -266,17 +268,17 @@ Each run persists:
 
 ## As a library (recommended for new projects)
 
-Install Coleman4HCS as a dependency in your project:
+Install Coleman as a dependency in your project:
 
 ```bash
-pip install coleman4hcs
+pip install coleman
 ```
 
 Or with optional extras:
 
 ```bash
-pip install coleman4hcs[telemetry]     # OpenTelemetry SDK
-pip install coleman4hcs[clickhouse]    # ClickHouse results sink
+pip install coleman[telemetry]     # OpenTelemetry SDK
+pip install coleman[clickhouse]    # ClickHouse results sink
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -289,8 +291,8 @@ To develop or modify the tool, follow these steps:
 1. Clone the repository:
 
 ```shell
-git clone git@github.com:jacksonpradolima/coleman4hcs.git
-cd coleman4hcs
+git clone git@github.com:jacksonpradolima/coleman.git
+cd coleman
 ```
 
 2. Install [UV](https://docs.astral.sh/uv/) – a fast Python package manager.
@@ -332,7 +334,7 @@ This project uses a `Makefile` to streamline common development tasks. Run `make
 
 ## Code Cost Evaluation
 
-Coleman4HCS enforces code quality through a **multi-dimensional cost scorecard**
+Coleman enforces code quality through a **multi-dimensional cost scorecard**
 covering structural complexity, runtime profiling, and energy estimation.
 
 **CI gates** run automatically on every pull request:
@@ -411,7 +413,7 @@ make docs-serve     # preview docs locally
 
 # Architecture: Results, Checkpoints & Telemetry
 
-Coleman4HCS is **framework-first**: `coleman run --config run.yaml` works with zero external
+Coleman is **framework-first**: `coleman run --config run.yaml` works with zero external
 services.  All monitoring is split into three independent layers that can be
 enabled or disabled individually:
 
@@ -448,10 +450,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-pip install coleman4hcs[telemetry]
+pip install coleman[telemetry]
 
 # ClickHouse results sink
-pip install coleman4hcs[clickhouse]
+pip install coleman[clickhouse]
 ```
 
 ## Querying results
@@ -482,7 +484,7 @@ GROUP BY reward_function;
 > any of these services.  The observability stack is **optional** for local
 > installs, but **enabled automatically** in the DevContainer.
 
-Coleman4HCS ships with a local observability stack (OTel Collector + Prometheus + Grafana)
+Coleman ships with a local observability stack (OTel Collector + Prometheus + Grafana)
 for real-time metrics and traces during experiments.
 
 ## Using the DevContainer (zero-step setup)
@@ -514,7 +516,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install coleman4hcs[telemetry]
+uv pip install coleman[telemetry]
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list
@@ -574,7 +576,7 @@ coleman run --config run.yaml
 ```
 
 The ClickHouse extras are already installed in the DevContainer.  For local
-installs run `uv pip install coleman4hcs[clickhouse]` first.
+installs run `uv pip install coleman[clickhouse]` first.
 
 ## Tear down
 
@@ -591,11 +593,14 @@ Besides that, you can extract relevant information about each system using our t
 
 # About the files input
 
-**COLEMAN** considers two kind of *csv files*: **features-engineered** and **data-variants**.
-The second file, **data-variants.csv**, is used by the HCS, and it represents all results from all variants.
+**COLEMAN** now uses Parquet files (`features-engineered.parquet` and
+`data-variants.parquet`) as the primary scenario input format. CSV inputs are
+still accepted for compatibility, but they are deprecated and emit warnings.
+
+The second file, **data-variants** (Parquet/CSV), is used by the HCS, and it represents all results from all variants.
 The information is organized by commit and variant.
 
-- **features-engineered.csv** contains the following information:
+- **features-engineered.parquet** (or legacy `features-engineered.csv`) contains the following information:
   - **Id**: unique numeric identifier of the test execution;
   - **Name**: unique numeric identifier of the test case;
   - **BuildId**: a value uniquely identifying the build;
@@ -603,11 +608,11 @@ The information is organized by commit and variant.
   - **LastRun**: previous last execution of the test case as *DateTime*;
   - **Verdict**: test verdict of this test execution (Failed: 1, Passed: 0).
 
-- **data-variants.csv** contains all information that **features-engineered.csv** has, and in addition the following information:
+- **data-variants.parquet** (or legacy `data-variants.csv`) contains all information that **features-engineered.parquet** has, and in addition the following information:
   - **Variant**: variant name.
 
-In this way,  **features-engineered.csv** organize the information for a single system or variant, and
-**data-variants.csv** track the information for all variants used during the software life-cycle (for each commit).
+In this way, **features-engineered** organizes the information for a single system or variant, and
+**data-variants** tracks the information for all variants used during the software life-cycle (for each commit).
 
 During the **COLEMAN**'s execution, we use **data-variants** to identify the variants used in a current commit and apply the **WTS** strategy.
 
@@ -616,7 +621,7 @@ what kind of information can be used!
 
 #  Using the tool
 
-## How data flows through Coleman4HCS
+## How data flows through Coleman
 
 ```mermaid
 flowchart TD
@@ -783,9 +788,9 @@ and `datasets_dir = "examples/core@dune-common"`.
 This offers a succinct example using the Dune dataset, treating each variant as a unique system.
 Further insights into the dataset are available in the [Datasets](#datasets) section.
 
-# Analysis of COLEMAN4HCS Performance
+# Analysis of COLEMAN Performance
 
-As part of our ongoing effort to provide the state-of-the-art tool, Coleman4HCS, for TCPCI optimize COLEMAN4HCS, we've created examples to guide any researcher to understand the performance, effectiveness, and adaptability of our tool. The analysis, available in our [marimo notebook](notebooks/analysis.py) (and the original [Jupyter notebook](notebooks/analysis.ipynb)), leverages various libraries such as DuckDB, Pandas, Seaborn, and Matplotlib to process data and visualize the results.
+As part of our ongoing effort to provide the state-of-the-art tool, Coleman, for TCPCI, we've created examples to guide any researcher to understand the performance, effectiveness, and adaptability of our tool. The analysis, available in our [marimo notebook](notebooks/analysis.py) (and the original [Jupyter notebook](notebooks/analysis.ipynb)), leverages various libraries such as DuckDB, Pandas, Seaborn, and Matplotlib to process data and visualize the results.
 
 ## Performance Metrics
 
@@ -818,6 +823,6 @@ For vulnerability reports, refer to our [Security Policy](SECURITY.md).
 
 - 👨‍💻 Jackson Antonio do Prado Lima <a href="mailto:jacksonpradolima@gmail.com">:e-mail:</a>
 
-<a href="https://github.com/jacksonpradolima/coleman4hcs/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=jacksonpradolima/coleman4hcs" />
+<a href="https://github.com/jacksonpradolima/coleman/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=jacksonpradolima/coleman" />
 </a>

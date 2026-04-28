@@ -1,6 +1,6 @@
 # Configuration
 
-Coleman4HCS uses **YAML configuration files** with typed
+Coleman uses **YAML configuration files** with typed
 [Pydantic v2](https://docs.pydantic.dev/) models for validation.  Configs
 are loaded via `load_spec()` (library) or `coleman --config` (CLI).
 
@@ -68,7 +68,7 @@ checkpoint:
 telemetry:
   enabled: false
   otlp_endpoint: http://localhost:4318
-  service_name: coleman4hcs
+  service_name: coleman
   export_interval_millis: 5000
 ```
 
@@ -166,7 +166,7 @@ base config by expanding parameter ranges.  Two modes are supported:
 Every combination of parameter values is generated:
 
 ```python
-from coleman4hcs.spec import RunSpec, SweepSpec, SweepAxis, expand_sweep
+from coleman.spec import RunSpec, SweepSpec, SweepAxis, expand_sweep
 
 base = RunSpec(experiment={"datasets": ["alibaba@druid"], "policies": ["UCB"]})
 sweep_spec = SweepSpec(
@@ -264,8 +264,8 @@ as floating-point non-determinism across platforms).
 ### Library API
 
 ```python
-from coleman4hcs.api import load_spec, save_resolved
-from coleman4hcs.spec.run_id import compute_run_id
+from coleman.api import load_spec, save_resolved
+from coleman.spec.run_id import compute_run_id
 
 # Load with pack resolution
 spec = load_spec("my-experiment.yaml", packs_dir="packs")

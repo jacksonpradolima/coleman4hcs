@@ -1,5 +1,5 @@
 """
-Unit tests for reward functions in the coleman4hcs.reward module.
+Unit tests for reward functions in the coleman.reward module.
 
 This module provides unit tests for the TimeRankReward and RNFailReward classes,
 which are part of the multi-armed bandit framework for test case prioritization.
@@ -15,8 +15,8 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from coleman4hcs.evaluation import EvaluationMetric
-from coleman4hcs.reward import RNFailReward, TimeRankReward
+from coleman.evaluation import EvaluationMetric
+from coleman.reward import RNFailReward, TimeRankReward
 
 
 @pytest.fixture
