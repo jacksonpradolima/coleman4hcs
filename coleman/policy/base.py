@@ -56,9 +56,9 @@ class Policy:
         agent's state, updating the value estimates for each action based on
         the outcomes observed.
         """
-        action_attempts = agent.actions["ActionAttempts"].to_numpy()
-        value_estimates = agent.actions["ValueEstimates"].to_numpy()
-
-        with np.errstate(divide="ignore", invalid="ignore"):
-            q_values = np.where(action_attempts > 0, value_estimates / action_attempts, 0)
-            agent.actions = agent.actions.with_columns([pl.Series("Q", q_values)])
+        agent.actions = agent.actions.with_columns(
+            pl.when(pl.col("ActionAttempts") > 0)
+            .then(pl.col("ValueEstimates") / pl.col("ActionAttempts"))
+            .otherwise(0.0)
+            .alias("Q")
+        )

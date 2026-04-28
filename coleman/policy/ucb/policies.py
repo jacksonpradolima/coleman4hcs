@@ -78,15 +78,16 @@ class UCB1Policy(UCBPolicyBase):
         """
         super().credit_assignment(agent)
 
-        action_attempts = agent.actions["ActionAttempts"].to_numpy()
-        quality_estimates = agent.actions["Q"].to_numpy()
-
-        exploration = np.log1p(agent.t) / action_attempts
-        exploration = np.nan_to_num(exploration, nan=0.0, posinf=0.0, neginf=0.0)
-        exploration = np.power(exploration, 1 / self.c)
-
-        q_values = quality_estimates + exploration
-        agent.actions = agent.actions.with_columns([pl.Series("Q", q_values)])
+        log_t = np.log1p(agent.t)
+        agent.actions = agent.actions.with_columns(
+            pl.when(pl.col("ActionAttempts") > 0)
+            .then((pl.lit(log_t) / pl.col("ActionAttempts")).pow(1 / self.c))
+            .otherwise(0.0)
+            .alias("_exploration")
+        )
+        agent.actions = agent.actions.with_columns((pl.col("Q") + pl.col("_exploration")).alias("Q")).drop(
+            "_exploration"
+        )
 
 
 class UCBPolicy(UCBPolicyBase):
@@ -112,13 +113,15 @@ class UCBPolicy(UCBPolicyBase):
         """
         super().credit_assignment(agent)
 
-        action_attempts = agent.actions["ActionAttempts"].to_numpy()
-        quality_estimates = agent.actions["Q"].to_numpy()
+        sum_attempts = float(agent.actions["ActionAttempts"].sum() or 0.0)
+        log_sum_attempts = float(np.log1p(sum_attempts))
 
-        log_sum_attempts = np.log1p(action_attempts.sum())
-
-        exploration = np.sqrt((2 * log_sum_attempts) / action_attempts)
-        exploration = np.nan_to_num(exploration, nan=0.0, posinf=0.0, neginf=0.0)
-
-        q_values = quality_estimates + self.c * exploration
-        agent.actions = agent.actions.with_columns([pl.Series("Q", q_values)])
+        agent.actions = agent.actions.with_columns(
+            pl.when(pl.col("ActionAttempts") > 0)
+            .then(((2 * log_sum_attempts) / pl.col("ActionAttempts")).pow(0.5))
+            .otherwise(0.0)
+            .alias("_exploration")
+        )
+        agent.actions = agent.actions.with_columns((pl.col("Q") + self.c * pl.col("_exploration")).alias("Q")).drop(
+            "_exploration"
+        )

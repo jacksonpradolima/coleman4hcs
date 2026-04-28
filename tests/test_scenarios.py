@@ -235,6 +235,68 @@ def test_scenario_loader_uses_existing_build_ids_when_sparse(tmp_path):
     assert [sc.build_id for sc in scenarios] == [10, 20]
 
 
+def test_scenario_loader_current_build_includes_all_rows_eager(tmp_path):
+    """Current build must include all rows for that BuildId in eager mode."""
+    parquet_file = tmp_path / "all_rows_eager.parquet"
+    pl.DataFrame(
+        {
+            "BuildId": [1, 1, 1, 2],
+            "Name": ["TC1", "TC2", "TC3", "TC4"],
+            "Duration": [1.0, 2.0, 3.0, 4.0],
+            "CalcPrio": [0, 0, 0, 0],
+            "LastRun": ["2023-01-01"] * 4,
+            "Verdict": [0, 1, 0, 1],
+        }
+    ).write_parquet(parquet_file)
+
+    loader = ScenarioLoader(str(parquet_file), sched_time_ratio=0.5)
+
+    assert loader._prefer_eager_build_map  # pylint: disable=protected-access
+
+    first_scenario = next(loader)
+    assert first_scenario.build_id == 1
+    assert len(first_scenario.get_testcases()) == 3
+
+    build_df = loader._collect_build(1)  # pylint: disable=protected-access
+    assert build_df.height == 3
+    assert set(build_df["Name"].to_list()) == {"TC1", "TC2", "TC3"}
+
+
+def test_scenario_loader_current_build_includes_all_rows_lazy(tmp_path):
+    """Current build must include all rows for that BuildId in lazy mode."""
+    parquet_file = tmp_path / "all_rows_lazy.parquet"
+
+    build_ids = [1, 1, 1, 1] + list(range(2, 514))
+    names = [f"TC{i}" for i in range(len(build_ids))]
+    durations = [1.0] * len(build_ids)
+    calc_prio = [0] * len(build_ids)
+    last_run = ["2023-01-01"] * len(build_ids)
+    verdict = [0] * len(build_ids)
+
+    pl.DataFrame(
+        {
+            "BuildId": build_ids,
+            "Name": names,
+            "Duration": durations,
+            "CalcPrio": calc_prio,
+            "LastRun": last_run,
+            "Verdict": verdict,
+        }
+    ).write_parquet(parquet_file)
+
+    loader = ScenarioLoader(str(parquet_file), sched_time_ratio=0.5)
+
+    assert not loader._prefer_eager_build_map  # pylint: disable=protected-access
+
+    first_scenario = next(loader)
+    assert first_scenario.build_id == 1
+    assert len(first_scenario.get_testcases()) == 4
+
+    build_df = loader._collect_build(1)  # pylint: disable=protected-access
+    assert build_df.height == 4
+    assert build_df["BuildId"].to_list() == [1, 1, 1, 1]
+
+
 def test_last_build_positive_sets_build_index_and_current_build(tmp_path):
     """last_build(n>0) must set _build_index and current_build to the n-th real BuildId."""
     parquet_file = tmp_path / "lb_positive.parquet"
@@ -265,6 +327,27 @@ def test_last_build_positive_sets_build_index_and_current_build(tmp_path):
     loader.last_build(999)
     assert loader._build_index == 2  # pylint: disable=protected-access
     assert loader.current_build == 25
+
+
+def test_scenario_loader_build_cache_is_bounded(tmp_path):
+    """Build cache must stay bounded to avoid unbounded memory growth."""
+    parquet_file = tmp_path / "cache_bounds.parquet"
+    pl.DataFrame(
+        {
+            "BuildId": [1, 2, 3, 4],
+            "Name": ["A", "A", "A", "A"],
+            "Duration": [1.0, 1.0, 1.0, 1.0],
+            "CalcPrio": [0, 0, 0, 0],
+            "LastRun": ["2023-01-01"] * 4,
+            "Verdict": [0, 0, 0, 0],
+        }
+    ).write_parquet(parquet_file)
+
+    loader = ScenarioLoader(str(parquet_file), sched_time_ratio=0.5)
+    for build_id in [1, 2, 3, 4]:
+        _ = loader._collect_build(build_id)  # pylint: disable=protected-access
+
+    assert len(loader._build_cache) <= loader._build_cache_size  # pylint: disable=protected-access
 
 
 def test_scenario_loader_tcdf_property_warns_and_returns_df(mock_csv_data, tmp_path):

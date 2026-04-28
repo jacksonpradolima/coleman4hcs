@@ -2,6 +2,7 @@
 
 import os
 import warnings
+from collections import OrderedDict
 from decimal import Decimal
 from pathlib import Path
 from typing import cast
@@ -60,13 +61,30 @@ class ScenarioLoader:
         self._current_build_df: pl.DataFrame | None = None
 
         self._testcases_lazy = self._read_testcases(tcfile)
-        _eager = cast(pl.DataFrame, self._testcases_lazy.collect())
-        self._builds_map: dict[int, pl.DataFrame] = {}
-        for _part in _eager.partition_by("BuildId", maintain_order=False, include_key=True):
-            _bid = int(_part["BuildId"][0])
-            self._builds_map[_bid] = _part.sort("Name")
-        self._build_ids = sorted(self._builds_map.keys())
+        self._testcases_schema = self._testcases_lazy.collect_schema()
+        build_ids_df = cast(
+            pl.DataFrame,
+            self._testcases_lazy.select(pl.col("BuildId").unique().sort()).collect(),
+        )
+        self._build_ids = cast(list[int], build_ids_df.get_column("BuildId").to_list())
         self.max_builds = len(self._build_ids)
+
+        self._builds_map: dict[int, pl.DataFrame] = {}
+        self._prefer_eager_build_map = False
+
+        # For small-to-medium datasets, eager partitioning avoids repeated
+        # LazyFrame scans per build and is significantly faster in tight loops.
+        tcfile_size_mb = Path(tcfile).stat().st_size / (1024 * 1024)
+        if tcfile_size_mb <= 128 and self.max_builds <= 512:
+            eager_df = cast(pl.DataFrame, self._testcases_lazy.collect())
+            for build_part in eager_df.partition_by("BuildId", maintain_order=False, include_key=True):
+                build_id = int(build_part["BuildId"][0])
+                self._builds_map[build_id] = build_part.sort("Name")
+            self._prefer_eager_build_map = True
+
+        # Keep only a small sliding cache of materialized builds to bound memory usage.
+        self._build_cache: OrderedDict[int, pl.DataFrame] = OrderedDict()
+        self._build_cache_size = 32
 
     def _read_testcases(self, tcfile: str) -> pl.LazyFrame:
         """Read the test cases from a provided dataset file.
@@ -113,10 +131,31 @@ class ScenarioLoader:
         return df.with_columns(expressions)
 
     def _collect_build(self, build_id: int, columns: list[str] | None = None) -> pl.DataFrame:
-        """Return a build slice from the in-memory build map (O(1) dict lookup)."""
-        df = self._builds_map.get(build_id, pl.DataFrame(schema=self._testcases_lazy.collect_schema()))
+        """Collect one build slice lazily and cache a few recent builds.
+
+        The bounded cache prevents repeated scans for nearby builds while keeping
+        memory usage predictable for large datasets.
+        """
+        if self._prefer_eager_build_map:
+            df = self._builds_map.get(build_id, pl.DataFrame(schema=self._testcases_schema))
+            if columns:
+                return df.select(columns)
+            return df
+
+        if build_id in self._build_cache:
+            self._build_cache.move_to_end(build_id)
+            df = self._build_cache[build_id]
+        else:
+            df = cast(
+                pl.DataFrame,
+                self._testcases_lazy.filter(pl.col("BuildId") == build_id).sort("Name").collect(),
+            )
+            self._build_cache[build_id] = df
+            if len(self._build_cache) > self._build_cache_size:
+                self._build_cache.popitem(last=False)
+
         if columns:
-            df = df.select(columns)
+            return df.select(columns)
         return df
 
     @property
@@ -274,12 +313,23 @@ class HCSScenarioLoader(ScenarioLoader):
         super().__init__(tcfile, sched_time_ratio)
 
         self._variants_lazy = self._read_variants(variantsfile)
-        _v_eager = cast(pl.DataFrame, self._variants_lazy.collect())
+        self._variants_schema = self._variants_lazy.collect_schema()
+        variants_df = cast(pl.DataFrame, self._variants_lazy.select(pl.col("Variant").unique()).collect())
+        self._variant_names = cast(list[str], variants_df.get_column("Variant").to_list())
+
         self._variants_map: dict[int, pl.DataFrame] = {}
-        for _vpart in _v_eager.partition_by("BuildId", maintain_order=False, include_key=True):
-            _vbid = int(_vpart["BuildId"][0])
-            self._variants_map[_vbid] = _vpart
-        self._variant_names = cast(list[str], _v_eager.get_column("Variant").unique().to_list())
+        self._prefer_eager_variants_map = False
+
+        variants_file_size_mb = Path(variantsfile).stat().st_size / (1024 * 1024)
+        if variants_file_size_mb <= 64 and self.max_builds <= 512:
+            eager_variants_df = cast(pl.DataFrame, self._variants_lazy.collect())
+            for variant_part in eager_variants_df.partition_by("BuildId", maintain_order=False, include_key=True):
+                build_id = int(variant_part["BuildId"][0])
+                self._variants_map[build_id] = variant_part
+            self._prefer_eager_variants_map = True
+
+        self._variants_cache: OrderedDict[int, pl.DataFrame] = OrderedDict()
+        self._variants_cache_size = 32
 
     def _read_variants(self, variantsfile: str) -> pl.LazyFrame:
         """Read the variants from a provided dataset file.
@@ -357,7 +407,22 @@ class HCSScenarioLoader(ScenarioLoader):
         if not base_scenario:
             return None
 
-        variants = self._variants_map.get(self.current_build, pl.DataFrame(schema=self._variants_lazy.collect_schema()))
+        if self._prefer_eager_variants_map:
+            variants = self._variants_map.get(self.current_build, pl.DataFrame(schema=self._variants_schema))
+        elif self.current_build in self._variants_cache:
+            self._variants_cache.move_to_end(self.current_build)
+            variants = self._variants_cache[self.current_build]
+        else:
+            variants = cast(
+                pl.DataFrame,
+                self._variants_lazy.filter(pl.col("BuildId") == self.current_build).collect(),
+            )
+            self._variants_cache[self.current_build] = variants
+            if len(self._variants_cache) > self._variants_cache_size:
+                self._variants_cache.popitem(last=False)
+
+        if variants.height == 0:
+            variants = pl.DataFrame(schema=self._variants_schema)
 
         self.scenario = VirtualHCSScenario(**base_scenario.__dict__, variants=variants)
 

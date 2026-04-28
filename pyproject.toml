@@ -63,7 +63,7 @@ clickhouse = [
 ]
 
 [project.scripts]
-coleman = "coleman4hcs.cli:main"
+coleman = "coleman.cli:main"
 
 [project.urls]
 homepage = "https://github.com/jacksonpradolima/coleman"

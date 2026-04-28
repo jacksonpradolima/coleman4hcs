@@ -42,6 +42,8 @@ class FRRMABPolicy(Policy):
         self.c = c
         self.decayed_factor = decayed_factor
         self.history = pl.DataFrame(schema=HISTORY_SCHEMA)
+        self._history_names: set[str] = set()
+        self._ordered_names: list[str] = []
 
     def __str__(self):
         """Return a string representation of the policy.
@@ -66,9 +68,15 @@ class FRRMABPolicy(Policy):
         list of str
             List of action names sorted by Q value.
         """
-        existing_names = set(self.history["Name"].to_list())
-        agent_names = set(agent.actions["Name"].to_list())
-        new_names = agent_names - existing_names
+        if (not self._history_names) and (self.history.height > 0):
+            self._history_names = set(self.history["Name"].to_list())
+
+        agent_names_cached = getattr(agent, "_action_names", None)
+        if (not agent_names_cached) or (len(agent_names_cached) != agent.actions.height):
+            agent_names = set(agent.actions["Name"].to_list())
+        else:
+            agent_names = set(agent_names_cached)
+        new_names = agent_names - self._history_names
 
         if new_names:
             new_entries = pl.DataFrame(
@@ -82,8 +90,14 @@ class FRRMABPolicy(Policy):
                 schema=HISTORY_SCHEMA,
             )
             self.history = pl.concat([self.history, new_entries], how="vertical")
+            self._history_names |= new_names
+            self.history = self.history.sort("Q", descending=True)
+            self._ordered_names = self.history["Name"].to_list()
 
-        return self.history.sort("Q", descending=True)["Name"].to_list()
+        if not self._ordered_names and self.history.height > 0:
+            self._ordered_names = self.history["Name"].to_list()
+
+        return list(self._ordered_names)
 
     def credit_assignment(self, agent: RewardSlidingWindowAgent):
         """Assign credit using the Fitness-Rate-Rank method.
@@ -128,5 +142,8 @@ class FRRMABPolicy(Policy):
         self.history = (
             self.history.with_columns((pl.col("frr") + self.c * pl.col("exploration")).alias("Q"))
             .drop(["rank", "_decay", "frr", "exploration"])
+            .sort("Q", descending=True)
             .select(list(HISTORY_SCHEMA.keys()))
         )
+        self._history_names = set(self.history["Name"].to_list())
+        self._ordered_names = self.history["Name"].to_list()

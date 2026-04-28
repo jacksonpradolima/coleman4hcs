@@ -1,5 +1,6 @@
 """Sliding-window agent variants."""
 
+import numpy as np
 import polars as pl
 
 from coleman.evaluation import EvaluationMetric
@@ -69,14 +70,18 @@ class RewardSlidingWindowAgent(RewardAgent):
         self.update_action_attempts()
 
         self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
+        n = len(self.last_prioritization)
+        estimates = np.zeros(self.actions.height, dtype=np.float64)
+        if n > 0:
+            indices_all = np.fromiter(
+                (self._name_to_idx.get(nm, -1) for nm in self.last_prioritization), dtype=np.intp, count=n
+            )
+            rewards_all = np.asarray(self.last_reward[:n], dtype=np.float64)
+            valid = indices_all >= 0
+            if valid.any():
+                estimates[indices_all[valid]] = rewards_all[valid]
 
-        prio_index: dict[str, int] = {name: i for i, name in enumerate(self.last_prioritization)}
-        name_list = self.actions["Name"].to_list()
-        reward_map = {name: self.last_reward[prio_index[name]] for name in name_list if name in prio_index}
-
-        new_estimates = [reward_map.get(name, 0.0) for name in name_list]
-
-        self.actions = self.actions.with_columns([pl.Series("ValueEstimates", new_estimates)])
+        self.actions = self.actions.with_columns([pl.Series("ValueEstimates", estimates)])
 
         self.t += 1
         self.update_history()
@@ -92,9 +97,13 @@ class RewardSlidingWindowAgent(RewardAgent):
         new_rows = self.actions.with_columns(pl.lit(self.t, dtype=pl.Int64).alias("T"))
         self.history = pl.concat([self.history, new_rows], how="vertical")
 
-        unique_t = self.history["T"].unique().to_list()
-        if len(unique_t) > self.window_size:
-            min_t = max(unique_t) - self.window_size
+        if self.history.height > 0:
+            max_t_value = self.history["T"].max()
+            max_t = int(max_t_value) if isinstance(max_t_value, int | float) else 0
+        else:
+            max_t = 0
+        if max_t > self.window_size:
+            min_t = max_t - self.window_size
             self.history = self.history.filter(pl.col("T") > min_t)
 
 
@@ -168,14 +177,18 @@ class SlidingWindowContextualAgent(ContextualAgent):
         self.update_action_attempts()
 
         self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
+        n = len(self.last_prioritization)
+        estimates = np.zeros(self.actions.height, dtype=np.float64)
+        if n > 0:
+            indices_all = np.fromiter(
+                (self._name_to_idx.get(nm, -1) for nm in self.last_prioritization), dtype=np.intp, count=n
+            )
+            rewards_all = np.asarray(self.last_reward[:n], dtype=np.float64)
+            valid = indices_all >= 0
+            if valid.any():
+                estimates[indices_all[valid]] = rewards_all[valid]
 
-        prio_index: dict[str, int] = {name: i for i, name in enumerate(self.last_prioritization)}
-        name_list = self.actions["Name"].to_list()
-        reward_map = {name: self.last_reward[prio_index[name]] for name in name_list if name in prio_index}
-
-        new_estimates = [reward_map.get(name, 0.0) for name in name_list]
-
-        self.actions = self.actions.with_columns([pl.Series("ValueEstimates", new_estimates)])
+        self.actions = self.actions.with_columns([pl.Series("ValueEstimates", estimates)])
 
         self.t += 1
         self.update_history()
@@ -191,7 +204,11 @@ class SlidingWindowContextualAgent(ContextualAgent):
         new_rows = self.actions.with_columns(pl.lit(self.t, dtype=pl.Int64).alias("T"))
         self.history = pl.concat([self.history, new_rows], how="vertical")
 
-        unique_t = self.history["T"].unique().to_list()
-        if len(unique_t) > self.window_size:
-            min_t = max(unique_t) - self.window_size
+        if self.history.height > 0:
+            max_t_value = self.history["T"].max()
+            max_t = int(max_t_value) if isinstance(max_t_value, int | float) else 0
+        else:
+            max_t = 0
+        if max_t > self.window_size:
+            min_t = max_t - self.window_size
             self.history = self.history.filter(pl.col("T") > min_t)

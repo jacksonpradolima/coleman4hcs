@@ -1,5 +1,6 @@
 """RewardAgent - agent that uses a reward function."""
 
+import numpy as np
 import polars as pl
 
 from coleman.evaluation import EvaluationMetric
@@ -63,13 +64,29 @@ class RewardAgent(Agent):
 
         self.last_reward = self.reward_function.evaluate(reward, self.last_prioritization)
 
-        reward_map = dict(zip(self.last_prioritization, self.last_reward, strict=False))
+        n = len(self.last_prioritization)
+        if n > 0:
+            idx_buf = np.empty(n, dtype=np.intp)
+            r_buf = np.empty(n, dtype=np.float64)
+            used = 0
+            for i, nm in enumerate(self.last_prioritization):
+                idx = self._name_to_idx.get(nm)
+                if idx is None:
+                    continue
+                idx_buf[used] = idx
+                r_buf[used] = float(self.last_reward[i])
+                used += 1
 
-        current_estimates = self.actions["ValueEstimates"].to_list()
-        name_list = self.actions["Name"].to_list()
-        new_estimates = [current_estimates[i] + reward_map.get(name_list[i], 0.0) for i in range(len(name_list))]
+            if used == 0:
+                self.t += 1
+                self.policy.credit_assignment(self)
+                return
 
-        self.actions = self.actions.with_columns([pl.Series("ValueEstimates", new_estimates)])
+            indices = idx_buf[:used]
+            rewards = r_buf[:used]
+            values = np.array(self.actions["ValueEstimates"].to_numpy(), dtype=np.float64, copy=True)
+            np.add.at(values, indices, rewards)
+            self.actions = self.actions.with_columns(pl.Series("ValueEstimates", values))
 
         self.t += 1
 

@@ -1,5 +1,6 @@
 """Base evaluation metric class."""
 
+import numpy as np
 import polars as pl
 
 
@@ -108,41 +109,42 @@ class EvaluationMetric:
         if suite_df.is_empty():
             return [], 0, 0
 
-        enriched = suite_df.with_row_index("_row_rank", offset=1).with_columns(
-            [
-                pl.col("Duration").cum_sum().alias("_cum_duration"),
-                (pl.col("Duration").cum_sum() <= self.available_time).alias("_scheduled"),
-                (pl.col("Duration").cum_sum() <= self.available_time).cast(pl.Int64).cum_sum().alias("_scheduled_rank"),
-            ]
-        )
+        names = suite_df["Name"].to_list()
+        durations = np.asarray(suite_df["Duration"].to_numpy(), dtype=np.float64)
+        errors = np.asarray(suite_df[error_key].to_numpy(), dtype=np.float64)
+        verdicts = np.asarray(suite_df["Verdict"].to_numpy(), dtype=np.float64)
 
-        scheduled_df = enriched.filter(pl.col("_scheduled"))
-        unscheduled_df = enriched.filter(~pl.col("_scheduled"))
-        detected_df = enriched.filter(pl.col("_scheduled") & (pl.col(error_key) > 0))
+        cum_duration = np.cumsum(durations)
+        scheduled_mask = cum_duration <= float(self.available_time)
+        unscheduled_mask = ~scheduled_mask
+        scheduled_rank = np.cumsum(scheduled_mask.astype(np.int64))
+        detected_mask = scheduled_mask & (errors > 0)
 
-        self.scheduled_testcases = scheduled_df["Name"].to_list()
-        self.unscheduled_testcases = unscheduled_df["Name"].to_list()
-        self.detection_ranks = [int(v) for v in detected_df["_scheduled_rank"].to_list()]
-        self.detection_ranks_failures = detected_df[error_key].to_list()
-        self.detection_ranks_time = detected_df["Duration"].to_list()
+        scheduled_idx = np.flatnonzero(scheduled_mask)
+        unscheduled_idx = np.flatnonzero(unscheduled_mask)
+        detected_idx = np.flatnonzero(detected_mask)
 
-        first_detection_rank = int(detected_df["_row_rank"][0]) if detected_df.height > 0 else None
-        if first_detection_rank is not None:
-            ttf_df = enriched.filter(pl.col("_row_rank") <= first_detection_rank)
-            self.ttf_duration = float(ttf_df["Duration"].sum() or 0.0)
+        self.scheduled_testcases = [names[i] for i in scheduled_idx]
+        self.unscheduled_testcases = [names[i] for i in unscheduled_idx]
+        self.detection_ranks = scheduled_rank[detected_idx].astype(np.int64).tolist()
+        self.detection_ranks_failures = errors[detected_idx].tolist()
+        self.detection_ranks_time = durations[detected_idx].tolist()
+
+        if detected_idx.size > 0:
+            self.ttf_duration = float(cum_duration[detected_idx[0]])
         else:
-            self.ttf_duration = float(enriched["Duration"].sum() or 0.0)
+            self.ttf_duration = float(cum_duration[-1])
 
-        total_failure_count = int(enriched[error_key].sum() or 0)
-        total_failed_tests = int(enriched["Verdict"].sum() or 0)
-        self.undetected_failures = int(unscheduled_df[error_key].sum() or 0)
+        total_failure_count = int(errors.sum())
+        total_failed_tests = int(verdicts.sum())
+        self.undetected_failures = int(errors[unscheduled_mask].sum())
 
         if error_key == "Verdict":
-            self.detected_failures = len(self.detection_ranks)
+            self.detected_failures = int(detected_idx.size)
         else:
-            self.detected_failures = int((detected_df[error_key] * detected_df["_scheduled_rank"]).sum() or 0)
+            self.detected_failures = int((errors[detected_mask] * scheduled_rank[detected_mask]).sum())
 
-        costs = enriched["Duration"].to_list()
+        costs = durations.tolist()
         return costs, total_failure_count, total_failed_tests
 
     def evaluate(self, test_suite):
