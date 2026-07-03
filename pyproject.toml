@@ -19,7 +19,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "ruff==0.15.9",
+    "ruff==0.15.20",
     "pyright==1.1.408",
     "ty==0.0.21",
     "pre-commit==4.5.1",
@@ -142,5 +142,5 @@ build_command = "uv build"
 dev = [
     "pytest==9.0.3",
     "pytest-benchmark==5.2.3",
-    "ruff==0.15.9",
+    "ruff==0.15.20",
 ]
