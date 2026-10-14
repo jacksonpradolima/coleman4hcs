@@ -190,11 +190,11 @@ def main(output):
             sink.write_domain_record(record)
     finally:
         sink.close()
-    manifest = generate_manifest(root / "campaign", run_id="synthetic-ci-campaign")
     repeated = evaluate(frozen, audit, load_outcomes, actor="native-ci-example")
     assert repeated.access.prior_test_accesses >= 1
     assert report.results[0].conclusion == "insufficient_evidence"
     assert len(report.results[0].independent_units) == 4
+    manifest = generate_manifest(root / "campaign", run_id="synthetic-ci-campaign")
     print(
         json.dumps(
             {

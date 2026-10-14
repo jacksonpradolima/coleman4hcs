@@ -135,6 +135,13 @@ class FamilyReport(EvaluationContract):
             item.hypothesis_id for item in self.frozen.comparison_family
         ):
             raise ValueError("Report must contain the complete frozen comparison family")
+        references = self._input_references()
+        for hypothesis, result in zip(self.frozen.comparison_family, self.results, strict=True):
+            self._check_references(hypothesis, result, references)
+        return self
+
+    def _input_references(self) -> dict[tuple[str, str], ObservationReference]:
+        """Index unique, temporally eligible frozen candidate/unit references."""
         references: dict[tuple[str, str], ObservationReference] = {}
         for reference in self.inputs:
             self.frozen.candidate(reference.candidate_id)
@@ -145,25 +152,54 @@ class FamilyReport(EvaluationContract):
             if decision.partition != "test" or not decision.eligible:
                 raise ValueError("Ineligible report input metadata")
             references[key] = reference
-        for hypothesis, result in zip(self.frozen.comparison_family, self.results, strict=True):
-            for candidate_id in (hypothesis.candidate_id, hypothesis.baseline_id):
-                units = {unit for name, unit in references if name == candidate_id}
-                if units != set(result.independent_units):
-                    raise ValueError("Report unit counts do not match its raw-input references")
-            for unit in result.independent_units:
-                left = references[hypothesis.candidate_id, unit]
-                right = references[hypothesis.baseline_id, unit]
-                if left.metadata != right.metadata:
-                    raise ValueError("Report input metadata does not match across paired units")
-        return self
+        return references
+
+    @staticmethod
+    def _check_references(
+        hypothesis: ComparisonHypothesis,
+        result: ComparisonResult,
+        references: dict[tuple[str, str], ObservationReference],
+    ) -> None:
+        """Match result counts and paired metadata to immutable raw-input references."""
+        for candidate_id in (hypothesis.candidate_id, hypothesis.baseline_id):
+            units = {unit for (name, unit), _reference in references.items() if name == candidate_id}
+            if units != set(result.independent_units):
+                raise ValueError("Report unit counts do not match its raw-input references")
+        for unit in result.independent_units:
+            left = references[hypothesis.candidate_id, unit]
+            right = references[hypothesis.baseline_id, unit]
+            if left.metadata != right.metadata:
+                raise ValueError("Report input metadata does not match across paired units")
 
     @model_validator(mode="after")
     def _inference(self) -> Self:
         """Reject forged confirmatory claims on reused scopes or unsupported assumptions."""
         for result in self.results:
+            self._check_point_estimate(result)
             if result.conclusion in {"evidence_of_benefit", "evidence_of_harm"}:
                 self._check_claim(result)
         return self
+
+    def _check_point_estimate(self, result: ComparisonResult) -> None:
+        """Require signed point estimates for uncertainty/claims and interval consistency."""
+        mean, improvement = result.raw_mean_difference, result.improvement
+        if mean is None or improvement is None:
+            uncertainty = (result.ci_lower, result.ci_upper, result.p_value, result.adjusted_p_value)
+            if any(value is not None for value in uncertainty) or result.conclusion in {
+                "evidence_of_benefit",
+                "evidence_of_harm",
+            }:
+                raise ValueError("Uncertainty and confirmatory claims require non-null point estimates")
+            return
+        expected = mean if self.frozen.protocol.direction == "maximize" else -mean
+        if not math.isclose(improvement, expected, rel_tol=1e-12, abs_tol=0.0):
+            raise ValueError("Improvement does not match the protocol-defined raw difference sign")
+        if (
+            result.ci_lower is not None
+            and result.ci_upper is not None
+            and not result.ci_lower <= improvement <= result.ci_upper
+        ):
+            raise ValueError("Point estimate is outside its confidence interval")
 
     def _check_claim(self, result: ComparisonResult) -> None:
         """Validate access, independent observations and family-wise practical evidence."""
@@ -378,19 +414,16 @@ def _validate_observations(
     by_candidate: dict[str, dict[str, PairedObservation]] = {
         candidate.candidate_id: {} for candidate in frozen.candidates
     }
+    configuration_digests = {
+        candidate.candidate_id: candidate.configuration_fingerprint for candidate in frozen.candidates
+    }
+    evaluation_digest = frozen.fingerprint
     metadata: dict[tuple[str, str], TemporalObservation] = {}
     for raw in rows:
         row = PairedObservation.model_validate(raw)
-        candidate = frozen.candidate(row.candidate_id)
-        if row.record.data_fingerprint != frozen.data_fingerprint:
-            raise ValueError("Observation dataset differs from frozen data")
-        if row.record.provenance.evaluation_fingerprint != frozen.fingerprint:
-            raise ValueError("Observation evaluation context was not frozen")
-        if row.record.provenance.spec_fingerprint != candidate.configuration_fingerprint:
-            raise ValueError("Observation candidate configuration differs from freeze")
-        decision = frozen.plan.decide(row.metadata)
-        if decision.partition != "test" or not decision.eligible:
-            raise ValueError(f"Ineligible protected observation: {decision.reason}")
+        if row.candidate_id not in configuration_digests:
+            raise ValueError("Observation candidate is not frozen")
+        _validate_record(frozen, row, evaluation_digest, configuration_digests[row.candidate_id])
         key = row.metadata.observation_id, row.metadata.revision_id
         previous = metadata.setdefault(key, row.metadata)
         if previous != row.metadata:
@@ -398,16 +431,49 @@ def _validate_observations(
         unit = row.metadata.group_id
         if unit in by_candidate[row.candidate_id]:
             raise ValueError("Repeated candidate/unit: seeds or revisions are not independent evidence")
-        measurement = row.record.measurement(frozen.protocol.metric_name)
-        if (measurement.unit, measurement.meaning, measurement.direction) != (
-            frozen.protocol.unit,
-            frozen.protocol.meaning,
-            frozen.protocol.direction,
-        ):
-            raise ValueError("Measurement differs from the frozen metric contract")
         by_candidate[row.candidate_id][unit] = row
     frozen.plan.split(tuple(metadata.values()))
     return by_candidate
+
+
+def _validate_record(
+    frozen: FrozenEvaluation, row: PairedObservation, evaluation_digest: str, configuration_digest: str
+) -> None:
+    """Validate one result against cached frozen identities and the temporal metric contract."""
+    if row.record.data_fingerprint != frozen.data_fingerprint:
+        raise ValueError("Observation dataset differs from frozen data")
+    if row.record.provenance.evaluation_fingerprint != evaluation_digest:
+        raise ValueError("Observation evaluation context was not frozen")
+    if row.record.provenance.spec_fingerprint != configuration_digest:
+        raise ValueError("Observation candidate configuration differs from freeze")
+    decision = frozen.plan.decide(row.metadata)
+    if decision.partition != "test" or not decision.eligible:
+        raise ValueError(f"Ineligible protected observation: {decision.reason}")
+    measurement = row.record.measurement(frozen.protocol.metric_name)
+    if (measurement.unit, measurement.meaning, measurement.direction) != (
+        frozen.protocol.unit,
+        frozen.protocol.meaning,
+        frozen.protocol.direction,
+    ):
+        raise ValueError("Measurement differs from the frozen metric contract")
+
+
+def _conclude(
+    frozen: FrozenEvaluation, result: ComparisonResult, receipt: AccessReceipt, corrected: float
+) -> ComparisonResult:
+    """Apply full-family corrected evidence only to a first protected access."""
+    payload = result.model_dump()
+    if result.p_value is not None and result.ci_lower is not None and result.ci_upper is not None:
+        payload["adjusted_p_value"] = corrected
+        payload["conclusion"] = "inconclusive"
+        if receipt.prior_test_accesses:
+            payload["reason"] = "reused_holdout_no_confirmatory_claim"
+        elif corrected <= frozen.protocol.alpha:
+            if result.ci_lower > frozen.protocol.practical_effect:
+                payload["conclusion"] = "evidence_of_benefit"
+            elif result.ci_upper < -frozen.protocol.practical_effect:
+                payload["conclusion"] = "evidence_of_harm"
+    return ComparisonResult.model_validate(payload)
 
 
 def evaluate(
@@ -435,20 +501,9 @@ def evaluate(
     observations = _validate_observations(frozen, load_observations())
     results = [_estimate(frozen, hypothesis, observations) for hypothesis in frozen.comparison_family]
     adjusted = holm_adjust(tuple(result.p_value if result.p_value is not None else 1.0 for result in results))
-    updated = []
-    for result, corrected in zip(results, adjusted, strict=True):
-        payload = result.model_dump()
-        if result.p_value is not None and result.ci_lower is not None and result.ci_upper is not None:
-            payload["adjusted_p_value"] = corrected
-            payload["conclusion"] = "inconclusive"
-            if receipt.prior_test_accesses:
-                payload["reason"] = "reused_holdout_no_confirmatory_claim"
-            elif corrected <= frozen.protocol.alpha:
-                if result.ci_lower > frozen.protocol.practical_effect:
-                    payload["conclusion"] = "evidence_of_benefit"
-                elif result.ci_upper < -frozen.protocol.practical_effect:
-                    payload["conclusion"] = "evidence_of_harm"
-        updated.append(ComparisonResult.model_validate(payload))
+    updated = tuple(
+        _conclude(frozen, result, receipt, corrected) for result, corrected in zip(results, adjusted, strict=True)
+    )
     references = tuple(
         ObservationReference(
             candidate_id=candidate_id,

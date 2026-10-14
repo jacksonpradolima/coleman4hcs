@@ -176,7 +176,7 @@ for a in policies:
 		total = len(valid)
 		rows.append({"policy_a": a, "policy_b": b, "win_rate": wins / total if total else None, "n": total})
 
-win_rate_df = pd.DataFrame(rows).sort_values(["policy_a", "win_rate"], ascending=[False, False])
+win_rate_df = pd.DataFrame(rows).sort_values(["policy_a", "win_rate"], ascending=[True, False])
 print(win_rate_df.head(30))
 ```
 

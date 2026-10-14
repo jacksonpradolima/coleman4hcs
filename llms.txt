@@ -1139,7 +1139,7 @@ for a in policies:
 		total = len(valid)
 		rows.append({"policy_a": a, "policy_b": b, "win_rate": wins / total if total else None, "n": total})
 
-win_rate_df = pd.DataFrame(rows).sort_values(["policy_a", "win_rate"], ascending=[False, False])
+win_rate_df = pd.DataFrame(rows).sort_values(["policy_a", "win_rate"], ascending=[True, False])
 print(win_rate_df.head(30))
 ```
 
@@ -3791,7 +3791,9 @@ the same as [domain artifacts](domain-results.md).
 
 A reservation is an attempted access, not a completed evaluation. `save_report`
 requires a matching persisted receipt and frozen contract, then atomically publishes
-validated report content. Failed evaluation leaves the attempt and creates no
+validated report content. Point estimates must be present for uncertainty or
+confirmatory claims, follow the protocol-defined sign (relative tolerance `1e-12`,
+zero absolute tolerance) and lie within their reported interval. Failed evaluation leaves the attempt and creates no
 completed report. Replaying the same report/sink publication is idempotent.
 
 ```mermaid
@@ -3878,7 +3880,8 @@ The standalone script freezes Greedy/Random RunSpecs before invoking
 runner, RNFail reward, NAPFD metric and Parquet sink. It traces candidate fingerprints
 to saved specs, publishes a queryable report and #251 records, and generates a
 manifest. It intentionally returns `insufficient_evidence` for four units under a
-20-unit minimum. A repeated access is recorded as reuse. These synthetic repositories
+20-unit minimum. A repeated access is recorded as reuse before the final manifest
+is generated, so both receipts appear in its inventory. These synthetic repositories
 validate plumbing, not production independence, normality, effectiveness or ROI.
 
 ## Compatibility and limits

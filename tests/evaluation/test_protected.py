@@ -135,7 +135,7 @@ def test_issue_fixture_late_availability_and_deterministic_freeze():
     frozen = frozen_contract()
     same = freeze(frozen.candidates, frozen.data_fingerprint, frozen.plan, frozen.protocol, frozen.comparison_family)
     assert same.fingerprint == frozen.fingerprint
-    assert named_seed(42, "candidate-A", "evaluation") == named_seed(42, "candidate-A", "evaluation")
+    assert named_seed(42, "candidate-A", "evaluation") == 10676855509616717645
 
 
 @pytest.mark.parametrize(
@@ -286,12 +286,14 @@ def test_named_seed_order_workers_and_stream_separation():
     assert len(set(expected.values())) == 3
     assert named_seed(42, "A", "training") != expected["A"]
     assert named_seed(43, "A", "evaluation") != expected["A"]
-    for root in (-1, True, "42"):
+    for raw_root in (-1, True, "42"):
+        root = cast(Any, raw_root)
         with pytest.raises(ValueError):
-            named_seed(cast(Any, root), "A", "evaluation")
-    for candidate, purpose in (("", "training"), ("A", ""), (None, "training")):
+            named_seed(root, "A", "evaluation")
+    for raw_candidate, purpose in (("", "training"), ("A", ""), (None, "training")):
+        candidate = cast(Any, raw_candidate)
         with pytest.raises(ValueError):
-            named_seed(42, cast(Any, candidate), purpose)
+            named_seed(42, candidate, purpose)
 
 
 def test_holm_matches_independent_reference_and_metamorphic_order():
@@ -416,8 +418,9 @@ def test_unsupported_dependence_or_assumptions_reject_before_loading(tmp_path, d
     def forbidden():
         raise AssertionError("Outcomes must not be loaded")
 
+    audit = EvaluationAudit(tmp_path)
     with pytest.raises(NotImplementedError):
-        evaluate(frozen, EvaluationAudit(tmp_path), forbidden, actor="ci")
+        evaluate(frozen, audit, forbidden, actor="ci")
     assert list(tmp_path.rglob("*.json")) == []
 
 
@@ -453,8 +456,9 @@ def test_durable_access_precedes_loading_and_io_failure_cannot_read(tmp_path, mo
     def forbidden():
         raise AssertionError("No outcome access after failed reservation")
 
+    failed_audit = EvaluationAudit(tmp_path / "failure")
     with pytest.raises(OSError, match="disk error"):
-        evaluate(frozen, EvaluationAudit(tmp_path / "failure"), forbidden, actor="ci")
+        evaluate(frozen, failed_audit, forbidden, actor="ci")
 
 
 def test_provenance_future_labels_compatibility_duplicate_seed_and_pairing_errors(tmp_path):
@@ -474,20 +478,26 @@ def test_provenance_future_labels_compatibility_duplicate_seed_and_pairing_error
         payload["record"]["measurements"][0][field] = value
         bad_payloads.append(payload)
     payload = base[0].model_dump(mode="json")
+    payload["candidate_id"] = "unfrozen-candidate"
+    bad_payloads.append(payload)
+    payload = base[0].model_dump(mode="json")
     payload["metadata"]["available_at"] = "2026-01-07T12:00:00Z"
     payload["record"]["available_at"] = payload["metadata"]["available_at"]
     bad_payloads.append(payload)
     for index, payload in enumerate(bad_payloads):
         bad = PairedObservation.model_validate(payload)
         rows = (bad, *base[1:])
+        audit = EvaluationAudit(tmp_path / str(index))
         with pytest.raises(ValueError):
-            evaluate(frozen, EvaluationAudit(tmp_path / str(index)), lambda rows=rows: rows, actor="ci")
+            evaluate(frozen, audit, lambda rows=rows: rows, actor="ci")
     repeated = (*base, base[0])
+    seed_audit = EvaluationAudit(tmp_path / "seeds")
     with pytest.raises(ValueError, match="not independent"):
-        evaluate(frozen, EvaluationAudit(tmp_path / "seeds"), lambda: repeated, actor="ci")
+        evaluate(frozen, seed_audit, lambda: repeated, actor="ci")
     unpaired = base[:-1]
+    unpaired_audit = EvaluationAudit(tmp_path / "unpaired")
     with pytest.raises(ValueError, match="same paired"):
-        evaluate(frozen, EvaluationAudit(tmp_path / "unpaired"), lambda: unpaired, actor="ci")
+        evaluate(frozen, unpaired_audit, lambda: unpaired, actor="ci")
 
 
 def _reserve_access(root, serialized):
@@ -753,6 +763,9 @@ def test_installed_package_native_tcpci_protected_workflow(tmp_path):
     assert output["repeat_is_confirmatory"] is False
     report = FamilyReport.from_json(Path(output["report"]).read_bytes())
     assert len(report.inputs) == 8
+    manifest = json.loads(Path(output["manifest"]).read_text())
+    access_entries = [entry for entry in manifest["artifacts"] if entry["type"] == "evaluation_access"]
+    assert len(access_entries) == 2
     assert report.results[0].ci_lower is None
 
 
@@ -818,8 +831,9 @@ def test_extreme_finite_inputs_and_unstable_uncertainty_are_explicit(tmp_path):
     second["record"]["measurements"][0]["value"] = -1e308
     rows[0], rows[1] = PairedObservation.model_validate(first), PairedObservation.model_validate(second)
     extreme = tuple(rows)
+    overflow_audit = EvaluationAudit(tmp_path / "overflow")
     with pytest.raises(ValueError, match="finite numeric range"):
-        evaluate(frozen, EvaluationAudit(tmp_path / "overflow"), lambda: extreme, actor="ci")
+        evaluate(frozen, overflow_audit, lambda: extreme, actor="ci")
 
 
 def test_shared_domain_compatibility_preserves_unknown_values_and_strict_comparison():
@@ -835,3 +849,29 @@ def test_shared_domain_compatibility_preserves_unknown_values_and_strict_compari
     incompatible = DomainRecord.model_validate(payload)
     with pytest.raises(ValueError, match="Incompatible"):
         unknown.require_compatible(incompatible, frozen.protocol.metric_name)
+
+
+@pytest.mark.parametrize(
+    "points",
+    [
+        {"raw_mean_difference": None, "improvement": None},
+        {"raw_mean_difference": -0.175, "improvement": -0.175},
+        {"raw_mean_difference": 0.175, "improvement": -0.175},
+        {"raw_mean_difference": 100.0, "improvement": 100.0},
+    ],
+)
+def test_confirmatory_report_requires_coherent_point_estimates_before_persistence(tmp_path, points):
+    frozen = frozen_contract()
+    audit = EvaluationAudit(tmp_path)
+    rows = observations(frozen)
+    original = evaluate(frozen, audit, lambda: rows, actor="ci")
+    payload = json.loads(original.to_json())
+    payload["results"][0].update(points)
+    serialized = json.dumps(payload)
+    with pytest.raises(ValidationError):
+        FamilyReport.from_json(serialized)
+    unchecked_result = original.results[0].model_copy(update=points)
+    unchecked_report = original.model_copy(update={"results": (unchecked_result,)})
+    with pytest.raises(ValidationError):
+        audit.save_report(unchecked_report)
+    assert list(tmp_path.rglob("evaluation-reports/*.json")) == []
