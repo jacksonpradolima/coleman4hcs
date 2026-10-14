@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Protocol
 
 from pydantic import Field
 
@@ -84,10 +84,24 @@ class SearchStoppedError(Exception):
     """Internal cooperative stop that preserves the last complete feasible incumbent."""
 
 
+class WorkBudget(Protocol):
+    """Read-only search-budget subset shared by bounded decision workflows."""
+
+    @property
+    def max_work(self) -> int:
+        """Return the total permitted search units in this invocation."""
+        ...
+
+    @property
+    def deadline_seconds(self) -> float | None:
+        """Return the cooperative overall deadline, or None to use work limits only."""
+        ...
+
+
 class WorkCounter:
     """Per-invocation work/deadline/cancellation state; no global RNG or transport."""
 
-    def __init__(self, limits: SearchLimits, started: float, cancelled: Callable[[], bool] | None) -> None:
+    def __init__(self, limits: WorkBudget, started: float, cancelled: Callable[[], bool] | None) -> None:
         """Start accounting at caller API entry, before setup and warm start."""
         self.limits = limits
         self.started = started

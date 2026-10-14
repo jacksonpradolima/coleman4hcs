@@ -15,7 +15,7 @@ INPUT_MAXIMUM = Decimal("1000000000000")
 
 
 def ticks(value: Decimal) -> int:
-    """Convert a validated nonnegative decimal to exact 10^-12 units, without rounding."""
+    """Convert a validated finite decimal to exact signed 10^-12 ticks, without rounding."""
     numerator, denominator = value.as_integer_ratio()
     scaled, remainder = divmod(numerator * SCALE, denominator)
     if remainder:
@@ -23,11 +23,25 @@ def ticks(value: Decimal) -> int:
     return scaled
 
 
-def decimal_value(value: int) -> Decimal:
-    """Convert integral ticks to exact decimal units, independent of Decimal context."""
-    whole, fraction = divmod(abs(value), SCALE)
+def decimal_value(value: int, *, places: int = 12) -> Decimal:
+    """Convert scaled integers exactly at 12/24/48 places, without Decimal-context rounding.
+
+    Default precision preserves existing coverage artifacts. Product moments use
+    24/48 places; unsupported precision raises ValueError rather than rounding.
+    """
+    if isinstance(places, bool) or not isinstance(places, int) or places not in {12, 24, 48}:
+        raise ValueError("Supported exact decimal scales are 12, 24 and 48 places")
+    whole, fraction = divmod(abs(value), 10**places)
     sign = "-" if value < 0 else ""
-    return Decimal(f"{sign}{whole}.{fraction:012d}")
+    return Decimal(f"{sign}{whole}.{fraction:0{places}d}")
+
+
+def decimal_text(value: Decimal) -> str:
+    """Return context-independent finite decimal spelling with canonical unsigned zero."""
+    if not value:
+        return "0"
+    text = format(value, "f")
+    return text.rstrip("0").rstrip(".") if "." in text else text
 
 
 class Immutable(BaseModel):
@@ -64,10 +78,7 @@ class Quantity(Immutable):
     @field_serializer("value")
     def _decimal(self, value: Decimal) -> str:
         """Canonicalize equivalent decimal spellings without context-dependent rounding."""
-        if not value:
-            return "0"
-        text = format(value, "f")
-        return text.rstrip("0").rstrip(".") if "." in text else text
+        return decimal_text(value)
 
 
 def unique_ids(values: tuple[str, ...]) -> tuple[str, ...]:
