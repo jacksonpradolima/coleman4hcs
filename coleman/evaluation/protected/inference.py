@@ -129,7 +129,7 @@ def _validate_observations(
     }
     evaluation_digest = frozen.fingerprint
     metadata: dict[tuple[str, str], TemporalObservation] = {}
-    record_keys: set[tuple[str, tuple[str, str, str, str]]] = set()
+    record_keys: set[tuple[str, str, str, str]] = set()
     for raw in rows:
         row = PairedObservation.model_validate(raw)
         if row.candidate_id not in configuration_digests:
@@ -142,7 +142,7 @@ def _validate_observations(
         unit = row.metadata.group_id
         if unit in by_candidate[row.candidate_id]:
             raise ValueError("Repeated candidate/unit: seeds or revisions are not independent evidence")
-        record_key = row.candidate_id, row.record.logical_key
+        record_key = row.record.logical_key
         if record_key in record_keys:
             raise ValueError("Repeated raw result identity across independent units")
         record_keys.add(record_key)

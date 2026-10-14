@@ -55,7 +55,7 @@ class FamilyReport(EvaluationContract):
     def _input_references(self) -> dict[tuple[str, str], ObservationReference]:
         """Index unique, temporally eligible frozen candidate/unit references."""
         references: dict[tuple[str, str], ObservationReference] = {}
-        record_keys: set[tuple[str, tuple[str, str, str, str]]] = set()
+        record_keys: set[tuple[str, str, str, str]] = set()
         for reference in self.inputs:
             self.frozen.candidate(reference.candidate_id)
             key = reference.candidate_id, reference.metadata.group_id
@@ -64,7 +64,7 @@ class FamilyReport(EvaluationContract):
             decision = self.frozen.plan.decide(reference.metadata)
             if decision.partition != "test" or not decision.eligible:
                 raise ValueError("Ineligible report input metadata")
-            record_key = reference.candidate_id, reference.record_key
+            record_key = reference.record_key
             if record_key in record_keys:
                 raise ValueError("Repeated raw result identity across independent units")
             record_keys.add(record_key)

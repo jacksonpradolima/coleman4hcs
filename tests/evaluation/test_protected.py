@@ -989,3 +989,33 @@ def test_derived_availability_is_completion_after_the_loader_and_inference(tmp_p
     serialized = json.dumps(payload)
     with pytest.raises(ValidationError, match="completion predates"):
         FamilyReport.from_json(serialized)
+
+
+def test_raw_logical_identity_cannot_collide_between_candidates(tmp_path):
+    frozen = frozen_contract()
+    rows = observations(frozen)
+    colliding = tuple(
+        row.model_copy(update={"record": row.record.model_copy(update={"run_id": "run-A"})})
+        if row.candidate_id == "B"
+        else row
+        for row in rows
+    )
+    audit = EvaluationAudit(tmp_path)
+    with pytest.raises(ValueError, match="Repeated raw result identity"):
+        evaluate(frozen, audit, lambda: colliding, actor="ci")
+    valid = evaluate(frozen, EvaluationAudit(tmp_path / "valid"), lambda: rows, actor="ci")
+    inputs = []
+    for item in valid.inputs:
+        if item.candidate_id == "B":
+            record = item.record.model_copy(update={"run_id": "run-A"})
+            item = item.model_copy(
+                update={"record": record, "record_key": record.logical_key, "record_digest": record.digest}
+            )
+        inputs.append(item)
+    unchecked = valid.model_copy(update={"inputs": tuple(inputs)})
+    serialized = json.dumps(unchecked.model_dump(mode="json"))
+    with pytest.raises(ValidationError, match="Repeated raw result identity"):
+        FamilyReport.from_json(serialized)
+    with pytest.raises(ValidationError, match="Repeated raw result identity"):
+        audit.save_report(unchecked)
+    assert list(tmp_path.rglob("evaluation-reports/*.json")) == []
