@@ -78,6 +78,25 @@ def canonical_json(payload: Any) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
 
 
+def decode_json(payload: str | bytes) -> Any:
+    """Parse JSON without silently overwriting duplicate object keys.
+
+    Syntax/duplicate-key failures raise ``ValueError``. Callers validate schema,
+    types and finite numeric constraints after decoding; no files are accessed.
+    """
+
+    def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        """Reject ambiguous duplicate keys at every object depth."""
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"Duplicate JSON key: {key}")
+            result[key] = value
+        return result
+
+    return json.loads(payload, object_pairs_hook=unique_object)
+
+
 def fingerprint(payload: Any) -> str:
     """Hash canonical JSON input using identified SHA-256; no filesystem access."""
     return "sha256:" + hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
@@ -245,17 +264,7 @@ class DomainRecord(_Contract):
         Legacy native rows must be read with their existing APIs. No automatic
         migration invents missing units, timestamps or provenance.
         """
-
-        def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-            """Reject duplicate JSON keys instead of accepting last-writer wins."""
-            result: dict[str, Any] = {}
-            for key, value in pairs:
-                if key in result:
-                    raise ValueError(f"Duplicate JSON key: {key}")
-                result[key] = value
-            return result
-
-        raw = json.loads(payload, object_pairs_hook=unique_object)
+        raw = decode_json(payload)
         if not isinstance(raw, dict):
             raise ValueError("Domain record must be a JSON object")
         return cls.model_validate(raw)

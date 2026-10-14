@@ -8,7 +8,7 @@ from typing import Annotated, Any, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from coleman.evaluation.protected.temporal import TemporalPlan
-from coleman.results.domain import Fingerprint, Finite, Identifier, canonical_json, fingerprint
+from coleman.results.domain import Fingerprint, Finite, Identifier, canonical_json, decode_json, fingerprint
 
 
 class EvaluationContract(BaseModel):
@@ -30,17 +30,7 @@ class EvaluationContract(BaseModel):
     @classmethod
     def from_json(cls, payload: str | bytes) -> Self:
         """Reject duplicate keys and unsupported versions, without migrating artifacts."""
-
-        def unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-            """Preserve one value per JSON key, failing on ambiguous objects."""
-            result: dict[str, Any] = {}
-            for key, value in pairs:
-                if key in result:
-                    raise ValueError(f"Duplicate JSON key: {key}")
-                result[key] = value
-            return result
-
-        return cls.model_validate(json.loads(payload, object_pairs_hook=unique))
+        return cls.model_validate(decode_json(payload))
 
     @property
     def fingerprint(self) -> str:
@@ -66,17 +56,7 @@ class FrozenCandidate(BaseModel):  # pylint: disable=too-few-public-methods
     @classmethod
     def _canonical(cls, value: str) -> str:
         """Canonicalize a JSON object and reject duplicate keys/nonfinite values."""
-
-        def unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-            """Reject overwriting configuration keys during JSON parsing."""
-            out = {}
-            for key, item in pairs:
-                if key in out:
-                    raise ValueError("Duplicate configuration key")
-                out[key] = item
-            return out
-
-        payload = json.loads(value, object_pairs_hook=unique)
+        payload = decode_json(value)
         if not isinstance(payload, dict):
             raise ValueError("Candidate configuration must be a JSON object")
         return canonical_json(payload)
