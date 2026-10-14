@@ -68,12 +68,13 @@ def generate_manifest(run_dir: str | Path, *, run_id: str) -> Path:
             }
         )
 
-    evaluation_patterns = {
+    versioned_patterns = {
         "evaluation_contract": "evaluation-contracts/*.json",
         "evaluation_access": "evaluation-access/*/*.json",
         "evaluation_report": "evaluation-reports/*.json",
+        "coverage_result": "coverage-results/*.json",
     }
-    for artifact_type, pattern in evaluation_patterns.items():
+    for artifact_type, pattern in versioned_patterns.items():
         for file_path in sorted(root.rglob(pattern)):
             artifacts.append(
                 {"type": artifact_type, "relative_path": _rel(file_path, root), "format": "json", "partition_keys": []}
