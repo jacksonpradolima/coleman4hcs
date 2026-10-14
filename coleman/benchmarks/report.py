@@ -203,7 +203,15 @@ def verify_failures(suite, observations, failures) -> None:
             raise ValueError("Failure history skipped or reversed the reached invocation prefix")
         if failure.seed != suite.seeds[failure.seed_index] or failure.work_unit != work_unit(failure.method):
             raise ValueError("Failure history changed its seed or work unit")
+        _failure_work(suite, failure)
         previous = position
+
+
+def _failure_work(suite: BenchmarkSuite, failure: BenchmarkFailure) -> None:
+    """Bound any known failed/aborted counter by its already matched frozen case budget."""
+    case = next(case for case in suite.cases if case.case_id == failure.case_id)
+    if failure.work_used is not None and failure.work_used > case.limits.max_work:
+        raise ValueError("Failed/aborted work exceeds its declared case budget")
 
 
 class BenchmarkCheckpoint(VersionedContract):
@@ -281,6 +289,7 @@ class BenchmarkReport(VersionedContract):
             raise ValueError("Current failure changed its attempt identity or work unit")
         if failed.seed != self.suite.seeds[failed.seed_index]:
             raise ValueError("Failed invocation differs from its declared seed")
+        _failure_work(self.suite, failed)
         if (failed.phase == "interrupted") != (self.status == "interrupted"):
             raise ValueError("Failure phase and benchmark termination status disagree")
 

@@ -572,8 +572,13 @@ def test_additive_joint_payoff_and_target_shift_preserves_variance_shortfall_and
     assert summary.objective == 4
 
 
-def test_true_native_cancellation_is_an_aborted_attempt_not_a_failed_exactness_claim(small, environment):
+@pytest.mark.parametrize("max_work", [0, 1, 500])
+def test_true_native_cancellation_is_an_aborted_attempt_not_a_failed_exactness_claim(small, environment, max_work):
     from coleman.selection import solve_coverage
+
+    case = small.cases[0]
+    case = case.model_copy(update={"limits": case.limits.model_copy(update={"max_work": max_work})})
+    small = small.model_copy(update={"cases": (case,)})
 
     def cancelled_native(case, method, _seed):
         return solve_coverage(case.problem, method=method, limits=case.limits, cancelled=lambda: True)
@@ -587,6 +592,18 @@ def test_true_native_cancellation_is_an_aborted_attempt_not_a_failed_exactness_c
     assert result.observations == ()
     assert failed_attempt(result).phase == "interrupted"
     assert failed_attempt(result).error_type == "native_cancelled"
+    assert failed_attempt(result).work_used == 0
+    assert BenchmarkReport.from_json(result.to_json()) == result
+    data = json.loads(result.to_json())
+    data["failure"]["work_used"] = max_work + 1
+    with pytest.raises(ValidationError, match="case budget"):
+        BenchmarkReport.model_validate(data)
+    history = json.loads(result.checkpoint().to_json())
+    history["prior_failures"][0]["work_used"] = max_work + 1
+    corrupt = BenchmarkCheckpoint.model_validate(history)
+    execution = BenchmarkExecution(environment=environment, max_new_invocations=0)
+    with pytest.raises(ValueError, match="case budget"):
+        run_benchmarks(small, checkpoint=corrupt, execution=execution)
 
 
 def test_manifest_preflight_duplicate_ids_unbounded_protocols_and_bad_profile(suite):

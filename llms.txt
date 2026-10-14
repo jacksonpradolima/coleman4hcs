@@ -2638,7 +2638,9 @@ a solver exception may have unknown work rather than zero. Histories retain
 only null work for solver/verification failures; readers reject invented counters
 in both reports and checkpoints. Histories also retain
 stable attempt indices and explicit aware availability timestamps. Unavailable
-future history is rejected before new work.
+future history is rejected before new work. Any known interrupted-work counter
+must fit its matched case's declared work budget, both in current reports and
+in resumed histories, including zero-work resumes.
 
 A chunk can be persisted after each complete invocation. Process death before that
 checkpoint may require repeating an invocation; cached timings are never called
