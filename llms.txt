@@ -3124,9 +3124,10 @@ checkpoint = CoverageCheckpoint.from_json(saved.extra["coverage_v1"])
 resumed = solve_coverage(problem, method="branch_bound_v1", checkpoint=checkpoint)
 ```
 
-Resume rechecks identity and feasibility and restarts search at the root with the
-incumbent. It does not trust a discarded frontier, saved bound or prior completion
-flag. This favors a small auditable contract over preserving all search work;
+Checkpoint identity and selection feasibility are checked even when preflight
+would refuse work or the problem is infeasible. Resume restarts search at the root
+with the verified incumbent. It does not trust a discarded frontier, saved bound
+or prior completion flag. This favors a small auditable contract over preserving all search work;
 repeated tiny budgets may repeat work. Existing pickle-based checkpoints are for
 trusted local state. Preflight rejection never modifies a supplied checkpoint.
 

@@ -131,28 +131,34 @@ def test_invalid_nonnegative_decimal_quantities(value):
 
 def test_zero_null_unavailable_and_valid_empty_selection_remain_distinct():
     zero = exact(problem(0))
-    assert zero.feasible and zero.selected_ids == ()
+    assert zero.feasible
+    assert zero.selected_ids == ()
     assert zero.objective.value == zero.cost.value == 0
     limited = exact(problem(0), max_working_bytes=0)
-    assert limited.status == "limited" and limited.termination_reason == "memory_limit"
+    assert limited.status == "limited"
+    assert limited.termination_reason == "memory_limit"
     assert limited.selected_ids is limited.cost is limited.objective is None
     now = datetime.now(UTC)
     assert coverage_record(zero, run_id="ci", available_at=now).measurement("selection_cost").value == 0
     missing = coverage_record(limited, run_id="ci", available_at=now).measurement("selection_cost")
-    assert missing.value is None and missing.status == "unavailable"
+    assert missing.value is None
+    assert missing.status == "unavailable"
 
 
 def test_zero_cost_candidates_zero_weights_and_global_lexicographic_ties():
     request = problem(0, candidates=[("free", 0, ("x",)), ("paid", 1, ("y",))])
     result = exact(request)
     assert result.selected_ids == ("free",)
-    assert result.cost.value == 0 and result.objective.value == Decimal("0.5")
+    assert result.cost.value == 0
+    assert result.objective.value == Decimal("0.5")
     # The zero-gain free A improves the *global tuple tie*, despite greedy omitting it.
     tied = problem(1, candidates=[("A", 0, ()), ("Z", 1, ("x",))], weights=[("x", 1)])
     assert solve_coverage(tied).selected_ids == ("Z",)
     assert exact(tied).selected_ids == ("A", "Z")
     empty = exact(problem(0, candidates=[], weights=[]))
-    assert empty.selected_ids == () and empty.objective.value == 0 and empty.proof_prefixes == ("",)
+    assert empty.selected_ids == ()
+    assert empty.objective.value == 0
+    assert empty.proof_prefixes == ("",)
     all_zero = exact(problem(0, candidates=[("A", 0, ("x",))], weights=[("x", 0)]))
     assert all_zero.selected_ids == ()
 
@@ -169,7 +175,9 @@ def test_proven_infeasibility_is_separate_from_computation_limits(required, budg
     request = problem(budget, required=required, maximum=maximum, search=search)
     result = exact(request)
     assert independent_oracle(request) is None
-    assert not result.feasible and result.status == "infeasible" and result.termination_reason == reason
+    assert not result.feasible
+    assert result.status == "infeasible"
+    assert result.termination_reason == reason
     assert result.selected_ids is result.objective is result.upper_bound is result.absolute_gap is None
     with pytest.raises(ValueError, match="missing feasible"):
         result.checkpoint()
@@ -216,7 +224,8 @@ def test_decimal_arithmetic_and_canonical_units_have_zero_decision_tolerance():
 def test_restricted_scope_never_inherits_full_universe_optimality():
     full = exact(problem())
     restricted = exact(problem(search=("B",)))
-    assert restricted.status == "optimal" and restricted.scope == "restricted"
+    assert restricted.status == "optimal"
+    assert restricted.scope == "restricted"
     assert restricted.selected_ids == ("B",)
     assert restricted.objective.value < full.objective.value
     assert restricted.scope_fingerprint != full.scope_fingerprint
@@ -237,7 +246,9 @@ def test_restricted_scope_never_inherits_full_universe_optimality():
 )
 def test_resource_preflight_rejects_before_search_without_claiming_infeasibility(limits, reason):
     result = exact(problem(), **limits)
-    assert result.status == "limited" and result.termination_reason == reason and result.work_used == 0
+    assert result.status == "limited"
+    assert result.termination_reason == reason
+    assert result.work_used == 0
     assert result.selected_ids is None
 
 
@@ -248,7 +259,8 @@ def test_non_overridable_exact_scope_and_certificate_limits_are_truthful():
     too_broad = problem(candidates=[("test", 1, tuple(name for name, _ in many_outcomes))], weights=many_outcomes)
     assert exact(too_broad).termination_reason == "exact_scope_limit"
     limited = exact(problem(), max_certificate_leaves=1)
-    assert limited.status == "feasible" and limited.termination_reason == "certificate_limit"
+    assert limited.status == "feasible"
+    assert limited.termination_reason == "certificate_limit"
     assert limited.proof_prefixes == ()
     assert limited.selected_ids == ("A", "C")
 
@@ -258,20 +270,25 @@ def test_overall_work_deadline_cancellation_and_interruption_keep_complete_incum
     request = problem(required=("C",))
     for limits, reason in ((SearchLimits(max_work=0), "work_limit"), (SearchLimits(deadline_seconds=0), "deadline")):
         result = solve_coverage(request, method=method, limits=limits)
-        assert result.termination_reason == reason and result.selected_ids == ("C",)
-        assert result.status == "feasible" and result.work_used == 0
+        assert result.termination_reason == reason
+        assert result.selected_ids == ("C",)
+        assert result.status == "feasible"
+        assert result.work_used == 0
         assert result.upper_bound is not None
         assert result.upper_bound.value >= independent_oracle(request)[2]
     cancelled = solve_coverage(request, method=method, cancelled=lambda: True)
-    assert cancelled.termination_reason == "cancelled" and cancelled.selected_ids == ("C",)
+    assert cancelled.termination_reason == "cancelled"
+    assert cancelled.selected_ids == ("C",)
 
     def interrupt():
         raise KeyboardInterrupt
 
     interrupted = solve_coverage(request, method=method, cancelled=interrupt)
-    assert interrupted.termination_reason == "interrupted" and interrupted.selected_ids == ("C",)
+    assert interrupted.termination_reason == "interrupted"
+    assert interrupted.selected_ids == ("C",)
     warm = solve_coverage(problem(), method=method, limits=SearchLimits(max_work=3))
-    assert warm.selected_ids == ("A",) and warm.work_used == 3
+    assert warm.selected_ids == ("A",)
+    assert warm.work_used == 3
     assert warm.termination_reason == "work_limit"
 
 
@@ -287,7 +304,8 @@ def test_checkpoint_continuation_uses_existing_store_and_never_restores_an_unpro
     assert saved is not None
     restored = CoverageCheckpoint.from_json(saved.extra["coverage_v1"])
     continued = solve_coverage(request, method="branch_bound_v1", checkpoint=restored)
-    assert continued.selected_ids == ("A", "C") and continued.status == "optimal"
+    assert continued.selected_ids == ("A", "C")
+    assert continued.status == "optimal"
     assert continued.objective is not None
     assert continued.objective.value >= partial.objective.value
     changed = problem(2)
@@ -324,10 +342,13 @@ def test_exhaustive_oracles_verify_all_bounds_across_finite_random_instances():
         for work in (0, 3, 11):
             limited = exact(request, max_work=work)
             assert limited.work_used <= work
-            assert limited.upper_bound.value >= expected[2] >= limited.objective.value
+            assert limited.upper_bound.value >= expected[2]
+            assert limited.objective.value <= expected[2]
         greedy = solve_coverage(request)
-        assert greedy.objective is not None and greedy.upper_bound is not None
-        assert greedy.objective.value <= expected[2] <= greedy.upper_bound.value
+        assert greedy.objective is not None
+        assert greedy.upper_bound is not None
+        assert greedy.objective.value <= expected[2]
+        assert greedy.upper_bound.value >= expected[2]
 
 
 def test_metamorphic_order_scale_budget_and_coverage_union():
@@ -344,7 +365,8 @@ def test_metamorphic_order_scale_budget_and_coverage_union():
     for outcome in payload["outcomes"]:
         outcome["weight"]["value"] = str(Decimal(outcome["weight"]["value"]) * 10)
     scaled = exact(CoverageProblem.model_validate(payload))
-    assert scaled.selected_ids == exact(request).selected_ids and scaled.objective.value == 10
+    assert scaled.selected_ids == exact(request).selected_ids
+    assert scaled.objective.value == 10
     objectives = [exact(problem(budget)).objective.value for budget in range(6)]
     assert objectives == sorted(objectives)
 
@@ -492,7 +514,8 @@ def test_installed_wheel_native_tcpci_and_synthetic_resource_examples(tmp_path):
             timeout=120,
         )
         output = json.loads(completed.stdout.splitlines()[-1])
-        assert output["selected_ids"] == ["A", "C"] and output["status"] == "optimal"
+        assert output["selected_ids"] == ["A", "C"]
+        assert output["status"] == "optimal"
         replay = subprocess.run(
             [str(python), str(script), str(external / filename.removesuffix(".py"))],
             cwd=external,
@@ -558,7 +581,8 @@ def test_exact_verification_stays_inside_a_small_restricted_scope():
     candidates = [(f"test-{index:04d}", 1, ("x",)) for index in range(200)]
     request = problem(2, candidates=candidates, search=("test-0001", "test-0002"))
     result = exact(request)
-    assert result.scope == "restricted" and result.status == "optimal"
+    assert result.scope == "restricted"
+    assert result.status == "optimal"
     # Equal objective with optional zero-gain additions uses the full tuple tie rule.
     assert result.selected_ids == ("test-0001",)
     assert result.objective.value == Decimal("0.5")
@@ -577,3 +601,19 @@ def test_signed_zero_is_canonical_before_binary64_projection():
         coverage_record(normalized, run_id="ci", available_at=now).to_json()
         == coverage_record(original, run_id="ci", available_at=now).to_json()
     )
+
+
+@pytest.mark.parametrize("selected", [("unknown",), ("A", "B", "C")])
+def test_corrupt_checkpoint_is_rejected_before_resource_preflight(selected):
+    request = problem()
+    checkpoint = CoverageCheckpoint(schema_version=1, problem_fingerprint=request.fingerprint, selected_ids=selected)
+    limits = SearchLimits(max_working_bytes=0)
+    with pytest.raises(ValueError, match="checkpoint candidate|not feasible"):
+        solve_coverage(request, checkpoint=checkpoint, limits=limits)
+
+
+def test_corrupt_checkpoint_is_rejected_before_infeasibility_result():
+    request = problem(1, required=("A",))
+    checkpoint = CoverageCheckpoint(schema_version=1, problem_fingerprint=request.fingerprint, selected_ids=("A",))
+    with pytest.raises(ValueError, match="not feasible"):
+        solve_coverage(request, checkpoint=checkpoint)

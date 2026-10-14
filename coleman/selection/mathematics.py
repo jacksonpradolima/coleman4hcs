@@ -29,12 +29,18 @@ def selection_value(problem: CoverageProblem, selected_ids: tuple[str, ...]) -> 
 
 def feasible(problem: CoverageProblem, value: SelectionValue) -> bool:
     """Check inclusive budget/cardinality, mandatory identities and declared search scope."""
-    selected = set(value.selected_ids)
+    return constraints_feasible(problem, value.selected_ids, value.cost)
+
+
+def constraints_feasible(problem: CoverageProblem, selected_ids: tuple[str, ...], cost: int) -> bool:
+    """Check validated identities and exact cost ticks without calculating coverage/forecasts."""
+    selected = set(selected_ids)
     ceiling = problem.constraints.maximum_selected
     return (
-        selected.issubset(problem.search_ids or ())
+        len(selected) == len(selected_ids)
+        and selected.issubset(problem.search_ids or ())
         and set(problem.constraints.required_ids).issubset(selected)
-        and value.cost <= ticks(problem.constraints.budget.value)
+        and 0 <= cost <= ticks(problem.constraints.budget.value)
         and (ceiling is None or len(selected) <= ceiling)
     )
 

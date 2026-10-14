@@ -11,7 +11,7 @@ from typing import Literal, TypedDict
 from coleman.selection.contracts import CoverageProblem, Quantity, decimal_value, ticks
 from coleman.selection.mathematics import (
     SelectionValue,
-    feasible,
+    constraints_feasible,
     infeasibility_reason,
     optional_ids,
     selection_value,
@@ -233,10 +233,7 @@ def solve_coverage(
     limits = SearchLimits.model_validate(limits or SearchLimits())
     if method not in {"greedy_density_v1", "branch_bound_v1"}:
         raise ValueError("Unknown coverage method")
-    if checkpoint is not None:
-        checkpoint = CoverageCheckpoint.model_validate(checkpoint)
-        if checkpoint.problem_fingerprint != problem.fingerprint:
-            raise ValueError("Checkpoint differs from the frozen coverage problem/scope")
+    checkpoint = _validated_checkpoint(problem, checkpoint)
     facts = inspect_workload(problem, method, limits)
     payload: _ResultContext = {
         "schema_version": 1,
@@ -284,17 +281,26 @@ def solve_coverage(
     )
 
 
-def _initial_incumbent(problem: CoverageProblem, checkpoint: CoverageCheckpoint | None) -> SelectionValue:
-    """Recompute mandatory/resumed feasibility; hints cannot restore a fabricated proof."""
+def _validated_checkpoint(problem: CoverageProblem, checkpoint: CoverageCheckpoint | None) -> CoverageCheckpoint | None:
+    """Check hint integrity before preflight/infeasibility returns, without coverage allocation."""
     if checkpoint is None:
-        return selection_value(problem, problem.constraints.required_ids)
+        return None
     checkpoint = CoverageCheckpoint.model_validate(checkpoint)
     if checkpoint.problem_fingerprint != problem.fingerprint:
         raise ValueError("Checkpoint differs from the frozen coverage problem/scope")
-    value = selection_value(problem, checkpoint.selected_ids)
-    if not feasible(problem, value):
+    costs = {item.candidate_id: ticks(item.cost.value) for item in problem.candidates}
+    if not set(checkpoint.selected_ids).issubset(costs):
+        raise ValueError("Unknown checkpoint candidate")
+    if not constraints_feasible(problem, checkpoint.selected_ids, sum(costs[name] for name in checkpoint.selected_ids)):
         raise ValueError("Checkpoint incumbent is not feasible")
-    return value
+    return checkpoint
+
+
+def _initial_incumbent(problem: CoverageProblem, checkpoint: CoverageCheckpoint | None) -> SelectionValue:
+    """Recompute arithmetic for mandatory or previously validated incumbent identities."""
+    if checkpoint is None:
+        return selection_value(problem, problem.constraints.required_ids)
+    return selection_value(problem, checkpoint.selected_ids)
 
 
 def _search(state: _SearchState, method: Method, limits: SearchLimits) -> str:
