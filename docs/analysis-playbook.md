@@ -6,6 +6,13 @@ decision-quality, cost, stability, and extensibility impact.
 Use this after one or more experiment runs have produced Parquet data under
 your configured results directory.
 
+## Protected comparisons
+
+The summaries below are descriptive. For chronological eligibility, frozen
+candidates, durable holdout access, paired independent-unit inference and
+insufficient-evidence reports, use [protected evaluation](protected-evaluation.md).
+Repeated seeds/worker executions do not increase the number of independent units.
+
 ## Data Access Patterns
 
 ### DuckDB (recommended)
@@ -49,7 +56,7 @@ GROUP BY policy, reward_function
 ORDER BY avg_napfd DESC;
 ```
 
-### 2. Cost ranking (APFDc)
+### 2. Cost-aware quality ranking (APFDc)
 
 ```sql
 SELECT policy,
@@ -59,7 +66,7 @@ SELECT policy,
 	   COUNT(*) AS n
 FROM experiment_results
 GROUP BY policy, reward_function
-ORDER BY avg_apfdc ASC;
+ORDER BY avg_apfdc DESC;
 ```
 
 ### 3. Stability (coefficient of variation)
@@ -98,7 +105,8 @@ derived table for repeated analyses.
 
 ## Quality vs Cost Frontier (Pareto)
 
-Goal: maximize NAPFD and minimize APFDc.
+Goal: maximize NAPFD and APFDc. The legacy `cost` column contains an APFDc
+quality score; it is not execution expense in seconds or money.
 
 ```python
 import duckdb
@@ -116,7 +124,7 @@ df = duckdb.sql(
 ).df()
 
 def pareto_frontier(data: pd.DataFrame) -> pd.DataFrame:
-	pts = data.sort_values(["avg_apfdc", "avg_napfd"], ascending=[True, False]).reset_index(drop=True)
+	pts = data.sort_values(["avg_apfdc", "avg_napfd"], ascending=[False, False]).reset_index(drop=True)
 	keep = []
 	best_napfd = float("-inf")
 	for _, row in pts.iterrows():
@@ -168,7 +176,7 @@ for a in policies:
 		total = len(valid)
 		rows.append({"policy_a": a, "policy_b": b, "win_rate": wins / total if total else None, "n": total})
 
-win_rate_df = pd.DataFrame(rows).sort_values(["policy_a", "win_rate"], ascending=[True, False])
+win_rate_df = pd.DataFrame(rows).sort_values(["policy_a", "win_rate"], ascending=[False, False])
 print(win_rate_df.head(30))
 ```
 

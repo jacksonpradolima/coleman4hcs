@@ -268,10 +268,20 @@ class DomainRecord(_Contract):
         raise KeyError(name)
 
     def require_comparable(self, other: DomainRecord, name: str) -> None:
+        """Require compatible metadata and observed values; perform no inference.
+
+        Unknown/unavailable outcomes fail explicitly. Use ``require_compatible``
+        to validate only metadata when reporting incomplete evidence.
+        """
+        self.require_compatible(other, name)
+        if self.measurement(name).status != "observed" or other.measurement(name).status != "observed":
+            raise ValueError("Comparison requires observed values")
+
+    def require_compatible(self, other: DomainRecord, name: str) -> None:
         """Reject incompatible units, meanings, objectives, data or evaluations.
 
         This validates metadata only, without calculating a ranking, probability
-        or statistical comparison. Non-observed measurements fail explicitly.
+        or statistical comparison. Missing values are allowed for metadata validation.
         Different producers/specs may be compared within the same evaluation.
         """
         left, right = self.measurement(name), other.measurement(name)
@@ -288,5 +298,3 @@ class DomainRecord(_Contract):
             or metadata(left) != metadata(right)
         ):
             raise ValueError("Incompatible measurement comparison")
-        if left.status != "observed" or right.status != "observed":
-            raise ValueError("Comparison requires observed values")
