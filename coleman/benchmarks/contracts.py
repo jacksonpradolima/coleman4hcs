@@ -104,6 +104,13 @@ def verify_termination(reason: str) -> None:
         raise ValueError("Deterministic benchmark protocols disable deadline termination")
 
 
+def verify_completion(reason: str) -> None:
+    """Admit completed observations only; native aborts belong in explicit attempt history."""
+    verify_termination(reason)
+    if reason in {"cancelled", "interrupted"}:
+        raise ValueError("A completed benchmark invocation cannot contain an aborted native result")
+
+
 BenchmarkCase = Annotated[CoverageCase | AllocationCase, Field(discriminator="kind")]
 
 

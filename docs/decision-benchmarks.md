@@ -199,6 +199,16 @@ not universal performance thresholds or evidence of algorithm superiority.
 Deadline termination is rejected in native adapter results, serialized mathematical
 observations and interrupted-attempt histories: it contradicts this deadline-free
 protocol, even when a case permits a bounded or heuristic outcome.
+A `work_limit` stop must have consumed its declared work cap; stopping below that
+cap cannot be reported as exhausted computation.
+Completed-observation gates also reject native `cancelled` and `interrupted`
+artifacts. Live execution retains them as aborted attempts; replay cannot promote
+them into successful observations, even for cases permitting nonexact completion.
+
+Local `adapter=` callables execute as trusted Python code. Bundled execution makes
+fresh native service calls. Artifact gates verify supplied mathematics and budget
+consistency; measurement authenticity and disclosure of external precomputation
+remain responsibilities of custom adapter authors.
 
 The `performance` profile adds a 12-candidate overlap instance under a shared
 500-work-unit cap and a 32-action/64-joint-state allocation. Run it explicitly:

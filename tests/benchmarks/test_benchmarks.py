@@ -70,6 +70,15 @@ def failed_attempt(report) -> BenchmarkFailure:
     return report.failure
 
 
+def case_gate(case, result):
+    if isinstance(case, CoverageCase):
+        assert isinstance(result, CoverageResult)
+        return partial(check_coverage, case, result)
+    assert isinstance(case, AllocationCase)
+    assert isinstance(result, AllocationResult)
+    return partial(check_allocation, case, result)
+
+
 @pytest.fixture(scope="module")
 def environment():
     return BenchmarkEnvironment(
@@ -635,12 +644,7 @@ def test_deadline_free_protocol_rejects_invented_deadline_results_and_serialized
     assert valid.status == "complete"
     native_partial = execute_native(case, method, 11)
     invented = type(native_partial).model_validate(native_partial.model_copy(update={"termination_reason": "deadline"}))
-    if isinstance(case, CoverageCase) and isinstance(invented, CoverageResult):
-        gate = partial(check_coverage, case, invented)
-    else:
-        assert isinstance(case, AllocationCase)
-        assert isinstance(invented, AllocationResult)
-        gate = partial(check_allocation, case, invented)
+    gate = case_gate(case, invented)
     with pytest.raises(ValueError, match="disable deadline"):
         gate()
 
@@ -656,6 +660,28 @@ def test_deadline_free_protocol_rejects_invented_deadline_results_and_serialized
     data["observations"][0]["mathematics"] = invented.to_json()
     data["observations"][0]["mathematics_fingerprint"] = invented.fingerprint
     with pytest.raises(ValidationError, match="disable deadline"):
+        BenchmarkReport.model_validate(data)
+
+
+def test_coverage_work_limit_claim_requires_the_declared_counter_to_be_exhausted(suite, environment):
+    case = coverage_case(suite).model_copy(update={"methods": ("branch_bound_v1",), "exact_methods": ()})
+    case = case.model_copy(update={"limits": case.limits.model_copy(update={"max_work": 0})})
+    stopped = execute_native(case, case.methods[0], 11)
+    assert stopped.termination_reason == "work_limit"
+    assert stopped.work_used == 0
+    assert case_gate(case, stopped)().evidence in {"bounded", "unavailable"}
+    more_work = case.model_copy(update={"limits": case.limits.model_copy(update={"max_work": 5})})
+    forged = type(stopped).model_validate(stopped.model_copy(update={"limits": more_work.limits}))
+    gate = case_gate(more_work, forged)
+    with pytest.raises(ValueError, match="exhausted counter"):
+        gate()
+    protocol = BenchmarkSuite(schema_version=1, benchmark_id="work-exhaustion-v1", cases=(case,), seeds=(11,))
+    report = run_benchmarks(protocol, execution=BenchmarkExecution(environment=environment))
+    data = json.loads(report.to_json())
+    data["suite"]["cases"][0] = json.loads(more_work.to_json())
+    data["observations"][0]["mathematics"] = forged.to_json()
+    data["observations"][0]["mathematics_fingerprint"] = forged.fingerprint
+    with pytest.raises(ValidationError, match="exhausted counter"):
         BenchmarkReport.model_validate(data)
 
 
@@ -982,3 +1008,42 @@ def test_failed_attempts_reject_invented_work_in_reports_and_checkpoints(small, 
     checkpoint["prior_failures"][0]["work_used"] = invented_work
     with pytest.raises(ValidationError, match="unavailable work"):
         BenchmarkCheckpoint.model_validate(checkpoint)
+
+
+@pytest.mark.parametrize("kind", ["coverage", "allocation"])
+@pytest.mark.parametrize("reason", ["cancelled", "interrupted"])
+def test_aborted_native_results_cannot_be_replayed_as_complete_observations(suite, environment, kind, reason):
+    if kind == "coverage":
+        case = coverage_case(suite).model_copy(update={"methods": ("greedy_density_v1",), "exact_methods": ()})
+    else:
+        case = allocation_case(suite).model_copy(update={"require_exact": False})
+    case = case.model_copy(update={"limits": case.limits.model_copy(update={"max_work": 0})})
+    protocol = BenchmarkSuite(schema_version=1, benchmark_id="abort-replay-contract-v1", cases=(case,), seeds=(11,))
+    execution = BenchmarkExecution(environment=environment)
+    control = run_benchmarks(protocol, execution=execution)
+    assert control.status == "complete"
+    native = execute_native(case, case.methods[0], 11)
+    aborted = type(native).model_validate(native.model_copy(update={"termination_reason": reason}))
+    gate = case_gate(case, aborted)
+    with pytest.raises(ValueError, match="completed benchmark invocation"):
+        gate()
+    data = json.loads(control.to_json())
+    row = data["observations"][0]
+    row["mathematics"], row["mathematics_fingerprint"] = aborted.to_json(), aborted.fingerprint
+    with pytest.raises(ValidationError, match="completed benchmark invocation"):
+        BenchmarkReport.model_validate(data)
+    history = json.loads(control.checkpoint().to_json())
+    history["observations"] = data["observations"]
+    corrupt = BenchmarkCheckpoint.model_validate(history)
+    zero = BenchmarkExecution(environment=environment, max_new_invocations=0)
+    with pytest.raises(ValueError, match="completed benchmark invocation"):
+        run_benchmarks(protocol, checkpoint=corrupt, execution=zero)
+
+    def aborted_adapter(*_args):
+        return aborted
+
+    live = run_benchmarks(protocol, execution=execution, adapter=aborted_adapter)
+    assert live.status == "interrupted"
+    assert live.observations == ()
+    assert failed_attempt(live).error_type == f"native_{reason}"
+    assert failed_attempt(live).work_used == 0
