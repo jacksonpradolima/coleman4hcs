@@ -196,6 +196,9 @@ native limits, methods and problem before comparison. Correctness protocols requ
 `deadline_seconds=None` and use deterministic work limits so machine speed cannot
 change a mathematical assertion. Runtime and memory are reported observations,
 not universal performance thresholds or evidence of algorithm superiority.
+Deadline termination is rejected in native adapter results, serialized mathematical
+observations and interrupted-attempt histories: it contradicts this deadline-free
+protocol, even when a case permits a bounded or heuristic outcome.
 
 The `performance` profile adds a 12-candidate overlap instance under a shared
 500-work-unit cap and a 32-action/64-joint-state allocation. Run it explicitly:

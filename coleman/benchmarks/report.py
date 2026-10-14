@@ -13,7 +13,7 @@ from typing import Annotated, Literal, Protocol, Self
 from pydantic import BeforeValidator, Field, model_validator
 
 from coleman.allocation import AllocationResult
-from coleman.benchmarks.contracts import BenchmarkSuite, CoverageCase
+from coleman.benchmarks.contracts import BenchmarkSuite, CoverageCase, verify_termination
 from coleman.benchmarks.gates import GateSummary, check_allocation, check_coverage, same_mathematics
 from coleman.results.domain import Fingerprint, Identifier, fingerprint
 from coleman.results.versioned import VersionedContract
@@ -135,6 +135,8 @@ class BenchmarkFailure(BenchmarkInvocation):
             raise ValueError("Rejected instrumentation must retain zero solver work and unavailable measurements")
         if self.phase in {"solver", "verification"} and self.work_used is not None:
             raise ValueError("Solver and verification failures require unavailable work, never an invented counter")
+        if self.phase == "interrupted" and self.error_type == "native_deadline":
+            verify_termination("deadline")
         return self
 
 

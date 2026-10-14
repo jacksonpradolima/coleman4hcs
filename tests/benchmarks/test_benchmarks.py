@@ -13,12 +13,14 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from decimal import Decimal, localcontext
 from fractions import Fraction
+from functools import partial
 from pathlib import Path
 from typing import cast
 
 import pytest
 from pydantic import ValidationError
 
+from coleman.allocation import AllocationResult
 from coleman.artifacts import ArtifactWriter
 from coleman.benchmarks import (
     AllocationCase,
@@ -604,6 +606,57 @@ def test_true_native_cancellation_is_an_aborted_attempt_not_a_failed_exactness_c
     execution = BenchmarkExecution(environment=environment, max_new_invocations=0)
     with pytest.raises(ValueError, match="case budget"):
         run_benchmarks(small, checkpoint=corrupt, execution=execution)
+    data = json.loads(result.to_json())
+    data["failure"]["error_type"] = "native_deadline"
+    with pytest.raises(ValidationError, match="disable deadline"):
+        BenchmarkReport.model_validate(data)
+    history = json.loads(result.checkpoint().to_json())
+    history["prior_failures"][0]["error_type"] = "native_deadline"
+    with pytest.raises(ValidationError, match="disable deadline"):
+        BenchmarkCheckpoint.model_validate(history)
+
+
+@pytest.mark.parametrize("kind", ["coverage", "allocation"])
+def test_deadline_free_protocol_rejects_invented_deadline_results_and_serialized_observations(suite, environment, kind):
+    if kind == "coverage":
+        case = coverage_case(suite)
+        case = case.model_copy(update={"exact_methods": (), "limits": case.limits.model_copy(update={"max_work": 0})})
+        method = "branch_bound_v1"
+    else:
+        case = allocation_case(suite)
+        case = case.model_copy(
+            update={"require_exact": False, "limits": case.limits.model_copy(update={"max_work": 0})}
+        )
+        method = "enumerate_allocation_v1"
+    case = case.model_copy(update={"methods": (method,)})
+    request = BenchmarkSuite(schema_version=1, benchmark_id="deadline-free-contract-v1", cases=(case,), seeds=(11,))
+    execution = BenchmarkExecution(environment=environment)
+    valid = run_benchmarks(request, execution=execution)
+    assert valid.status == "complete"
+    native_partial = execute_native(case, method, 11)
+    invented = type(native_partial).model_validate(native_partial.model_copy(update={"termination_reason": "deadline"}))
+    if isinstance(case, CoverageCase) and isinstance(invented, CoverageResult):
+        gate = partial(check_coverage, case, invented)
+    else:
+        assert isinstance(case, AllocationCase)
+        assert isinstance(invented, AllocationResult)
+        gate = partial(check_allocation, case, invented)
+    with pytest.raises(ValueError, match="disable deadline"):
+        gate()
+
+    def fake_deadline(*_args):
+        return invented
+
+    with pytest.raises(BenchmarkRunError) as caught:
+        run_benchmarks(request, execution=execution, adapter=fake_deadline)
+    assert caught.value.report.status == "failed"
+    assert failed_attempt(caught.value.report).phase == "verification"
+    assert isinstance(caught.value.__cause__, ValueError)
+    data = json.loads(valid.to_json())
+    data["observations"][0]["mathematics"] = invented.to_json()
+    data["observations"][0]["mathematics_fingerprint"] = invented.fingerprint
+    with pytest.raises(ValidationError, match="disable deadline"):
+        BenchmarkReport.model_validate(data)
 
 
 def test_manifest_preflight_duplicate_ids_unbounded_protocols_and_bad_profile(suite):

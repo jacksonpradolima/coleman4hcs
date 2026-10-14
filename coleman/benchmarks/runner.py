@@ -13,7 +13,7 @@ from typing import Annotated, NoReturn, cast, overload
 from pydantic import Field
 
 from coleman.allocation import AllocationResult, select_allocation
-from coleman.benchmarks.contracts import AllocationCase, BenchmarkSuite, CoverageCase
+from coleman.benchmarks.contracts import AllocationCase, BenchmarkSuite, CoverageCase, verify_termination
 from coleman.benchmarks.gates import check_allocation, check_coverage, reference
 from coleman.benchmarks.report import (
     BenchmarkCheckpoint,
@@ -230,7 +230,8 @@ def _interrupted(case: Case, invocation: BenchmarkInvocation, measured: _Measure
     native = measured.value
     if not isinstance(native, (CoverageResult, AllocationResult)):
         return None
-    if native.termination_reason not in {"interrupted", "cancelled", "deadline"}:
+    verify_termination(native.termination_reason)
+    if native.termination_reason not in {"interrupted", "cancelled"}:
         return None
     if isinstance(case, CoverageCase) != isinstance(native, CoverageResult):
         raise TypeError("Interrupted adapter result kind differs from its case")

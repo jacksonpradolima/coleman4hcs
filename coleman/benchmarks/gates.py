@@ -9,7 +9,13 @@ from pydantic import Field
 
 from coleman.allocation import AllocationResult
 from coleman.allocation.forecasts import ActionEvaluation
-from coleman.benchmarks.contracts import AllocationCase, CoverageCase, ExactFraction, ReferenceAnswer
+from coleman.benchmarks.contracts import (
+    AllocationCase,
+    CoverageCase,
+    ExactFraction,
+    ReferenceAnswer,
+    verify_termination,
+)
 from coleman.benchmarks.oracles import (
     AllocationValue,
     CoverageValue,
@@ -55,6 +61,7 @@ def reference(case: CoverageCase | AllocationCase) -> ReferenceAnswer:
 
 def _coverage_request(case: CoverageCase, result: CoverageResult) -> None:
     """Bind source, requested methods and declared compute/exactness requirements."""
+    verify_termination(result.termination_reason)
     if result.problem != case.problem or result.limits != case.limits or result.method not in case.methods:
         raise ValueError("Coverage benchmark result changed frozen problem, method or budget")
     if result.work_used > case.limits.max_work:
@@ -131,6 +138,7 @@ def _coverage_evidence(status, row, bound):
 
 def _allocation_request(case: AllocationCase, result: AllocationResult) -> None:
     """Bind a fresh benchmark attempt to its source and work budget, excluding outside cached search."""
+    verify_termination(result.termination_reason)
     if result.problem != case.problem or result.limits != case.limits or result.checkpoint_input is not None:
         raise ValueError("Allocation benchmark changed frozen problem/budget or reused outside work")
     if result.work_used > case.limits.max_work:

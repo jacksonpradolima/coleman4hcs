@@ -98,6 +98,12 @@ def _protocol(methods: tuple[str, ...], deadline: float | None) -> None:
         raise ValueError("Deterministic benchmark protocols require deadline_seconds=None")
 
 
+def verify_termination(reason: str) -> None:
+    """Reject wall-clock termination under the version-1 deadline-free benchmark protocol."""
+    if reason == "deadline":
+        raise ValueError("Deterministic benchmark protocols disable deadline termination")
+
+
 BenchmarkCase = Annotated[CoverageCase | AllocationCase, Field(discriminator="kind")]
 
 
