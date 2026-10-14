@@ -207,7 +207,9 @@ contract without weakening conflict rules.
 unit, meaning, objective direction, declared lower bound, dataset fingerprint and
 evaluation fingerprint, and requires observed values. Incompatibility raises
 `ValueError`; an undeclared name raises `KeyError`. It performs no statistical
-analysis. Different candidate specs may share an evaluation context; the producer
+analysis. `require_compatible` checks the same metadata while permitting unknown
+values, for explicit insufficient-evidence reporting. Different candidate specs may
+share an evaluation context; the producer
 must fingerprint all relevant protocol definitions, grouping, data interpretation
 and comparison semantics. Seeds alone do not supply independent evidence.
 
