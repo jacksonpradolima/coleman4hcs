@@ -185,7 +185,7 @@ If this tool contributes to a project which leads to a scientific publication, I
 
 Coleman ships a **typed, library-first experiment system** with
 YAML configs, composable config packs, a sweep engine, and deterministic
-`run_id` hashing.  External projects can `pip install coleman` and
+`run_id` hashing.  External projects can install the [release wheel](#installation) and
 drive experiments programmatically **or** via the `coleman` CLI — no repo
 checkout required.
 
@@ -366,17 +366,21 @@ Each run persists:
 
 ## As a library (recommended for new projects)
 
-Install Coleman as a dependency in your project:
+Requires Python 3.14 or later in an activated virtual environment. Install the
+wheel published in this repository’s GitHub releases. These examples pin version
+3.6.1 and its published SHA-256 digest:
 
 ```bash
-pip install coleman
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 ```
 
 Or with optional extras:
 
 ```bash
-pip install coleman[telemetry]     # OpenTelemetry SDK
-pip install coleman[clickhouse]    # ClickHouse results sink
+# OpenTelemetry SDK
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
+# ClickHouse results sink
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -548,10 +552,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-pip install coleman[telemetry]
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 
 # ClickHouse results sink
-pip install coleman[clickhouse]
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 ```
 
 ## Querying results
@@ -614,7 +618,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install coleman[telemetry]
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list
@@ -674,7 +678,7 @@ coleman run --config run.yaml
 ```
 
 The ClickHouse extras are already installed in the DevContainer.  For local
-installs run `uv pip install coleman[clickhouse]` first.
+installs, follow the [optional extras](#optional-extras) instructions first.
 
 ## Tear down
 
@@ -4275,8 +4279,10 @@ environments.
 
 ## Quick Start
 
+With Python 3.14 or later in an activated environment, install the GitHub release wheel:
+
 ```bash
-pip install coleman
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 coleman run --config my-experiment.yaml
 ```
 
@@ -4380,7 +4386,7 @@ cd examples/observability
 docker compose up -d
 
 # Install telemetry extras
-uv pip install coleman[telemetry]
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 
 # Enable telemetry — use the telemetry/local pack in your run.yaml:
 #   packs:
@@ -4400,7 +4406,7 @@ coleman run --config run.yaml
 
 ```bash
 docker compose --profile clickhouse up -d
-pip install coleman[clickhouse]
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 ```
 
 ## Tear down
@@ -4729,7 +4735,7 @@ COLEMAN 3.6.1 strengthens the dependency and CI foundations behind reproducible 
 Requires Python 3.14 or later:
 
 ```sh
-pip install --upgrade coleman==3.6.1
+python -m pip install --upgrade "https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 ```
 
 For contributors, synchronize the updated lock and requested extras. Zensical and Marimo are updated to admit patched transitive dependencies. Native numerical dependency pins and decision/artifact semantics are preserved.
@@ -5120,10 +5126,11 @@ generalization needs protected evaluation and diversified-corpus evidence.
 ## Default run (no Docker required)
 
 Coleman is framework-first: the default installation works without any
-external services.
+external services. Use Python 3.14 or later in an activated virtual environment.
+Install this repository’s GitHub release wheel, pinned below with its SHA-256:
 
 ```bash
-pip install coleman
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 ```
 
 Use the library API or the `coleman` CLI to run experiments:
@@ -5207,10 +5214,10 @@ coleman run --config experiment.yaml
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-pip install coleman[telemetry]
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 
 # ClickHouse sink
-pip install coleman[clickhouse]
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 ```
 
 ## Optional observability stack
