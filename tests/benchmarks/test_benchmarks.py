@@ -1047,3 +1047,36 @@ def test_aborted_native_results_cannot_be_replayed_as_complete_observations(suit
     assert live.observations == ()
     assert failed_attempt(live).error_type == f"native_{reason}"
     assert failed_attempt(live).work_used == 0
+
+
+@pytest.mark.parametrize("phase", ["solver", "verification", "interrupted"])
+def test_failure_replay_cannot_erase_runtime_and_memory_of_a_measured_attempt(suite, small, environment, phase):
+    def faulty(*_args):
+        if phase == "solver":
+            raise RuntimeError("fixture")
+        if phase == "interrupted":
+            raise KeyboardInterrupt
+        return execute_native(allocation_case(suite), "enumerate_allocation_v1", 11)
+
+    execution = BenchmarkExecution(environment=environment)
+    if phase == "interrupted":
+        report = run_benchmarks(small, execution=execution, adapter=faulty)
+    else:
+        with pytest.raises(BenchmarkRunError) as caught:
+            run_benchmarks(small, execution=execution, adapter=faulty)
+        report = caught.value.report
+    attempt = failed_attempt(report)
+    assert attempt.phase == phase
+    assert attempt.elapsed_ns is not None
+    assert attempt.python_peak_bytes is not None
+    assert BenchmarkReport.from_json(report.to_json()) == report
+    data = json.loads(report.to_json())
+    data["failure"]["elapsed_ns"] = None
+    data["failure"]["python_peak_bytes"] = None
+    with pytest.raises(ValidationError, match="require measured runtime and memory"):
+        BenchmarkReport.model_validate(data)
+    history = json.loads(report.checkpoint().to_json())
+    history["prior_failures"][0]["elapsed_ns"] = None
+    history["prior_failures"][0]["python_peak_bytes"] = None
+    with pytest.raises(ValidationError, match="require measured runtime and memory"):
+        BenchmarkCheckpoint.model_validate(history)

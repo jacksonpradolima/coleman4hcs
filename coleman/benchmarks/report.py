@@ -131,6 +131,8 @@ class BenchmarkFailure(BenchmarkInvocation):
         """Keep missing instrumentation measurements paired rather than inventing zeros."""
         if (self.elapsed_ns is None) != (self.python_peak_bytes is None):
             raise ValueError("Failure measurements must both be present or unavailable")
+        if self.phase != "instrumentation" and self.elapsed_ns is None:
+            raise ValueError("Non-instrumentation failures require measured runtime and memory")
         if self.phase == "instrumentation" and (self.work_used != 0 or self.elapsed_ns is not None):
             raise ValueError("Rejected instrumentation must retain zero solver work and unavailable measurements")
         if self.phase in {"solver", "verification"} and self.work_used is not None:

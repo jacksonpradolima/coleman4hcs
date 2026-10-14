@@ -313,6 +313,9 @@ stable attempt indices and explicit aware availability timestamps. Unavailable
 future history is rejected before new work. Any known interrupted-work counter
 must fit its matched case's declared work budget, both in current reports and
 in resumed histories, including zero-work resumes.
+Solver, verification and interrupted failures require their measured runtime and
+Python peak bytes on replay; only an instrumentation rejection can leave both
+measurements unavailable.
 
 A chunk can be persisted after each complete invocation. Process death before that
 checkpoint may require repeating an invocation; cached timings are never called
