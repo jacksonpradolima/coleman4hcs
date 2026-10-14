@@ -15,7 +15,7 @@ from typing import Any
 
 import duckdb
 
-from coleman.results.sink_base import ResultsSink
+from coleman.results.domain_artifacts import LocalResultsSink
 
 _TABLE_NAME = "coleman_results"
 
@@ -103,7 +103,7 @@ def _top_k(order: Any, k: int | None) -> str:
     return json.dumps(order[:k], default=str)
 
 
-class DuckDBSink(ResultsSink):
+class DuckDBSink(LocalResultsSink):
     """DuckDB results sink.
 
     Parameters

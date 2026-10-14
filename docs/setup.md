@@ -121,3 +121,9 @@ GROUP BY reward_function;
 ```
 
 For a guided end-to-end walkthrough, see the official [workflow notebook](workflow.py).
+
+## Additive measurement artifacts
+
+The native result schemas remain unchanged. See [versioned domain results](domain-results.md)
+for the typed observation contract, Mermaid commit/recovery diagram and local-sink
+sidecars that join to CI decisions without replacing the runner or checkpoint store.

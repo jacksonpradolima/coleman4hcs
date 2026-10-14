@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -65,6 +66,39 @@ class ArtifactWriter:
             fh.flush()
             os.fsync(fh.fileno())
         os.replace(tmp, path)
+
+    def write_immutable(self, path: Path, content: str) -> None:
+        """Publish complete UTF-8 bytes once, with atomic create-if-absent.
+
+        Identical replay succeeds; conflicting bytes raise ``ValueError``.
+        A unique, fsynced temporary file is linked to the final name so concurrent
+        processes cannot overwrite a winner or expose a partially written record.
+        Temporary files are never completed artifacts. A crash after publication
+        is recovered by replay. Requires a local filesystem supporting hard links
+        and directory fsync; unsupported storage raises ``OSError``. No lock file
+        or in-memory duplicate index needs recovery. Parent-directory durability
+        across power loss is outside this process-interruption contract.
+        """
+        path.parent.mkdir(parents=True, exist_ok=True)
+        encoded = content.encode("utf-8")
+        fd, temporary = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(encoded)
+                stream.flush()
+                os.fsync(stream.fileno())
+            try:
+                os.link(temporary, path)
+            except FileExistsError:
+                if path.read_bytes() != encoded:
+                    raise ValueError(f"Conflicting immutable artifact: {path}") from None
+            directory = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+        finally:
+            Path(temporary).unlink(missing_ok=True)
 
     def write_csv_atomic(self, path: Path, rows: list[dict[str, Any]]) -> None:
         """Write row-oriented CSV payload atomically."""
