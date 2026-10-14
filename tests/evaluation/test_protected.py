@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 from concurrent.futures import ProcessPoolExecutor
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -678,8 +679,9 @@ def test_full_family_correction_and_intervals_include_all_predeclared_pairs(tmp_
     assert list(tmp_path.rglob("evaluation-reports/*.json")) == []
     for result in payload["results"]:
         result.update(adjusted_p_value=0.06, conclusion="inconclusive")
-    valid = FamilyReport.from_json(json.dumps(payload))
-    assert all(result.adjusted_p_value == pytest.approx(0.06) for result in valid.results)
+    serialized = json.dumps(payload)
+    with pytest.raises(ValidationError, match="statistics differ"):
+        FamilyReport.from_json(serialized)
 
 
 def test_metamorphic_unit_scale_translation_and_row_order(tmp_path):
@@ -913,16 +915,77 @@ def test_relabeling_one_raw_record_cannot_create_independent_units(tmp_path):
     report = evaluate(frozen, report_audit, lambda: original, actor="ci")
     payload = json.loads(report.to_json())
     candidate_inputs = [item for item in payload["inputs"] if item["candidate_id"] == "A"]
-    candidate_inputs[1]["record_key"] = candidate_inputs[0]["record_key"]
+    for field in ("record_key", "record_digest", "record"):
+        candidate_inputs[1][field] = candidate_inputs[0][field]
     serialized = json.dumps(payload)
     with pytest.raises(ValidationError, match="Repeated raw result identity"):
         FamilyReport.from_json(serialized)
     unchecked_inputs = list(report.inputs)
     first, second = [index for index, item in enumerate(unchecked_inputs) if item.candidate_id == "A"][:2]
     unchecked_inputs[second] = unchecked_inputs[second].model_copy(
-        update={"record_key": unchecked_inputs[first].record_key}
+        update={
+            "record_key": unchecked_inputs[first].record_key,
+            "record_digest": unchecked_inputs[first].record_digest,
+            "record": unchecked_inputs[first].record,
+        }
     )
     unchecked_report = report.model_copy(update={"inputs": tuple(unchecked_inputs)})
     with pytest.raises(ValidationError, match="Repeated raw result identity"):
         report_audit.save_report(unchecked_report)
     assert list(tmp_path.rglob("evaluation-reports/*.json")) == []
+
+
+def test_claimed_statistics_are_recomputed_from_digest_checked_raw_records(tmp_path):
+    frozen = frozen_contract()
+    audit = EvaluationAudit(tmp_path)
+    rows = observations(frozen)
+    report = evaluate(frozen, audit, lambda: rows, actor="ci")
+    forgery = dict(
+        raw_mean_difference=100.0,
+        improvement=100.0,
+        ci_lower=99.0,
+        ci_upper=101.0,
+        p_value=0.0,
+        adjusted_p_value=0.0,
+        conclusion="evidence_of_benefit",
+    )
+    payload = json.loads(report.to_json())
+    payload["results"][0].update(forgery)
+    serialized = json.dumps(payload)
+    with pytest.raises(ValidationError, match="statistics differ"):
+        FamilyReport.from_json(serialized)
+    unchecked = report.model_copy(update={"results": (report.results[0].model_copy(update=forgery),)})
+    with pytest.raises(ValidationError, match="statistics differ"):
+        audit.save_report(unchecked)
+    assert list(tmp_path.rglob("evaluation-reports/*.json")) == []
+    payload = json.loads(report.to_json())
+    payload["inputs"][0]["record"]["measurements"][0]["value"] = 100.0
+    serialized = json.dumps(payload)
+    with pytest.raises(ValidationError, match="referenced identity or digest"):
+        FamilyReport.from_json(serialized)
+
+
+def test_derived_availability_is_completion_after_the_loader_and_inference(tmp_path):
+    frozen = frozen_contract()
+    loaded_at = None
+
+    def load():
+        nonlocal loaded_at
+        rows = observations(frozen)
+        loaded_at = datetime.now(UTC)
+        return rows
+
+    report = evaluate(frozen, EvaluationAudit(tmp_path), load, actor="ci")
+    assert loaded_at is not None
+    assert report.completed_at >= loaded_at > report.access.requested_at
+    assert all(record.available_at == report.completed_at for record in report.domain_records("ci"))
+    payload = json.loads(report.to_json())
+    payload["completed_at"] = "2026-01-01T00:00:00Z"
+    serialized = json.dumps(payload)
+    with pytest.raises(ValidationError, match="completion predates"):
+        FamilyReport.from_json(serialized)
+    payload["access"]["requested_at"] = "2026-01-04T00:00:00Z"
+    payload["completed_at"] = "2026-01-04T12:00:00Z"
+    serialized = json.dumps(payload)
+    with pytest.raises(ValidationError, match="completion predates"):
+        FamilyReport.from_json(serialized)

@@ -1,112 +1,20 @@
-"""Audited paired comparisons on independent units with explicit normal assumptions."""
+"""Audited paired comparisons with verified records and explicit result availability."""
 
 from __future__ import annotations
 
 import math
 from collections.abc import Callable
-from typing import Annotated, Any, Literal, NamedTuple, Self, cast
+from datetime import UTC, datetime
+from typing import Self
 
-import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from scipy import stats
+from pydantic import model_validator
 
 from coleman.evaluation.protected.audit import AccessReceipt, EvaluationAudit
-from coleman.evaluation.protected.contracts import (
-    ComparisonHypothesis,
-    EvaluationContract,
-    EvaluationProtocol,
-    FrozenEvaluation,
-)
-from coleman.evaluation.protected.temporal import TemporalObservation
-from coleman.results.domain import (
-    DomainRecord,
-    Fingerprint,
-    Finite,
-    Identifier,
-    Measurement,
-    ResultProvenance,
-    fingerprint,
-)
-
-
-class PairedObservation(BaseModel):  # pylint: disable=too-few-public-methods
-    """One candidate's raw result for a declared independent group/unit.
-
-    ``metadata.group_id`` is the independent unit, not a seed/worker identity.
-    Exactly one observation per candidate/unit is accepted; repeated seed rows
-    require a predeclared upstream aggregation and never count as new units.
-    Outcome availability must agree with the versioned result record.
-    """
-
-    model_config = ConfigDict(extra="forbid", frozen=True, revalidate_instances="always")
-    candidate_id: Identifier
-    metadata: TemporalObservation
-    record: DomainRecord
-
-    @model_validator(mode="after")
-    def _availability(self) -> Self:
-        """Prevent metadata from making a later result appear available sooner."""
-        if self.metadata.available_at != self.record.available_at:
-            raise ValueError("Metadata and result availability disagree")
-        return self
-
-
-class ComparisonResult(BaseModel):  # pylint: disable=too-few-public-methods
-    """Signed estimates/uncertainty in raw metric units, with conservative conclusions.
-
-    Raw difference is candidate minus baseline. Improvement reverses that sign
-    for minimization. Family-wise intervals use Bonferroni; p-values use Holm.
-    Insufficient, incomplete, degenerate or numerically unstable data returns null
-    uncertainty rather than fabricated finite evidence. Reused holdout estimates
-    are visible but never classified as confirmatory benefit/harm.
-    """
-
-    model_config = ConfigDict(extra="forbid", frozen=True, revalidate_instances="always")
-    hypothesis_id: Identifier
-    independent_units: tuple[Identifier, ...]
-    observed_pairs: Annotated[int, Field(strict=True, ge=0)]
-    raw_mean_difference: Finite | None
-    improvement: Finite | None
-    ci_lower: Finite | None
-    ci_upper: Finite | None
-    p_value: Annotated[Finite, Field(ge=0, le=1)] | None
-    adjusted_p_value: Annotated[Finite, Field(ge=0, le=1)] | None
-    conclusion: Literal["evidence_of_benefit", "evidence_of_harm", "inconclusive", "insufficient_evidence"]
-    reason: Identifier
-
-    @field_validator("independent_units")
-    @classmethod
-    def _ordered_units(cls, values: tuple[str, ...]) -> tuple[str, ...]:
-        """Canonicalize unit declarations without creating extra observations."""
-        return tuple(sorted(values))
-
-    @model_validator(mode="after")
-    def _shape(self) -> Self:
-        """Validate unit counts and interval completeness independently of claims."""
-        result = self
-        if result.observed_pairs > len(result.independent_units):
-            raise ValueError("Observed pairs exceed independent units")
-        if len(set(result.independent_units)) != len(result.independent_units):
-            raise ValueError("Repeated independent unit in report")
-        if (result.ci_lower is None) != (result.ci_upper is None):
-            raise ValueError("An interval needs both finite endpoints")
-        if result.ci_lower is not None and result.ci_upper is not None and result.ci_lower > result.ci_upper:
-            raise ValueError("Reversed comparison interval")
-        if (result.raw_mean_difference is None) != (result.improvement is None):
-            raise ValueError("Raw difference and improvement must be jointly available")
-        if result.adjusted_p_value is not None and (result.p_value is None or result.adjusted_p_value < result.p_value):
-            raise ValueError("Adjusted p-value cannot be below its raw p-value")
-        return self
-
-
-class ObservationReference(BaseModel):  # pylint: disable=too-few-public-methods
-    """Immutable join/digest for one raw result, retaining point-in-time metadata."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True, revalidate_instances="always")
-    candidate_id: Identifier
-    metadata: TemporalObservation
-    record_key: tuple[Identifier, Identifier, Identifier, Identifier]
-    record_digest: Fingerprint
+from coleman.evaluation.protected.contracts import ComparisonHypothesis, EvaluationContract, FrozenEvaluation
+from coleman.evaluation.protected.inference import _compute_results, _validate_observations, holm_adjust
+from coleman.evaluation.protected.observations import ComparisonResult, ObservationReference, PairedObservation
+from coleman.evaluation.protected.temporal import Timestamp
+from coleman.results.domain import DomainRecord, Measurement, ResultProvenance, fingerprint
 
 
 class FamilyReport(EvaluationContract):
@@ -115,12 +23,16 @@ class FamilyReport(EvaluationContract):
     Receipt history determines confirmatory eligibility, independently of point
     estimates. This report never activates a policy. The frozen protocol declares
     the metric units, practical threshold, independent-unit meaning and assumptions.
+    Digest-checked raw records are embedded and statistics recomputed on validation.
+    ``completed_at`` is UTC calculation/source-assembly completion, after access
+    and input availability; derived records retain this availability timestamp.
     """
 
     frozen: FrozenEvaluation
     access: AccessReceipt
     results: tuple[ComparisonResult, ...]
     inputs: tuple[ObservationReference, ...]
+    completed_at: Timestamp
 
     @model_validator(mode="after")
     def _identity(self) -> Self:
@@ -233,6 +145,29 @@ class FamilyReport(EvaluationContract):
         if result.conclusion == "evidence_of_harm" and result.ci_upper >= -protocol.practical_effect:
             raise ValueError("Harm does not exceed the practical threshold")
 
+    @model_validator(mode="after")
+    def _verified_statistics(self) -> Self:
+        """Recompute every estimate from digest-checked embedded records, without I/O.
+
+        Numerical comparisons allow relative 1e-12/absolute 1e-15 floating-point
+        variation across compatible numerical libraries. Discrete conclusions,
+        reasons and counts must match exactly; threshold crossings fail closed.
+        Completion cannot predate the access or any consumed raw outcome.
+        """
+        if self.completed_at < self.access.requested_at or any(
+            self.completed_at < reference.record.available_at for reference in self.inputs
+        ):
+            raise ValueError("Report completion predates access or input availability")
+        rows = tuple(
+            PairedObservation(candidate_id=reference.candidate_id, metadata=reference.metadata, record=reference.record)
+            for reference in self.inputs
+        )
+        observations = _validate_observations(self.frozen, rows)
+        expected = _compute_results(self.frozen, observations, self.access)
+        for actual, recomputed in zip(self.results, expected, strict=True):
+            _require_matching_statistics(actual, recomputed)
+        return self
+
     @property
     def confirmatory_eligible(self) -> bool:
         """Return whether this API recorded the first protected confirmatory access."""
@@ -300,7 +235,7 @@ class FamilyReport(EvaluationContract):
                     execution_id=validated.frozen.fingerprint,
                     decision_id=fingerprint([validated.access.sequence, result.hypothesis_id]),
                     data_fingerprint=validated.frozen.data_fingerprint,
-                    available_at=validated.access.requested_at,
+                    available_at=validated.completed_at,
                     provenance=ResultProvenance(
                         producer="coleman.protected-evaluation",
                         producer_version="1",
@@ -313,181 +248,20 @@ class FamilyReport(EvaluationContract):
         return tuple(output)
 
 
-def holm_adjust(p_values: tuple[float, ...]) -> tuple[float, ...]:
-    """Return Holm-Bonferroni adjusted p-values controlling family-wise error.
-
-    Uses all predeclared hypotheses, with unavailable tests supplied as p=1 by
-    the evaluator. Finite values in [0,1] are required. Sorting is internal and
-    original ordering is preserved; empty input returns an empty tuple. No RNG,
-    independence-between-hypotheses or additional optional dependency is needed.
-    """
-    if any(
-        isinstance(value, bool)
-        or not isinstance(value, int | float)
-        or not math.isfinite(value)
-        or value < 0
-        or value > 1
-        for value in p_values
-    ):
-        raise ValueError("P-values must be finite and within [0,1]")
-    adjusted = [0.0] * len(p_values)
-    running = 0.0
-    for rank, index in enumerate(sorted(range(len(p_values)), key=lambda index: p_values[index])):
-        running = max(running, min(1.0, (len(p_values) - rank) * p_values[index]))
-        adjusted[index] = running
-    return tuple(adjusted)
-
-
-def _estimate(
-    frozen: FrozenEvaluation,
-    hypothesis: ComparisonHypothesis,
-    observations: dict[str, dict[str, PairedObservation]],
-) -> ComparisonResult:
-    """Align independent units and estimate one pair without complete-case selection."""
-    left = observations[hypothesis.candidate_id]
-    right = observations[hypothesis.baseline_id]
-    if set(left) != set(right):
-        raise ValueError("Candidates must have the same paired independent units")
-    units = tuple(sorted(left))
-    differences = []
-    for unit in units:
-        if left[unit].metadata != right[unit].metadata:
-            raise ValueError("Paired unit metadata must agree across candidates")
-        first = left[unit].record.measurement(frozen.protocol.metric_name)
-        second = right[unit].record.measurement(frozen.protocol.metric_name)
-        left[unit].record.require_compatible(right[unit].record, frozen.protocol.metric_name)
-        if first.value is not None and second.value is not None:
-            difference = first.value - second.value
-            if not math.isfinite(difference):
-                raise ValueError("Paired difference exceeds finite numeric range")
-            differences.append(difference)
-    summary = _summarize(tuple(differences), frozen.protocol, len(frozen.comparison_family), len(units))
-    return ComparisonResult(
-        hypothesis_id=hypothesis.hypothesis_id,
-        independent_units=units,
-        observed_pairs=len(differences),
-        raw_mean_difference=summary.mean,
-        improvement=summary.improvement,
-        ci_lower=summary.low,
-        ci_upper=summary.high,
-        p_value=summary.p_value,
-        adjusted_p_value=None,
-        conclusion="insufficient_evidence",
-        reason=summary.reason,
-    )
-
-
-class _Statistics(NamedTuple):
-    """Finite scalar summary in metric units; unavailable uncertainty remains null."""
-
-    mean: float | None = None
-    improvement: float | None = None
-    low: float | None = None
-    high: float | None = None
-    p_value: float | None = None
-    reason: str = "too_few_independent_units"
-
-
-def _summarize(
-    differences: tuple[float, ...],
-    protocol: EvaluationProtocol,
-    family_size: int,
-    total_units: int,
-) -> _Statistics:
-    """Estimate scaled paired moments with Bonferroni simultaneous t intervals."""
-    if len(differences) != total_units:
-        return _Statistics(reason="incomplete_outcomes")
-    if not differences:
-        return _Statistics()
-    scale = max(abs(value) for value in differences) or 1.0
-    normalized = np.asarray(differences, dtype=float) / scale
-    mean = float(np.mean(normalized)) * scale
-    improvement = mean if protocol.direction == "maximize" else -mean
-    if len(differences) < protocol.minimum_units:
-        return _Statistics(mean=mean, improvement=improvement)
-    if len(set(normalized.tolist())) == 1:
-        return _Statistics(mean=mean, improvement=improvement, reason="degenerate_difference_variance")
-    test = stats.ttest_1samp(normalized if protocol.direction == "maximize" else -normalized, popmean=0.0)
-    interval = test.confidence_interval(confidence_level=1 - protocol.alpha / family_size)
-    low, high, p_value = float(interval.low) * scale, float(interval.high) * scale, float(cast(Any, test).pvalue)
-    if not all(math.isfinite(value) for value in (low, high, p_value)):
-        return _Statistics(mean=mean, improvement=improvement, reason="numerically_unstable_uncertainty")
-    return _Statistics(mean=mean, improvement=improvement, low=low, high=high, p_value=p_value, reason="estimated")
-
-
-def _validate_observations(
-    frozen: FrozenEvaluation,
-    rows: tuple[PairedObservation, ...],
-) -> dict[str, dict[str, PairedObservation]]:
-    """Check full frozen provenance and temporal eligibility before calculating values."""
-    by_candidate: dict[str, dict[str, PairedObservation]] = {
-        candidate.candidate_id: {} for candidate in frozen.candidates
-    }
-    configuration_digests = {
-        candidate.candidate_id: candidate.configuration_fingerprint for candidate in frozen.candidates
-    }
-    evaluation_digest = frozen.fingerprint
-    metadata: dict[tuple[str, str], TemporalObservation] = {}
-    record_keys: set[tuple[str, tuple[str, str, str, str]]] = set()
-    for raw in rows:
-        row = PairedObservation.model_validate(raw)
-        if row.candidate_id not in configuration_digests:
-            raise ValueError("Observation candidate is not frozen")
-        _validate_record(frozen, row, evaluation_digest, configuration_digests[row.candidate_id])
-        key = row.metadata.observation_id, row.metadata.revision_id
-        previous = metadata.setdefault(key, row.metadata)
-        if previous != row.metadata:
-            raise ValueError("Observation revision metadata differs across candidates")
-        unit = row.metadata.group_id
-        if unit in by_candidate[row.candidate_id]:
-            raise ValueError("Repeated candidate/unit: seeds or revisions are not independent evidence")
-        record_key = row.candidate_id, row.record.logical_key
-        if record_key in record_keys:
-            raise ValueError("Repeated raw result identity across independent units")
-        record_keys.add(record_key)
-        by_candidate[row.candidate_id][unit] = row
-    frozen.plan.split(tuple(metadata.values()))
-    return by_candidate
-
-
-def _validate_record(
-    frozen: FrozenEvaluation, row: PairedObservation, evaluation_digest: str, configuration_digest: str
-) -> None:
-    """Validate one result against cached frozen identities and the temporal metric contract."""
-    if row.record.data_fingerprint != frozen.data_fingerprint:
-        raise ValueError("Observation dataset differs from frozen data")
-    if row.record.provenance.evaluation_fingerprint != evaluation_digest:
-        raise ValueError("Observation evaluation context was not frozen")
-    if row.record.provenance.spec_fingerprint != configuration_digest:
-        raise ValueError("Observation candidate configuration differs from freeze")
-    decision = frozen.plan.decide(row.metadata)
-    if decision.partition != "test" or not decision.eligible:
-        raise ValueError(f"Ineligible protected observation: {decision.reason}")
-    measurement = row.record.measurement(frozen.protocol.metric_name)
-    if (measurement.unit, measurement.meaning, measurement.direction) != (
-        frozen.protocol.unit,
-        frozen.protocol.meaning,
-        frozen.protocol.direction,
-    ):
-        raise ValueError("Measurement differs from the frozen metric contract")
-
-
-def _conclude(
-    frozen: FrozenEvaluation, result: ComparisonResult, receipt: AccessReceipt, corrected: float
-) -> ComparisonResult:
-    """Apply full-family corrected evidence only to a first protected access."""
-    payload = result.model_dump()
-    if result.p_value is not None and result.ci_lower is not None and result.ci_upper is not None:
-        payload["adjusted_p_value"] = corrected
-        payload["conclusion"] = "inconclusive"
-        if receipt.prior_test_accesses:
-            payload["reason"] = "reused_holdout_no_confirmatory_claim"
-        elif corrected <= frozen.protocol.alpha:
-            if result.ci_lower > frozen.protocol.practical_effect:
-                payload["conclusion"] = "evidence_of_benefit"
-            elif result.ci_upper < -frozen.protocol.practical_effect:
-                payload["conclusion"] = "evidence_of_harm"
-    return ComparisonResult.model_validate(payload)
+def _require_matching_statistics(actual: ComparisonResult, expected: ComparisonResult) -> None:
+    """Reject statistics inconsistent with raw records and the frozen inference method."""
+    discrete_fields = ("hypothesis_id", "independent_units", "observed_pairs", "conclusion", "reason")
+    if any(getattr(actual, field) != getattr(expected, field) for field in discrete_fields):
+        raise ValueError("Report statistics differ from recomputed raw-record evidence")
+    numeric_fields = ("raw_mean_difference", "improvement", "ci_lower", "ci_upper", "p_value", "adjusted_p_value")
+    for field in numeric_fields:
+        first, second = getattr(actual, field), getattr(expected, field)
+        if first is None or second is None:
+            matches = first is None and second is None
+        else:
+            matches = math.isclose(first, second, rel_tol=1e-12, abs_tol=1e-15)
+        if not matches:
+            raise ValueError("Report statistics differ from recomputed raw-record evidence")
 
 
 def evaluate(
@@ -513,19 +287,23 @@ def evaluate(
         raise NotImplementedError("Paired t inference requires independent units and declared normal differences")
     receipt = audit.access(frozen, partition="test", purpose="confirmatory", actor=actor)
     observations = _validate_observations(frozen, load_observations())
-    results = [_estimate(frozen, hypothesis, observations) for hypothesis in frozen.comparison_family]
-    adjusted = holm_adjust(tuple(result.p_value if result.p_value is not None else 1.0 for result in results))
-    updated = tuple(
-        _conclude(frozen, result, receipt, corrected) for result, corrected in zip(results, adjusted, strict=True)
-    )
+    updated = _compute_results(frozen, observations, receipt)
     references = tuple(
         ObservationReference(
             candidate_id=candidate_id,
             metadata=row.metadata,
             record_key=row.record.logical_key,
             record_digest=row.record.digest,
+            record=row.record,
         )
         for candidate_id, units in sorted(observations.items())
         for _, row in sorted(units.items())
     )
-    return FamilyReport(schema_version=1, frozen=frozen, access=receipt, results=updated, inputs=references)
+    return FamilyReport(
+        schema_version=1,
+        frozen=frozen,
+        access=receipt,
+        results=updated,
+        inputs=references,
+        completed_at=datetime.now(UTC),
+    )

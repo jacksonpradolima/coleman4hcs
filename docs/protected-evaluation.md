@@ -122,7 +122,13 @@ confirmatory claims, follow the protocol-defined sign (relative tolerance `1e-12
 zero absolute tolerance) and lie within their reported interval. Report validation
 recomputes Holm corrections from the complete frozen raw p-value family (unavailable
 tests count as p=1); stored adjusted values must match that deterministic calculation
-exactly. Failed evaluation leaves the attempt and creates no completed report. Replaying the same report/sink publication is idempotent.
+exactly. Every report embeds its versioned raw records and verifies their logical
+keys and content digests. Reading or persisting a report recomputes the complete
+frozen method from those records. Scalar agreement permits relative `1e-12` and
+absolute `1e-15` numerical variation across compatible libraries; counts, reasons
+and conclusions must agree exactly, so a threshold crossing fails closed.
+Failed evaluation leaves the attempt and creates no completed report. Replaying
+the same report/sink publication is idempotent.
 
 ```mermaid
 flowchart TD
@@ -136,7 +142,7 @@ flowchart TD
     Records --> Load
     Load --> Check[Unit, provenance, pairing and temporal validation]
     Check --> Compare[Paired effects, Holm p-values, simultaneous intervals]
-    Compare --> Report[Versioned report with raw-input keys and digests]
+    Compare --> Report[Versioned report with embedded raw records, keys and digests]
     Report --> Artifacts[Existing ArtifactWriter, local sinks and manifest]
 ```
 
@@ -187,8 +193,12 @@ receipt's `prior_test_accesses`. First recorded access means first **within the
 complete declared audit history**, not proof that nobody ever saw those data.
 
 Reports contain the complete freeze, access receipt, independent unit IDs, estimates,
-conclusions and each raw record's logical key/content digest plus temporal metadata.
-Use these references to verify results against immutable sink records; reserve a
+conclusions and each embedded raw record's logical key/content digest plus temporal
+metadata. The required UTC `completed_at` records when calculation and source
+reference assembly finish, after the protected loader and inference. It cannot
+predate the access receipt or consumed outcomes. Exported comparison records use
+this completion time as `available_at`, never the earlier access request time.
+Use the embedded records to verify results against immutable sink records; reserve a
 test/verification access before inspecting protected raw outcomes again.
 `FamilyReport.domain_records(run_id)` exports typed #251 measurements with explicit
 units/signs/unavailable states and no synthetic learning reward. The full report
@@ -228,6 +238,10 @@ Version 1 intentionally excludes serial/block/cluster inference, robust/nonparam
 intervals, sequential testing/alpha spending, unknown external state verification,
 remote artifact transactions and policy activation. Access-history scanning is
 linear in scope history, and contention retries are bounded at 1000 publications.
+Reports retain the complete consumed record payload and recompute estimates on
+validation; their size and verification cost grow with the paired input. Record
+hashes and recomputation establish internal consistency, not authenticity of an
+externally supplied dataset or proof of independent sampling.
 Keep confirmatory access scarce and predeclared. Larger benchmark/corpus methodology
 and mathematical/performance validation remain separate roadmap work.
 
