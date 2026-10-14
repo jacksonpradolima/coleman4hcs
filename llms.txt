@@ -2552,6 +2552,46 @@ runs outside the checkout root and preserves JSON/Markdown evidence, including
 failed reports. Ordinary correctness CI has no wall-clock pass/fail threshold.
 No calibrated hardware-specific regression threshold is supplied in this version.
 
+### Committed observed comparison
+
+The repository includes a [JSON observation](https://github.com/jacksonpradolima/coleman/blob/release/4.0/examples/decision-benchmarks/observations/benchmark-reports/b8c35d14627d94f1c871203e5f9ea25083214dd2f611543f8c3c0dbca85c45a4.json)
+and its [human report](https://github.com/jacksonpradolima/coleman/blob/release/4.0/examples/decision-benchmarks/observations/benchmark-reports/b8c35d14627d94f1c871203e5f9ea25083214dd2f611543f8c3c0dbca85c45a4.md).
+These are actual measurements from a noneditable base wheel built at
+`38f94a9d65fe59605e3309a2c0ef2b45a38134e2`, running outside the checkout.
+The self-contained suite fixes the weighted-overlap fixture, both coverage methods,
+labels `[11,11,29]`, no deadline and a 100,000-unit per-attempt cap. Both methods
+choose A,C with objective 1; greedy uses 6 counter units and branch search 13.
+The report records individual nanoseconds and Python peak bytes, rather than an
+aggregate winner or inferred confidence interval. Six calls on one synthetic
+instance and one environment do not establish a general performance advantage.
+
+To repeat the exact protocol, obtain that JSON artifact from the public repository
+and run with the installed package from its containing workspace:
+
+```python
+from pathlib import Path
+from coleman.artifacts import ArtifactWriter
+from coleman.benchmarks import (
+    BenchmarkExecution, BenchmarkReport, collect_environment,
+    publish_benchmark_report, run_benchmarks,
+)
+
+source = next(Path(".").glob("b8c35d14627d94f1c871203e5f9ea25083214dd2f611543f8c3c0dbca85c45a4.json"))
+previous = BenchmarkReport.from_json(source.read_bytes())
+observed = run_benchmarks(
+    previous.suite,
+    execution=BenchmarkExecution(environment=collect_environment()),
+)
+assert observed.mathematical_identity == previous.mathematical_identity
+publish_benchmark_report(observed, ArtifactWriter(Path("artifacts")))
+```
+
+Supply actual source metadata when known. Unknown metadata stays null; copying
+the earlier environment onto a new execution would falsely attribute measurements.
+The versioned golden test fixtures use explicitly synthetic metadata and zero
+placeholder timings; they are serialization fixtures, separate from this measured
+observation.
+
 ## Interruptions, failed attempts and checkpoints
 
 ```python
