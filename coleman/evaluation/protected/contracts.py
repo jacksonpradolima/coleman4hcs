@@ -9,33 +9,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from coleman.evaluation.protected.temporal import TemporalPlan
 from coleman.results.domain import Fingerprint, Finite, Identifier, canonical_json, decode_json, fingerprint
+from coleman.results.versioned import VersionedContract
 
 
-class EvaluationContract(BaseModel):
-    """Strict immutable contract base with fail-closed v1 artifact reading.
-
-    Required integer schema version 1 rejects missing, legacy and future versions.
-    Serialization revalidates unchecked Pydantic instances before JSON conversion.
-    No files are read or written by these models.
-    """
-
-    model_config = ConfigDict(extra="forbid", frozen=True, revalidate_instances="always")
-    schema_version: Annotated[int, Field(strict=True, ge=1, le=1)]
-
-    def to_json(self) -> str:
-        """Return deterministic finite JSON, revalidating nested contracts first."""
-        validated = type(self).model_validate(self)
-        return canonical_json(validated.model_dump(mode="json"))
-
-    @classmethod
-    def from_json(cls, payload: str | bytes) -> Self:
-        """Reject duplicate keys and unsupported versions, without migrating artifacts."""
-        return cls.model_validate(decode_json(payload))
-
-    @property
-    def fingerprint(self) -> str:
-        """Hash the complete versioned contract, independent of Python hash/ordering."""
-        return fingerprint(json.loads(self.to_json()))
+class EvaluationContract(VersionedContract):
+    """Compatibility name for protected evaluation's shared strict v1 JSON contract."""
 
 
 class FrozenCandidate(BaseModel):  # pylint: disable=too-few-public-methods

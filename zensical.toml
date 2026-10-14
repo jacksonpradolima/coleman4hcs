@@ -20,6 +20,7 @@ nav = [
   { "Extensibility & Parallelism" = "extensibility.md" },
   { "Versioned Domain Results" = "domain-results.md" },
   { "Protected Evaluation" = "protected-evaluation.md" },
+  { "Finite Coverage Selection" = "finite-coverage.md" },
   { "Configuration" = "configuration.md" },
   { "Setup & Architecture" = "setup.md" },
   { "Code Cost Evaluation" = "code-cost.md" },
