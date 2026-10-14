@@ -143,6 +143,7 @@ class FamilyReport(EvaluationContract):
     def _input_references(self) -> dict[tuple[str, str], ObservationReference]:
         """Index unique, temporally eligible frozen candidate/unit references."""
         references: dict[tuple[str, str], ObservationReference] = {}
+        record_keys: set[tuple[str, tuple[str, str, str, str]]] = set()
         for reference in self.inputs:
             self.frozen.candidate(reference.candidate_id)
             key = reference.candidate_id, reference.metadata.group_id
@@ -151,6 +152,10 @@ class FamilyReport(EvaluationContract):
             decision = self.frozen.plan.decide(reference.metadata)
             if decision.partition != "test" or not decision.eligible:
                 raise ValueError("Ineligible report input metadata")
+            record_key = reference.candidate_id, reference.record_key
+            if record_key in record_keys:
+                raise ValueError("Repeated raw result identity across independent units")
+            record_keys.add(record_key)
             references[key] = reference
         return references
 
@@ -423,6 +428,7 @@ def _validate_observations(
     }
     evaluation_digest = frozen.fingerprint
     metadata: dict[tuple[str, str], TemporalObservation] = {}
+    record_keys: set[tuple[str, tuple[str, str, str, str]]] = set()
     for raw in rows:
         row = PairedObservation.model_validate(raw)
         if row.candidate_id not in configuration_digests:
@@ -435,6 +441,10 @@ def _validate_observations(
         unit = row.metadata.group_id
         if unit in by_candidate[row.candidate_id]:
             raise ValueError("Repeated candidate/unit: seeds or revisions are not independent evidence")
+        record_key = row.candidate_id, row.record.logical_key
+        if record_key in record_keys:
+            raise ValueError("Repeated raw result identity across independent units")
+        record_keys.add(record_key)
         by_candidate[row.candidate_id][unit] = row
     frozen.plan.split(tuple(metadata.values()))
     return by_candidate

@@ -145,7 +145,9 @@ flowchart TD
 `PairedObservation` links a candidate ID, `TemporalObservation` and `DomainRecord`.
 The metadata's group is the independent unit. Exactly one result per candidate/unit
 is accepted, with the same metadata across the pair. Repeated seeds/revisions on
-one unit raise `ValueError`; use a predeclared upstream aggregation if replicates
+one unit raise `ValueError`. Reusing a raw record logical key for multiple units
+also fails, even if metadata labels or content digests differ; use a predeclared
+upstream aggregation if replicates
 are required. The evaluator verifies frozen dataset/configuration/context
 fingerprints, observed availability and metric units/meaning/objective before
 calculating a comparison. Unpaired units and incompatible measurements fail.

@@ -894,3 +894,35 @@ def test_confirmatory_report_requires_coherent_point_estimates_before_persistenc
     with pytest.raises(ValidationError):
         audit.save_report(unchecked_report)
     assert list(tmp_path.rglob("evaluation-reports/*.json")) == []
+
+
+def test_relabeling_one_raw_record_cannot_create_independent_units(tmp_path):
+    frozen = frozen_contract()
+    original = observations(frozen)
+    rows = list(original)
+    for row in original[:2]:
+        payload = row.model_dump(mode="json")
+        payload["metadata"].update(group_id="duplicate-group", observation_id="duplicate-build")
+        rows.append(PairedObservation.model_validate(payload))
+    duplicated = tuple(rows)
+    audit = EvaluationAudit(tmp_path / "duplicate-evaluation")
+    with pytest.raises(ValueError, match="Repeated raw result identity"):
+        evaluate(frozen, audit, lambda: duplicated, actor="ci")
+    assert len(audit.history(frozen.protocol.holdout_id)) == 1
+    report_audit = EvaluationAudit(tmp_path / "duplicate-report")
+    report = evaluate(frozen, report_audit, lambda: original, actor="ci")
+    payload = json.loads(report.to_json())
+    candidate_inputs = [item for item in payload["inputs"] if item["candidate_id"] == "A"]
+    candidate_inputs[1]["record_key"] = candidate_inputs[0]["record_key"]
+    serialized = json.dumps(payload)
+    with pytest.raises(ValidationError, match="Repeated raw result identity"):
+        FamilyReport.from_json(serialized)
+    unchecked_inputs = list(report.inputs)
+    first, second = [index for index, item in enumerate(unchecked_inputs) if item.candidate_id == "A"][:2]
+    unchecked_inputs[second] = unchecked_inputs[second].model_copy(
+        update={"record_key": unchecked_inputs[first].record_key}
+    )
+    unchecked_report = report.model_copy(update={"inputs": tuple(unchecked_inputs)})
+    with pytest.raises(ValidationError, match="Repeated raw result identity"):
+        report_audit.save_report(unchecked_report)
+    assert list(tmp_path.rglob("evaluation-reports/*.json")) == []
