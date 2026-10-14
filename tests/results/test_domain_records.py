@@ -56,8 +56,9 @@ def test_round_trip_replay_query_and_conflict(tmp_path, sink_cls):
         assert len(list(sink.domain_records())) == 1
         assert result.measurement("net_value").value == -2.0
         assert result.learning_reward.value == 0.25
+        conflict = altered_record(available_at="2026-01-03T12:00:00Z")
         with pytest.raises(ValueError, match="Conflicting"):
-            sink.write_domain_record(altered_record(available_at="2026-01-03T12:00:00Z"))
+            sink.write_domain_record(conflict)
     finally:
         sink.close()
     reopened = sink_cls(out_dir=str(tmp_path))
@@ -86,35 +87,40 @@ def test_unknown_versions_fail_closed(version):
 def test_omitted_version_is_not_assumed_legacy_v1():
     payload = json.loads(example_record().to_json())
     del payload["schema_version"]
+    serialized = json.dumps(payload)
     with pytest.raises(ValidationError):
-        DomainRecord.from_json(json.dumps(payload))
+        DomainRecord.from_json(serialized)
 
 
 @pytest.mark.parametrize("field", ["data_fingerprint", "available_at", "provenance", "measurements"])
 def test_required_provenance_is_not_invented(field):
     payload = json.loads(example_record().to_json())
     del payload[field]
+    serialized = json.dumps(payload)
     with pytest.raises(ValidationError):
-        DomainRecord.from_json(json.dumps(payload))
+        DomainRecord.from_json(serialized)
 
 
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf"), True, "3.0"])
 def test_nonfinite_and_coerced_values_rejected(value):
     payload = json.loads(example_record().to_json())
     payload["measurements"][0]["value"] = value
+    serialized = json.dumps(payload)
     with pytest.raises(ValidationError):
-        DomainRecord.from_json(json.dumps(payload))
+        DomainRecord.from_json(serialized)
     payload = json.loads(example_record().to_json())
     payload["learning_reward"]["value"] = value
+    serialized = json.dumps(payload)
     with pytest.raises(ValidationError):
-        DomainRecord.from_json(json.dumps(payload))
+        DomainRecord.from_json(serialized)
 
 
 def test_zero_null_unavailable_not_applicable_and_omitted():
     base = {"name": "outcome", "unit": "credit", "meaning": "net-v1", "direction": "maximize"}
     zero = Measurement.model_validate({**base, "value": 0.0, "status": "observed"})
     negative = Measurement.model_validate({**base, "value": -2.0, "status": "observed"})
-    assert zero.value == 0.0 and negative.value == -2.0
+    assert zero.value == 0.0
+    assert negative.value == -2.0
     values = [
         Measurement.model_validate({**base, "value": None, "status": status})
         for status in ("unknown", "unavailable", "not_applicable")
@@ -125,8 +131,9 @@ def test_zero_null_unavailable_not_applicable_and_omitted():
     for status, value in (("observed", None), ("unknown", 0.0), ("unavailable", -2.0)):
         with pytest.raises(ValidationError):
             Measurement.model_validate({**base, "value": value, "status": status})
+    below_minimum = {**base, "value": -2.0, "status": "observed", "minimum": 0.0}
     with pytest.raises(ValidationError, match="minimum"):
-        Measurement.model_validate({**base, "value": -2.0, "status": "observed", "minimum": 0.0})
+        Measurement.model_validate(below_minimum)
     with pytest.raises(KeyError):
         example_record().measurement("omitted")
 
@@ -176,12 +183,14 @@ def test_comparison_requires_shared_dataset_evaluation_namespace_and_observation
     original = example_record()
     original.require_comparable(altered_record(run_id="other-run"), "duration")
     for updates in ({"data_fingerprint": fingerprint([])}, {"namespace": "other"}):
+        incompatible = altered_record(**updates)
         with pytest.raises(ValueError, match="Incompatible"):
-            original.require_comparable(altered_record(**updates), "duration")
+            original.require_comparable(incompatible, "duration")
     payload = json.loads(original.to_json())
     payload["provenance"]["evaluation_fingerprint"] = fingerprint({"other": True})
+    incompatible = DomainRecord.from_json(json.dumps(payload))
     with pytest.raises(ValueError, match="Incompatible"):
-        original.require_comparable(DomainRecord.from_json(json.dumps(payload)), "duration")
+        original.require_comparable(incompatible, "duration")
     with pytest.raises(ValueError, match="observed"):
         original.require_comparable(original, "unknown_cost")
 
@@ -215,8 +224,9 @@ def test_duplicate_names_keys_unknown_fields_and_mutation_rejected(tmp_path):
     original = example_record()
     payload = json.loads(original.to_json())
     payload["measurements"].append(payload["measurements"][0])
+    serialized = json.dumps(payload)
     with pytest.raises(ValidationError, match="unique"):
-        DomainRecord.from_json(json.dumps(payload))
+        DomainRecord.from_json(serialized)
     with pytest.raises(ValidationError):
         altered_record(measurements=[])
     with pytest.raises(ValidationError):
@@ -229,8 +239,10 @@ def test_duplicate_names_keys_unknown_fields_and_mutation_rejected(tmp_path):
         original.run_id = "mutated"
     with pytest.raises(ValidationError):
         original.measurements[0].value = 100.0
+    unchecked = original.model_copy(update={"schema_version": 42})
+    artifacts = DomainArtifacts(tmp_path)
     with pytest.raises(ValidationError):
-        DomainArtifacts(tmp_path).write(original.model_copy(update={"schema_version": 42}))
+        artifacts.write(unchecked)
 
 
 @pytest.mark.parametrize("sink_cls", [DuckDBSink, ParquetSink])
@@ -252,7 +264,8 @@ def test_legacy_fixture_retains_native_output(tmp_path, sink_cls):
         artifact = next(tmp_path.rglob("*.parquet"))
         before = artifact.read_bytes()
         row = pq.read_table(artifact).to_pylist()[0]
-        assert row["fitness"] == legacy["fitness"] and row["cost"] == legacy["cost"]
+        assert row["fitness"] == legacy["fitness"]
+        assert row["cost"] == legacy["cost"]
     reopened = sink_cls(out_dir=str(tmp_path))
     assert list(reopened.domain_records()) == []
     assert reopened.read_domain_record("old", "execution", "decision", namespace="ci") is None
@@ -332,8 +345,9 @@ def test_io_error_does_not_publish_and_synchronous_writer_errors_propagate(tmp_p
     monkeypatch.setattr(os, "link", fail)
     sink = ParquetSink(out_dir=str(tmp_path))
     writer = ResultsWriter(sink)
+    record = example_record()
     with pytest.raises(OSError, match="disk error"):
-        writer.write_domain_record(example_record())
+        writer.write_domain_record(record)
     assert list(sink.domain_records()) == []
     assert list(tmp_path.rglob("*.tmp")) == []
     writer.stop()
@@ -456,7 +470,8 @@ def test_real_tcpci_checkpoint_resume_and_replay_ahead_of_checkpoint(tmp_path):
     committed = list(interrupted.monitor.sink.domain_records())
     assert len(committed) == 2
     checkpoint = interrupted.checkpoint_store.load(str(interrupted.scenario_provider), 1)
-    assert checkpoint is not None and checkpoint.step == 1
+    assert checkpoint is not None
+    assert checkpoint.step == 1
 
     resumed = build_environment(Environment)
     resumed.set_runtime_metadata({"execution_id": "physical-attempt-2"})
@@ -467,7 +482,8 @@ def test_real_tcpci_checkpoint_resume_and_replay_ahead_of_checkpoint(tmp_path):
     assert set(record.digest for record in committed) <= {record.digest for record in records}
     assert len({record.logical_key for record in records}) == 3
     checkpoint = resumed.checkpoint_store.load(str(resumed.scenario_provider), 1)
-    assert checkpoint is not None and checkpoint.step == 3
+    assert checkpoint is not None
+    assert checkpoint.step == 3
 
 
 def test_installed_wheel_outside_repository_base_dependencies(tmp_path):
@@ -513,7 +529,8 @@ def test_installed_wheel_outside_repository_base_dependencies(tmp_path):
         timeout=120,
     )
     summary = json.loads(parallel.stdout.splitlines()[-1])
-    assert summary["records"] == 6 and summary["spec_traced"] is True
+    assert summary["records"] == 6
+    assert summary["spec_traced"] is True
     records = list(DomainArtifacts(parallel_root / "runs" / summary["run_id"] / "results").records())
     assert len({record.logical_key for record in records}) == 6
     assert len({record.execution_id for record in records}) == 2
@@ -605,6 +622,28 @@ def test_unchecked_nonfinite_instances_rejected_before_json_coercion(tmp_path, f
     unchecked = record.model_copy(update={"measurements": (measurement,)})
     with pytest.raises(ValidationError):
         unchecked.to_json()
+    artifacts = DomainArtifacts(tmp_path)
     with pytest.raises(ValidationError):
-        DomainArtifacts(tmp_path).write(unchecked)
+        artifacts.write(unchecked)
     assert list(DomainArtifacts(tmp_path).records()) == []
+
+
+@pytest.mark.parametrize(
+    "base_name", ["../escaped", "/tmp/escaped", r"..\escaped", "C:escaped", "", ".", "..", "bad\0name"]
+)
+def test_duckdb_basename_cannot_escape_artifact_directory(tmp_path, base_name):
+    output = tmp_path / "results"
+    with pytest.raises(ValueError, match="base_name"):
+        DuckDBSink(out_dir=str(output), base_name=base_name)
+    assert not output.exists()
+    assert not list(tmp_path.rglob("*.duckdb"))
+
+
+def test_duckdb_supports_unicode_basename_with_domain_records(tmp_path):
+    sink = DuckDBSink(out_dir=str(tmp_path), base_name="resultados-ação")
+    try:
+        sink.write_domain_record(example_record())
+        assert list(sink.domain_records()) == [example_record()]
+    finally:
+        sink.close()
+    assert (tmp_path / "resultados-ação.duckdb").exists()

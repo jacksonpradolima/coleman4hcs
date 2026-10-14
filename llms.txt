@@ -2472,7 +2472,9 @@ This deliberately avoids altering Parquet/DuckDB native schemas. Query by logica
 key or iterate records and inspect named measurements. Domain sidecars are not
 part of the existing native SQL `results` view. ClickHouse, NullSink and existing
 third-party sinks raise `NotImplementedError` for unsupported domain operations;
-their legacy row interface remains compatible.
+their legacy row interface remains compatible. DuckDB `base_name` must be a single
+nonempty filename without directory or drive components; invalid names raise
+`ValueError` before filesystem side effects. Unicode basenames remain supported.
 
 ```mermaid
 flowchart TD

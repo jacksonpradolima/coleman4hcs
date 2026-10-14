@@ -5,6 +5,7 @@ The synthetic build labels are available at declared UTC times, never wall time.
 """
 
 import json
+import math
 import sys
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -15,7 +16,7 @@ import polars as pl
 from coleman.api import run_with_extension
 from coleman.results.domain import DomainRecord, LearningReward, Measurement, ResultProvenance, fingerprint
 from coleman.results.parquet_sink import ParquetSink
-from coleman.runner import RunnerExtension, build_environment
+from coleman.runner import EnvironmentBuildConfig, RunnerExtension, build_environment
 from coleman.spec.models import RunSpec
 from coleman.utils.monitor import MonitorCollector
 
@@ -79,9 +80,11 @@ class ObservationMonitor(MonitorCollector):
         super().collect(replace(params, domain_records=(record,)))
 
 
-def build_observed_environment(config, runtime_metadata, agent_seed):
+def build_observed_environment(
+    config: EnvironmentBuildConfig, runtime_metadata: dict[str, str], agent_seed: int | None
+):
     """Use the native builder, replacing only the additive result collector."""
-    native_config = replace(config, extension=None)
+    native_config: EnvironmentBuildConfig = replace(config, extension=None)
     env, max_builds = build_environment(native_config, runtime_metadata, agent_seed=agent_seed)
     spec = config.resolved_spec
     if spec is None or config.run_id is None:
@@ -151,7 +154,10 @@ def main(output, independent_executions=1, workers=1):
     resolved = json.loads((Path(result.artifacts_dir) / "spec.resolved.json").read_text())
     assert len(records) == 3 * independent_executions
     assert all(record.provenance.spec_fingerprint == fingerprint(resolved) for record in records)
-    assert all(record.measurement("suite_duration").value == 3.0 for record in records)
+    for record in records:
+        duration = record.measurement("suite_duration").value
+        assert duration is not None
+        assert math.isclose(duration, 3.0)
     sink.close()
     print(json.dumps({"run_id": result.run_id, "records": len(records), "spec_traced": True}))
 

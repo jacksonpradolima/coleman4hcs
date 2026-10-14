@@ -133,6 +133,10 @@ class DuckDBSink(LocalResultsSink):
     ) -> None:
         """Initialise DuckDB result storage and create target table(s).
 
+        Reject ``base_name`` containing directory/drive components with
+        ``ValueError`` before filesystem side effects. Unicode basenames remain
+        supported; all native shard files stay within ``out_dir``.
+
         Parameters
         ----------
         out_dir : str
@@ -148,10 +152,17 @@ class DuckDBSink(LocalResultsSink):
         shard_key : str
             Row key used to distribute writes when ``file_count > 1``.
         """
+        safe_base_name = Path(base_name).name
+        if (
+            safe_base_name != base_name
+            or base_name in {"", ".", ".."}
+            or any(character in base_name for character in ("\\", ":", "\0"))
+        ):
+            raise ValueError("base_name must be a single nonempty filename without directory/drive components")
         self.out_dir = out_dir
         self.batch_size = batch_size
         self.file_count = max(1, int(file_count))
-        self.base_name = base_name
+        self.base_name = safe_base_name
         self.top_k = top_k
         self.shard_key = shard_key
 
