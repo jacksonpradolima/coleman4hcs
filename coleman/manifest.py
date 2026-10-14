@@ -74,6 +74,7 @@ def generate_manifest(run_dir: str | Path, *, run_id: str) -> Path:
         "evaluation_report": "evaluation-reports/*.json",
         "coverage_result": "coverage-results/*.json",
         "allocation_result": "allocation-results/*.json",
+        "benchmark_report": "benchmark-reports/*.json",
     }
     for artifact_type, pattern in versioned_patterns.items():
         for file_path in sorted(root.rglob(pattern)):

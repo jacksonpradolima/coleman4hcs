@@ -22,6 +22,7 @@ nav = [
   { "Protected Evaluation" = "protected-evaluation.md" },
   { "Finite Coverage Selection" = "finite-coverage.md" },
   { "Scenario Payoff Allocation" = "scenario-payoffs.md" },
+  { "Independent Decision Benchmarks" = "decision-benchmarks.md" },
   { "Configuration" = "configuration.md" },
   { "Setup & Architecture" = "setup.md" },
   { "Code Cost Evaluation" = "code-cost.md" },

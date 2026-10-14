@@ -18,6 +18,13 @@ import polars as pl
 
 from coleman.api import run_with_extension
 from coleman.artifacts import ArtifactWriter
+from coleman.benchmarks import (
+    BenchmarkSuite,
+    CoverageCase,
+    ReferenceAnswer,
+    publish_benchmark_report,
+    run_benchmarks,
+)
 from coleman.policy.base import Policy
 from coleman.results.domain import fingerprint
 from coleman.results.parquet_sink import ParquetSink
@@ -33,7 +40,6 @@ from coleman.selection import (
     UnitSemantics,
     coverage_record,
     publish_coverage_result,
-    solve_coverage,
 )
 from coleman.spec.models import RunSpec
 from coleman.utils.monitor import MonitorCollector
@@ -46,12 +52,36 @@ class FixtureCoveragePolicy(Policy):
         self.problem = problem
         self.method = method
         self.last_result = None
+        self.last_benchmark = None
 
     def __str__(self):
         return "FiniteCoverageFixture"
 
     def choose_all(self, agent):
-        self.last_result = solve_coverage(self.problem, method=self.method, limits=SearchLimits(deadline_seconds=None))
+        case = CoverageCase(
+            schema_version=1,
+            case_id="native-ci-weighted-overlap-3",
+            problem=self.problem,
+            expected=ReferenceAnswer(
+                objective_semantics=self.problem.objective_semantics,
+                cost_semantics=self.problem.constraints.budget.semantics,
+                selected_ids=("A", "C"),
+                cost=3,
+                objective=1,
+            ),
+            methods=(self.method,),
+            exact_methods=("branch_bound_v1",) if self.method == "branch_bound_v1" else (),
+            limits=SearchLimits(deadline_seconds=None),
+        )
+        self.last_benchmark = run_benchmarks(
+            BenchmarkSuite(
+                schema_version=1,
+                benchmark_id="native-ci-coverage-validation-v1",
+                cases=(case,),
+                seeds=(11, 11, 29),
+            )
+        )
+        self.last_result = CoverageResult.from_json(self.last_benchmark.observations[0].mathematics)
         selected = self.last_result.selected_ids
         if selected is None:
             raise ValueError("No feasible fixture incumbent")
@@ -77,6 +107,9 @@ class CoverageMonitor(MonitorCollector):
             result = self.policy.last_result
             if result is None or tuple(params.metric.scheduled_testcases) != result.selected_ids:
                 raise ValueError("Native scheduling differs from the planned fixture prefix")
+            if self.policy.last_benchmark is None:
+                raise ValueError("Native fixture has no independent benchmark evidence")
+            publish_benchmark_report(self.policy.last_benchmark, ArtifactWriter(self.root))
             publish_coverage_result(result, ArtifactWriter(self.root))
             existing = self.sink.read_domain_record(
                 self.run_id, result.scope_fingerprint, result.fingerprint, namespace="decision.coverage"
@@ -102,7 +135,11 @@ def build_fixture_environment(config: EnvironmentBuildConfig, metadata: dict[str
 
 
 def main(output):
-    """Run both finite solvers through the real native CI loop on overlapping capabilities."""
+    """Validate repeated solver mathematics inside a real native two-build CI fixture.
+
+    Benchmark labels 11/11/29 test deterministic math, not independent CI builds;
+    the native agent keeps its separate seed 42 and original first-build shuffle.
+    """
     workspace = Path.cwd().resolve()
     root = (workspace / output).resolve()
     if not root.is_relative_to(workspace):
@@ -163,6 +200,7 @@ def main(output):
                     "finite_coverage": json.loads(request.to_json()),
                     "coverage_method": method,
                     "coverage_adapter": "native-full-budget-fixture-v1",
+                    "benchmark_protocol": "independent-native-coverage-validation-v1",
                 },
                 "results": {"out_dir": str(root / method), "manifest_enabled": True},
             }

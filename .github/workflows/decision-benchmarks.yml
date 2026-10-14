@@ -1,0 +1,51 @@
+name: Decision performance observations
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Bounded installed-package profile
+        type: choice
+        options: [performance, correctness]
+        default: performance
+  schedule:
+    - cron: '41 5 * * 2'
+
+permissions:
+  contents: read
+
+jobs:
+  observe:
+    if: github.event_name == 'workflow_dispatch' || vars.ENABLE_DECISION_PERFORMANCE == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: decision-performance-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      SOURCE_COMMIT: ${{ github.sha }}
+      BENCHMARK_PROFILE: ${{ inputs.profile || 'performance' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: '0.13.1'
+          checksum: eadd9d27c134ab5ac1ffd4473b97a741407f3ea238288f03121fc4deddf90220
+          python-version: '3.14'
+          enable-cache: true
+      - name: Build and install the locked wheel
+        run: |
+          uv sync --frozen --group build --no-build --no-install-project
+          uv build --no-build-isolation
+          uv pip install --no-deps --no-build dist/*.whl
+      - name: Run outside the checkout root
+        run: |
+          mkdir benchmark-work
+          cd benchmark-work
+          ../.venv/bin/python -m coleman.benchmarks --profile "$BENCHMARK_PROFILE" --output artifacts --source-commit "$SOURCE_COMMIT" --source-dirty false
+      - name: Preserve reports including failed attempts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: decision-benchmark-observations
+          path: benchmark-work/artifacts
