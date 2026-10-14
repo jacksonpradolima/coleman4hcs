@@ -6,12 +6,18 @@ not currency or a claim of measured savings. Negative outcomes remain visible.
 
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
 
 from coleman.results.domain import DomainRecord, LearningReward, Measurement, ResultProvenance, fingerprint
 from coleman.results.duckdb_sink import DuckDBSink
 
 
 def main(output):
+    """Keep this CLI demonstration's artifacts inside its invocation directory."""
+    workspace = Path.cwd().resolve()
+    output_directory = (workspace / output).resolve()
+    if not output_directory.is_relative_to(workspace):
+        raise ValueError("Example output must be within the current working directory")
     inputs = {"runner_slots": 2, "jobs": ["unit-tests", "integration-tests"]}
     record = DomainRecord(
         schema_version=1,
@@ -56,7 +62,7 @@ def main(output):
         ),
         learning_reward=LearningReward(value=0.25, unit="1", transform_id="bounded-v1"),
     )
-    sink = DuckDBSink(out_dir=output)
+    sink = DuckDBSink(out_dir=str(output_directory))
     try:
         sink.write_domain_record(record)
         sink.write_domain_record(record)  # identical replay, including across program restarts

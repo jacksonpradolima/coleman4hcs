@@ -121,7 +121,10 @@ Two standalone examples are maintained and tested against a non-editable wheel:
   persists the signed/null acceptance fixture through DuckDB and queries it.
   This accounts for a declared allocation; it does not implement a solver.
 
-Copy the scripts into a directory outside the repository and execute:
+Copy the scripts into a directory outside the repository and execute. The
+allocation CLI example requires its output to remain within the current working
+directory and rejects traversal outside it; the core sink accepts an explicitly
+configured output root:
 
 ```bash
 python tcpci.py ./tcpci-output

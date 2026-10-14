@@ -10,6 +10,7 @@ import sys
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import cast
 
 import polars as pl
 
@@ -84,7 +85,7 @@ def build_observed_environment(
     config: EnvironmentBuildConfig, runtime_metadata: dict[str, str], agent_seed: int | None
 ):
     """Use the native builder, replacing only the additive result collector."""
-    native_config: EnvironmentBuildConfig = replace(config, extension=None)
+    native_config = cast(EnvironmentBuildConfig, replace(config, extension=None))
     env, max_builds = build_environment(native_config, runtime_metadata, agent_seed=agent_seed)
     spec = config.resolved_spec
     if spec is None or config.run_id is None:

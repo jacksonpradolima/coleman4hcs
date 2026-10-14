@@ -134,8 +134,9 @@ def test_zero_null_unavailable_not_applicable_and_omitted():
     below_minimum = {**base, "value": -2.0, "status": "observed", "minimum": 0.0}
     with pytest.raises(ValidationError, match="minimum"):
         Measurement.model_validate(below_minimum)
+    record = example_record()
     with pytest.raises(KeyError):
-        example_record().measurement("omitted")
+        record.measurement("omitted")
 
 
 def test_optional_omission_and_explicit_null_remain_distinct():
@@ -518,6 +519,17 @@ def test_installed_wheel_outside_repository_base_dependencies(tmp_path):
         else:
             record = DomainRecord.from_json(result.stdout)
             assert record.measurement("net_value").value == -2.0
+    forbidden = subprocess.run(
+        [str(python), str(external / "allocation.py"), "../escaped-example"],
+        cwd=external,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert forbidden.returncode != 0
+    assert "within the current working directory" in forbidden.stderr
+    assert not (tmp_path / "escaped-example").exists()
     parallel_root = external / "tcpci-parallel"
     parallel = subprocess.run(
         [str(python), str(external / "tcpci.py"), str(parallel_root), "2", "2"],
