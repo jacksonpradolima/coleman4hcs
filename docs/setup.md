@@ -3,10 +3,11 @@
 ## Default run (no Docker required)
 
 Coleman is framework-first: the default installation works without any
-external services.
+external services. Use Python 3.14 or later in an activated virtual environment.
+Install this repository’s GitHub release wheel, pinned below with its SHA-256:
 
 ```bash
-pip install coleman
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 ```
 
 Use the library API or the `coleman` CLI to run experiments:
@@ -90,10 +91,10 @@ coleman run --config experiment.yaml
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-pip install coleman[telemetry]
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 
 # ClickHouse sink
-pip install coleman[clickhouse]
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 ```
 
 ## Optional observability stack
