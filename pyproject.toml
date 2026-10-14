@@ -40,7 +40,7 @@ dev = [
     "pyrapl==0.2.3.1",
 ]
 docs = [
-    "zensical==0.0.43",
+    "zensical==0.0.70",
     "mkdocstrings[python]==1.0.3",
     "mkdocs-jupyter==0.26.1",
 ]
@@ -48,7 +48,7 @@ release = [
     "python-semantic-release==10.5.3",
 ]
 notebook = [
-    "marimo==0.23.6",
+    "marimo==0.25.1",
     "matplotlib==3.10.8",
     "pandas==3.0.3",
     "seaborn==0.13.2",
@@ -70,7 +70,7 @@ homepage = "https://github.com/jacksonpradolima/coleman"
 repository = "https://github.com/jacksonpradolima/coleman"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.32.4", "editables==0.6"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
@@ -136,9 +136,11 @@ fail-under = 100
 version_toml = ["pyproject.toml:project.version"]
 branch = "main"
 commit_message = "chore(release): {version}"
-build_command = "uv build"
+build_command = "uv build --no-build-isolation"
 
 [dependency-groups]
+build = ["build==1.6.1", "hatchling==1.32.4", "editables==0.6"]
+security = ["pip-audit==2.10.1"]
 dev = [
     "pytest==9.0.3",
     "pytest-benchmark==5.2.3",

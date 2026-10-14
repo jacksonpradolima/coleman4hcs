@@ -1,0 +1,55 @@
+name: Locked dependency security audit
+
+on:
+  pull_request:
+    paths:
+      - pyproject.toml
+      - uv.lock
+      - scripts/audit_lock.py
+      - .github/workflows/security-audit.yml
+  push:
+    branches: [main]
+    paths: [pyproject.toml, uv.lock]
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Audit all locked packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: dependency-audit-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.0.0
+        with:
+          python-version: '3.14'
+      - name: Install verified uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: '0.13.1'
+          checksum: eadd9d27c134ab5ac1ffd4473b97a741407f3ea238288f03121fc4deddf90220
+          python-version: '3.14'
+          enable-cache: true
+      - name: Install locked advisory lookup tool
+        run: uv sync --frozen --only-group security --no-build --no-install-project
+      - name: Export every locked registry package
+        run: python scripts/audit_lock.py > audit-requirements.txt
+      - name: Audit without installing project dependencies
+        run: >-
+          uv run --frozen --no-sync pip-audit --strict --no-deps --disable-pip
+          --requirement audit-requirements.txt --format json --output audit.json
+      - name: Upload audit evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dependency-advisory-audit
+          path: |
+            audit-requirements.txt
+            audit.json
