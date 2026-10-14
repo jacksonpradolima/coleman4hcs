@@ -889,3 +889,26 @@ def test_counter_units_are_replayed_and_keyboard_cancellation_preserves_the_pref
     assert stopped.status == "interrupted"
     assert stopped.observations == report.observations
     assert stopped.failure is None
+
+
+@pytest.mark.parametrize("phase", ["solver", "verification"])
+@pytest.mark.parametrize("invented_work", [0, 7])
+def test_failed_attempts_reject_invented_work_in_reports_and_checkpoints(small, environment, phase, invented_work):
+    def broken(*_args):
+        raise RuntimeError("fixture")
+
+    execution = BenchmarkExecution(environment=environment)
+    with pytest.raises(BenchmarkRunError) as caught:
+        run_benchmarks(small, execution=execution, adapter=broken)
+    data = json.loads(caught.value.report.to_json())
+    data["failure"]["phase"] = phase
+    valid = BenchmarkReport.model_validate(data)
+    assert failed_attempt(valid).work_used is None
+    assert BenchmarkReport.from_json(valid.to_json()) == valid
+    data["failure"]["work_used"] = invented_work
+    with pytest.raises(ValidationError, match="unavailable work"):
+        BenchmarkReport.model_validate(data)
+    checkpoint = json.loads(valid.checkpoint().to_json())
+    checkpoint["prior_failures"][0]["work_used"] = invented_work
+    with pytest.raises(ValidationError, match="unavailable work"):
+        BenchmarkCheckpoint.model_validate(checkpoint)

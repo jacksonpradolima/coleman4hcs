@@ -294,6 +294,8 @@ rows. `report.checkpoint()` carries prior failed/aborted attempts forward, so a
 later successful resume cannot silently erase their timing, known work or unknown
 costs. Instrumentation rejection records zero solver work and unavailable timing;
 a solver exception may have unknown work rather than zero. Histories retain
+only null work for solver/verification failures; readers reject invented counters
+in both reports and checkpoints. Histories also retain
 stable attempt indices and explicit aware availability timestamps. Unavailable
 future history is rejected before new work.
 

@@ -113,6 +113,8 @@ class BenchmarkFailure(BenchmarkInvocation):
     Exception messages/tracebacks are not persisted; the raised error retains its
     original cause locally. Instrumentation failures have unavailable measurements,
     distinct from measured zero. Failed verification never creates a successful row.
+    Solver/verification failures must retain null work: neither phase provides a
+    trustworthy native counter. Readers reject invented zero or positive counts.
     """
 
     attempt_index: Annotated[int, Field(strict=True, ge=0)]
@@ -131,6 +133,8 @@ class BenchmarkFailure(BenchmarkInvocation):
             raise ValueError("Failure measurements must both be present or unavailable")
         if self.phase == "instrumentation" and (self.work_used != 0 or self.elapsed_ns is not None):
             raise ValueError("Rejected instrumentation must retain zero solver work and unavailable measurements")
+        if self.phase in {"solver", "verification"} and self.work_used is not None:
+            raise ValueError("Solver and verification failures require unavailable work, never an invented counter")
         return self
 
 
