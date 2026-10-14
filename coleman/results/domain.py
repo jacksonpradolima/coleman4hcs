@@ -182,7 +182,11 @@ class DomainRecord(_Contract):
     @classmethod
     def _explicit_timestamp(cls, value: Any) -> Any:
         """Reject epoch numbers whose scale/timezone would otherwise be inferred."""
-        if not isinstance(value, str | datetime):
+        if isinstance(value, str):
+            # ISO parsing excludes Pydantic's numeric-string epoch inference.
+            # AwareDatetime subsequently rejects date-only/naive ISO datetimes.
+            return datetime.fromisoformat(value)
+        if not isinstance(value, datetime):
             raise ValueError("Availability must be an explicitly zoned timestamp")
         return value
 

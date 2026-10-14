@@ -209,7 +209,21 @@ def test_metamorphic_declaration_order_timezone_and_json_key_order():
     assert fingerprint([1, 2]) != fingerprint([2, 1])
 
 
-@pytest.mark.parametrize("timestamp", ["2026-01-02T12:00:00", "not-a-time", 1767355200])
+@pytest.mark.parametrize(
+    "timestamp",
+    [
+        "2026-01-02T12:00:00",
+        "not-a-time",
+        1767355200,
+        "1767355200",
+        "1767355200000",
+        "1767355200.0",
+        "-1767355200",
+        "+1767355200",
+        "1.7673552e9",
+        "20260102",
+    ],
+)
 def test_naive_or_invalid_timestamp_rejected(timestamp):
     with pytest.raises(ValidationError):
         altered_record(available_at=timestamp)

@@ -2349,7 +2349,7 @@ records at their persistence boundary.
 | `execution_id` | Logical independent execution; stable across worker placement and retries. |
 | `decision_id` | Logical observation bundle; distinguish build, policy, reward and variant. |
 | `data_fingerprint` | `sha256:` plus 64 lowercase hexadecimal characters, over canonical input data. |
-| `available_at` | Explicitly zoned outcome availability, normalized to UTC; never inferred from ingestion time. |
+| `available_at` | Explicitly zoned ISO datetime, normalized to UTC; numeric epoch strings/numbers and naive dates are rejected. |
 | `provenance` | Producer/version, resolved spec fingerprint and evaluation-context fingerprint; optional source revision. |
 | `measurements` | Nonempty tuple of unique named `Measurement` objects, serialized as a sorted array. |
 | `learning_reward` | Optional separate finite signal with output unit and versioned transformation ID. |
