@@ -51,12 +51,13 @@ jobs:
           uv pip install --offline --no-index --no-deps --no-build --require-hashes --requirement /tmp/coleman-benchmark-wheel.txt
       - name: Run outside the checkout root
         run: |
-          mkdir benchmark-work
-          cd benchmark-work
-          ../.venv/bin/python -m coleman.benchmarks --profile "$BENCHMARK_PROFILE" --output artifacts --source-commit "$SOURCE_COMMIT" --source-dirty false
+          VENV_PYTHON="$GITHUB_WORKSPACE/.venv/bin/python"
+          mkdir -p "$RUNNER_TEMP/coleman-decision-benchmarks"
+          cd "$RUNNER_TEMP/coleman-decision-benchmarks"
+          "$VENV_PYTHON" -m coleman.benchmarks --profile "$BENCHMARK_PROFILE" --output artifacts --source-commit "$SOURCE_COMMIT" --source-dirty false
       - name: Preserve reports including failed attempts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: decision-benchmark-observations
-          path: benchmark-work/artifacts
+          path: ${{ runner.temp }}/coleman-decision-benchmarks/artifacts

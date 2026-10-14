@@ -7,6 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import yaml
+
 from coleman.benchmarks import BenchmarkReport
 
 ROOT = Path(__file__).parents[2]
@@ -94,3 +96,29 @@ def test_installed_base_wheel_repeats_mathematics_and_native_ci_without_componen
         env,
     )
     assert no_transport.returncode == 0
+    # Exercise the real workflow shell with a synthetic runner context and the
+    # installed wheel; the working directory must not be anywhere in its checkout.
+    checkout, runner_temp = tmp_path / "checkout", tmp_path / "runner-temp"
+    checkout.mkdir()
+    runner_temp.mkdir()
+    (checkout / ".venv").symlink_to(virtual, target_is_directory=True)
+    workflow = yaml.safe_load((ROOT / ".github/workflows/decision-benchmarks.yml").read_text())
+    step = next(
+        step for step in workflow["jobs"]["observe"]["steps"] if step.get("name") == "Run outside the checkout root"
+    )
+    ci_env = {
+        **env,
+        "GITHUB_WORKSPACE": str(checkout),
+        "RUNNER_TEMP": str(runner_temp),
+        "BENCHMARK_PROFILE": "correctness",
+        "SOURCE_COMMIT": "1" * 40,
+    }
+    executed = command(["bash", "-e", "-c", step["run"]], checkout, ci_env)
+    observation_path = Path(json.loads(executed.stdout)["artifact"])
+    assert observation_path.is_relative_to(runner_temp)
+    assert not observation_path.is_relative_to(checkout)
+    assert not observation_path.is_relative_to(ROOT)
+    assert BenchmarkReport.from_json(observation_path.read_bytes()).status == "complete"
+    upload = workflow["jobs"]["observe"]["steps"][-1]
+    uploaded = Path(upload["with"]["path"].replace("${{ runner.temp }}", str(runner_temp)))
+    assert observation_path.is_relative_to(uploaded)
