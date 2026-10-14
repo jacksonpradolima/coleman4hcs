@@ -119,8 +119,10 @@ A reservation is an attempted access, not a completed evaluation. `save_report`
 requires a matching persisted receipt and frozen contract, then atomically publishes
 validated report content. Point estimates must be present for uncertainty or
 confirmatory claims, follow the protocol-defined sign (relative tolerance `1e-12`,
-zero absolute tolerance) and lie within their reported interval. Failed evaluation leaves the attempt and creates no
-completed report. Replaying the same report/sink publication is idempotent.
+zero absolute tolerance) and lie within their reported interval. Report validation
+recomputes Holm corrections from the complete frozen raw p-value family (unavailable
+tests count as p=1); stored adjusted values must match that deterministic calculation
+exactly. Failed evaluation leaves the attempt and creates no completed report. Replaying the same report/sink publication is idempotent.
 
 ```mermaid
 flowchart TD

@@ -174,7 +174,11 @@ class FamilyReport(EvaluationContract):
     @model_validator(mode="after")
     def _inference(self) -> Self:
         """Reject forged confirmatory claims on reused scopes or unsupported assumptions."""
-        for result in self.results:
+        adjusted = holm_adjust(tuple(result.p_value if result.p_value is not None else 1.0 for result in self.results))
+        for result, corrected in zip(self.results, adjusted, strict=True):
+            expected = corrected if result.p_value is not None else None
+            if result.adjusted_p_value != expected:
+                raise ValueError("Adjusted p-value differs from the complete frozen Holm family")
             self._check_point_estimate(result)
             if result.conclusion in {"evidence_of_benefit", "evidence_of_harm"}:
                 self._check_claim(result)
@@ -514,4 +518,4 @@ def evaluate(
         for candidate_id, units in sorted(observations.items())
         for _, row in sorted(units.items())
     )
-    return FamilyReport(schema_version=1, frozen=frozen, access=receipt, results=tuple(updated), inputs=references)
+    return FamilyReport(schema_version=1, frozen=frozen, access=receipt, results=updated, inputs=references)

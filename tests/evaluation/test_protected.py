@@ -645,7 +645,8 @@ def test_full_family_correction_and_intervals_include_all_predeclared_pairs(tmp_
             payload["record"]["provenance"]["spec_fingerprint"] = third.configuration_fingerprint
             rows.append(PairedObservation.model_validate(payload))
     paired = tuple(rows)
-    report = evaluate(frozen, EvaluationAudit(tmp_path), lambda: paired, actor="ci")
+    audit = EvaluationAudit(tmp_path)
+    report = evaluate(frozen, audit, lambda: paired, actor="ci")
     raw_p = report.results[0].p_value
     assert raw_p is not None
     assert report.results[0].adjusted_p_value == pytest.approx(min(1.0, 2 * raw_p))
@@ -661,6 +662,24 @@ def test_full_family_correction_and_intervals_include_all_predeclared_pairs(tmp_
         tuple(reversed(family)),
     )
     assert reordered.fingerprint == frozen.fingerprint
+    assert FamilyReport.from_json(report.to_json()) == report
+    payload = json.loads(report.to_json())
+    for result in payload["results"]:
+        result.update(p_value=0.03, adjusted_p_value=0.03)
+    serialized = json.dumps(payload)
+    with pytest.raises(ValidationError, match="complete frozen Holm family"):
+        FamilyReport.from_json(serialized)
+    forged_results = tuple(
+        result.model_copy(update={"p_value": 0.03, "adjusted_p_value": 0.03}) for result in report.results
+    )
+    unchecked_report = report.model_copy(update={"results": forged_results})
+    with pytest.raises(ValidationError, match="complete frozen Holm family"):
+        audit.save_report(unchecked_report)
+    assert list(tmp_path.rglob("evaluation-reports/*.json")) == []
+    for result in payload["results"]:
+        result.update(adjusted_p_value=0.06, conclusion="inconclusive")
+    valid = FamilyReport.from_json(json.dumps(payload))
+    assert all(result.adjusted_p_value == pytest.approx(0.06) for result in valid.results)
 
 
 def test_metamorphic_unit_scale_translation_and_row_order(tmp_path):
