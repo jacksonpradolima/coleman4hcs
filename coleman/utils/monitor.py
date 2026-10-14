@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from coleman.budget import BudgetMode
+from coleman.results.domain import DomainRecord
 from coleman.results.sink_base import NullSink, ResultsSink
 from coleman.utils.monitor_params import CollectParams
 
@@ -153,8 +154,19 @@ class MonitorCollector:
             "variant": params.variant,
         }
 
+        for record in params.domain_records:
+            self.collect_domain_record(record)
         self.sink.write_row(row)
         self.rows_collected += 1
+
+    def collect_domain_record(self, record: DomainRecord) -> None:
+        """Commit an additive domain observation before advancing a checkpoint.
+
+        Local sink writes are synchronous and replay-safe. Unsupported sinks,
+        validation failures, conflicts and filesystem errors propagate; the
+        native row counter is unaffected. No reward/measurement conversion occurs.
+        """
+        self.sink.write_domain_record(record)
 
     def flush(self) -> None:
         """Force-flush any buffered data to the underlying sink."""

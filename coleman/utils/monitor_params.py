@@ -12,6 +12,7 @@ from typing import Any, Protocol
 
 from coleman.budget import BudgetMode
 from coleman.evaluation import EvaluationMetric
+from coleman.results.domain import DomainRecord
 
 
 class ScenarioLoaderLike(Protocol):
@@ -72,6 +73,8 @@ class CollectParams:
         Total process CPU time since the experiment started.
     wall_time_seconds : float or None
         Wall-clock time since the experiment started.
+    domain_records : tuple[DomainRecord, ...]
+        Optional immutable observations committed before the native row.
     variant : str or None
         The variant name (for HCS systems).  ``None`` for non-variant runs.
     """
@@ -98,3 +101,4 @@ class CollectParams:
     process_cpu_time_seconds: float | None = None
     wall_time_seconds: float | None = None
     variant: str | None = None
+    domain_records: tuple[DomainRecord, ...] = ()

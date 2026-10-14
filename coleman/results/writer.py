@@ -15,6 +15,7 @@ import queue
 import threading
 from typing import Any
 
+from coleman.results.domain import DomainRecord
 from coleman.results.sink_base import ResultsSink
 
 logger = logging.getLogger(__name__)
@@ -89,6 +90,14 @@ class ResultsWriter:
         if not self._started:
             self.start()
         self._queue.put(row)
+
+    def write_domain_record(self, record: DomainRecord) -> None:
+        """Commit synchronously, bypassing the legacy row queue.
+
+        Completion/errors reach the caller before checkpoint publication. Native
+        queued rows are not part of this commit; call ``stop`` to drain those.
+        """
+        self.sink.write_domain_record(record)
 
     def stop(self) -> None:
         """Signal the writer thread to finish and wait for it to drain."""

@@ -137,6 +137,16 @@ and telemetry can observe broken execution setup paths.
 - `budget_value`
 - `extensions`
 
+## Typed Domain Results
+
+Use [versioned domain records](domain-results.md) for observations that need units,
+raw outcomes, explicit availability, provenance and retry-safe identity. The local
+Parquet and DuckDB sinks commit these records as immutable JSON sidecars without
+changing TCPCI columns. Pass `CollectParams.domain_records` or use
+`monitor.collect_domain_record(record)` before the existing checkpoint advances.
+The guide includes installed-package examples using the native runner extension
+and synthetic CI runner-slot accounting.
+
 ## Deterministic Hook Artifacts
 
 Use `ArtifactWriter` to create deterministic, collision-safe paths and atomic

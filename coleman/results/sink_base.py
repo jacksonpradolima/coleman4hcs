@@ -9,7 +9,10 @@ disabled.
 from __future__ import annotations
 
 import abc
+from collections.abc import Iterator
 from typing import Any
+
+from coleman.results.domain import DomainRecord
 
 
 class ResultsSink(abc.ABC):
@@ -46,8 +49,27 @@ class ResultsSink(abc.ABC):
     def close(self) -> None:
         """Release resources held by this sink."""
 
+    def write_domain_record(self, record: DomainRecord) -> None:
+        """Commit a typed record or fail explicitly when unsupported.
 
-class NullSink(ResultsSink):
+        Additive capability: existing third-party sinks need not implement it.
+        Local sinks commit synchronously before checkpoints. Remote/Null sinks
+        raise ``NotImplementedError`` rather than silently discard evidence.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not support domain records")
+
+    def read_domain_record(
+        self, run_id: str, execution_id: str, decision_id: str, *, namespace: str
+    ) -> DomainRecord | None:
+        """Query a logical key or raise ``NotImplementedError`` when unsupported."""
+        raise NotImplementedError(f"{type(self).__name__} does not support domain records")
+
+    def domain_records(self) -> Iterator[DomainRecord]:
+        """Iterate committed typed records or fail explicitly when unsupported."""
+        raise NotImplementedError(f"{type(self).__name__} does not support domain records")
+
+
+class NullSink(ResultsSink):  # pylint: disable=abstract-method
     """No-op results sink used when results collection is disabled.
 
     All operations are instant and discard data, with near-zero overhead.

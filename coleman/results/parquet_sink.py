@@ -27,7 +27,7 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from coleman.results.sink_base import ResultsSink
+from coleman.results.domain_artifacts import LocalResultsSink
 
 # Arrow schema matching MonitorCollector columns.
 # Keep this in sync with the monitor output so DuckDB can scan a stable layout.
@@ -105,7 +105,7 @@ def _top_k(order: Any, k: int | None) -> str:
     return json.dumps(order[:k], default=str)
 
 
-class ParquetSink(ResultsSink):
+class ParquetSink(LocalResultsSink):
     """Partitioned Parquet results sink (zstd compressed).
 
     Parameters

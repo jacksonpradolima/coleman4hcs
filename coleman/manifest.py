@@ -58,6 +58,16 @@ def generate_manifest(run_dir: str | Path, *, run_id: str) -> Path:
             }
         )
 
+    for file_path in sorted(root.rglob("domain-records/*.json")):
+        artifacts.append(
+            {
+                "type": "domain_records",
+                "relative_path": _rel(file_path, root),
+                "format": "json",
+                "partition_keys": ["namespace", "run_id", "execution_id", "decision_id"],
+            }
+        )
+
     payload = {
         "manifest_version": 1,
         "run_id": run_id,

@@ -18,6 +18,7 @@ nav = [
   { "Workflow Notebook" = "workflow.md" },
   { "Analysis Playbook" = "analysis-playbook.md" },
   { "Extensibility & Parallelism" = "extensibility.md" },
+  { "Versioned Domain Results" = "domain-results.md" },
   { "Configuration" = "configuration.md" },
   { "Setup & Architecture" = "setup.md" },
   { "Code Cost Evaluation" = "code-cost.md" },
