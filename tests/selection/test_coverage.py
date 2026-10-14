@@ -338,7 +338,9 @@ def test_exhaustive_oracles_verify_all_bounds_across_finite_random_instances():
             assert result.status == "infeasible"
             continue
         assert result.status == "optimal"
-        assert (result.selected_ids, result.cost.value, result.objective.value) == expected
+        assert result.selected_ids == expected[0]
+        assert result.cost.value == expected[1]
+        assert result.objective.value == expected[2]
         for work in (0, 3, 11):
             limited = exact(request, max_work=work)
             assert limited.work_used <= work
