@@ -55,7 +55,7 @@ jobs:
           BEFORE_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
 
           # Run semantic-release and handle potential failure
-          if uv run --frozen --no-sync semantic-release version; then
+          if uv run --frozen --no-sync --no-build semantic-release version; then
             # Check if a new tag was created
             AFTER_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
 

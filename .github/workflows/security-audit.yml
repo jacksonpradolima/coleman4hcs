@@ -43,7 +43,7 @@ jobs:
         run: python scripts/audit_lock.py > audit-requirements.txt
       - name: Audit without installing project dependencies
         run: >-
-          uv run --frozen --no-sync pip-audit --strict --no-deps --disable-pip
+          uv run --frozen --no-sync --no-build pip-audit --strict --no-deps --disable-pip
           --requirement audit-requirements.txt --format json --output audit.json
       - name: Upload audit evidence
         if: always()

@@ -61,3 +61,25 @@ package = []
 """)
     with pytest.raises(ValueError, match="lacks root or registry dependencies"):
         audit_requirements(lock)
+
+
+@pytest.mark.parametrize("arguments", [[], ["../../outside-lock"]])
+def test_cli_is_bound_to_its_checkout_and_rejects_caller_paths(tmp_path, arguments):
+    import subprocess
+    import sys
+
+    (tmp_path / "uv.lock").write_text("caller-controlled invalid lock")
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/audit_lock.py"), *arguments],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if arguments:
+        assert result.returncode == 2
+        assert "unrecognized arguments" in result.stderr
+        assert result.stdout == ""
+    else:
+        assert result.returncode == 0
+        assert result.stdout == audit_requirements(ROOT / "uv.lock")

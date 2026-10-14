@@ -31,7 +31,7 @@ jobs:
           uv sync --frozen --extra dev --group build --no-build --no-install-project
 
       - name: Run ruff linter
-        run: uv run --frozen --no-sync ruff check .
+        run: uv run --frozen --no-sync --no-build ruff check .
 
       - name: Run ruff formatter check
-        run: uv run --frozen --no-sync ruff format --check .
+        run: uv run --frozen --no-sync --no-build ruff format --check .

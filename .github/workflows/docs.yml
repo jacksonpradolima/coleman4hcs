@@ -37,7 +37,7 @@ jobs:
           uv pip install --no-deps --no-build --no-build-isolation --editable .
 
       - name: Build docs
-        run: uv run --frozen --no-sync zensical build --strict
+        run: uv run --frozen --no-sync --no-build zensical build --strict
 
       - name: Upload Pages artifact
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
