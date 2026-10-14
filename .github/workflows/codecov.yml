@@ -1,50 +1,49 @@
 name: Run tests and upload coverage and analytics
 
 on:
-    push
+  push:
+
+permissions:
+  contents: read
 
 jobs:
-    test:
-        name: Run tests and collect coverage
-        runs-on: ubuntu-latest
-        strategy:
-            fail-fast: false
-            matrix:
-                python-version: ["3.14"]
-        steps:
-            -   name: Checkout
-                uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-                with:
-                    fetch-depth: 0
-
-            -   name: Install uv
-                run: |
-                    curl -Ls https://astral.sh/uv/install.sh | bash
-                    echo "${HOME}/.local/bin" >> $GITHUB_PATH
-
-            -   name: Create venv (Python ${{ matrix.python-version }})
-                run: |
-                    uv python install ${{ matrix.python-version }}
-                    uv venv .venv --python ${{ matrix.python-version }}
-
-            -   name: Install dependencies
-                run: |
-                    uv sync --frozen --extra dev
-                    uv pip install -e .
-
-            -   name: Run tests
-                run: uv run pytest --cov --cov-branch --junitxml=junit.xml -o junit_family=legacy
-
-            -   name: Upload coverage to Codecov
-                uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
-                with:
-                    token: ${{ secrets.CODECOV_TOKEN }}
-                    files: coverage.xml
-                    flags: unittests
-                    name: codecov-coverage-report
-
-            -   name: Upload test results to Codecov
-                if: ${{ !cancelled() }}
-                uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.0.0
-                with:
-                    token: ${{ secrets.CODECOV_TOKEN }}
+  test:
+    name: Run tests and collect coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.14']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Install verified uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: '0.13.1'
+          checksum: eadd9d27c134ab5ac1ffd4473b97a741407f3ea238288f03121fc4deddf90220
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+      - name: Create venv
+        run: uv venv .venv --python 3.14
+      - name: Install dependencies
+        run: |
+          uv sync --frozen --extra dev --group build --no-build --no-install-project
+          uv pip install --no-deps --no-build --no-build-isolation --editable .
+      - name: Run tests
+        run: uv run --frozen --no-sync --no-build pytest --cov --cov-branch --junitxml=junit.xml -o junit_family=legacy
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          flags: unittests
+          name: codecov-coverage-report
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

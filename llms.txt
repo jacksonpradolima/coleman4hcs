@@ -31,6 +31,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/api-reference.md
 - docs/code-cost.md
 - docs/configuration.md
+- docs/dependency-security.md
 - docs/domain-results.md
 - docs/extensibility.md
 - docs/finite-coverage.md
@@ -38,6 +39,8 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/index.md
 - docs/observability.md
 - docs/protected-evaluation.md
+- docs/releases/3.6.1.md
+- docs/releases.md
 - docs/scenario-payoffs.md
 - docs/setup.md
 - docs/workflow.md
@@ -2333,6 +2336,117 @@ coleman validate --config my-experiment.yaml --resolve resolved.json
 
 
 
+### FILE: docs/dependency-security.md
+
+# Dependency security maintenance
+
+COLEMAN audits the complete committed `uv.lock`, including development,
+documentation, notebook, release, telemetry and ClickHouse extras, plus packages
+that only install on another operating system. The base installation remains
+independent of optional tools.
+
+The lock file pins distribution versions and hashes. An advisory audit answers
+whether those versions have **known reported vulnerabilities** at the time of the
+query. A clean result does not prove that software has no undisclosed defects or
+that every possible deployment is secure.
+
+## Reproduce the audit
+
+From a checkout with Python 3.14 and uv:
+
+```sh
+python scripts/audit_lock.py > /tmp/coleman-audit-requirements.txt
+uv sync --frozen --only-group security --no-build --no-install-project
+uv run --frozen --no-sync pip-audit \
+  --strict --no-deps --disable-pip \
+  --requirement /tmp/coleman-audit-requirements.txt \
+  --format json --output /tmp/coleman-audit.json
+```
+
+The generated pins are **advisory lookup input**, not installation requirements.
+The script reads every registry entry rather than filtering for the current
+platform. It skips only COLEMAN's root editable entry; an unknown package source
+fails with an actionable error instead of escaping the audit. No project
+dependency is installed or executed by this lookup. Install from the hashed
+`uv.lock` with `uv sync --frozen` as usual.
+
+The `Locked dependency security audit` GitHub workflow runs on dependency PRs,
+main dependency updates, weekly and on manual dispatch. It retains the queried
+pins and JSON results as workflow artifacts. Known vulnerabilities, advisory
+collection failures and unsupported sources fail the job; there is no blanket
+ignore list. Advisory services require network access. Unit tests cover the
+inventory and fail-closed source handling offline.
+
+## Updating dependencies
+
+1. Inspect open Dependabot PRs and alerts, including aliases and affected version
+   ranges. Counts from different advisory services may differ or contain aliases.
+2. Update vulnerable transitive packages in the lock. If a direct pin prevents a
+   patched transitive version, update the direct package after checking its
+   compatibility and release notes.
+3. Re-run the complete audit, native CI tests, installed-package examples, strict
+   documentation and the repository quality gates. Notebook/documentation/server
+   extras need checks too; they are not exempt because the base API is offline.
+4. Merge reviewed corrections before closing superseded bump PRs. Confirm GitHub's
+   alert state after its dependency graph refreshes. Explain any actual blocker;
+   do not dismiss an alert merely to reduce a counter.
+
+## October 2026 maintenance baseline
+
+The pre-update GitHub inventory contained 106 open Dependabot alerts: 2 critical,
+58 high, 42 medium and 4 low, all attached to `uv.lock`. The initial pip-audit
+export reported 166 vulnerability occurrences in 17 packages; aliases and
+platform/extra representations mean this is not a second count of unique GitHub
+alerts.
+
+The update refreshes affected registry packages, including GitPython, Pillow,
+Starlette, AnyIO, Authlib, Bleach, Cryptography, IDNA, Mistune, MkDocs Material,
+nbconvert, PyMdown Extensions, SoupSieve, Tornado, urllib3 and virtualenv. Zensical
+and Marimo direct pins also advance so their supported transitive dependency
+ranges admit patched versions. Native numerical dependencies are not upgraded
+without a compatibility or security reason.
+
+The all-platform lock audit is the authoritative reproducible check for this
+maintenance change; its output is attached to the PR and retained in CI. Future
+advisories may change the result and require another update.
+
+## Workflow and documentation boundaries
+
+The same review inventories code-scanning findings separately from dependency
+advisories. The October baseline additionally contained 33 SonarCloud alerts,
+mostly about installation in GitHub workflows, plus a documentation path warning.
+
+CI pins the setup action and uv version, verifies the Linux archive checksum,
+installs registry dependencies from the frozen lock with source builds disabled,
+and installs the reviewed local project with the locked build backend. This
+explicit local editable build is separate from third-party source distribution
+builds; it retains normal development imports. Release/build/audit tools are also
+locked. CI checks run without silently synchronizing another dependency set.
+
+Linux CI and DevContainers have a wheel-only installation path. On macOS, the
+existing Watchdog 6.0.0 documentation dependency has no wheel: local full-extra
+setup may need its hash-pinned source build. The Linux preflight must not be
+presented as proof of wheel availability on every platform.
+
+The documentation generator refuses symlink sources and output, checks resolved
+source containment, reads the checked path, and atomically replaces complete
+output. Tests demonstrate that outside files remain untouched and interruption
+preserves the previous complete file. This protects normal repository generation;
+it is not an isolation boundary against an adversary concurrently rewriting the
+filesystem with the process's own permissions.
+
+```mermaid
+flowchart LR
+    Lock[All locked registry packages] --> Audit[Known advisory gate]
+    Sources[Workflow and filesystem findings] --> Review[Verify and fix findings]
+    Audit --> Checks[Tests, install, docs and local review]
+    Review --> Checks
+    Checks --> Merge[Reviewed security correction on main]
+    Merge --> Refresh[Refresh GitHub security findings]
+```
+
+
+
 ### FILE: docs/domain-results.md
 
 # Versioned result records for CI intelligence
@@ -4208,6 +4322,86 @@ Keep confirmatory access scarce and predeclared. Larger benchmark/corpus methodo
 and mathematical/performance validation remain separate roadmap work.
 
 ::: coleman.evaluation.protected
+
+
+
+### FILE: docs/releases/3.6.1.md
+
+COLEMAN 3.6.1 strengthens the dependency and CI foundations behind reproducible test prioritization and selection. This maintenance release prepares a safer base for the planned 4.0 feature release.
+
+## Security maintenance
+
+- Refresh affected runtime and optional-tool dependencies, including documentation, notebook and release tooling. The complete all-platform lock audit reports **zero known vulnerabilities at the time of validation**, without an advisory ignore list.
+- Add a recurring dependency audit that checks every registry package in the committed lock, including extras and packages for other operating systems, and retains machine-readable evidence in CI.
+- Pin and verify the CI package-manager download, use locked build/release/audit tools, and disable third-party source builds in Linux CI.
+- Protect documentation generation against symlink/path escapes and interrupted output publication.
+
+## Upgrade
+
+Requires Python 3.14 or later:
+
+```sh
+pip install --upgrade coleman==3.6.1
+```
+
+For contributors, synchronize the updated lock and requested extras. Zensical and Marimo are updated to admit patched transitive dependencies. Native numerical dependency pins and decision/artifact semantics are preserved.
+
+See the [dependency security guide](https://github.com/jacksonpradolima/coleman/blob/v3.6.1/docs/dependency-security.md) for exact audit commands, scope and platform limitations. A clean advisory query means no known matching reports; it does not prove the absence of undisclosed vulnerabilities.
+
+[Full changes: v3.6.0 → v3.6.1](https://github.com/jacksonpradolima/coleman/compare/v3.6.0...v3.6.1)
+
+
+
+### FILE: docs/releases.md
+
+# Release preparation
+
+COLEMAN keeps public product documentation centered on CI test prioritization,
+selection and evidence. Generic decision contracts support that product; a release
+should explain the value to CI users before listing internal implementation work.
+
+## The 4.0 integration line
+
+Prepare the next feature release in `release/4.0`, using small reviewed PRs in
+prerequisite order. This branch collects completed capabilities without publishing
+a new stable release for each PR. Keep it synchronized with reviewed security fixes
+from `main`. Do not merge unvalidated parallel implementations to accelerate a
+version number.
+
+Security corrections may ship on the supported 3.x line before 4.0. A large feature
+release is not a reason to hold an available vulnerability fix.
+
+The release workflow publishes from `main`. When the integration line is complete,
+review its entire diff, pass the full quality/security/install/native-CI gates, and
+merge its release PR with an explicit major-release Conventional Commit, such as
+`feat!: release COLEMAN 4.0`. This intentionally requests the 4.0.0 bump; do not
+manually edit only the package version while leaving tags or the lock inconsistent.
+The automated workflow updates the version/tag and then synchronizes `uv.lock`.
+
+## Reviewed release descriptions
+
+Before the final release PR, commit `docs/releases/4.0.0.md` with an en-US release
+description. The publication workflow uses `docs/releases/<version>.md` when
+present; otherwise it preserves the generated description. These notes are part
+of the reviewed diff and must describe only completed, validated public features.
+
+Write for a new CI user:
+
+- the concrete problem the release solves and useful workflows;
+- the delivered capabilities and a runnable starting example;
+- compatibility, Python requirements and any migration steps;
+- correctness/security evidence and its limits;
+- known limitations and links to the full changes.
+
+Avoid unsupported algorithm superiority, universal generalization or wall-clock
+savings claims. Separate modeled objectives, measured CI outcomes, mathematical
+correctness and protected empirical evidence. Negative and inconclusive outcomes
+remain results.
+
+After automatic publication, check the rendered GitHub description, assets,
+checksums, attestations, SBOM, package version and source/lock consistency. If the
+automatic description needs an editorial correction, update it from a reviewed
+notes file rather than replacing it with an unverified marketing claim.
 
 
 
