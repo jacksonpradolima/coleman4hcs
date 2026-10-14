@@ -37,7 +37,18 @@ jobs:
         run: |
           uv sync --frozen --group build --no-build --no-install-project
           uv build --no-build-isolation
-          uv pip install --no-deps --no-build dist/*.whl
+          python - <<'PY'
+          from pathlib import Path
+          from hashlib import sha256
+          wheels = list(Path("dist").glob("*.whl"))
+          if len(wheels) != 1:
+              raise RuntimeError("Expected exactly one built wheel")
+          wheel = wheels[0].resolve()
+          Path("/tmp/coleman-benchmark-wheel.txt").write_text(
+              f"{wheel.as_uri()} --hash=sha256:{sha256(wheel.read_bytes()).hexdigest()}\n"
+          )
+          PY
+          uv pip install --offline --no-index --no-deps --no-build --require-hashes --requirement /tmp/coleman-benchmark-wheel.txt
       - name: Run outside the checkout root
         run: |
           mkdir benchmark-work

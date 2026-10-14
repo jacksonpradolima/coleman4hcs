@@ -201,14 +201,13 @@ def _one(case: Case, invocation: BenchmarkInvocation, session: _Session):
     except RuntimeError as exc:
         failed = _failure(invocation, "instrumentation", exc, attempt_index=len(session.prior_failures))
         raise BenchmarkRunError(session.report("failed", failed)) from exc
-    if isinstance(measured.error, KeyboardInterrupt):
-        failed = _failure(
-            invocation, "interrupted", measured.error, measured, attempt_index=len(session.prior_failures)
-        )
+    error = measured.error
+    if isinstance(error, KeyboardInterrupt):
+        failed = _failure(invocation, "interrupted", error, measured, attempt_index=len(session.prior_failures))
         return session.report("interrupted", failed)
-    if measured.error is not None:
-        failed = _failure(invocation, "solver", measured.error, measured, attempt_index=len(session.prior_failures))
-        raise BenchmarkRunError(session.report("failed", failed)) from measured.error
+    if isinstance(error, Exception):
+        failed = _failure(invocation, "solver", error, measured, attempt_index=len(session.prior_failures))
+        raise BenchmarkRunError(session.report("failed", failed)) from error
     try:
         interrupted = _interrupted(case, invocation, measured, len(session.prior_failures))
         if interrupted is not None:

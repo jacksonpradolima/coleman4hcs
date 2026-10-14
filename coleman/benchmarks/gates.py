@@ -202,11 +202,7 @@ def check_allocation(case: AllocationCase, result: AllocationResult) -> GateSumm
     return GateSummary(
         objective_semantics=expected.objective_semantics,
         method_class="exact_search",
-        evidence="exact"
-        if result.choice.status in {"optimal", "infeasible"}
-        else "heuristic"
-        if chosen
-        else "unavailable",
+        evidence=_allocation_evidence(result.choice.status, chosen),
         status=result.choice.status,
         selected_ids=None if chosen is None else (chosen.action_id,),
         feasible=chosen is not None,
@@ -215,6 +211,13 @@ def check_allocation(case: AllocationCase, result: AllocationResult) -> GateSumm
         independent_optimum=expected.objective,
         absolute_regret=None if objective is None or expected.objective is None else expected.objective - objective,
     )
+
+
+def _allocation_evidence(status, chosen):
+    """Classify completed enumeration separately from a feasible partial incumbent."""
+    if status in {"optimal", "infeasible"}:
+        return "exact"
+    return "heuristic" if chosen is not None else "unavailable"
 
 
 def same_mathematics(first: str, second: str) -> None:

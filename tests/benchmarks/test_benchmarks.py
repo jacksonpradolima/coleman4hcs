@@ -223,8 +223,9 @@ def test_full_math_stream_catches_order_dependence_despite_identical_objectives(
     assert first.objective == second.objective
     assert first.cost == second.cost
     assert check_coverage(case, second).objective == 1
+    first_json, second_json = first.to_json(), second.to_json()
     with pytest.raises(ValueError, match="mathematical artifacts differ"):
-        same_mathematics(first.to_json(), second.to_json())
+        same_mathematics(first_json, second_json)
     turns = 0
 
     def input_order_dependent(request, method, seed):
@@ -234,8 +235,9 @@ def test_full_math_stream_catches_order_dependence_despite_identical_objectives(
         return execute_native(request, method, seed) if turns == 1 else alternative_greedy(request)
 
     request = BenchmarkSuite(schema_version=1, benchmark_id="order-mutation-v1", cases=(case,), seeds=(11, 11, 29))
+    failed_execution = BenchmarkExecution(environment=environment)
     with pytest.raises(BenchmarkRunError) as caught:
-        run_benchmarks(request, execution=BenchmarkExecution(environment=environment), adapter=input_order_dependent)
+        run_benchmarks(request, execution=failed_execution, adapter=input_order_dependent)
     failed = caught.value.report
     assert isinstance(caught.value.__cause__, ValueError)
     assert failed.status == "failed"
@@ -307,8 +309,9 @@ def test_incompatible_units_and_wrong_expected_answers_fail_before_solver(suite,
         calls.append(args)
         raise AssertionError("No solver should start")
 
+    failed_execution = BenchmarkExecution(environment=environment)
     with pytest.raises(ValueError, match="independent oracle"):
-        run_benchmarks(request, execution=BenchmarkExecution(environment=environment), adapter=forbidden)
+        run_benchmarks(request, execution=failed_execution, adapter=forbidden)
     assert calls == []
     wrong_unit = case.expected.objective_semantics.model_copy(update={"unit": "different"})
     wrong = case.expected.model_copy(update={"objective_semantics": wrong_unit})
@@ -339,8 +342,9 @@ def test_unknown_versions_fail_closed_in_all_new_artifacts(report, value):
             del data["schema_version"]
         else:
             data["schema_version"] = value
+        reader, encoded = type(model), json.dumps(data)
         with pytest.raises(ValidationError):
-            type(model).from_json(json.dumps(data))
+            reader.from_json(encoded)
     with pytest.raises(ValueError, match="Duplicate"):
         BenchmarkSuite.from_json('{"schema_version":1,"schema_version":1}')
 
@@ -431,8 +435,9 @@ def test_failed_and_aborted_attempts_are_not_completed_observations(small, envir
 def test_existing_tracing_is_preserved_and_admission_recovers(small, environment):
     tracemalloc.start()
     try:
+        failed_execution = BenchmarkExecution(environment=environment)
         with pytest.raises(BenchmarkRunError) as caught:
-            run_benchmarks(small, execution=BenchmarkExecution(environment=environment))
+            run_benchmarks(small, execution=failed_execution)
         assert tracemalloc.is_tracing()
         failure = failed_attempt(caught.value.report)
         assert failure.phase == "instrumentation"
@@ -602,8 +607,9 @@ def test_manifest_preflight_duplicate_ids_unbounded_protocols_and_bad_profile(su
     fields = {"schema_version": 1, "benchmark_id": "bounded", "cases": too_many, "seeds": tuple(range(16))}
     with pytest.raises(ValidationError, match="invocation limit"):
         BenchmarkSuite.model_validate(fields)
+    unknown_profile = cast(Profile, "../../outside")
     with pytest.raises(ValueError, match="Unknown bundled"):
-        load_suite(cast(Profile, "../../outside"))
+        load_suite(unknown_profile)
 
 
 def test_complete_status_and_report_summaries_cannot_be_forged(report):
@@ -695,8 +701,9 @@ def test_cli_persists_failed_reports_instead_of_reporting_success(small, environ
     def broken(*_args):
         raise RuntimeError("test-only solver failure")
 
+    failed_execution = BenchmarkExecution(environment=environment)
     with pytest.raises(BenchmarkRunError) as caught:
-        run_benchmarks(small, execution=BenchmarkExecution(environment=environment), adapter=broken)
+        run_benchmarks(small, execution=failed_execution, adapter=broken)
     error = caught.value
 
     def failed(*_args, **_kwargs):
@@ -722,8 +729,9 @@ def test_oracle_caps_estimated_weights_and_required_exactness_are_explicit(suite
     larger = CoverageProblem.model_validate(data)
     with pytest.raises(ValueError, match="oracle size limit"):
         coverage_oracle(larger)
+    oversized_case = {**case.model_dump(), "problem": larger}
     with pytest.raises(ValidationError, match="twelve candidates"):
-        CoverageCase.model_validate({**case.model_dump(), "problem": larger})
+        CoverageCase.model_validate(oversized_case)
     short = case.model_copy(update={"limits": case.limits.model_copy(update={"max_work": 0})})
     incomplete = execute_native(short, "branch_bound_v1", 11)
     with pytest.raises(ValueError, match="required a completed exact"):
@@ -742,16 +750,18 @@ def test_oracle_caps_estimated_weights_and_required_exactness_are_explicit(suite
     estimated = AllocationProblem.model_validate(data)
     with pytest.raises(ValueError, match="estimated model"):
         allocation_oracle(estimated)
+    estimated_case = {**allocation.model_dump(), "problem": estimated}
     with pytest.raises(ValidationError, match="assumed weights"):
-        AllocationCase.model_validate({**allocation.model_dump(), "problem": estimated})
+        AllocationCase.model_validate(estimated_case)
 
 
 def test_failed_report_and_checkpoint_cannot_invent_or_skip_attempts(small, environment):
     def broken(*_args):
         raise ValueError("fixture")
 
+    failed_execution = BenchmarkExecution(environment=environment)
     with pytest.raises(BenchmarkRunError) as caught:
-        run_benchmarks(small, execution=BenchmarkExecution(environment=environment), adapter=broken)
+        run_benchmarks(small, execution=failed_execution, adapter=broken)
     failed = caught.value.report
     data = json.loads(failed.to_json())
     data["failure"]["seed_index"] = 1
@@ -774,8 +784,9 @@ def test_wrong_native_result_kind_is_a_typed_verification_failure(suite, small, 
     def wrong_kind(*_args):
         return payload
 
+    failed_execution = BenchmarkExecution(environment=environment)
     with pytest.raises(BenchmarkRunError) as caught:
-        run_benchmarks(small, execution=BenchmarkExecution(environment=environment), adapter=wrong_kind)
+        run_benchmarks(small, execution=failed_execution, adapter=wrong_kind)
     assert failed_attempt(caught.value.report).phase == "verification"
     assert isinstance(caught.value.__cause__, TypeError)
 
