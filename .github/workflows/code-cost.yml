@@ -11,6 +11,9 @@ jobs:
   structural-cost:
     name: Structural cost gate
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      UV_NO_SYNC: "true"
 
     steps:
       - name: Checkout code
@@ -18,10 +21,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install uv
-        run: |
-          curl -Ls https://astral.sh/uv/install.sh | bash
-          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+      - name: Install verified uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: '0.13.1'
+          checksum: eadd9d27c134ab5ac1ffd4473b97a741407f3ea238288f03121fc4deddf90220
+          python-version: '3.14'
+          enable-cache: true
 
       - name: Create venv (Python 3.14)
         run: |
@@ -29,7 +35,9 @@ jobs:
           uv venv .venv --python 3.14
 
       - name: Install dependencies
-        run: uv sync --frozen --extra dev
+        run: |
+          uv sync --frozen --extra dev --group build --no-build --no-install-project
+          uv pip install --no-deps --no-build --no-build-isolation --editable .
 
       - name: Xenon complexity gate
         run: make cost-xenon

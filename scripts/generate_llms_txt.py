@@ -6,6 +6,8 @@ This script is deterministic and intended to run in pre-commit and CI.
 
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,18 +27,18 @@ def _discover_sources() -> list[Path]:
 
 
 def _read_text(path: Path) -> str:
-    resolved = path.resolve()
-    if resolved.is_symlink():
+    if path.is_symlink():
         msg = f"Refusing to read symlinked source path: {path.as_posix()}"
         raise ValueError(msg)
 
+    resolved = path.resolve()
     try:
         resolved.relative_to(ROOT)
     except ValueError as exc:
         msg = f"Source path escapes repository root: {path.as_posix()}"
         raise ValueError(msg) from exc
 
-    return path.read_text(encoding="utf-8").strip()
+    return resolved.read_text(encoding="utf-8").strip()
 
 
 def _build_header() -> str:
@@ -87,6 +89,7 @@ def _build_consolidated() -> str:
 
 
 def generate() -> str:
+    """Return deterministic consolidated documentation without writing output."""
     parts = [
         _build_header(),
         _build_source_index(),
@@ -97,8 +100,21 @@ def generate() -> str:
 
 
 def main() -> None:
+    """Publish complete repository-local UTF-8 output atomically, refusing output symlinks."""
     content = generate()
-    OUT.write_text(content, encoding="utf-8")
+    if OUT.parent != ROOT or OUT.is_symlink():
+        raise ValueError("Documentation output must be a regular repository-local llms.txt")
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=ROOT, suffix=".tmp", delete=False) as stream:
+            temporary = Path(stream.name)
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, OUT)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     print(f"Updated {OUT}")  # noqa: T201
 
 

@@ -14,15 +14,15 @@ echo "── Setting up Coleman DevContainer ──"
 # 1. Install uv (the project's package manager)
 if ! command -v uv >/dev/null 2>&1; then
   echo "Installing uv..."
-  curl -LsSf https://astral.sh/uv/install.sh | bash
+  python3 -m pip install --user --only-binary=:all: --no-deps uv==0.13.1
   export PATH="$HOME/.local/bin:$PATH"
 fi
 
 # 2. Install Python 3.14, create the venv, and install ALL dependencies
 #    (dev + docs + notebook + telemetry + clickhouse extras)
 make setup
-uv sync --frozen --extra dev --extra docs --extra notebook --extra telemetry --extra clickhouse
-uv run --python .venv/bin/python --no-project pip install -e .
+uv sync --frozen --extra dev --extra docs --extra notebook --extra telemetry --extra clickhouse --group build --no-build --no-install-project
+uv pip install --no-deps --no-build --no-build-isolation --editable .
 
 # 3. Install pre-commit hooks (non-critical)
 make pre-commit-install || echo "⚠  pre-commit install failed — you can run 'make pre-commit-install' manually."
