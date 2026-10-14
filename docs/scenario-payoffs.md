@@ -239,6 +239,10 @@ alternatives. Store the JSON with existing `CheckpointPayload.extra` and
 `select_allocation(problem, checkpoint=...)`; source and each cached row are checked
 before early preflight returns. Verified rows do not consume new search units;
 verification overhead can repeat computation and is not a performance claim.
+Cached rows still poll deadline/cancellation, including fully completed checkpoints.
+Stopping that invocation preserves its explicit termination reason and verified
+cached evidence: a previously complete optimum remains mathematically optimal,
+without falsely reporting that this invocation completed enumeration.
 Changed/future/corrupt checkpoints fail rather than inventing progress.
 
 `publish_allocation_result(result, ArtifactWriter(root))` immutably publishes exact

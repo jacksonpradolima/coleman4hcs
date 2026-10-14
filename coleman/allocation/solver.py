@@ -77,12 +77,13 @@ def select_allocation(
 
 
 def _enumerate(problem: AllocationProblem, completed: list[ActionEvaluation], counter: WorkCounter) -> Termination:
-    """Commit whole evaluations only, preserving completed rows on cooperative stops."""
+    """Commit whole evaluations and poll cached rows, preserving progress on cooperative stops."""
     cached = {row.forecast.action_id for row in completed}
     actions = sorted(problem.actions, key=lambda action: (action.action_id != problem.no_action_id, action.action_id))
     try:
         for action in actions:
             if action.action_id in cached:
+                counter.poll()
                 continue
             counter.step()
             completed.append(_evaluate_action(problem, action, counter))

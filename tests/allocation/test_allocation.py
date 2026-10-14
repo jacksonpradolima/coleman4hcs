@@ -378,8 +378,38 @@ def test_checkpoint_resume_reuses_verified_progress_and_rejects_corruption_befor
     limits = AllocationLimits(max_working_bytes=0)
     with pytest.raises(ValueError, match="differs"):
         select_allocation(request, checkpoint=corrupt, limits=limits)
+    changed_request = problem(balance=99)
     with pytest.raises(ValueError, match="source differs"):
-        select_allocation(problem(balance=99), checkpoint=checkpoint)
+        select_allocation(changed_request, checkpoint=checkpoint)
+
+
+@pytest.mark.parametrize("stop", ["deadline", "cancelled", "interrupted", "none"])
+def test_complete_checkpoint_still_honors_deadline_and_cancellation_without_new_work(stop):
+    request = problem()
+    previous = select(request)
+    checkpoint = previous.checkpoint()
+    calls = 0
+
+    def cancelled():
+        nonlocal calls
+        calls += 1
+        if stop == "interrupted":
+            raise KeyboardInterrupt
+        return stop == "cancelled" and calls == 2
+
+    result = select_allocation(
+        request,
+        checkpoint=checkpoint,
+        limits=AllocationLimits(max_work=0, deadline_seconds=0 if stop == "deadline" else None),
+        cancelled=cancelled,
+    )
+    assert result.termination_reason == ("enumeration_complete" if stop == "none" else stop)
+    assert result.work_used == 0
+    assert result.completed == previous.completed
+    # Cached complete mathematical evidence remains valid even when this invocation stops.
+    assert result.choice == previous.choice
+    assert AllocationResult.from_json(result.to_json()) == result
+    assert calls == {"deadline": 1, "cancelled": 2, "interrupted": 1, "none": 3}[stop]
 
 
 def test_independent_decimal_oracle_and_metamorphic_joint_order():
@@ -644,16 +674,17 @@ def test_tiny_negative_utility_and_moment_units_survive_low_decimal_context():
 
 
 def test_observation_count_requires_a_named_unit_and_never_comes_from_seeds():
+    source_fingerprint = fingerprint("observations")
     with pytest.raises(ValidationError, match="unit definition"):
         ProbabilityEvidence(
             kind="estimated",
-            evidence_fingerprint=fingerprint("observations"),
+            evidence_fingerprint=source_fingerprint,
             method_id="external-estimator-v1",
             independent_units=5,
         )
     evidence = ProbabilityEvidence(
         kind="estimated",
-        evidence_fingerprint=fingerprint("observations"),
+        evidence_fingerprint=source_fingerprint,
         method_id="external-estimator-v1",
         independent_unit="repository",
         independent_units=5,
