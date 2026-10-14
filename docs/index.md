@@ -22,8 +22,10 @@ environments.
 
 ## Quick Start
 
+With Python 3.14 or later in an activated environment, install the GitHub release wheel:
+
 ```bash
-pip install coleman
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
 coleman run --config my-experiment.yaml
 ```
 

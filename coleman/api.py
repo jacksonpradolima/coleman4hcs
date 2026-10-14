@@ -1,7 +1,7 @@
 """
 coleman.api - Library-first public API.
 
-External projects can ``pip install coleman`` and drive experiments
+External projects can install a COLEMAN GitHub release wheel and drive experiments
 programmatically via :func:`run`, :func:`run_many`, or :func:`sweep`.
 
 Functions

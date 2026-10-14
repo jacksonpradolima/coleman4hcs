@@ -1,8 +1,8 @@
 """
 coleman.results.clickhouse_sink - Optional ClickHouse Results Sink.
 
-Requires ``pip install coleman[clickhouse]`` which pulls in the
-``clickhouse-connect`` driver.  This sink inserts result rows into a
+Requires the ClickHouse extra from a COLEMAN GitHub release wheel, which
+provides the ``clickhouse-connect`` driver. This sink inserts result rows into a
 ClickHouse table in batches.
 
 When the extra is **not** installed, importing this module will raise
@@ -160,7 +160,8 @@ class ClickHouseSink(ResultsSink):
             clickhouse_connect = importlib.import_module("clickhouse_connect")
         except ImportError as exc:
             raise ImportError(
-                "clickhouse-connect is required for ClickHouseSink. Install it with: pip install coleman[clickhouse]"
+                "clickhouse-connect is required for ClickHouseSink. Install the COLEMAN ClickHouse extra "
+                "from a GitHub release wheel: https://github.com/jacksonpradolima/coleman#installation"
             ) from exc
 
         client_kwargs: dict[str, Any] = {

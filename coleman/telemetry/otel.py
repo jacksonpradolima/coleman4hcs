@@ -113,7 +113,8 @@ class Telemetry:
         """
         if not _HAS_OTEL:
             raise ImportError(
-                "opentelemetry SDK is required for Telemetry. Install it with: pip install coleman[telemetry]"
+                "opentelemetry SDK is required for Telemetry. Install the COLEMAN telemetry extra "
+                "from a GitHub release wheel: https://github.com/jacksonpradolima/coleman#installation"
             )
 
         attrs: dict[str, str] = dict(resource_attributes or {})
@@ -401,7 +402,8 @@ def get_telemetry(
     if not _HAS_OTEL:
         logger.warning(
             "Telemetry enabled but opentelemetry SDK not installed. "
-            "Install with: pip install coleman[telemetry]. "
+            "Install the COLEMAN telemetry extra from a GitHub release wheel; see "
+            "https://github.com/jacksonpradolima/coleman#installation. "
             "Falling back to NoOpTelemetry."
         )
         return NoOpTelemetry()
