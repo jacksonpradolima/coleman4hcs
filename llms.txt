@@ -2424,6 +2424,8 @@ solver status and bounds. Readers recompute independent references and native
 proof/forecast checks. They do not invoke a production selector, but their bounded
 reference enumeration and replay overhead are real; reading is more than parsing
 an unchecked summary.
+Every case's declared reference is checked, including cases with no observation
+in interrupted or failed reports.
 
 ## Frozen manifests and independent answers
 

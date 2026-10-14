@@ -14,7 +14,7 @@ from pydantic import BeforeValidator, Field, model_validator
 
 from coleman.allocation import AllocationResult
 from coleman.benchmarks.contracts import BenchmarkSuite, CoverageCase, verify_termination
-from coleman.benchmarks.gates import GateSummary, check_allocation, check_coverage, same_mathematics
+from coleman.benchmarks.gates import GateSummary, check_allocation, check_coverage, reference, same_mathematics
 from coleman.results.domain import Fingerprint, Identifier, fingerprint
 from coleman.results.versioned import VersionedContract
 from coleman.selection import CoverageResult
@@ -267,6 +267,8 @@ class BenchmarkReport(VersionedContract):
         """Recompute prefix integrity, mathematical gates and claimed completeness/reproducibility."""
         if self.completed_at.tzinfo is None or self.completed_at.utcoffset() is None:
             raise ValueError("Benchmark availability time must include a timezone")
+        for case in self.suite.cases:
+            reference(case)
         verify_observations(self.suite, self.observations)
         verify_failures(self.suite, self.observations, self.prior_failures)
         count = sum(len(case.methods) for case in self.suite.cases) * len(self.suite.seeds)

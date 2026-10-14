@@ -1106,3 +1106,26 @@ def test_exception_interruptions_cannot_gain_a_native_work_counter(small, enviro
     history["prior_failures"][0]["work_used"] = invented_work
     with pytest.raises(ValidationError, match="Exception interruptions require unavailable work"):
         BenchmarkCheckpoint.model_validate(history)
+
+
+@pytest.mark.parametrize("status", ["interrupted", "failed"])
+def test_report_replay_validates_references_for_cases_not_yet_observed(suite, environment, status):
+    execution = BenchmarkExecution(environment=environment, max_new_invocations=1)
+    if status == "interrupted":
+        report = run_benchmarks(suite, execution=execution)
+        assert len(report.observations) == 1
+    else:
+
+        def faulty(*_args):
+            raise RuntimeError("fixture")
+
+        with pytest.raises(BenchmarkRunError) as caught:
+            run_benchmarks(suite, execution=execution, adapter=faulty)
+        report = caught.value.report
+        assert report.observations == ()
+    assert report.status == status
+    assert BenchmarkReport.from_json(report.to_json()) == report
+    data = json.loads(report.to_json())
+    data["suite"]["cases"][1]["expected"]["objective"] = "999"
+    with pytest.raises(ValidationError, match="independent oracle"):
+        BenchmarkReport.model_validate(data)
