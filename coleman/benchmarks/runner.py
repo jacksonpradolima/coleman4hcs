@@ -8,7 +8,7 @@ import tracemalloc
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Annotated, cast, overload
+from typing import Annotated, NoReturn, cast, overload
 
 from pydantic import Field
 
@@ -179,6 +179,11 @@ class BenchmarkExecution(Immutable):
     environment: BenchmarkEnvironment | None = None
 
 
+def _raise_failure(report: BenchmarkReport, cause: Exception) -> NoReturn:
+    """Raise typed failed evidence with the exact ordinary exception as its explicit cause."""
+    raise BenchmarkRunError(report) from cause
+
+
 @dataclass
 class _Session:
     """Invocation-local mutable progress over immutable source, environment and adapter."""
@@ -200,14 +205,14 @@ def _one(case: Case, invocation: BenchmarkInvocation, session: _Session):
         measured = _measure(lambda: session.adapter(case, invocation.method, invocation.seed))
     except RuntimeError as exc:
         failed = _failure(invocation, "instrumentation", exc, attempt_index=len(session.prior_failures))
-        raise BenchmarkRunError(session.report("failed", failed)) from exc
+        _raise_failure(session.report("failed", failed), exc)
     error = measured.error
     if isinstance(error, KeyboardInterrupt):
         failed = _failure(invocation, "interrupted", error, measured, attempt_index=len(session.prior_failures))
         return session.report("interrupted", failed)
     if isinstance(error, Exception):
         failed = _failure(invocation, "solver", error, measured, attempt_index=len(session.prior_failures))
-        raise BenchmarkRunError(session.report("failed", failed)) from error
+        _raise_failure(session.report("failed", failed), error)
     try:
         interrupted = _interrupted(case, invocation, measured, len(session.prior_failures))
         if interrupted is not None:
@@ -216,7 +221,7 @@ def _one(case: Case, invocation: BenchmarkInvocation, session: _Session):
         verify_observations(session.suite, (*session.observations, row))
     except (ValueError, TypeError) as exc:
         failed = _failure(invocation, "verification", exc, measured, attempt_index=len(session.prior_failures))
-        raise BenchmarkRunError(session.report("failed", failed)) from exc
+        _raise_failure(session.report("failed", failed), exc)
     return row
 
 
