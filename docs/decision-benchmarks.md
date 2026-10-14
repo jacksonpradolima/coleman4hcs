@@ -316,6 +316,9 @@ in resumed histories, including zero-work resumes.
 Solver, verification and interrupted failures require their measured runtime and
 Python peak bytes on replay; only an instrumentation rejection can leave both
 measurements unavailable.
+Native `cancelled`/`interrupted` attempts retain a required integer work counter,
+including known zero. Exception interruptions such as `KeyboardInterrupt` retain
+null work because their interrupted call supplied no trustworthy counter.
 
 A chunk can be persisted after each complete invocation. Process death before that
 checkpoint may require repeating an invocation; cached timings are never called

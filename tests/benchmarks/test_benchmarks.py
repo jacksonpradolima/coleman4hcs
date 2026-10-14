@@ -1047,6 +1047,14 @@ def test_aborted_native_results_cannot_be_replayed_as_complete_observations(suit
     assert live.observations == ()
     assert failed_attempt(live).error_type == f"native_{reason}"
     assert failed_attempt(live).work_used == 0
+    erased = json.loads(live.to_json())
+    erased["failure"]["work_used"] = None
+    with pytest.raises(ValidationError, match="known work counter"):
+        BenchmarkReport.model_validate(erased)
+    missing_history = json.loads(live.checkpoint().to_json())
+    missing_history["prior_failures"][0]["work_used"] = None
+    with pytest.raises(ValidationError, match="known work counter"):
+        BenchmarkCheckpoint.model_validate(missing_history)
 
 
 @pytest.mark.parametrize("phase", ["solver", "verification", "interrupted"])
@@ -1079,4 +1087,22 @@ def test_failure_replay_cannot_erase_runtime_and_memory_of_a_measured_attempt(su
     history["prior_failures"][0]["elapsed_ns"] = None
     history["prior_failures"][0]["python_peak_bytes"] = None
     with pytest.raises(ValidationError, match="require measured runtime and memory"):
+        BenchmarkCheckpoint.model_validate(history)
+
+
+@pytest.mark.parametrize("invented_work", [0, 7])
+def test_exception_interruptions_cannot_gain_a_native_work_counter(small, environment, invented_work):
+    def keyboard(*_args):
+        raise KeyboardInterrupt
+
+    report = run_benchmarks(small, execution=BenchmarkExecution(environment=environment), adapter=keyboard)
+    assert failed_attempt(report).work_used is None
+    assert BenchmarkReport.from_json(report.to_json()) == report
+    data = json.loads(report.to_json())
+    data["failure"]["work_used"] = invented_work
+    with pytest.raises(ValidationError, match="Exception interruptions require unavailable work"):
+        BenchmarkReport.model_validate(data)
+    history = json.loads(report.checkpoint().to_json())
+    history["prior_failures"][0]["work_used"] = invented_work
+    with pytest.raises(ValidationError, match="Exception interruptions require unavailable work"):
         BenchmarkCheckpoint.model_validate(history)

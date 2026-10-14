@@ -137,9 +137,19 @@ class BenchmarkFailure(BenchmarkInvocation):
             raise ValueError("Rejected instrumentation must retain zero solver work and unavailable measurements")
         if self.phase in {"solver", "verification"} and self.work_used is not None:
             raise ValueError("Solver and verification failures require unavailable work, never an invented counter")
-        if self.phase == "interrupted" and self.error_type == "native_deadline":
-            verify_termination("deadline")
+        if self.phase == "interrupted":
+            self._interrupted_work()
         return self
+
+    def _interrupted_work(self) -> None:
+        """Preserve known native counters and explicit unknown work for exception interruptions."""
+        if self.error_type == "native_deadline":
+            verify_termination("deadline")
+        native = self.error_type in {"native_cancelled", "native_interrupted"}
+        if native and self.work_used is None:
+            raise ValueError("Native interruptions require their known work counter")
+        if not native and self.work_used is not None:
+            raise ValueError("Exception interruptions require unavailable work")
 
 
 def verify_observation(suite: BenchmarkSuite, observation: BenchmarkObservation) -> None:
