@@ -42,7 +42,9 @@ JSON schema; semantic cross-field checks still require the library validator.
 digest. Exit 0 means the requested metadata or tiny correctness operation passed;
 it does not mean corpus diversity is satisfied. Invalid/blocked sources, unknown
 IDs, future schemas, unsupported adapters, bad bytes or output failures return 2.
-CLI output must remain within the current workspace. Library callers supply their
+CLI output must remain within the current workspace; existing symlinked report
+parents are resolved and checked before publication. This local path check assumes
+no concurrent hostile filesystem mutation; it is not an OS sandbox. Library callers supply their
 own trusted `ArtifactWriter` root, independently of CLI/MCP transports.
 
 These are the implemented commands. Fetch/cache/extraction, real-source conversion,
@@ -159,6 +161,12 @@ assert len(readiness.uncovered_required_regimes) == 7
 assert readiness.evidence_status == "insufficient_diversity"
 publish_fixture_readiness(readiness, writer)
 ```
+
+Readiness artifacts embed the frozen registry and verified fixture reports. Reads
+and publication rederive registered/blocked source IDs, validated sources and
+actual dependence-group identities from that evidence. A fabricated summary cannot
+turn the two related fixtures into independent groups. Reordered identical retries
+canonicalize to the same identity; conflicting reports for one source fail.
 
 To author a derived owned fixture without touching the runner, obtain its typed
 `CIReferenceFixture`, change its explicit fixture identity/cases, serialize with

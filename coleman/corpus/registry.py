@@ -80,6 +80,8 @@ class FixtureReadiness(VersionedContract):
     """
 
     registry_fingerprint: Fingerprint
+    registry: CorpusRegistry
+    validated_reports: Annotated[tuple[CorpusFixtureReport, ...], Field(max_length=64)]
     registered_sources: Annotated[tuple[Identifier, ...], Field(min_length=1, max_length=64)]
     blocked_sources: Annotated[tuple[SourceBlock, ...], Field(max_length=64)]
     validated_fixture_sources: Annotated[tuple[Identifier, ...], Field(max_length=64)]
@@ -104,6 +106,7 @@ class FixtureReadiness(VersionedContract):
         if len(blocked) != len(set(blocked)):
             raise ValueError("Duplicate blocked source")
         _readiness_membership(self, set(blocked))
+        _readiness_evidence(self)
         object.__setattr__(
             self, "blocked_sources", tuple(sorted(self.blocked_sources, key=lambda source: source.benchmark_id))
         )
@@ -121,6 +124,46 @@ def _readiness_membership(readiness: FixtureReadiness, blocked: set[str]) -> Non
     group_count = len(readiness.fixture_dependence_groups)
     if group_count > len(validated) or (bool(validated) != bool(group_count)):
         raise ValueError("Validated source dependence groups are inconsistent")
+
+
+def _validated_evidence(
+    registry: CorpusRegistry, reports: tuple[CorpusFixtureReport, ...]
+) -> tuple[CorpusFixtureReport, ...]:
+    """Revalidate each frozen source and deduplicate identical evidence, rejecting conflicts."""
+    unique: dict[str, CorpusFixtureReport] = {}
+    for raw in reports:
+        report = CorpusFixtureReport.model_validate(raw)
+        source_id = report.manifest.benchmark_id
+        if registry.card(source_id).manifest != report.manifest:
+            raise ValueError("Validation report does not match the registered frozen source")
+        previous = unique.setdefault(source_id, report)
+        if previous != report:
+            raise ValueError("Conflicting validation reports for one source")
+    return tuple(unique[source_id] for source_id in sorted(unique))
+
+
+def _readiness_evidence(readiness: FixtureReadiness) -> None:
+    """Derive all evidence identities from the embedded registry and verified reports on every read."""
+    registry = readiness.registry
+    reports = _validated_evidence(registry, readiness.validated_reports)
+    registered = tuple(card.manifest.benchmark_id for card in registry.cards)
+    blocked = tuple(
+        SourceBlock(benchmark_id=card.manifest.benchmark_id, reasons=card.manifest.blocking_reasons)
+        for card in registry.cards
+        if card.manifest.blocking_reasons
+    )
+    validated = tuple(report.manifest.benchmark_id for report in reports)
+    groups = tuple(sorted({report.manifest.dependence_group for report in reports}))
+    if (
+        readiness.registry_fingerprint != registry.fingerprint
+        or readiness.registered_sources != registered
+        or sorted(readiness.blocked_sources, key=lambda source: source.benchmark_id) != list(blocked)
+        or readiness.validated_fixture_sources != validated
+        or readiness.fixture_dependence_groups != groups
+        or readiness.uncovered_required_regimes != registry.required_regimes
+    ):
+        raise ValueError("Readiness summary disagrees with registered source and validation evidence")
+    object.__setattr__(readiness, "validated_reports", reports)
 
 
 def load_registry() -> CorpusRegistry:
@@ -157,18 +200,14 @@ def fixture_readiness(registry: CorpusRegistry, reports: tuple[CorpusFixtureRepo
     older untouched-evidence label. Independent real-corpus cells remain missing.
     """
     registry = CorpusRegistry.model_validate(registry)
-    validated: set[str] = set()
-    groups: set[str] = set()
-    for report in reports:
-        report = CorpusFixtureReport.model_validate(report)
-        source = registry.card(report.manifest.benchmark_id)
-        if source.manifest != report.manifest:
-            raise ValueError("Validation report does not match the registered frozen source")
-        validated.add(report.manifest.benchmark_id)
-        groups.add(report.manifest.dependence_group)
+    reports = _validated_evidence(registry, reports)
+    validated = {report.manifest.benchmark_id for report in reports}
+    groups = {report.manifest.dependence_group for report in reports}
     return FixtureReadiness(
         schema_version=1,
         registry_fingerprint=registry.fingerprint,
+        registry=registry,
+        validated_reports=reports,
         registered_sources=tuple(card.manifest.benchmark_id for card in registry.cards),
         blocked_sources=tuple(
             SourceBlock(benchmark_id=card.manifest.benchmark_id, reasons=card.manifest.blocking_reasons)

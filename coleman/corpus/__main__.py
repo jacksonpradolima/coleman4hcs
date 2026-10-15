@@ -47,7 +47,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             workspace = Path.cwd().resolve()
             output = (workspace / args.output).resolve()
-            if not output.is_relative_to(workspace):
+            publication_parent = (output / "corpus-validations").resolve()
+            if not output.is_relative_to(workspace) or not publication_parent.is_relative_to(workspace):
                 raise ValueError("Corpus output must remain within the current workspace")
             report = validate_bundled_source(args.benchmark_id, registry)
             path = publish_fixture_report(report, ArtifactWriter(output))

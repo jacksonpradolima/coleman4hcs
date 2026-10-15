@@ -197,8 +197,9 @@ def test_zero_null_unavailable_and_zero_failure_are_distinct(fixture):
     assert answer.apfdc.value is None
     assert parallel_reference(failed).first_failure_elapsed == answer.first_failure_elapsed
     unresolved = changed(build, tests=(changed(passed, outcome="unknown"),))
+    zero_budget = q(0)
     with pytest.raises(ValueError, match="complete binary"):
-        tiny_ci_reference(unresolved, ("zero",), q(0))
+        tiny_ci_reference(unresolved, ("zero",), zero_budget)
     with pytest.raises(ValueError, match="complete binary"):
         parallel_reference(unresolved)
 
@@ -411,3 +412,58 @@ def test_readiness_cannot_forge_membership_diversity_or_independence(registry):
             changed(readiness, **mutation)
     reordered = changed(readiness, registered_sources=tuple(reversed(readiness.registered_sources)))
     assert reordered.fingerprint == readiness.fingerprint
+
+
+def test_readiness_rejects_fabricated_independent_groups(registry, tmp_path):
+    from coleman.corpus import publish_fixture_readiness
+
+    reports = tuple(validate_bundled_source(name, registry) for name in (SERIAL, PARALLEL))
+    readiness = fixture_readiness(registry, reports)
+    forged = readiness.model_copy(update={"fixture_dependence_groups": ("independent-1", "independent-2")})
+    writer = ArtifactWriter(tmp_path)
+    with pytest.raises(ValueError):
+        publish_fixture_readiness(forged, writer)
+    assert not list(tmp_path.rglob("*.json"))
+
+
+def test_cli_rejects_symlinked_publication_parent(tmp_path, monkeypatch):
+    from coleman.corpus.__main__ import main
+
+    workspace = tmp_path / "workspace"
+    outside = tmp_path / "outside"
+    workspace.mkdir()
+    outside.mkdir()
+    output = workspace / "output"
+    output.mkdir()
+    (output / "corpus-validations").symlink_to(outside, target_is_directory=True)
+    monkeypatch.chdir(workspace)
+    assert main(["validate", SERIAL, "--output", "output"]) == 2
+    assert not list(outside.iterdir())
+
+
+def test_readiness_embedded_evidence_roundtrip_and_conflicts(registry):
+    from coleman.corpus import FixtureReadiness
+
+    reports = tuple(validate_bundled_source(name, registry) for name in (SERIAL, PARALLEL))
+    readiness = fixture_readiness(registry, reports)
+    assert FixtureReadiness.from_json(readiness.to_json()) == readiness
+    assert fixture_readiness(registry, tuple(reversed(reports))).fingerprint == readiness.fingerprint
+    forged = json.loads(readiness.to_json())
+    forged["fixture_dependence_groups"] = ["independent-1", "independent-2"]
+    payload = json.dumps(forged)
+    with pytest.raises(ValueError, match="evidence"):
+        FixtureReadiness.from_json(payload)
+    with pytest.raises(ValueError, match="evidence"):
+        changed(readiness, validated_reports=())
+    report = reports[0]
+    observation = report.observations[0]
+    original = observation.record.measurement("corpus_failing_test_recall")
+    assert original.value is not None
+    perturbed = changed(original, value=original.value - 1e-13)
+    record = changed(
+        observation.record,
+        measurements=tuple(perturbed if m.name == original.name else m for m in observation.record.measurements),
+    )
+    alternative = changed(report, observations=(changed(observation, record=record), *report.observations[1:]))
+    with pytest.raises(ValueError, match="Conflicting"):
+        fixture_readiness(registry, (report, alternative))

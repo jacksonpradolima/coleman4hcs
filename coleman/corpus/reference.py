@@ -22,7 +22,7 @@ from coleman.selection.contracts import Immutable, Quantity, decimal_value, tick
 def _check_literal_size(value) -> None:
     """Bound compact exponent and rational text forms before Fraction allocates large integers."""
     if isinstance(value, str) and (
-        len(value) > 128 or re.fullmatch(r"[+-]?[0-9]+(?:/[0-9]+|\.[0-9]+)?", value) is None
+        len(value) > 128 or re.fullmatch(r"[+-]?\d+(?:/\d+|\.\d+)?", value, flags=re.ASCII) is None
     ):
         raise ValueError("Reference literal must be bounded and contain no exponent")
     if isinstance(value, Decimal) and (
@@ -119,22 +119,9 @@ def tiny_ci_reference(build: PilotBuild, ranking: tuple[str, ...], budget: Quant
     durations = [ticks(tests[name].duration.value) for name in ranking]
     full_work = sum(durations)
     failures = sum(test.outcome == "failed" for test in build.tests)
-    occupied = 0
-    selected: list[str] = []
-    failure_ranks: list[int] = []
-    area = Fraction(0)
-    first_failure = None
-    for index, name in enumerate(ranking):
-        duration = durations[index]
-        if occupied + duration > ticks(budget.value):
-            break
-        selected.append(name)
-        if tests[name].outcome == "failed":
-            failure_ranks.append(index + 1)
-            area += full_work - occupied - Fraction(duration, 2)
-            if first_failure is None:
-                first_failure = occupied + duration
-        occupied += duration
+    occupied, selected, failure_ranks, area, first_failure = _serial_prefix(
+        ranking, tests, durations, full_work, ticks(budget.value)
+    )
     recall = Fraction(len(failure_ranks), failures) if failures else None
     napfd = None
     if recall is not None:
@@ -155,3 +142,24 @@ def tiny_ci_reference(build: PilotBuild, ranking: tuple[str, ...], budget: Quant
         else None,
         first_failure_status="detected" if first_failure is not None else "right_censored",
     )
+
+
+def _serial_prefix(ranking, tests, durations, full_work, budget_ticks):
+    """Integrate the fitting serial prefix using only exact integer ticks and rational areas."""
+    occupied = 0
+    selected: list[str] = []
+    failure_ranks: list[int] = []
+    area = Fraction(0)
+    first_failure = None
+    for index, name in enumerate(ranking):
+        duration = durations[index]
+        if occupied + duration > budget_ticks:
+            break
+        selected.append(name)
+        if tests[name].outcome == "failed":
+            failure_ranks.append(index + 1)
+            area += full_work - occupied - Fraction(duration, 2)
+            if first_failure is None:
+                first_failure = occupied + duration
+        occupied += duration
+    return occupied, selected, failure_ranks, area, first_failure
