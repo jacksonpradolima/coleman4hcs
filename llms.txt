@@ -5876,10 +5876,13 @@ flowchart LR
     S --> J
     J --> L[Existing exact resource ledger]
     J --> O[Application as-of observation history]
-    J --> C[Compact checkpoint reference]
-    L --> R[Observed work and modeled subset report]
+    J --> C[Compact journal-prefix reference]
+    C --> N[Per-build domain sidecar]
+    L --> N
+    N --> K[Existing native checkpoint]
+    L --> R[Final observed work and modeled subset report]
     O --> R
-    R --> N[Domain sidecar then native checkpoint]
+    K --> R
 ```
 
 `ArtifactWriter` atomically publishes immutable protocol headers and ordinal,
@@ -5894,7 +5897,11 @@ rows, source batches and domain sidecars. Local artifact filesystem assumptions 
 ancestor-directory power-loss limits remain those of the existing writer.
 
 The existing manifest inventories shadow headers, frames, checkpoint references,
-source batches and reports. A frame records an admission, a checkpoint records a
+source batches and reports within its root. The native example keeps per-build
+families in the native run root and publishes the final study report beside it,
+after the runner returns. Call `coleman.manifest.generate_manifest` on the outer
+output directory to inventory that report together with the native child artifacts.
+A frame records an admission, a checkpoint records a
 prefix, and neither asserts that a study has completed or evidence has passed.
 Reports live in `shadow-reports/<content-digest>.json`; logical experiment identity
 is the complete frozen protocol fingerprint, distinct from changing state digests.
