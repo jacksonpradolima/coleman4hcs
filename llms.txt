@@ -376,21 +376,19 @@ Each run persists:
 
 Requires Python 3.14 or later in an activated virtual environment. Install the
 wheel published in this repository’s GitHub releases. These examples pin version
-4.0.0. For an install that checks the published SHA-256 before executing the
-package, use the complete [verified setup command](docs/setup.md#default-run-no-docker-required).
-The direct download below selects the version; it does not independently pin a hash:
+4.0.0 and its published SHA-256. Pip verifies the wheel before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
 ```
 
 Or with optional extras:
 
 ```bash
 # OpenTelemetry SDK
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -562,10 +560,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
 
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
 ```
 
 ## Querying results
@@ -628,7 +626,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list
@@ -1451,13 +1449,13 @@ an LLM decision algorithm, or a hosted service.
 Use Python 3.14 or later on Linux or macOS in an activated virtual environment:
 
 ```bash
-python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl'
+python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c'
 ```
 
 For optional tools, install the same GitHub wheel with its extra:
 
 ```bash
-python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl'
+python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c'
 ```
 
 Use this repository's release assets and verify their published digest and
@@ -3072,7 +3070,7 @@ flowchart LR
 # Dependency security maintenance
 
 COLEMAN audits the complete committed `uv.lock`, including development,
-documentation, notebook, release, telemetry and ClickHouse extras, plus packages
+documentation, notebook, release, telemetry, ClickHouse and MCP extras, plus packages
 that only install on another operating system. The base installation remains
 independent of optional tools.
 
@@ -3175,6 +3173,28 @@ flowchart LR
     Checks --> Merge[Reviewed security correction on main]
     Merge --> Refresh[Refresh GitHub security findings]
 ```
+
+## Release distribution inventory
+
+With Syft 1.42.3 installed on PATH, the release SBOM catalogs the wheel's
+distribution metadata, requires the expected COLEMAN version, and binds the root to the complete wheel's
+SHA-256. The package identifier is bound explicitly to this GitHub repository;
+inferred PyPI coordinates and guessed CPEs are removed because the PyPI name
+belongs to another project. It does not claim that unbundled dependencies are
+installed in the wheel.
+The complete lock advisory audit above covers those version pins separately.
+
+```sh
+python scripts/release_sbom.py \
+  --wheel dist/coleman-4.0.0-py3-none-any.whl \
+  --version 4.0.0 --output dist/sbom.json
+```
+
+The helper reads only the fixed METADATA member; it does not extract archive paths
+or execute package code. Empty/mismatched inventories fail before publication.
+Host file metadata is excluded, so local extraction paths do not become public
+components. Tool timestamps/serial numbers remain observations. Output replaces
+atomically after validation; a failed tool or interrupted write retains prior bytes.
 
 
 
@@ -4631,7 +4651,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
 coleman run --config my-experiment.yaml
 ```
 
@@ -4735,7 +4755,7 @@ cd examples/observability
 docker compose up -d
 
 # Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
 
 # Enable telemetry — use the telemetry/local pack in your run.yaml:
 #   packs:
@@ -4755,7 +4775,7 @@ coleman run --config run.yaml
 
 ```bash
 docker compose --profile clickhouse up -d
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
 ```
 
 ## Tear down
@@ -5116,7 +5136,7 @@ This release adds a shared, bounded application API and optional local MCP tools
 With Python 3.14 or later on Linux or macOS, install this repository's GitHub release wheel in an activated virtual environment:
 
 ```bash
-python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl'
+python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c'
 coleman application --request '{"schema_version":1,"request_id":"first-ci-decision","spec_id":"weighted-overlap-3","parameters":{"budget":3}}'
 ```
 
@@ -5125,7 +5145,7 @@ The packaged synthetic fixture selects **A+C within a 3-second modeled budget** 
 For MCP, install the same wheel with its optional extra and configure `coleman-mcp` in a local client:
 
 ```bash
-python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl'
+python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c'
 ```
 
 Use this repository's assets: the bare PyPI name belongs to a different project. Release assets include signed distributions and an SBOM. The [application guide](https://jacksonpradolima.github.io/coleman/application-api/) includes complete library examples, tool operations, errors and limits.
@@ -5146,6 +5166,15 @@ COLEMAN can report **insufficient evidence**, use a conservative fallback and pr
 - [Independent decision benchmarks](https://jacksonpradolima.github.io/coleman/decision-benchmarks/)
 - [Protected evaluation](https://jacksonpradolima.github.io/coleman/protected-evaluation/)
 - [Full changes since 3.6.1](https://github.com/jacksonpradolima/coleman/compare/v3.6.1...v4.0.0)
+
+## Release integrity correction
+
+The initial SBOM contained only the distribution-directory metadata. It was
+replaced with a verified inventory of the published wheel's distribution metadata,
+including COLEMAN 4.0.0 and the wheel SHA-256. Dependencies are not bundled in the
+wheel; their all-platform lock audit remains separate. Wheel, source archive,
+signatures and the version tag were unchanged. Installation examples now pin the
+published wheel digest.
 
 
 
@@ -5533,33 +5562,11 @@ generalization needs protected evaluation and diversified-corpus evidence.
 
 Coleman is framework-first: the default installation works without any
 external services. Use Python 3.14 or later in an activated virtual environment.
-Install this repository's GitHub release wheel with its published SHA-256.
-This command reads the selected asset's digest from GitHub release metadata,
-refuses a missing/unsupported digest, and passes the hash to pip for verification
-before installation. It trusts GitHub's HTTPS metadata; it is not an independently
-pinned checksum or a signature check. No MCP SDK or additional installer tool is
-required by this procedure.
+Install this repository's GitHub release wheel, pinned to its published SHA-256.
+Pip verifies the complete wheel against this digest before installation:
 
 ```bash
-python - <<'PY'
-import json
-import re
-import subprocess
-import sys
-import urllib.request
-
-version = "4.0.0"
-wheel = f"coleman-{version}-py3-none-any.whl"
-metadata_url = f"https://api.github.com/repos/jacksonpradolima/coleman/releases/tags/v{version}"
-with urllib.request.urlopen(metadata_url, timeout=30) as response:
-    release = json.load(response)
-asset = next(item for item in release["assets"] if item["name"] == wheel)
-digest = asset.get("digest")
-if not isinstance(digest, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", digest) is None:
-    raise SystemExit("Release has no supported SHA-256 digest; refusing installation")
-url = f"https://github.com/jacksonpradolima/coleman/releases/download/v{version}/{wheel}"
-subprocess.run([sys.executable, "-m", "pip", "install", f"{url}#sha256={digest[7:]}"], check=True)
-PY
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
 ```
 
 Use the library API or the `coleman` CLI to run experiments:
@@ -5649,10 +5656,10 @@ coleman run --config experiment.yaml
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
 
 # ClickHouse sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
 ```
 
 ## Optional observability stack

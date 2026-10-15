@@ -61,7 +61,7 @@ and analysis, see [docs/workflow.py](docs/workflow.py).
 ```bash
 OTEL_COLLECTOR_CONFIG=otel-collector-config-clickhouse.yaml \
   docker compose --profile clickhouse up -d
-python -m pip install "coleman[telemetry,clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
+python -m pip install "coleman[telemetry,clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
 ```
 
 When the ClickHouse profile is active:

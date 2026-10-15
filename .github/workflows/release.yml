@@ -88,10 +88,17 @@ jobs:
       - name: Install Syft
         if: steps.release.outputs.released == 'true'
         uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          syft-version: v1.42.3
 
       - name: Generate SBOM (CycloneDX)
         if: steps.release.outputs.released == 'true'
-        run: syft packages dist -o cyclonedx-json=dist/sbom.json
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: >-
+          python scripts/release_sbom.py
+          --wheel "dist/coleman-${RELEASE_VERSION}-py3-none-any.whl"
+          --version "$RELEASE_VERSION" --output dist/sbom.json
 
       - name: Sign distributions with Sigstore
         if: steps.release.outputs.released == 'true'
