@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from coleman.corpus import CorpusFixtureReport
+from coleman.corpus import CorpusFixtureReport, CorpusProfileInventory, NativeSourceProfile
 
 ROOT = Path(__file__).parents[2]
 
@@ -77,7 +77,64 @@ def test_installed_registry_correctness_fixtures_and_real_native_ci(tmp_path):
     manifest = json.loads((run_root / "manifest.json").read_bytes())
     assert len([entry for entry in manifest["artifacts"] if entry["type"] == "corpus_fixture_report"]) == 2
 
+    entries = manifest["artifacts"]
+    assert len([entry for entry in entries if entry["type"] == "corpus_source_profile"]) == 1
+    assert len([entry for entry in entries if entry["type"] == "corpus_profile_inventory"]) == 1
+    source_profile = NativeSourceProfile.from_json(next(run_root.glob("corpus-profiles/*.json")).read_bytes())
+    assert source_profile.rows == 6 and source_profile.logical_builds == 2
+    assert source_profile.duration_median.unit == "s"
+    assert source_profile.card.history == "constructed"
+    assert source_profile.card.manifest.dependence_group == "coleman-tiny-ci-fixture-family-v1"
+    assert source_profile.generalization == "insufficient_evidence"
+    assert list((run_root / "checkpoints").rglob("progress_*.json"))
+    source = outside / "source.parquet"
+    shutil.copyfile(ROOT / "examples/fakedata/features-engineered.parquet", source)
+    for _ in range(2):
+        described = command(
+            [
+                str(python),
+                "-m",
+                "coleman.corpus",
+                "profile",
+                "native-example-e970afe1686d7fe6",
+                str(source),
+                "--output",
+                "profiles",
+            ],
+            outside,
+            env,
+        )
+        description = json.loads(described.stdout)
+        assert description["profile_status"] == "descriptive_only"
+        assert description["rows"] == 29
+        assert NativeSourceProfile.from_json(Path(description["artifact"]).read_bytes()).raw_duration.zero_count == 3
+    escaped = command(
+        [
+            str(python),
+            "-m",
+            "coleman.corpus",
+            "profile",
+            "native-example-e970afe1686d7fe6",
+            str(source),
+            "--output",
+            "../escape",
+        ],
+        outside,
+        env,
+        check=False,
+    )
+    assert escaped.returncode == 2
+    inventory_script = outside / "inventory.py"
+    shutil.copyfile(ROOT / "examples/corpus-profiles/inventory.py", inventory_script)
+    first = command([str(python), str(inventory_script), str(ROOT), "inventory"], outside, env)
+    second = command([str(python), str(inventory_script), str(ROOT), "inventory"], outside, env)
+    assert json.loads(first.stdout) == json.loads(second.stdout)
+    inventory = CorpusProfileInventory.from_json(Path(json.loads(first.stdout)["inventory"]).read_bytes())
+    assert len(inventory.profiles) == 10
+    assert len(inventory.uncovered_required_regimes) == 7
+
     documentation = (ROOT / "docs/benchmark-corpus.md").read_text()
-    snippet = re.search(r"```python\n(.*?)```", documentation, flags=re.S)
-    assert snippet is not None
-    command([str(python), "-c", snippet.group(1)], outside, env)
+    snippets = re.findall(r"```python\n(.*?)```", documentation, flags=re.S)
+    assert len(snippets) == 2
+    for snippet in snippets:
+        command([str(python), "-c", snippet], outside, env)

@@ -27,6 +27,15 @@ from coleman.corpus.fixtures import (
     fixture_bytes,
     parallel_reference,
 )
+from coleman.corpus.profiles import (
+    ColumnMissingness,
+    CorpusProfileInventory,
+    NativeSourceProfile,
+    NumericProfile,
+    profile_native_source,
+    publish_profile_inventory,
+    publish_source_profile,
+)
 from coleman.corpus.reference import RatioReference, TinyCIReference, tiny_ci_reference
 from coleman.corpus.registry import (
     REQUIRED_REGIMES,
@@ -41,12 +50,13 @@ from coleman.corpus.registry import (
 from coleman.corpus.validation import CorpusFixtureReport, publish_fixture_report, validate_fixture_source
 
 __all__ = [
-    "REQUIRED_REGIMES",
     "AdapterReference",
     "CIReferenceFixture",
+    "ColumnMissingness",
     "ConversionSummary",
     "CorpusFixtureReport",
     "CorpusManifest",
+    "CorpusProfileInventory",
     "CorpusRegistry",
     "CorpusResources",
     "DataCard",
@@ -54,10 +64,13 @@ __all__ = [
     "ExclusionCount",
     "FixtureReadiness",
     "LicenseReview",
+    "NativeSourceProfile",
+    "NumericProfile",
     "ObservationIdentity",
     "OutcomeSemantics",
     "ParallelFixtureCase",
     "ParallelReference",
+    "REQUIRED_REGIMES",
     "RatioReference",
     "SerialFixtureCase",
     "SourceArtifact",
@@ -69,8 +82,11 @@ __all__ = [
     "fixture_readiness",
     "load_registry",
     "parallel_reference",
-    "publish_fixture_report",
+    "profile_native_source",
     "publish_fixture_readiness",
+    "publish_fixture_report",
+    "publish_profile_inventory",
+    "publish_source_profile",
     "tiny_ci_reference",
     "validate_bundled_source",
     "validate_fixture_source",
