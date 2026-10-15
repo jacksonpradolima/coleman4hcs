@@ -167,6 +167,10 @@ non-null native required columns. Invalid rows are rejected; this adapter never
 invokes the legacy loader's null-duration-to-zero coercion. The direct legacy
 loader remains compatible with its existing callers. Algorithm overrides are
 outside the approved Random baseline registration surface in v1.
+Registration also checks the actual native duration conversion (Float64 loader
+then the bandit's Float32 schema): overflow and positive-to-zero underflow are
+rejected. Genuine zero and representable subnormal durations remain valid;
+ordinary native rounding is preserved and native result bytes keep that meaning.
 
 Experiment bundles contain original resolved-specification and native result
 bytes with logical filenames, byte counts, SHA-256 and canonical base64.

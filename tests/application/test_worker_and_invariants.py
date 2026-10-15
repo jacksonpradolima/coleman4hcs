@@ -3,6 +3,7 @@
 import ast
 import base64
 import hashlib
+import io
 import json
 import subprocess
 import sys
@@ -184,7 +185,10 @@ def test_native_resource_claims_replay_actual_input_dimensions(field, value):
         NativeConfiguration.model_validate(invalid)
 
 
-@pytest.mark.parametrize("change", ["null_duration", "nonfinite", "negative", "duplicate", "missing", "float_build"])
+@pytest.mark.parametrize(
+    "change",
+    ["null_duration", "nonfinite", "negative", "duplicate", "missing", "float_build", "overflow32", "underflow32"],
+)
 def test_native_invalid_rows_refused_during_registration(change):
     import polars as pl
 
@@ -199,10 +203,10 @@ def test_native_invalid_rows_refused_during_registration(change):
         table = pl.concat([table, table.head(1)])
     elif change == "missing":
         table = table.drop("CalcPrio")
+    elif change in {"overflow32", "underflow32"}:
+        table = table.with_columns(pl.lit(1e100 if change == "overflow32" else 1e-100).alias("Duration"))
     else:
         table = table.with_columns(pl.col("BuildId").cast(pl.Float64))
-    import io
-
     stream = io.BytesIO()
     table.write_parquet(stream)
     content = stream.getvalue()
@@ -215,6 +219,32 @@ def test_native_invalid_rows_refused_during_registration(change):
     invalid = {**native.model_dump(), "inputs": (item,)}
     with pytest.raises(ValueError):
         NativeConfiguration.model_validate(invalid)
+
+
+@pytest.mark.parametrize("value", [0.0, float.fromhex("0x1p-149"), float.fromhex("0x1.fffffep+127")])
+def test_zero_and_representable_native_duration_endpoints_remain_valid(value):
+    import polars as pl
+
+    from coleman.bandit.base import BANDIT_SCHEMA
+
+    native = default_registry()[2].problem
+    assert isinstance(native, NativeConfiguration)
+    table = pl.read_parquet(base64.b64decode(native.inputs[0].content_base64))
+    table = table.with_columns(pl.Series("Duration", [value, 2.0, 1.0] * 2, dtype=pl.Float64))
+    stream = io.BytesIO()
+    table.write_parquet(stream)
+    content = stream.getvalue()
+    item = PortableFile(
+        name=native.inputs[0].name,
+        sha256=hashlib.sha256(content).hexdigest(),
+        size_bytes=len(content),
+        content_base64=base64.b64encode(content).decode(),
+    )
+    validated = NativeConfiguration.model_validate({**native.model_dump(), "inputs": (item,)})
+    assert validated.work_units == 2
+    actual = table["Duration"].cast(pl.Float64).cast(BANDIT_SCHEMA["Duration"])
+    assert actual.is_finite().all()
+    assert actual[0] == value
 
 
 def test_artifact_io_failure_is_safe_and_does_not_consume_admission(tmp_path, monkeypatch):

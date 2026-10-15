@@ -6,7 +6,7 @@ import base64
 import hashlib
 import math
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import TYPE_CHECKING, Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
@@ -24,6 +24,9 @@ from coleman.application.contracts import (
 from coleman.selection import CoverageProblem, Quantity
 from coleman.selection.resources import SearchLimits, inspect_workload, preflight_reason
 from coleman.spec.models import RunSpec
+
+if TYPE_CHECKING:
+    import polars as pl
 
 
 class NativeConfiguration(ApplicationContract):
@@ -268,9 +271,26 @@ def _inspect_native_input(item: PortableFile) -> tuple[int, int]:
         raise ValueError("Null native input values are not admitted")
     if not table["Duration"].is_finite().all() or (table["Duration"] < 0).any():
         raise ValueError("Native durations require finite nonnegative seconds")
+    _validate_native_durations(table["Duration"])
     if (
         not table["Verdict"].is_in([0, 1]).all()
         or table.select(pl.struct("BuildId", "Name").is_duplicated().any()).item()
     ):
         raise ValueError("Native verdicts must be binary and testcase names unique within each build")
     return table["BuildId"].n_unique(), max(table.group_by("BuildId").len()["len"].to_list())
+
+
+def _validate_native_durations(durations: pl.Series) -> None:
+    """Reject overflow and positive-to-zero underflow in the existing native dtype path.
+
+    The native loader converts to Float64, then the bandit uses BANDIT_SCHEMA's
+    duration dtype (currently Float32). Ordinary native rounding is preserved;
+    genuine zero remains valid. No input bytes or native schemas are modified.
+    """
+    import polars as pl
+
+    from coleman.bandit.base import BANDIT_SCHEMA
+
+    converted = durations.cast(pl.Float64).cast(BANDIT_SCHEMA["Duration"])
+    if not converted.is_finite().all() or ((durations > 0) & (converted == 0)).any():
+        raise ValueError("Native duration dtype would overflow or erase a positive duration")
