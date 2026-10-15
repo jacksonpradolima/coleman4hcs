@@ -281,13 +281,7 @@ class DataCard(VersionedContract):
     @model_validator(mode="after")
     def _facts(self) -> Self:
         """Reject conflicting facts/regimes and canonicalize unordered profile declarations."""
-        if self.history == "observed" and (
-            self.manifest.time.origin != "observed"
-            or self.manifest.layer in {"synthetic", "controlled_real_faults", "seeded_faults"}
-        ):
-            raise ValueError("Constructed/control histories cannot be labeled observed CI")
-        if self.manifest.layer == "synthetic" and self.fault_origin != "synthetic":
-            raise ValueError("Synthetic sources cannot be labeled real faults")
+        _source_classification(self)
         names = [item.name for item in self.measurements]
         if len(names) != len(set(names)) or set(self.covered_regimes) & set(self.missing_regimes):
             raise ValueError("Duplicate profile fact or contradictory diversity cell")
@@ -300,3 +294,17 @@ class DataCard(VersionedContract):
             object.__setattr__(self, field, tuple(sorted(values)))
         object.__setattr__(self, "measurements", tuple(sorted(self.measurements, key=lambda item: item.name)))
         return self
+
+
+def _source_classification(card: DataCard) -> None:
+    """Reject contradictory histories/fault origins; incomplete controlled-source evidence stays explicit."""
+    layer = card.manifest.layer
+    if card.history == "observed" and (
+        card.manifest.time.origin != "observed" or layer in {"synthetic", "controlled_real_faults", "seeded_faults"}
+    ):
+        raise ValueError("Constructed/control histories cannot be labeled observed CI")
+    if layer == "synthetic" and card.fault_origin != "synthetic":
+        raise ValueError("Synthetic sources cannot be labeled real faults")
+    required_origin = {"seeded_faults": "seeded", "controlled_real_faults": "real"}.get(layer)
+    if required_origin is not None and card.fault_origin not in {required_origin, "unverified"}:
+        raise ValueError("Corpus layer and fault origin are contradictory")

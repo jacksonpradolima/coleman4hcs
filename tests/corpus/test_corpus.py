@@ -500,3 +500,38 @@ def test_native_example_rejects_existing_symlinked_children(tmp_path, monkeypatc
     with pytest.raises(ValueError, match="fresh output"):
         main("output")
     assert not list(outside.iterdir())
+
+
+@pytest.mark.parametrize(
+    ("layer", "origin"),
+    [
+        ("seeded_faults", "real"),
+        ("seeded_faults", "synthetic"),
+        ("controlled_real_faults", "seeded"),
+        ("controlled_real_faults", "synthetic"),
+    ],
+)
+def test_registry_rejects_contradictory_fault_layer_origin(registry, layer, origin):
+    card = registry.card(SERIAL)
+    manifest = changed(card.manifest, layer=layer)
+    forged = card.model_copy(update={"manifest": manifest, "fault_origin": origin})
+    forged_registry = registry.model_copy(
+        update={"cards": tuple(forged if c.manifest.benchmark_id == SERIAL else c for c in registry.cards)}
+    )
+    with pytest.raises(ValueError, match="fault origin"):
+        forged_registry.to_json()
+
+
+@pytest.mark.parametrize(
+    ("layer", "origin"),
+    [
+        ("seeded_faults", "seeded"),
+        ("seeded_faults", "unverified"),
+        ("controlled_real_faults", "real"),
+        ("controlled_real_faults", "unverified"),
+    ],
+)
+def test_fault_layer_retains_consistent_and_unverified_origins(registry, layer, origin):
+    card = registry.card(SERIAL)
+    result = changed(card, manifest=changed(card.manifest, layer=layer), fault_origin=origin)
+    assert result.fault_origin == origin

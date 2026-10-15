@@ -86,8 +86,10 @@ source byte counts are available in the inventory; unverified duration profiles
 are unavailable. Null language/execution axes are unverified; empty axes are
 explicitly inapplicable to a purely numerical fixture. Constructed/control
 histories cannot be labeled observed CI, and synthetic fixtures cannot be labeled
-real faults. Context/variant artifacts retain shared dependence groups rather
-than becoming additional independent projects.
+real faults. Seeded-fault and controlled-real-fault layers must retain matching
+seeded/real origins or explicitly unverified origin; contradictory classifications
+fail when registering or serializing cards. Context/variant artifacts retain shared
+dependence groups rather than becoming additional independent projects.
 
 The initial inventory pins the exact public source revision
 `b743f51d5ba444410b32f2c0e318b2587b882c43`; every file's SHA-256, byte size and Parquet
