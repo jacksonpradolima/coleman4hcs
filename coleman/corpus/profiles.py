@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from io import BytesIO
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Self, cast
 
 import polars as pl
 import pyarrow.parquet as pq
@@ -137,6 +137,7 @@ class NativeSourceProfile(VersionedContract):
     def _counts(self) -> Self:
         """Conserve raw rows and reject impossible identities or invented duration semantics."""
         _native_card(self.card)
+        _source_bindings(self)
         _column_bindings(self)
         expected_duration = self.card.manifest.outcomes.duration or RAW_DURATION
         if self.raw_duration.semantics != expected_duration or self.tests_per_execution_group.semantics != GROUP_ROWS:
@@ -167,6 +168,27 @@ class NativeSourceProfile(VersionedContract):
         )
 
 
+def _source_bindings(profile: NativeSourceProfile) -> None:
+    """Reapply available recipe/resource bounds and frozen source-row/byte declarations on reads."""
+    manifest = profile.card.manifest
+    # _native_card has already required a non-null integral byte count.
+    size = cast(int, manifest.source.size_bytes)
+    if profile.rows > min(MAX_ROWS, manifest.resources.maximum_rows):
+        raise ValueError("Profile rows exceed recipe or declared resource ceiling")
+    if size > min(MAX_SOURCE_BYTES, manifest.resources.maximum_source_bytes):
+        raise ValueError("Profile source bytes exceed recipe or declared resource ceiling")
+    declared_rows = manifest.conversion.input_rows
+    if declared_rows is not None and profile.rows != declared_rows:
+        raise ValueError("Profile rows disagree with source conversion input-row declaration")
+    declarations = {"corpus_source_rows": (profile.rows, "1"), "corpus_source_bytes": (size, "B")}
+    for fact in profile.card.measurements:
+        expected = declarations.get(fact.name)
+        if fact.status == "observed" and expected is not None:
+            value, unit = expected
+            if fact.value != value or fact.unit != unit:
+                raise ValueError("Profile disagrees with observed source row/byte declaration")
+
+
 def _group_bindings(profile: NativeSourceProfile) -> None:
     """Conserve complete group rows and the positive integral counts underlying their quantiles."""
     known_rows = profile.rows - profile.missing_group_rows
@@ -176,6 +198,8 @@ def _group_bindings(profile: NativeSourceProfile) -> None:
         raise ValueError("Complete group rows require a logical build and execution group")
     if not profile.logical_builds <= profile.execution_groups <= known_rows:
         raise ValueError("Execution groups must preserve logical build identity")
+    if "Variant" not in profile.columns and profile.logical_builds != profile.execution_groups:
+        raise ValueError("Without Variant, logical builds and execution groups must match")
     groups = profile.tests_per_execution_group
     if groups.null_count or groups.nonfinite_count or groups.negative_count or groups.zero_count:
         raise ValueError("Observed execution groups require positive finite raw row counts")
@@ -235,8 +259,23 @@ def _identity_bindings(profile: NativeSourceProfile, null_counts: dict[str, int]
     group = ("BuildId", "Variant") if "Variant" in profile.columns else ("BuildId",)
     _missing_union(null_counts, identity, profile.missing_identity_rows, profile.rows)
     _missing_union(null_counts, group, profile.missing_group_rows, profile.rows)
+    identity_fields = set[str](identity)
+    group_fields = set[str](group)
+    extra_identity = sum(null_counts[field] for field in identity_fields - group_fields)
+    extra_group = sum(null_counts[field] for field in group_fields - identity_fields)
+    if (
+        profile.missing_identity_rows > profile.missing_group_rows + extra_identity
+        or profile.missing_group_rows > profile.missing_identity_rows + extra_group
+    ):
+        raise ValueError("Missing identity/group union subsets are inconsistent")
     if bool(profile.rows - profile.missing_identity_rows) != bool(profile.unique_observations):
         raise ValueError("Complete identity rows require at least one unique original observation")
+    if group_fields.issubset(identity_fields):
+        minimum_unique = profile.execution_groups - (profile.missing_identity_rows - profile.missing_group_rows)
+    else:
+        minimum_unique = profile.logical_builds - (profile.missing_identity_rows - null_counts["BuildId"])
+    if profile.unique_observations < minimum_unique:
+        raise ValueError("Unique observations cannot cover the declared complete build/group identities")
 
 
 def _missing_union(null_counts: dict[str, int], fields: tuple[str, ...], missing: int, rows: int) -> None:

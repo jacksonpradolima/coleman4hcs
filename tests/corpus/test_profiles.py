@@ -36,11 +36,26 @@ def local_card(path, *, variants=False):
         card.manifest.source,
         sha256="sha256:" + hashlib.sha256(path.read_bytes()).hexdigest(),
         size_bytes=path.stat().st_size,
+        uri="urn:coleman:tests:native-parquet-v1",
+        version="schema-only-test-v1",
+        citation="Repository-authored schema-only native Parquet test fixture",
     )
     identity = card.manifest.identity
     if variants:
         identity = changed(identity, observation_fields=("BuildId", "Name", "Variant"))
-    return changed(card, manifest=changed(card.manifest, source=source, identity=identity))
+    facts = []
+    for fact in card.measurements:
+        if fact.name == "corpus_source_rows":
+            fact = changed(fact, value=None, status="unknown")
+        elif fact.name == "corpus_source_bytes":
+            fact = changed(fact, value=float(path.stat().st_size))
+        facts.append(fact)
+    conversion = changed(card.manifest.conversion, input_rows=None)
+    return changed(
+        card,
+        measurements=tuple(facts),
+        manifest=changed(card.manifest, source=source, identity=identity, conversion=conversion),
+    )
 
 
 def materialize(tmp_path, rows=None):
@@ -719,3 +734,128 @@ def test_null_key_union_preserves_both_overlapping_and_disjoint_missingness(tmp_
     assert profile.missing_group_rows == 1
     assert profile.unique_observations == (2 if overlapping else 1)
     assert NativeSourceProfile.from_json(profile.to_json()) == profile
+
+
+def conserved_empty_payload(profile):
+    payload = json.loads(profile.to_json())
+    for field in (
+        "rows",
+        "missing_identity_rows",
+        "unique_observations",
+        "duplicate_identity_rows",
+        "conflicting_identities",
+        "logical_builds",
+        "execution_groups",
+        "missing_group_rows",
+        "failed_rows",
+        "passed_rows",
+        "null_verdict_rows",
+        "invalid_verdict_rows",
+    ):
+        payload[field] = 0
+    for field in ("raw_duration", "tests_per_execution_group"):
+        payload[field].update(
+            finite_count=0,
+            null_count=0,
+            nonfinite_count=0,
+            negative_count=0,
+            zero_count=0,
+            minimum=None,
+            median=None,
+            p95=None,
+            maximum=None,
+        )
+    for column in payload["column_missingness"]:
+        column["null_count"] = 0
+    return payload
+
+
+@pytest.mark.parametrize("declaration", ["both", "conversion", "measurement"])
+def test_source_row_declarations_reject_an_otherwise_conserved_empty_profile(declaration, tmp_path):
+    profile = profile_native_source(load_registry().card(ID), ROOT / "examples/fakedata/features-engineered.parquet")
+    payload = conserved_empty_payload(profile)
+    if declaration == "conversion":
+        for fact in payload["card"]["measurements"]:
+            if fact["name"] == "corpus_source_rows":
+                fact.update(status="unknown", value=None)
+    elif declaration == "measurement":
+        payload["card"]["manifest"]["conversion"]["input_rows"] = None
+    serialized = json.dumps(payload)
+    with pytest.raises(ValueError, match="declaration"):
+        NativeSourceProfile.from_json(serialized)
+    forged = profile.model_copy(update={"rows": 0})
+    writer = ArtifactWriter(tmp_path)
+    with pytest.raises(ValueError, match="declaration"):
+        publish_source_profile(forged, writer)
+    assert not list(tmp_path.rglob("*.json"))
+
+
+@pytest.mark.parametrize(
+    "name,unit,value",
+    [("corpus_source_rows", "s", 29.0), ("corpus_source_bytes", "B", 1.0), ("corpus_source_bytes", "1", 4147.0)],
+)
+def test_source_declaration_units_and_bytes_cannot_contradict_the_source(name, unit, value):
+    profile = profile_native_source(load_registry().card(ID), ROOT / "examples/fakedata/features-engineered.parquet")
+    facts = tuple(
+        changed(fact, unit=unit, value=value) if fact.name == name else fact for fact in profile.card.measurements
+    )
+    card = changed(profile.card, measurements=facts)
+    with pytest.raises(ValueError, match="declaration"):
+        changed(profile, card=card)
+
+
+def test_without_variant_logical_builds_equal_execution_groups():
+    profile = profile_native_source(load_registry().card(ID), ROOT / "examples/fakedata/features-engineered.parquet")
+    with pytest.raises(ValueError, match="Without Variant"):
+        changed(profile, logical_builds=1)
+    assert profile.logical_builds == profile.execution_groups == 5
+
+
+def test_missing_observation_identity_cannot_be_less_than_missing_subset_group_identity(tmp_path):
+    _, path = materialize(
+        tmp_path,
+        {
+            "BuildId": [None, 1, 1, 1],
+            "Name": [1, 1, 1, 2],
+            "Variant": ["a", None, "a", "b"],
+            "Duration": [1.0, 1.0, 1.0, 1.0],
+            "Verdict": [0, 0, 0, 0],
+        },
+    )
+    card = local_card(path, variants=True)
+    profile = profile_native_source(card, path)
+    assert profile.missing_group_rows == profile.missing_identity_rows == 2
+    with pytest.raises(ValueError, match="union subsets"):
+        changed(profile, missing_identity_rows=1, unique_observations=3)
+    # A variant is not part of every declared observation key. Its missingness
+    # cannot be applied to that different identity grain.
+    other = profile_native_source(local_card(path), path)
+    assert other.missing_identity_rows == 1
+    assert other.missing_group_rows == 2
+
+
+@pytest.mark.parametrize("restriction", ["rows", "declared_bytes", "recipe_bytes"])
+def test_readers_and_publication_enforce_available_resource_ceilings(restriction, tmp_path):
+    profile = profile_native_source(load_registry().card(ID), ROOT / "examples/fakedata/features-engineered.parquet")
+    manifest = profile.card.manifest
+    if restriction == "rows":
+        manifest = changed(manifest, resources=changed(manifest.resources, maximum_rows=1))
+    elif restriction == "declared_bytes":
+        manifest = changed(manifest, resources=changed(manifest.resources, maximum_source_bytes=1))
+    else:
+        manifest = changed(manifest, source=changed(manifest.source, size_bytes=implementation.MAX_SOURCE_BYTES + 1))
+    card = changed(profile.card, manifest=manifest)
+    forged = profile.model_copy(update={"card": card})
+    serialized = json.dumps(forged.model_dump(mode="json"))
+    with pytest.raises(ValueError, match="resource ceiling"):
+        NativeSourceProfile.from_json(serialized)
+    writer = ArtifactWriter(tmp_path)
+    with pytest.raises(ValueError, match="resource ceiling"):
+        publish_source_profile(forged, writer)
+    assert not list(tmp_path.rglob("*.json"))
+
+
+def test_unique_keys_must_cover_groups_with_complete_observation_identity():
+    profile = profile_native_source(load_registry().card(ID), ROOT / "examples/fakedata/features-engineered.parquet")
+    with pytest.raises(ValueError, match="cannot cover"):
+        changed(profile, unique_observations=1, duplicate_identity_rows=profile.rows - 1)

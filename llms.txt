@@ -1993,10 +1993,14 @@ never trigger downloads or dynamic imports. Numeric summaries are descriptive
 producer attestations: reading validates conservation, membership, sign counts
 against inverse-CDF quantile ranks, equality at shared ranks, and integral
 group-count quantiles consistent with the total rows. Nonempty complete group
-rows require logical builds and
-execution groups. Key-column null counts bound missing identities/groups, and
-duplicates require an original identity. Reproducing the producer's observations still requires the
-matching source and recipe.
+rows require logical builds and execution groups. Key-column null counts bound
+missing identities/groups, and
+duplicates require original identities covering the known build/group grain.
+Observed source-row/byte declarations must agree with the profile; the declared
+row/source-byte resource ceilings also apply on reads. Without `Variant`, logical
+builds and execution groups are equal. Missing group/observation identities retain
+their subset relationships and extra-column null bounds. Reproducing the
+producer's observations still requires the matching source and recipe.
 
 New `NativeSourceProfile` and `CorpusProfileInventory` schema-v1 artifacts use
 `corpus-profiles/` and `corpus-profile-inventories/`; native manifests discover both.
