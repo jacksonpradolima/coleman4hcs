@@ -114,6 +114,22 @@ class PilotMonitor(MonitorCollector):
         self.run_id = run_id
         self.report = restore_report(Path(root), manifest)
 
+    def completed_or_new(self, run):
+        """Retain completed timing evidence, rejecting a changed replayed decision."""
+        previous = next(
+            (
+                saved
+                for saved in self.report.runs
+                if saved.build_id == run.build_id and saved.candidate_id == run.candidate_id
+            ),
+            None,
+        )
+        if previous is None:
+            return run
+        if (previous.ranking, previous.events) != (run.ranking, run.events):
+            raise ValueError("Replayed native decision conflicts with completed checkpoint")
+        return previous
+
     def collect(self, params):
         if params.t > 1:
             build = next(build for build in self.manifest.builds if build.build_id == str(params.t))
@@ -132,18 +148,7 @@ class PilotMonitor(MonitorCollector):
                     OVERHEAD_SECONDS,
                 ),
             )
-            previous = next(
-                (
-                    saved
-                    for saved in self.report.runs
-                    if saved.build_id == run.build_id and saved.candidate_id == run.candidate_id
-                ),
-                None,
-            )
-            if previous is not None:
-                if (previous.ranking, previous.events) != (run.ranking, run.events):
-                    raise ValueError("Replayed native decision conflicts with completed checkpoint")
-                run = previous
+            run = self.completed_or_new(run)
             metrics = verify_run(self.manifest, run)
             first = metrics.first_failure_elapsed
             existing = self.sink.read_domain_record(
