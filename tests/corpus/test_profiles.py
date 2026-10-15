@@ -377,7 +377,7 @@ def test_column_missingness_and_complete_group_distribution_are_validated(tmp_pa
     bad = changed(report.column_missingness[0], null_count=report.rows + 1)
     with pytest.raises(ValueError, match="Missingness"):
         changed(report, column_missingness=(bad, *report.column_missingness[1:]))
-    invalid = changed(report.tests_per_execution_group, zero_count=1)
+    invalid = changed(report.tests_per_execution_group, zero_count=1, minimum=0.0)
     with pytest.raises(ValueError, match="positive"):
         changed(report, tests_per_execution_group=invalid)
 
@@ -514,3 +514,208 @@ def test_null_counts_cannot_contradict_column_profiles(tmp_path):
         )
         with pytest.raises(ValueError, match="null counts disagree"):
             changed(report, column_missingness=columns)
+
+
+@pytest.mark.parametrize(
+    "counts,quantiles",
+    [
+        ((1, 0, 0), (-1.0, -1.0, -1.0, -1.0)),
+        ((1, 0, 1), (2.0, 2.0, 2.0, 2.0)),
+        ((3, 1, 1), (-2.0, 1.0, 2.0, 2.0)),
+        ((3, 2, 0), (-2.0, 1.0, 2.0, 2.0)),
+        ((3, 0, 2), (0.0, 1.0, 2.0, 2.0)),
+        ((3, 0, 0), (0.0, 1.0, 2.0, 2.0)),
+        ((3, 3, 0), (-2.0, -1.0, 1.0, 1.0)),
+    ],
+)
+def test_quantile_signs_must_match_category_counts(counts, quantiles):
+    finite, negative, zero = counts
+    minimum, median, p95, maximum = quantiles
+    with pytest.raises(ValueError, match="category counts"):
+        NumericProfile(
+            semantics=implementation.RAW_DURATION,
+            finite_count=finite,
+            negative_count=negative,
+            zero_count=zero,
+            null_count=0,
+            nonfinite_count=0,
+            minimum=minimum,
+            median=median,
+            p95=p95,
+            maximum=maximum,
+        )
+
+
+def test_impossible_signed_distribution_and_build_counts_reject_on_artifact_reads(tmp_path):
+    profile = profile_native_source(load_registry().card(ID), ROOT / "examples/fakedata/features-engineered.parquet")
+    invalid_numbers = profile.raw_duration.model_copy(
+        update={"negative_count": 0, "zero_count": 0, "minimum": -1.0, "median": -1.0, "p95": -1.0, "maximum": -1.0}
+    )
+    writer = ArtifactWriter(tmp_path)
+    for forged in (
+        profile.model_copy(update={"raw_duration": invalid_numbers}),
+        profile.model_copy(update={"logical_builds": 0}),
+    ):
+        serialized = json.dumps(forged.model_dump(mode="json"))
+        with pytest.raises(ValueError):
+            NativeSourceProfile.from_json(serialized)
+        with pytest.raises(ValueError):
+            publish_source_profile(forged, writer)
+    assert not list(tmp_path.rglob("*.json"))
+
+
+def test_empty_build_groups_and_valid_negative_distributions_remain_supported(tmp_path):
+    for directory, builds, durations in (
+        ("missing-builds", [None, None, None], [-3.0, -2.0, -1.0]),
+        ("known-build", [1, 1, 1], [-3.0, -2.0, -1.0]),
+    ):
+        output = tmp_path / directory
+        output.mkdir()
+        card, path = materialize(
+            output, {"BuildId": builds, "Name": [1, 2, 3], "Verdict": [0, 1, 0], "Duration": durations}
+        )
+        profile = profile_native_source(card, path)
+        assert profile.raw_duration.negative_count == 3
+        assert profile.raw_duration.zero_count == 0
+        assert profile.raw_duration.median == -2
+        assert bool(profile.logical_builds) == bool(profile.execution_groups)
+        assert NativeSourceProfile.from_json(profile.to_json()) == profile
+
+
+def test_shared_quantile_ranks_cannot_have_different_values():
+    with pytest.raises(ValueError, match="same inverse-CDF rank"):
+        NumericProfile(
+            semantics=implementation.RAW_DURATION,
+            finite_count=1,
+            negative_count=0,
+            zero_count=0,
+            null_count=0,
+            nonfinite_count=0,
+            minimum=1.0,
+            median=2.0,
+            p95=3.0,
+            maximum=4.0,
+        )
+
+
+def test_complete_group_rows_cannot_disappear_from_an_artifact():
+    report = profile_native_source(load_registry().card(ID), ROOT / "examples/fakedata/features-engineered.parquet")
+    empty = NumericProfile(
+        semantics=implementation.GROUP_ROWS,
+        finite_count=0,
+        negative_count=0,
+        zero_count=0,
+        null_count=0,
+        nonfinite_count=0,
+        minimum=None,
+        median=None,
+        p95=None,
+        maximum=None,
+    )
+    forged = report.model_copy(update={"logical_builds": 0, "execution_groups": 0, "tests_per_execution_group": empty})
+    serialized = json.dumps(forged.model_dump(mode="json"))
+    with pytest.raises(ValueError, match="logical build"):
+        NativeSourceProfile.from_json(serialized)
+
+
+@pytest.mark.parametrize(
+    "count,quantiles",
+    [
+        (1, (1.0, 1.0, 1.0, 1.0)),
+        (3, (1.0, 10.0, 19.0, 19.0)),
+        (4, (1.0, 2.0, 10.0, 10.0)),
+        (3, (1.5, 10.0, 17.5, 17.5)),
+    ],
+)
+def test_group_quantiles_must_admit_the_declared_total_rows(count, quantiles):
+    report = profile_native_source(load_registry().card(ID), ROOT / "examples/fakedata/features-engineered.parquet")
+    minimum, median, p95, maximum = quantiles
+    counts = NumericProfile(
+        semantics=implementation.GROUP_ROWS,
+        finite_count=count,
+        negative_count=0,
+        zero_count=0,
+        null_count=0,
+        nonfinite_count=0,
+        minimum=minimum,
+        median=median,
+        p95=p95,
+        maximum=maximum,
+    )
+    with pytest.raises(ValueError, match="integral|conserve complete"):
+        changed(report, logical_builds=count, execution_groups=count, tests_per_execution_group=counts)
+
+
+def test_group_count_feasibility_matches_independent_small_integer_enumeration():
+    import itertools
+    from fractions import Fraction
+
+    def cdf(values, probability):
+        for index, value in enumerate(values, start=1):
+            if Fraction(index, len(values)) >= probability:
+                return float(value)
+        raise AssertionError("Nonempty bounded empirical distribution expected")
+
+    for count in range(1, 6):
+        for values in itertools.combinations_with_replacement(range(1, 6), count):
+            groups = NumericProfile(
+                semantics=implementation.GROUP_ROWS,
+                finite_count=count,
+                negative_count=0,
+                zero_count=0,
+                null_count=0,
+                nonfinite_count=0,
+                minimum=float(values[0]),
+                median=cdf(values, Fraction(1, 2)),
+                p95=cdf(values, Fraction(19, 20)),
+                maximum=float(values[-1]),
+            )
+            implementation._group_sum_bounds(groups, sum(values))
+
+
+def test_duplicate_rows_require_an_original_identified_observation():
+    profile = profile_native_source(load_registry().card(ID), ROOT / "examples/fakedata/features-engineered.parquet")
+    with pytest.raises(ValueError, match="unique original"):
+        changed(profile, unique_observations=0, duplicate_identity_rows=profile.rows)
+
+
+@pytest.mark.parametrize("column", ["Name", "BuildId"])
+def test_key_column_nulls_cannot_disappear_from_missing_rows(column):
+    profile = profile_native_source(load_registry().card(ID), ROOT / "examples/fakedata/features-engineered.parquet")
+    columns = tuple(changed(item, null_count=1) if item.name == column else item for item in profile.column_missingness)
+    if column == "Name":
+        fields = {"column_missingness": columns}
+    else:
+        fields = {"column_missingness": columns, "missing_identity_rows": 1, "unique_observations": profile.rows - 1}
+    with pytest.raises(ValueError, match="key-column null"):
+        changed(profile, **fields)
+
+
+@pytest.mark.parametrize("kind", ["identity", "group"])
+def test_missing_rows_cannot_be_invented_with_complete_key_columns(kind):
+    profile = profile_native_source(load_registry().card(ID), ROOT / "examples/fakedata/features-engineered.parquet")
+    fields = (
+        {"missing_identity_rows": 1, "unique_observations": profile.rows - 1}
+        if kind == "identity"
+        else {"missing_group_rows": 1}
+    )
+    with pytest.raises(ValueError, match="key-column null"):
+        changed(profile, **fields)
+
+
+@pytest.mark.parametrize("overlapping", [True, False])
+def test_null_key_union_preserves_both_overlapping_and_disjoint_missingness(tmp_path, overlapping):
+    card, path = materialize(
+        tmp_path,
+        {
+            "BuildId": [None, 1, 1],
+            "Name": [None, 1, 2] if overlapping else [1, None, 2],
+            "Duration": [1.0, 2.0, 3.0],
+            "Verdict": [0, 1, 0],
+        },
+    )
+    profile = profile_native_source(card, path)
+    assert profile.missing_identity_rows == (1 if overlapping else 2)
+    assert profile.missing_group_rows == 1
+    assert profile.unique_observations == (2 if overlapping else 1)
+    assert NativeSourceProfile.from_json(profile.to_json()) == profile

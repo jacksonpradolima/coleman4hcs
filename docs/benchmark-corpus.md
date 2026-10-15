@@ -207,8 +207,13 @@ One bounded byte snapshot is hashed before decoding. Footer limits precede nativ
 Parquet decoding, but are not measured peak-memory guarantees or a sandbox for
 malicious codecs. Inputs are explicit trusted local files. Source URI strings
 never trigger downloads or dynamic imports. Numeric summaries are descriptive
-producer attestations: reading validates conservation and membership, while
-reproducing their truth requires the matching source and recipe.
+producer attestations: reading validates conservation, membership, sign counts
+against inverse-CDF quantile ranks, equality at shared ranks, and integral
+group-count quantiles consistent with the total rows. Nonempty complete group
+rows require logical builds and
+execution groups. Key-column null counts bound missing identities/groups, and
+duplicates require an original identity. Reproducing the producer's observations still requires the
+matching source and recipe.
 
 New `NativeSourceProfile` and `CorpusProfileInventory` schema-v1 artifacts use
 `corpus-profiles/` and `corpus-profile-inventories/`; native manifests discover both.

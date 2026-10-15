@@ -54,7 +54,7 @@ class NumericProfile(Immutable):
 
     @model_validator(mode="after")
     def _distribution(self) -> Self:
-        """Validate availability, ordered quantiles and disjoint finite categories."""
+        """Validate availability, ordered quantiles and finite category counts against their exact ranks."""
         values = (self.minimum, self.median, self.p95, self.maximum)
         if self.negative_count + self.zero_count > self.finite_count:
             raise ValueError("Finite category counts exceed finite observations")
@@ -65,12 +65,33 @@ class NumericProfile(Immutable):
             value for value in values if value is not None
         ):
             raise ValueError("Nonempty distribution requires ordered finite quantiles")
+        if self.finite_count:
+            _quantile_categories(self, tuple(value for value in values if value is not None))
         return self
 
     @property
     def rows(self) -> int:
         """Return the conserved raw row count, including null and nonfinite values."""
         return self.finite_count + self.null_count + self.nonfinite_count
+
+
+def _quantile_categories(profile: NumericProfile, values: tuple[float, ...]) -> None:
+    """Require each inverse-CDF rank's sign to agree with negative/zero/positive counts."""
+    count = profile.finite_count
+    ranks = (1, (count + 1) // 2, (95 * count + 99) // 100, count)
+    previous_rank, previous_value = 0, 0.0
+    for rank, value in zip(ranks, values, strict=True):
+        if rank == previous_rank and value != previous_value:
+            raise ValueError("The same inverse-CDF rank must have the same quantile value")
+        previous_rank, previous_value = rank, value
+        if rank <= profile.negative_count:
+            compatible = value < 0
+        elif rank <= profile.negative_count + profile.zero_count:
+            compatible = value == 0
+        else:
+            compatible = value > 0
+        if not compatible:
+            raise ValueError("Quantile sign contradicts category counts at its inverse-CDF rank")
 
 
 class ColumnMissingness(Immutable):
@@ -128,13 +149,7 @@ class NativeSourceProfile(VersionedContract):
             raise ValueError("Identity counts must conserve source rows")
         if self.conflicting_identities > min(self.unique_observations, self.duplicate_identity_rows):
             raise ValueError("Conflicts require repeated identified observations")
-        if not self.logical_builds <= self.execution_groups <= self.rows - self.missing_group_rows:
-            raise ValueError("Execution groups must preserve logical build identity")
-        groups = self.tests_per_execution_group
-        if groups.null_count or groups.nonfinite_count or groups.negative_count or groups.zero_count:
-            raise ValueError("Observed execution groups require positive finite raw row counts")
-        if self.tests_per_execution_group.rows != self.execution_groups:
-            raise ValueError("Group distribution must conserve execution groups")
+        _group_bindings(self)
         return self
 
     @property
@@ -150,6 +165,47 @@ class NativeSourceProfile(VersionedContract):
             direction="none",
             status="observed" if value is not None else "unavailable",
         )
+
+
+def _group_bindings(profile: NativeSourceProfile) -> None:
+    """Conserve complete group rows and the positive integral counts underlying their quantiles."""
+    known_rows = profile.rows - profile.missing_group_rows
+    if bool(profile.logical_builds) != bool(profile.execution_groups) or bool(profile.execution_groups) != bool(
+        known_rows
+    ):
+        raise ValueError("Complete group rows require a logical build and execution group")
+    if not profile.logical_builds <= profile.execution_groups <= known_rows:
+        raise ValueError("Execution groups must preserve logical build identity")
+    groups = profile.tests_per_execution_group
+    if groups.null_count or groups.nonfinite_count or groups.negative_count or groups.zero_count:
+        raise ValueError("Observed execution groups require positive finite raw row counts")
+    if groups.rows != profile.execution_groups:
+        raise ValueError("Group distribution must conserve execution groups")
+    _group_sum_bounds(groups, known_rows)
+
+
+def _group_sum_bounds(groups: NumericProfile, known_rows: int) -> None:
+    """Require integral row-count quantiles admitting a total equal to all complete group rows.
+
+    For consecutive fixed ranks, unobserved counts lie between the two anchors.
+    Their minimum/maximum possible sums bound the declared total without expanding
+    millions of groups. Exact source verification remains a separate operation.
+    """
+    count = groups.finite_count
+    if not count:
+        return
+    values = tuple(value for value in (groups.minimum, groups.median, groups.p95, groups.maximum) if value is not None)
+    if any(not value.is_integer() for value in values):
+        raise ValueError("Execution-group row counts require integral quantiles")
+    ranks = (1, (count + 1) // 2, (95 * count + 99) // 100, count)
+    anchors = sorted(dict(zip(ranks, values, strict=True)).items())
+    lower = upper = anchors[0][1]
+    for (left_rank, left_value), (right_rank, right_value) in zip(anchors, anchors[1:], strict=False):
+        gap = right_rank - left_rank
+        lower += (gap - 1) * left_value + right_value
+        upper += gap * right_value
+    if not lower <= known_rows <= upper:
+        raise ValueError("Group quantiles cannot conserve complete source rows")
 
 
 def _column_bindings(profile: NativeSourceProfile) -> None:
@@ -168,8 +224,26 @@ def _column_bindings(profile: NativeSourceProfile) -> None:
     counts = {item.name: item.null_count for item in missingness}
     if counts["Duration"] != profile.raw_duration.null_count or counts["Verdict"] != profile.null_verdict_rows:
         raise ValueError("Column null counts disagree with numeric/verdict summaries")
+    _identity_bindings(profile, counts)
     object.__setattr__(profile, "columns", columns)
     object.__setattr__(profile, "column_missingness", missingness)
+
+
+def _identity_bindings(profile: NativeSourceProfile, null_counts: dict[str, int]) -> None:
+    """Bind missing key rows to column-null union bounds; duplicates require an original identity."""
+    identity = profile.card.manifest.identity.observation_fields
+    group = ("BuildId", "Variant") if "Variant" in profile.columns else ("BuildId",)
+    _missing_union(null_counts, identity, profile.missing_identity_rows, profile.rows)
+    _missing_union(null_counts, group, profile.missing_group_rows, profile.rows)
+    if bool(profile.rows - profile.missing_identity_rows) != bool(profile.unique_observations):
+        raise ValueError("Complete identity rows require at least one unique original observation")
+
+
+def _missing_union(null_counts: dict[str, int], fields: tuple[str, ...], missing: int, rows: int) -> None:
+    """Bound a null-key union without assuming nulls in different columns are disjoint."""
+    counts = tuple(null_counts[field] for field in fields)
+    if not max(counts) <= missing <= min(rows, sum(counts)):
+        raise ValueError("Missing identity/group rows disagree with key-column null counts")
 
 
 def _native_card(card: DataCard) -> None:
