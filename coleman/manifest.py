@@ -80,6 +80,7 @@ def generate_manifest(run_dir: str | Path, *, run_id: str) -> Path:
         "corpus_readiness": "corpus-readiness/*.json",
         "corpus_source_profile": "corpus-profiles/*.json",
         "corpus_profile_inventory": "corpus-profile-inventories/*.json",
+        "corpus_materialization": "corpus-materializations/*.json",
         "observation_model": "observation-models/*.json",
         "decision_signal": "decision-signals/*.json",
         "resource_run": "resource-runs/*.json",

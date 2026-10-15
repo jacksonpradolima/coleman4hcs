@@ -23,6 +23,7 @@ nav = [
   { "Finite Coverage Selection" = "finite-coverage.md" },
   { "Scenario Payoff Allocation" = "scenario-payoffs.md" },
   { "CI Benchmark Corpus Foundation" = "benchmark-corpus.md" },
+  { "Verified Corpus Materialization" = "corpus-materialization.md" },
   { "Point-in-time CI Observations" = "point-in-time-observations.md" },
   { "ADR 001: Point-in-time Boundary" = "decisions/001-point-in-time-observations.md" },
   { "Operational CI Pilot" = "operational-pilot.md" },
