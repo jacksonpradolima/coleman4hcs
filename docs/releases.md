@@ -6,7 +6,7 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
-COLEMAN 4.0 is published. The next compatible feature target is **4.1.0**;
+COLEMAN 4.1 is published. The next compatible feature target is **4.2.0**;
 compatible corrections use patch versions. Follow the [public roadmap](roadmap.md)
 in dependency order and keep each PR runnable and independently reviewed.
 

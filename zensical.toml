@@ -29,6 +29,7 @@ nav = [
   { "Setup & Architecture" = "setup.md" },
   { "Code Cost Evaluation" = "code-cost.md" },
   { "Dependency Security" = "dependency-security.md" },
+  { "COLEMAN 4.1" = "releases/4.1.0.md" },
   { "COLEMAN 4.0" = "releases/4.0.0.md" },
   { "Public Roadmap" = "roadmap.md" },
   { "Release Preparation" = "releases.md" },

@@ -20,14 +20,18 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.0
+## New in 4.1
+
+Audit native test selections with the [operational CI pilot](operational-pilot.md):
+keep missed failures in recall, distinguish runner work from elapsed time, and
+retain negative or inconclusive adoption evidence.
 
 Use the [bounded application API](application-api.md) from the library, CLI or
 optional local MCP tools. The existing native services make the decisions and
 run TCPCI experiments; versioned portable evidence makes the outcome inspectable.
 [Independent decision benchmarks](decision-benchmarks.md) check finite-model
 mathematics before performance or generalization claims. See the
-[release notes](releases/4.0.0.md) for examples, compatibility and limits.
+[release notes](releases/4.1.0.md) for examples, compatibility and limits.
 
 ## Quick Start
 
@@ -35,7 +39,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.1.0/coleman-4.1.0-py3-none-any.whl#sha256=41ad29854d95cc91ad8067e2fd6d9d15ba0fefb1b99d39498e7f707e86e83326"
 coleman run --config my-experiment.yaml
 ```
 
