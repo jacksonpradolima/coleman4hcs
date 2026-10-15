@@ -333,19 +333,19 @@ Each run persists:
 
 Requires Python 3.14 or later in an activated virtual environment. Install the
 wheel published in this repository’s GitHub releases. These examples pin version
-4.2.0 and its published SHA-256. Pip verifies the wheel before installation:
+4.3.0 and its published SHA-256. Pip verifies the wheel before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.2.0/coleman-4.2.0-py3-none-any.whl#sha256=8e929093fc2103d0de141c3e64dccb099001dfd6216f9051cfe4ceee120ebef8"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
 ```
 
 Or with optional extras:
 
 ```bash
 # OpenTelemetry SDK
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.2.0/coleman-4.2.0-py3-none-any.whl#sha256=8e929093fc2103d0de141c3e64dccb099001dfd6216f9051cfe4ceee120ebef8"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.2.0/coleman-4.2.0-py3-none-any.whl#sha256=8e929093fc2103d0de141c3e64dccb099001dfd6216f9051cfe4ceee120ebef8"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -517,10 +517,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.2.0/coleman-4.2.0-py3-none-any.whl#sha256=8e929093fc2103d0de141c3e64dccb099001dfd6216f9051cfe4ceee120ebef8"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
 
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.2.0/coleman-4.2.0-py3-none-any.whl#sha256=8e929093fc2103d0de141c3e64dccb099001dfd6216f9051cfe4ceee120ebef8"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
 ```
 
 ## Querying results
@@ -583,7 +583,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.2.0/coleman-4.2.0-py3-none-any.whl#sha256=8e929093fc2103d0de141c3e64dccb099001dfd6216f9051cfe4ceee120ebef8"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list
