@@ -133,3 +133,16 @@ def test_invalid_budget_and_size_parameters_make_no_connection(monkeypatch, size
     ):
         pytest.fail("Invalid budget opened")
     connect.assert_not_called()
+
+
+def test_expired_budget_rejects_before_response_body_read(monkeypatch):
+    reply = response()
+    client, _ = connection(monkeypatch, reply)
+    monkeypatch.setattr(corpus_http, "monotonic", Mock(side_effect=[0.0, 61.0]))
+    with (
+        pytest.raises(TimeoutError),
+        corpus_http.public_https_source("https://raw.githubusercontent.com/a", 3) as source,
+    ):
+        source.read(3)
+    reply.read.assert_not_called()
+    client.close.assert_called_once()

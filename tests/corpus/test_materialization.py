@@ -512,3 +512,52 @@ def test_reader_cannot_bypass_fixed_chunk_bound(tmp_path):
         cache.store_blob("sha256:" + "0" * 64, 1_000_000, OversizedReader())
     assert not list(cache.root.glob("blobs/*"))
     assert not list(cache.root.rglob("*.tmp"))
+
+
+def test_source_byte_limit_rejects_a_real_overlong_entity(tmp_path):
+    spec, payload = recipe()
+    cache = SourceCache(tmp_path)
+    excessive = payload + b"unexpected tail"
+    with pytest.raises(ValueError, match="exceeds frozen"):
+        materialize_source(spec, cache, lambda: reader(excessive))
+    assert not list(cache.root.glob("blobs/*"))
+
+
+@pytest.mark.parametrize(
+    "kind", ["zip64-count", "zip64-size", "unsupported-compression", "directory-data", "lying-count", "valid-extra"]
+)
+def test_additional_real_zip_metadata_boundaries(tmp_path, kind):
+    fixture = bundled_fixture_bytes(ID)
+    info = zipfile.ZipInfo("fixture.json", date_time=(1980, 1, 1, 0, 0, 0))
+    info.external_attr = stat.S_IFREG << 16
+    if kind == "unsupported-compression":
+        info.compress_type = zipfile.ZIP_BZIP2
+    elif kind == "directory-data":
+        info.filename = "directory/"
+        info.external_attr = stat.S_IFDIR << 16
+    elif kind == "valid-extra":
+        info.extra = struct.pack("<HHBI", 0x5455, 5, 1, 0)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr(info, fixture)
+        if kind == "lying-count":
+            archive.writestr("directory/", b"")
+    payload = bytearray(buffer.getvalue())
+    end = payload.rfind(b"PK\x05\x06")
+    if kind == "zip64-count":
+        struct.pack_into("<HH", payload, end + 8, 65535, 65535)
+    elif kind == "zip64-size":
+        struct.pack_into("<I", payload, end + 12, 0xFFFFFFFF)
+    elif kind == "lying-count":
+        struct.pack_into("<HH", payload, end + 8, 0, 0)
+    members = ({"name": "fixture.json", "sha256": digest(fixture), "size_bytes": len(fixture)},)
+    spec, _ = recipe(bytes(payload), archive="zip", members=members)
+    if kind == "lying-count":
+        spec = changed(spec, limits=changed(spec.limits, maximum_archive_entries=1))
+    cache = SourceCache(tmp_path)
+    if kind == "valid-extra":
+        receipt = materialize_source(spec, cache, lambda: reader(bytes(payload)))
+        validate_materialization(receipt, cache)
+    else:
+        with pytest.raises(ValueError, match="ZIP"):
+            materialize_source(spec, cache, lambda: reader(bytes(payload)))
