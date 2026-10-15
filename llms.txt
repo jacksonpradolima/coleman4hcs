@@ -4999,7 +4999,8 @@ logical retries deduplicate, while conflicting payloads (including changed seed
 or overhead) fail. The installed example reuses completed candidates and retains
 completed build records on an interrupted candidate's replay. Domain measurements
 are synchronously persisted before advancing the recoverable report; their
-original availability is retained on retries. Outcome audit identity excludes
+frozen source outcome-availability timestamp is used on every retry, never
+the current ingestion time. Outcome audit identity excludes
 attempt-specific overhead, so a retry after audit commit but before checkpoint
 publication can measure fresh overhead without conflicting with that outcome. Reconstructing
 learning history can repeat native execution; native checkpoint state remains a

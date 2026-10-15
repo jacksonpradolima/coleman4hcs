@@ -9,7 +9,6 @@ import hashlib
 import json
 import sys
 from dataclasses import replace
-from datetime import UTC, datetime
 from decimal import ROUND_CEILING, Decimal
 from pathlib import Path
 from typing import cast
@@ -151,12 +150,6 @@ class PilotMonitor(MonitorCollector):
             run = self.completed_or_new(run)
             metrics = verify_run(self.manifest, run)
             first = metrics.first_failure_elapsed
-            existing = self.sink.read_domain_record(
-                self.run_id,
-                self.candidate,
-                build.build_id,
-                namespace="pilot.ci",
-            )
             record = DomainRecord(
                 schema_version=1,
                 namespace="pilot.ci",
@@ -164,7 +157,7 @@ class PilotMonitor(MonitorCollector):
                 execution_id=self.candidate,
                 decision_id=build.build_id,
                 data_fingerprint=self.manifest.dataset_fingerprint,
-                available_at=existing.available_at if existing is not None else datetime.now(UTC),
+                available_at=build.outcomes_available_at,
                 provenance=ResultProvenance(
                     producer="coleman.operational-pilot-example",
                     producer_version="1",
@@ -172,7 +165,7 @@ class PilotMonitor(MonitorCollector):
                     # Audit measurements describe replayed outcomes, not a particular
                     # timing attempt. Repeating after audit commit but before the
                     # checkpoint may measure different overhead without changing
-                    # this record. Its actual original availability is retained.
+                    # this record. Availability is frozen source time, not ingestion.
                     evaluation_fingerprint=fingerprint(
                         run.model_dump(mode="json", exclude={"prioritization_overhead"})
                     ),

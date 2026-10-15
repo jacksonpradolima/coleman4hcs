@@ -466,6 +466,7 @@ def test_native_monitor_commits_audit_before_recoverable_checkpoint(manifest, tm
         records = list(sink.domain_records())
         assert len(records) == 1
         assert records[0].measurement("pilot_failing_test_recall").value == 0.5
+        assert records[0].available_at == manifest.builds[0].outcomes_available_at
         if prior_records:
             assert records == prior_records
         restored = example.restore_report(tmp_path, manifest)
