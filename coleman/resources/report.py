@@ -78,13 +78,18 @@ def _compare_pair(
         reasons.append("baseline_resource_overrun_containment")
     if "partial_unmeasured_setup" in {current.accounting_status, base.accounting_status}:
         reasons.append("unmeasured_setup_occupancy")
+    gate: Literal["pass", "fail", "inconclusive"] = "pass"
+    if reasons:
+        gate = "inconclusive"
+    if failed:
+        gate = "fail"
     return ResourceComparison(
         candidate_id=run.native_run.candidate_id,
         build_id=run.native_run.build_id,
         work_saving_ms=work_saving,
         net_saving_ms=net_saving,
         semantics=RUNNER_MS,
-        gate="fail" if failed else "inconclusive" if reasons else "pass",
+        gate=gate,
         reasons=tuple(reasons),
     )
 

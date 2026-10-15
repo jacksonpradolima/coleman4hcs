@@ -279,6 +279,11 @@ class ResourceReplayRun(VersionedContract):
         failed = sum(test.outcome == "failed" for test in tests.values())
         detected = sum(tests[test_id].outcome == "failed" for test_id in selected)
         recall = None if unresolved or not failed else float(Fraction(detected, failed))
+        recall_status: Literal["observed", "unavailable", "not_applicable"] = "observed"
+        if unresolved:
+            recall_status = "unavailable"
+        elif not failed:
+            recall_status = "not_applicable"
         elapsed = 0
         first_failure = None
         for test_id in selected:
@@ -298,7 +303,7 @@ class ResourceReplayRun(VersionedContract):
                 meaning="complete-universe-failing-test-recall-v1",
                 direction="maximize",
                 value=recall,
-                status="observed" if recall is not None else "unavailable" if unresolved else "not_applicable",
+                status=recall_status,
             ),
             first_failure_elapsed=Measurement(
                 name="resource_replay_first_failure",

@@ -270,3 +270,61 @@ def test_detached_selection_and_comparison_carry_units_and_semantics(example):
 
     with pytest.raises(ValueError, match="occupied runner milliseconds"):
         ResourceComparison.model_validate(wrong)
+
+
+@pytest.mark.parametrize(
+    "outcomes,overhead,status,gate",
+    [
+        ("observed", "0", "observed", "pass"),
+        ("unknown", "0", "unavailable", "inconclusive"),
+        ("no_failures", "0", "not_applicable", "inconclusive"),
+        ("observed", "1.5", "observed", "fail"),
+    ],
+)
+def test_quality_status_and_gate_precedence_are_explicit(example, outcomes, overhead, status, gate):
+    protocol, _ = example.fixture()
+    raw = protocol.model_dump(mode="json")
+    raw["capacity"]["value"] = 3000
+    for estimates in raw["estimates"]:
+        for test, ms in zip(estimates["tests"], (1000, 2000, 4000), strict=True):
+            test["estimate"]["amount"]["value"] = ms
+    for build in raw["native_manifest"]["builds"]:
+        if outcomes == "unknown":
+            build["tests"][-1]["outcome"] = "unknown"
+        elif outcomes == "no_failures":
+            for test in build["tests"]:
+                test["outcome"] = "passed"
+    raw["native_manifest"]["dataset_fingerprint"] = fingerprint(raw["native_manifest"]["builds"])
+    protocol = ResourceReplayProtocol.model_validate(raw)
+    baseline = replay(protocol)
+    candidate = replay(protocol, "shortest-estimate", overhead)
+    assert candidate.accounting().failing_test_recall.status == status
+    report = ResourceReplayReport(schema_version=1, protocol=protocol, runs=(baseline, candidate))
+    (pair,) = report.comparisons()
+    assert pair.gate == gate
+    assert pair.adoption == "insufficient_evidence"
+
+
+def test_published_resource_report_is_included_in_existing_manifest(example, tmp_path):
+    from coleman.artifacts import ArtifactWriter
+    from coleman.manifest import generate_manifest
+    from coleman.resources import publish_ledger, publish_resource_report, publish_resource_run
+
+    protocol, _ = example.fixture()
+    run = replay(protocol)
+    report = ResourceReplayReport(schema_version=1, protocol=protocol, runs=(run,))
+    writer = ArtifactWriter(tmp_path)
+    report_path = publish_resource_report(report, writer)
+    run_path = publish_resource_run(run, writer)
+    ledger_path = publish_ledger(run.ledger, writer)
+    manifest_path = generate_manifest(tmp_path, run_id="resource-audit")
+    manifest = json.loads(manifest_path.read_bytes())
+    expected = {"resource_report": report_path, "resource_run": run_path, "resource_ledger": ledger_path}
+    assert {item["type"] for item in manifest["artifacts"]} == set(expected)
+    for item in manifest["artifacts"]:
+        assert item["relative_path"] == expected[item["type"]].relative_to(tmp_path).as_posix()
+        assert item["format"] == "json"
+        assert item["partition_keys"] == []
+    repeated = json.loads(generate_manifest(tmp_path, run_id="resource-audit").read_bytes())
+    assert repeated["artifacts"] == manifest["artifacts"]
+    assert ResourceReplayReport.from_json(report_path.read_bytes()).status == "partial"

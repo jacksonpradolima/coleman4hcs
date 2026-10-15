@@ -81,6 +81,7 @@ def generate_manifest(run_dir: str | Path, *, run_id: str) -> Path:
         "observation_model": "observation-models/*.json",
         "decision_signal": "decision-signals/*.json",
         "resource_run": "resource-runs/*.json",
+        "resource_report": "resource-reports/*.json",
         "resource_ledger": "resource-ledgers/*/checkpoints/*.json",
     }
     for artifact_type, pattern in versioned_patterns.items():
