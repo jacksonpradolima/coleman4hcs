@@ -5000,9 +5000,13 @@ or overhead) fail. The installed example reuses completed candidates and retains
 completed build records on an interrupted candidate's replay. Domain measurements
 are synchronously persisted before advancing the recoverable report; their
 frozen source outcome-availability timestamp is used on every retry, never
-the current ingestion time. Outcome audit identity excludes
-attempt-specific overhead, so a retry after audit commit but before checkpoint
-publication can measure fresh overhead without conflicting with that outcome. Reconstructing
+the current ingestion time. Evaluation provenance uses the shared frozen manifest
+fingerprint, allowing compatible baseline/candidate and cross-build measurements
+through `DomainRecord.require_comparable`. Observation identity remains the
+logical candidate/build key. Comparability does not establish independence or
+a statistical inference. Timing attempts do not define the evaluation protocol,
+so a retry after audit commit but before checkpoint publication can measure fresh
+overhead without conflicting with that outcome. Reconstructing
 learning history can repeat native execution; native checkpoint state remains a
 separate runner responsibility. This introduces no second runner or storage layer. The example runs sequentially;
 do not launch concurrent native runs against the same output directory. Immutable

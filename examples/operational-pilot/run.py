@@ -162,13 +162,10 @@ class PilotMonitor(MonitorCollector):
                     producer="coleman.operational-pilot-example",
                     producer_version="1",
                     spec_fingerprint=self.manifest.fingerprint,
-                    # Audit measurements describe replayed outcomes, not a particular
-                    # timing attempt. Repeating after audit commit but before the
-                    # checkpoint may measure different overhead without changing
-                    # this record. Availability is frozen source time, not ingestion.
-                    evaluation_fingerprint=fingerprint(
-                        run.model_dump(mode="json", exclude={"prioritization_overhead"})
-                    ),
+                    # The comparison protocol is common to all candidates/builds.
+                    # Logical execution/decision keys and measured content identify
+                    # each observation; timing attempts do not define comparability.
+                    evaluation_fingerprint=self.manifest.fingerprint,
                 ),
                 measurements=(
                     Measurement(

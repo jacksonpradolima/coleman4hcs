@@ -476,3 +476,27 @@ def test_native_monitor_commits_audit_before_recoverable_checkpoint(manifest, tm
         assert example.restore_report(tmp_path, manifest) == restored
     finally:
         sink.close()
+
+
+def test_native_domain_records_share_frozen_comparison_protocol(manifest, tmp_path):
+    from coleman.results.parquet_sink import ParquetSink
+
+    sink = ParquetSink(str(tmp_path / "results"))
+    try:
+        baseline = example.PilotMonitor(sink, manifest, "base-order", tmp_path, "native-run")
+        baseline.collect(native_params())
+        candidate = example.PilotMonitor(sink, manifest, "shortest-first", tmp_path, "native-run")
+        candidate.collect(native_params())
+        later_build = native_params()
+        later_build.t = 3
+        baseline.collect(later_build)
+        records = {(record.execution_id, record.decision_id): record for record in sink.domain_records()}
+        first = records["base-order", "2"]
+        first.require_comparable(records["shortest-first", "2"], "pilot_failing_test_recall")
+        first.require_comparable(records["base-order", "3"], "pilot_failing_test_recall")
+        assert all(record.provenance.evaluation_fingerprint == manifest.fingerprint for record in records.values())
+        incompatible = changed(first, provenance=changed(first.provenance, evaluation_fingerprint="sha256:" + "0" * 64))
+        with pytest.raises(ValueError, match="Incompatible"):
+            first.require_comparable(incompatible, "pilot_failing_test_recall")
+    finally:
+        sink.close()
