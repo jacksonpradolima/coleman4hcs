@@ -50,6 +50,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/releases/4.0.0.md
 - docs/releases/4.1.0.md
 - docs/releases/4.2.0.md
+- docs/releases/4.3.0.md
 - docs/releases.md
 - docs/resource-replay.md
 - docs/roadmap.md
@@ -73,14 +74,18 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 [![codecov](https://codecov.io/github/jacksonpradolima/coleman4hcs/branch/main/graph/badge.svg?token=BW04LB0B5Y)](https://codecov.io/github/jacksonpradolima/coleman4hcs)
 
 
-COLEMAN 4.2 makes CI decisions reproducible from what was available at the time.
-[Point-in-time observations](docs/point-in-time-observations.md) preserve late
-corrections, explicit freshness and versioned decision signals. The
-[corpus foundation](docs/benchmark-corpus.md) adds two small known-answer fixtures
-and auditable source registrations. Use the existing [application API](docs/application-api.md)
-and [independent benchmarks](docs/decision-benchmarks.md) to inspect decisions and
-check their mathematics. See the [4.2 release notes](docs/releases/4.2.0.md) for
-complete workflows, compatibility and limits.
+COLEMAN 4.3 makes CI test-prioritization experiments easier to audit.
+[Exact resource accounting](docs/resource-replay.md) keeps estimates, reservations,
+actual runner work and overhead distinct. [Frozen shadow evaluation](docs/prospective-shadow.md)
+seals recommendations before feedback, preserves source/receipt chronology and
+recovers committed evidence without changing the required test order. Read the
+[4.3 release notes](docs/releases/4.3.0.md) for complete workflows, compatibility and limits.
+
+[Point-in-time observations](docs/point-in-time-observations.md), the
+[corpus foundation](docs/benchmark-corpus.md), the [application API](docs/application-api.md)
+and [independent benchmarks](docs/decision-benchmarks.md) provide the supporting
+contracts and correctness evidence. The supplied synthetic shadow fixture remains
+inconclusive; it is not a collected prospective study.
 
 The [operational CI pilot](docs/operational-pilot.md) audits native rankings against
 independent execution accounting: failing-test recall, first feedback, runner work
@@ -4949,19 +4954,23 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.2
+## New in 4.3
 
-Reproduce what a CI decision knew with [point-in-time observations](point-in-time-observations.md):
-late corrections cannot change an earlier snapshot, stale signals fall back conservatively,
-and versioned evidence survives checkpoint continuation. The
-[benchmark corpus foundation](benchmark-corpus.md) provides two known-answer fixtures
-and source registrations; all seven required diversity regimes remain uncovered.
+Audit CI budgets with [exact resource accounting](resource-replay.md): estimates,
+reservations, actual runner work, release and overhead remain separate. Run
+[frozen shadow evaluation](prospective-shadow.md) through the native runner,
+sealing recommendations before feedback and recovering committed evidence after
+interruption. Required tests keep their full base order. The included one-day
+synthetic fixture remains inconclusive against its seven-day evidence requirement.
 
-The [operational CI pilot](operational-pilot.md) continues to audit native selections,
-keep missed failures in recall, and distinguish runner work from elapsed time.
-Use the [application API](application-api.md) and [independent benchmarks](decision-benchmarks.md)
-to run experiments and check finite-model mathematics. See the
-[release notes](releases/4.2.0.md) for complete examples, compatibility and limits.
+[Point-in-time observations](point-in-time-observations.md) preserve what each
+decision knew, including late/corrected outcomes and conservative freshness.
+The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures and
+visible source-admission gaps; all seven diversity regimes remain uncovered.
+Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
+and [independent benchmarks](decision-benchmarks.md) for complete experiments and
+correctness checks. See the [4.3 release notes](releases/4.3.0.md) for examples,
+compatibility and limits.
 
 ## Quick Start
 
@@ -5628,9 +5637,9 @@ research conclusions. It reuses [point-in-time observations](point-in-time-obser
 [resource accounting](resource-replay.md), [domain records](domain-results.md),
 immutable artifacts and native runner/checkpoint interfaces.
 
-This compatible feature targets 4.3. The published 4.2 package does not contain
-it; build this revision for the examples below. No credentials, hosted service,
-external CI trigger or optional MCP package is needed.
+Available from COLEMAN 4.3. Build this revision or use the verified 4.3 release
+wheel for these examples; the 4.2 wheel does not contain this module. No credentials,
+hosted service, external CI trigger or optional MCP package is needed.
 
 ## Complete typed library example
 
@@ -6446,6 +6455,104 @@ The similarly named PyPI package is a different project.
 
 
 
+### FILE: docs/releases/4.3.0.md
+
+# COLEMAN 4.3 — Account for CI work. Audit every recommendation.
+
+COLEMAN 4.3 makes CI test-prioritization experiments easier to audit. Account for
+required runner work, replay cost-aware choices and evaluate frozen recommendations
+alongside an unchanged CI suite—with explicit units, recoverable artifacts and
+clear evidence requirements.
+
+The product remains test-case prioritization and selection for continuous
+integration. Reusable typed contracts make the audit easier to inspect and reuse.
+
+## Know where the budget went
+
+New exact resource ledgers distinguish estimates, reservations, actual occupied
+runner milliseconds, unused release, dispatch and shared setup. Actual overruns
+remain visible and stop new analytical reservations; they are never clipped into
+feasibility. Unknown costs stay unknown, zero stays zero and negative comparison
+savings remain valid findings.
+
+Historical replay compares frozen policies under equal budgets through the native
+COLEMAN runner. Reports separate modeled subset work from full-suite execution,
+shared costs and unavailable latency. A shorter serial duration sum is not
+presented as observed wall-clock saving.
+
+## Observe recommendations without changing required tests
+
+A prospective shadow protocol freezes candidate/model/features, source identity,
+temporal windows, trial registry, thresholds and evidence requirements before
+feedback. Typed source events preserve upstream chronology and first validated
+application receipt. Operational health uses an explicit local monotonic clock;
+research conclusions remain separate from connectivity.
+
+Native extension and monitor hooks seal recommendations before outcome evaluation,
+persist the original source contribution, and publish audit records before native
+checkpoint advancement. Duplicates are idempotent. Conflicts, stale sources,
+unsupported corrections and resource/quality breaches remain explicit. Atomic
+journal frames recover committed events even if a checkpoint-reference write was
+interrupted.
+
+## Start with a small reproducible CI workflow
+
+Use Python 3.14 and the verified release wheel attached below. Copy an example
+into a separate workspace and run it twice to exercise checkpoint recovery:
+
+```bash
+python ci.py shadow-output
+python ci.py shadow-output
+```
+
+Choose [`examples/prospective-shadow/ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.3.0/examples/prospective-shadow/ci.py)
+for the complete native shadow workflow, or
+[`examples/resource-replay/ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.3.0/examples/resource-replay/ci.py)
+for historical resource replay. The base package is sufficient; neither example
+needs MCP, hosted deployment, credentials or externally triggered CI jobs.
+
+Read the complete [shadow guide](https://github.com/jacksonpradolima/coleman/blob/v4.3.0/docs/prospective-shadow.md)
+and [resource guide](https://github.com/jacksonpradolima/coleman/blob/v4.3.0/docs/resource-replay.md)
+for units, invariants, complete API examples and compatibility limits.
+
+## Evidence you can inspect, limits you should keep
+
+Recovery checks inject failures around actual source, artifact, result and native
+checkpoint commits. Golden fixtures, unknown-version rejection, signed savings,
+unit checks, chronology, bounded retention, concurrent publication, metamorphic
+independent-arrival permutations and installed-package native examples accompany
+the implementation. The integrated implementation passed 1,670 tests with the
+repository's branch-coverage gate, plus typing, lint, structural, documentation,
+package/install and security checks before publication.
+
+The shipped shadow source is an owned synthetic functional fixture. Two builds on
+one day do not satisfy its frozen seven-day requirement: the result is
+**inconclusive**, with **zero collected prospective builds**. Repeated seeds and
+job retries create no independent observations. The guide includes a forward-run
+source/authorization checklist and an empty report template; it does not fabricate
+a live study or establish production savings, causal value or algorithm superiority.
+
+## Compatibility and what follows
+
+This is an additive 4.x release. Existing native scheduling outputs, v3.2 artifacts,
+domain records, runner/checkpoints and the application API retain their contracts.
+New resource and shadow JSON artifacts require explicit schema version 1 and reject
+unknown versions. Legacy rows cannot be relabeled as prospective evidence; there
+is no implicit migration. Resource v1 does not support refunds, top-ups or
+retrospective occupancy corrections.
+
+The diverse-corpus program in [#261](https://github.com/jacksonpradolima/coleman/issues/261)
+remains open. Source admission, secure materialization, broader regimes, baselines
+and frozen cross-corpus evidence will follow in reviewed vertical slices. No broad
+external-validity claim is made by this release.
+
+Implemented in [#259](https://github.com/jacksonpradolima/coleman/issues/259) and
+[#260](https://github.com/jacksonpradolima/coleman/issues/260).
+
+[Full changes from 4.2](https://github.com/jacksonpradolima/coleman/compare/v4.2.0...v4.3.0).
+
+
+
 ### FILE: docs/releases.md
 
 # Release preparation
@@ -6456,9 +6563,9 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
-COLEMAN 4.2 groups reviewed corpus and point-in-time observation increments.
-The next compatible feature target is **4.3.0**; compatible corrections use patch
-versions. Follow the [public roadmap](roadmap.md) in dependency order and keep each PR runnable and independently reviewed.
+COLEMAN 4.3 groups reviewed exact-resource and frozen-shadow increments.
+The next compatible feature target is **4.4.0**, continuing the public corpus
+program in reviewed vertical slices; compatible corrections use patch versions. Follow the [public roadmap](roadmap.md) in dependency order and keep each PR runnable and independently reviewed.
 
 A release branch can collect related reviewed PRs when a capability needs several
 vertical slices before publication. Keep it synchronized with security fixes from
@@ -6510,8 +6617,8 @@ notes file rather than replacing it with an unverified marketing claim.
 occupied work, release and overhead. It reuses the native runner, frozen
 [CI pilot](operational-pilot.md), [temporal evaluation](protected-evaluation.md),
 [domain records](domain-results.md), immutable artifacts and native checkpoints.
-It is a library feature planned for the next compatible 4.x release; the published
-4.2 wheel does not contain it. Use this revision's built wheel for these examples.
+Available from COLEMAN 4.3. Build this revision or use the verified 4.3 release
+wheel for these examples; the 4.2 wheel does not contain this module.
 
 ## Complete accounting example
 
@@ -6732,9 +6839,13 @@ metadata inventory and installed native workflows. It does not complete source
 admission, corpus diversity or the full benchmark program; all seven required
 diversity regimes remain uncovered.
 
-The next compatible feature target is **4.3.0**, starting with #259's exact CI
-resource accounting and cost-aware replay, followed sequentially by #260. Further
-#261 slices cover full profiles, secure fetch/conversion, verified historical and
+**4.3.0** groups #259's exact CI resource accounting and cost-aware replay with
+#260's frozen shadow evaluation. Both reuse the native runner and checkpoints.
+The shadow fixture demonstrates functional recovery, with zero collected forward
+builds and insufficient evidence for adoption.
+
+The next compatible feature target is **4.4.0**, continuing #261 sequentially with
+full profiles and secure fetch/conversion foundations. Further slices cover verified historical and
 controlled-fault sources, stress cases, baselines/statistics and frozen cross-corpus
 evidence. Deliveries can span later 4.x releases. The issue remains open until its
 admission, diversity, execution and evidence gates pass. Inaccessible or unlicensed
@@ -6747,18 +6858,17 @@ specifications in **M4 — Point-in-time CI adapters and prospective evaluation*
   observations and versioned decision signals; implemented for 4.2 through existing
   temporal contracts and native extensions.
 - [#259](https://github.com/jacksonpradolima/coleman/issues/259): deterministic CI
-  resource accounting and cost-aware replay; depends on #258 and existing
-  allocation/evaluation/benchmark foundations.
+  resource accounting and cost-aware replay; implemented for 4.3 on top of #258
+  and existing allocation/evaluation/benchmark foundations.
 - [#260](https://github.com/jacksonpradolima/coleman/issues/260): prospective shadow
-  evaluation of frozen CI candidates; depends on #259 and protected evaluation.
+  evaluation of frozen CI candidates; implemented for 4.3 on top of #259 and
+  protected evaluation, without fabricating prospective observations.
 
-Implement these sequentially in later 4.x feature releases, with reusable core
-contracts and CI-centered fixtures. Provider dependencies stay outside the core.
-#259 is implemented on the reviewed 4.3 integration branch. #260 adds frozen
-shadow evaluation in the same release; actual prospective observations remain
-uncollected. Generic mechanisms, native CI
-integration, functional recovery and actual prospective evidence each need their own explicit
-validation; an offline replay must never masquerade as a forward observation.
+Continue the remaining public corpus phases sequentially in later 4.x releases,
+with reusable core contracts and CI-centered fixtures. Provider dependencies stay
+outside the core. Generic mechanisms, native CI integration, functional recovery
+and actual prospective evidence each need explicit validation; offline replay
+must never masquerade as a forward observation.
 
 Compatible features use subsequent **4.x minor** versions; compatible fixes use
 **4.x patch** versions. A major version requires an actual breaking public contract,

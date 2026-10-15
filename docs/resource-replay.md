@@ -4,8 +4,8 @@
 occupied work, release and overhead. It reuses the native runner, frozen
 [CI pilot](operational-pilot.md), [temporal evaluation](protected-evaluation.md),
 [domain records](domain-results.md), immutable artifacts and native checkpoints.
-It is a library feature planned for the next compatible 4.x release; the published
-4.2 wheel does not contain it. Use this revision's built wheel for these examples.
+Available from COLEMAN 4.3. Build this revision or use the verified 4.3 release
+wheel for these examples; the 4.2 wheel does not contain this module.
 
 ## Complete accounting example
 

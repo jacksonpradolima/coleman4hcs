@@ -7,9 +7,9 @@ research conclusions. It reuses [point-in-time observations](point-in-time-obser
 [resource accounting](resource-replay.md), [domain records](domain-results.md),
 immutable artifacts and native runner/checkpoint interfaces.
 
-This compatible feature targets 4.3. The published 4.2 package does not contain
-it; build this revision for the examples below. No credentials, hosted service,
-external CI trigger or optional MCP package is needed.
+Available from COLEMAN 4.3. Build this revision or use the verified 4.3 release
+wheel for these examples; the 4.2 wheel does not contain this module. No credentials,
+hosted service, external CI trigger or optional MCP package is needed.
 
 ## Complete typed library example
 

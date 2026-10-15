@@ -9,14 +9,18 @@
 [![codecov](https://codecov.io/github/jacksonpradolima/coleman4hcs/branch/main/graph/badge.svg?token=BW04LB0B5Y)](https://codecov.io/github/jacksonpradolima/coleman4hcs)
 
 
-COLEMAN 4.2 makes CI decisions reproducible from what was available at the time.
-[Point-in-time observations](docs/point-in-time-observations.md) preserve late
-corrections, explicit freshness and versioned decision signals. The
-[corpus foundation](docs/benchmark-corpus.md) adds two small known-answer fixtures
-and auditable source registrations. Use the existing [application API](docs/application-api.md)
-and [independent benchmarks](docs/decision-benchmarks.md) to inspect decisions and
-check their mathematics. See the [4.2 release notes](docs/releases/4.2.0.md) for
-complete workflows, compatibility and limits.
+COLEMAN 4.3 makes CI test-prioritization experiments easier to audit.
+[Exact resource accounting](docs/resource-replay.md) keeps estimates, reservations,
+actual runner work and overhead distinct. [Frozen shadow evaluation](docs/prospective-shadow.md)
+seals recommendations before feedback, preserves source/receipt chronology and
+recovers committed evidence without changing the required test order. Read the
+[4.3 release notes](docs/releases/4.3.0.md) for complete workflows, compatibility and limits.
+
+[Point-in-time observations](docs/point-in-time-observations.md), the
+[corpus foundation](docs/benchmark-corpus.md), the [application API](docs/application-api.md)
+and [independent benchmarks](docs/decision-benchmarks.md) provide the supporting
+contracts and correctness evidence. The supplied synthetic shadow fixture remains
+inconclusive; it is not a collected prospective study.
 
 The [operational CI pilot](docs/operational-pilot.md) audits native rankings against
 independent execution accounting: failing-test recall, first feedback, runner work
