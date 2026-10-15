@@ -1,33 +1,30 @@
 # Bounded CI application API and optional MCP
 
-This capability is being prepared for COLEMAN 4.0 on `release/4.0`; the published
-3.6.1 wheel does not contain it. COLEMAN remains a CI test prioritization and
-selection platform. The application layer makes its existing native services
-available through reusable, bounded commands. It does not introduce a new runner,
+COLEMAN 4.0 provides a bounded application API while remaining a CI test
+prioritization and selection platform. The application layer makes its existing
+native services available through reusable, bounded commands. It does not introduce a new runner,
 an LLM decision algorithm, or a hosted service.
 
-## Install a reviewed build
+## Install the release
 
-Use Python 3.14 on Linux or macOS. From the reviewed checkout:
-
-```bash
-uv build
-python -m venv /tmp/coleman-application-env
-/tmp/coleman-application-env/bin/python -m pip install ./dist/coleman-3.6.1-py3-none-any.whl
-```
-
-The branch retains the current package version until the automatic 4.0 release.
-For optional tools, install the **same local wheel** with its extra:
+Use Python 3.14 or later on Linux or macOS in an activated virtual environment:
 
 ```bash
-/tmp/coleman-application-env/bin/python -m pip install './dist/coleman-3.6.1-py3-none-any.whl[mcp]'
+python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl'
 ```
 
-Use the verified GitHub release asset when 4.0 is published. The bare PyPI name
-does not identify this repository. Base CLI/library execution requires no MCP
-dependency, model, credentials, network service, or client. The optional adapter
-is tested against the pinned MCP Python SDK 2.3.0 and its negotiated MCP protocol;
-the independent COLEMAN application contract is `coleman-application-v1`.
+For optional tools, install the same GitHub wheel with its extra:
+
+```bash
+python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl'
+```
+
+Use this repository's release assets and verify their published digest and
+attestations. The bare PyPI name belongs to a different project. Base CLI/library
+execution requires no MCP dependency, model, credentials, network service, or
+client. The optional adapter is tested against the pinned MCP Python SDK 2.3.0
+and its negotiated MCP protocol; the independent COLEMAN application contract is
+`coleman-application-v1`.
 Contributor `make install` includes the optional SDK to exercise its tests and
 type annotations; installing the base release wheel still excludes it.
 

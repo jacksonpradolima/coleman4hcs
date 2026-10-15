@@ -140,7 +140,8 @@ fail-under = 100
 version_toml = ["pyproject.toml:project.version"]
 branch = "main"
 commit_message = "chore(release): {version}"
-build_command = "uv build --no-build-isolation"
+assets = ["uv.lock"]
+build_command = "uv lock && uv build --no-build-isolation"
 
 [dependency-groups]
 build = ["build==1.6.1", "hatchling==1.32.4", "editables==0.6"]

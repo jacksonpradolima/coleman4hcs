@@ -20,12 +20,21 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
+## New in 4.0
+
+Use the [bounded application API](application-api.md) from the library, CLI or
+optional local MCP tools. The existing native services make the decisions and
+run TCPCI experiments; versioned portable evidence makes the outcome inspectable.
+[Independent decision benchmarks](decision-benchmarks.md) check finite-model
+mathematics before performance or generalization claims. See the
+[release notes](releases/4.0.0.md) for examples, compatibility and limits.
+
 ## Quick Start
 
 With Python 3.14 or later in an activated environment, install the GitHub release wheel:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
 coleman run --config my-experiment.yaml
 ```
 

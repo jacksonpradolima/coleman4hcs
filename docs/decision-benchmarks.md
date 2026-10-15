@@ -228,8 +228,8 @@ No calibrated hardware-specific regression threshold is supplied in this version
 
 ### Committed observed comparison
 
-The repository includes a [JSON observation](https://github.com/jacksonpradolima/coleman/blob/release/4.0/examples/decision-benchmarks/observations/benchmark-reports/b8c35d14627d94f1c871203e5f9ea25083214dd2f611543f8c3c0dbca85c45a4.json)
-and its [human report](https://github.com/jacksonpradolima/coleman/blob/release/4.0/examples/decision-benchmarks/observations/benchmark-reports/b8c35d14627d94f1c871203e5f9ea25083214dd2f611543f8c3c0dbca85c45a4.md).
+The repository includes a [JSON observation](https://github.com/jacksonpradolima/coleman/blob/3f306af66e6b45984111c5498d78aadeb9c04098/examples/decision-benchmarks/observations/benchmark-reports/b8c35d14627d94f1c871203e5f9ea25083214dd2f611543f8c3c0dbca85c45a4.json)
+and its [human report](https://github.com/jacksonpradolima/coleman/blob/3f306af66e6b45984111c5498d78aadeb9c04098/examples/decision-benchmarks/observations/benchmark-reports/b8c35d14627d94f1c871203e5f9ea25083214dd2f611543f8c3c0dbca85c45a4.md).
 These are actual measurements from a noneditable base wheel built at
 `38f94a9d65fe59605e3309a2c0ef2b45a38134e2`, running outside the checkout.
 The self-contained suite fixes the weighted-overlap fixture, both coverage methods,
