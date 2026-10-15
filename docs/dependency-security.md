@@ -1,7 +1,7 @@
 # Dependency security maintenance
 
 COLEMAN audits the complete committed `uv.lock`, including development,
-documentation, notebook, release, telemetry and ClickHouse extras, plus packages
+documentation, notebook, release, telemetry, ClickHouse and MCP extras, plus packages
 that only install on another operating system. The base installation remains
 independent of optional tools.
 
@@ -104,3 +104,25 @@ flowchart LR
     Checks --> Merge[Reviewed security correction on main]
     Merge --> Refresh[Refresh GitHub security findings]
 ```
+
+## Release distribution inventory
+
+With Syft 1.42.3 installed on PATH, the release SBOM catalogs the wheel's
+distribution metadata, requires the expected COLEMAN version, and binds the root to the complete wheel's
+SHA-256. The package identifier is bound explicitly to this GitHub repository;
+inferred PyPI coordinates and guessed CPEs are removed because the PyPI name
+belongs to another project. It does not claim that unbundled dependencies are
+installed in the wheel.
+The complete lock advisory audit above covers those version pins separately.
+
+```sh
+python scripts/release_sbom.py
+```
+
+The command accepts no arguments: it reads its checkout's package version and
+uses the corresponding wheel and SBOM under that checkout's `dist/`.
+The helper reads only the fixed METADATA member; it does not extract archive paths
+or execute package code. Empty/mismatched inventories fail before publication.
+Host file metadata is excluded, so local extraction paths do not become public
+components. Tool timestamps/serial numbers remain observations. Output replaces
+atomically after validation; a failed tool or interrupted write retains prior bytes.
