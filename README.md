@@ -321,7 +321,9 @@ Each run persists:
 
 Requires Python 3.14 or later in an activated virtual environment. Install the
 wheel published in this repository’s GitHub releases. These examples pin version
-4.0.0 (verify the asset digest and attestations on the release page):
+4.0.0. For an install that checks the published SHA-256 before executing the
+package, use the complete [verified setup command](docs/setup.md#default-run-no-docker-required).
+The direct download below selects the version; it does not independently pin a hash:
 
 ```bash
 python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"

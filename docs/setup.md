@@ -4,10 +4,33 @@
 
 Coleman is framework-first: the default installation works without any
 external services. Use Python 3.14 or later in an activated virtual environment.
-Install this repository’s GitHub release wheel, pinned below with its SHA-256:
+Install this repository's GitHub release wheel with its published SHA-256.
+This command reads the selected asset's digest from GitHub release metadata,
+refuses a missing/unsupported digest, and passes the hash to pip for verification
+before installation. It trusts GitHub's HTTPS metadata; it is not an independently
+pinned checksum or a signature check. No MCP SDK or additional installer tool is
+required by this procedure.
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
+python - <<'PY'
+import json
+import re
+import subprocess
+import sys
+import urllib.request
+
+version = "4.0.0"
+wheel = f"coleman-{version}-py3-none-any.whl"
+metadata_url = f"https://api.github.com/repos/jacksonpradolima/coleman/releases/tags/v{version}"
+with urllib.request.urlopen(metadata_url, timeout=30) as response:
+    release = json.load(response)
+asset = next(item for item in release["assets"] if item["name"] == wheel)
+digest = asset.get("digest")
+if not isinstance(digest, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", digest) is None:
+    raise SystemExit("Release has no supported SHA-256 digest; refusing installation")
+url = f"https://github.com/jacksonpradolima/coleman/releases/download/v{version}/{wheel}"
+subprocess.run([sys.executable, "-m", "pip", "install", f"{url}#sha256={digest[7:]}"], check=True)
+PY
 ```
 
 Use the library API or the `coleman` CLI to run experiments:

@@ -31,7 +31,8 @@ mathematics before performance or generalization claims. See the
 
 ## Quick Start
 
-With Python 3.14 or later in an activated environment, install the GitHub release wheel:
+With Python 3.14 or later in an activated environment, install the GitHub release wheel.
+For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
 python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
