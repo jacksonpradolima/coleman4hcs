@@ -8,7 +8,7 @@ Install this repository's GitHub release wheel, pinned to its published SHA-256.
 Pip verifies the complete wheel against this digest before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.1.0/coleman-4.1.0-py3-none-any.whl#sha256=41ad29854d95cc91ad8067e2fd6d9d15ba0fefb1b99d39498e7f707e86e83326"
 ```
 
 Use the library API or the `coleman` CLI to run experiments:
@@ -55,7 +55,7 @@ with near-zero overhead:
 
 For registered, bounded CI workflows, the [application API and optional local MCP
 tools](application-api.md) share native services across library, CLI and tool
-clients. This capability is being prepared for 4.0 and adds no dependency to the
+clients. This capability is available in COLEMAN 4.x and adds no dependency to the
 base installation. Its bounded session lifecycle is separate from direct native
 runner checkpoint continuation.
 
@@ -98,10 +98,10 @@ coleman run --config experiment.yaml
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.1.0/coleman-4.1.0-py3-none-any.whl#sha256=41ad29854d95cc91ad8067e2fd6d9d15ba0fefb1b99d39498e7f707e86e83326"
 
 # ClickHouse sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.1.0/coleman-4.1.0-py3-none-any.whl#sha256=41ad29854d95cc91ad8067e2fd6d9d15ba0fefb1b99d39498e7f707e86e83326"
 ```
 
 ## Optional observability stack

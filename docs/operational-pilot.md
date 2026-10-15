@@ -10,8 +10,7 @@ legacy `ttf`, NAPFD or APFDc columns or interpret them as new measurements.
 Install a [verified COLEMAN release wheel](setup.md), then copy
 [`run.py`](https://github.com/jacksonpradolima/coleman/blob/main/examples/operational-pilot/run.py)
 to a directory outside the checkout. This example requires a wheel containing
-`coleman.pilot` (introduced after 4.0.1; use a locally built development wheel
-until 4.1 is published). No optional dependency, network, CI credential or data
+`coleman.pilot` (introduced in 4.1.0). No optional dependency, network, CI credential or data
 subscription is used during execution.
 
 ```bash

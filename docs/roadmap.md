@@ -5,18 +5,20 @@ finite coverage and scenario-payoff decisions, independent solver benchmarks and
 a bounded application API. These foundations supplement its native TCPCI runner.
 A completed foundation is not evidence that the remaining roadmap is implemented.
 
-The next additive target is **4.1.0**, beginning with the bounded operational CI
-pilot in [#257](https://github.com/jacksonpradolima/coleman/issues/257). Its first
+**4.1.0** delivers the bounded operational CI
+pilot in [#257](https://github.com/jacksonpradolima/coleman/issues/257). Its
 claim is auditable accounting and honest evidence, including negative/inconclusive
 findings. It does not promise production savings from a synthetic example.
 
-The diversified corpus in
+The next compatible feature target is **4.2.0**. Group related reviewed corpus
+and point-in-time adapter slices on a release branch, preserving independently
+shippable security fixes. The diversified corpus in
 [#261](https://github.com/jacksonpradolima/coleman/issues/261) follows in sequential,
 reviewable vertical slices: manifest/registry and correctness fixtures; existing
 data inventory and diversity cards; bounded secure fetch/conversion; admitted
 historical and controlled-fault sources; synthetic stress cases; baseline and
 protected statistical profiles; frozen cross-corpus evidence. Deliveries can span
-4.1.x and later 4.x minor releases. The issue remains open until its admission,
+4.2 and later 4.x minor releases. The issue remains open until its admission,
 diversity, execution and evidence gates are satisfied. An inaccessible or
 unlicensed source is a visible blocker, not an invented successful experiment.
 

@@ -9,11 +9,16 @@
 [![codecov](https://codecov.io/github/jacksonpradolima/coleman4hcs/branch/main/graph/badge.svg?token=BW04LB0B5Y)](https://codecov.io/github/jacksonpradolima/coleman4hcs)
 
 
-COLEMAN 4.0 brings inspectable, bounded CI decisions to the existing test
+COLEMAN 4.1 brings inspectable, bounded CI decisions to the existing test
 prioritization runner. Use one [application API](docs/application-api.md) across
 the library, CLI and optional local MCP tools, and check decision mathematics
 with [independent benchmarks](docs/decision-benchmarks.md). Read the
-[4.0 release notes](docs/releases/4.0.0.md) for workflows, compatibility and limits.
+[4.1 release notes](docs/releases/4.1.0.md) for workflows, compatibility and limits.
+
+The [operational CI pilot](docs/operational-pilot.md) audits native rankings against
+independent execution accounting: failing-test recall, first feedback, runner work
+and elapsed time stay distinct. A candidate cannot count missed failures as a cost
+saving. The included synthetic evidence remains insufficient for production adoption.
 
 ### Solving the Test Case Prioritization using Multi-Armed Bandit Algorithms
 
@@ -28,7 +33,7 @@ Modeling a MAB-based approach for TCPCI problem gives us some advantages in rela
 - It learns how to incorporate the feedback from the application of the test cases thus incorporating  diversity in the test suite prioritization;
 - It uses a policy to deal with the Exploration vs Exploitation (EvE) dilemma, thus mitigating the problem of beginning without knowledge (learning) and adapting to changes in the execution environment, for instance, the fact that some test cases are added (new test cases) and removed (obsolete test cases) from one cycle to another (volatility of test cases);
 - It is model-free. The technique is independent of the development environment and programming language, and does not require any analysis in the code level;
-- It is more lightweight, that is, needs only the historical failure data to execute, and has higher performance.
+- It uses historical test-execution feedback without requiring source-code analysis; effectiveness and overhead must be evaluated under the target CI workload.
 
 In this way, this repository contains the COLEMAN's implementation.
 For more information about **COLEMAN** read **Ref1** in [References](#references).
@@ -321,19 +326,19 @@ Each run persists:
 
 Requires Python 3.14 or later in an activated virtual environment. Install the
 wheel published in this repository’s GitHub releases. These examples pin version
-4.0.0 and its published SHA-256. Pip verifies the wheel before installation:
+4.1.0 and its published SHA-256. Pip verifies the wheel before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.1.0/coleman-4.1.0-py3-none-any.whl#sha256=41ad29854d95cc91ad8067e2fd6d9d15ba0fefb1b99d39498e7f707e86e83326"
 ```
 
 Or with optional extras:
 
 ```bash
 # OpenTelemetry SDK
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.1.0/coleman-4.1.0-py3-none-any.whl#sha256=41ad29854d95cc91ad8067e2fd6d9d15ba0fefb1b99d39498e7f707e86e83326"
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.1.0/coleman-4.1.0-py3-none-any.whl#sha256=41ad29854d95cc91ad8067e2fd6d9d15ba0fefb1b99d39498e7f707e86e83326"
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -505,10 +510,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.1.0/coleman-4.1.0-py3-none-any.whl#sha256=41ad29854d95cc91ad8067e2fd6d9d15ba0fefb1b99d39498e7f707e86e83326"
 
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.1.0/coleman-4.1.0-py3-none-any.whl#sha256=41ad29854d95cc91ad8067e2fd6d9d15ba0fefb1b99d39498e7f707e86e83326"
 ```
 
 ## Querying results
@@ -571,7 +576,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.1.0/coleman-4.1.0-py3-none-any.whl#sha256=41ad29854d95cc91ad8067e2fd6d9d15ba0fefb1b99d39498e7f707e86e83326"
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list
