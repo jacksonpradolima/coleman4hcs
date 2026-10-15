@@ -368,7 +368,11 @@ class ApplicationService:
         (job.directory / "request.json").unlink(missing_ok=True)
 
     def _finish(self, job: _Job, state: str, error: str | None = None, *, handle: Handle | None = None) -> None:
-        """Reap children before committing a terminal state; uncommitted bytes remain inaccessible."""
+        """Reap children before committing a terminal state; uncommitted bytes stay inaccessible.
+
+        Completion cleanup can raise OSError. Its caller, _collect, converts this
+        to failed/unavailable_result before the supervisor proceeds to other jobs.
+        """
         self._reap_worker(job)
         if state == "completed":
             self._remove_work_files(job)

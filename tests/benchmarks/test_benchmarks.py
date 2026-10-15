@@ -1129,3 +1129,39 @@ def test_report_replay_validates_references_for_cases_not_yet_observed(suite, en
     data["suite"]["cases"][1]["expected"]["objective"] = "999"
     with pytest.raises(ValidationError, match="independent oracle"):
         BenchmarkReport.model_validate(data)
+
+
+@pytest.mark.parametrize("boundary", ["_interrupted", "_observation", "verify_observations"])
+def test_verification_keyboard_interrupt_preserves_prefix_history_and_resume(small, environment, monkeypatch, boundary):
+    import coleman.benchmarks.runner as runner
+
+    execution = BenchmarkExecution(environment=environment)
+    prefix = run_benchmarks(small, execution=BenchmarkExecution(environment=environment, max_new_invocations=1))
+    checkpoint = prefix.checkpoint()
+
+    original = getattr(runner, boundary)
+
+    def interrupted(*args):
+        # Checkpoint validation precedes the solver and is not the boundary under test.
+        if boundary == "verify_observations" and len(args[1]) == len(prefix.observations):
+            return original(*args)
+        raise KeyboardInterrupt
+
+    with monkeypatch.context() as faults:
+        faults.setattr(runner, boundary, interrupted)
+        try:
+            stopped = run_benchmarks(small, execution=execution, checkpoint=checkpoint)
+        except KeyboardInterrupt:
+            pytest.fail("Verification cancellation bypassed the interrupted report")
+    assert stopped.status == "interrupted"
+    assert stopped.observations == prefix.observations
+    failure = failed_attempt(stopped)
+    assert failure.phase == "interrupted"
+    assert failure.error_type == "KeyboardInterrupt"
+    assert failure.elapsed_ns is not None
+    assert failure.python_peak_bytes is not None
+    assert BenchmarkReport.from_json(stopped.to_json()) == stopped
+    resumed = run_benchmarks(small, execution=execution, checkpoint=stopped.checkpoint())
+    assert resumed.status == "complete"
+    assert resumed.observations[:1] == prefix.observations
+    assert resumed.prior_failures == (failure,)

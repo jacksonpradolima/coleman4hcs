@@ -533,3 +533,53 @@ def test_raw_legacy_artifact_is_not_silently_reinterpreted(tmp_path):
             service.import_result(payload, caller=caller)
         assert error.value.code == "invalid_input"
     assert legacy.read_bytes() == original
+
+
+@pytest.mark.parametrize("operation", ["rmtree", "unlink"])
+def test_cleanup_oserror_keeps_real_supervisor_alive_and_other_jobs_progressing(tmp_path, monkeypatch, operation):
+    import shutil
+    import time
+
+    caller = Caller(subject="cleanup")
+    failed = threading.Event()
+    real_rmtree, real_unlink = shutil.rmtree, Path.unlink
+
+    def rmtree(path, *args, **kwargs):
+        if operation == "rmtree" and Path(path).name == "run" and not failed.is_set():
+            failed.set()
+            raise OSError("injected cleanup error")
+        return real_rmtree(path, *args, **kwargs)
+
+    def unlink(path, *args, **kwargs):
+        if operation == "unlink" and path.name == "request.json" and not failed.is_set():
+            failed.set()
+            raise OSError("injected cleanup error")
+        return real_unlink(path, *args, **kwargs)
+
+    with (
+        ApplicationService(default_registry(), root=tmp_path, policy=ServerPolicy(max_running=1)) as service,
+        monkeypatch.context() as faults,
+    ):
+        faults.setattr(shutil, "rmtree", rmtree)
+        faults.setattr(Path, "unlink", unlink)
+        first = service.submit(
+            Submit(schema_version=1, request_id="cleanup-failure", spec_id="native-ci-smoke-v1"), caller=caller
+        )
+        second = service.submit(
+            Submit(schema_version=1, request_id="after-cleanup", spec_id="weighted-overlap-3"), caller=caller
+        )
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            one, two = service.status(first.job_id, caller=caller), service.status(second.job_id, caller=caller)
+            if one.state == "failed" and two.state == "completed":
+                break
+            time.sleep(0.02)
+        assert failed.is_set()
+        assert one.state == "failed"
+        assert one.error == "unavailable_result"
+        assert one.handle is None
+        assert service._thread.is_alive()
+        assert service._jobs[first.job_id].process is None
+        assert two.state == "completed"
+        assert service.wait(first.job_id, caller=caller) == one
+        assert service.wait(second.job_id, caller=caller) == two

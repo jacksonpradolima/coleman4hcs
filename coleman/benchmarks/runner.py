@@ -219,6 +219,9 @@ def _one(case: Case, invocation: BenchmarkInvocation, session: _Session):
             return session.report("interrupted", interrupted)
         row = _observation(case, invocation, measured)
         verify_observations(session.suite, (*session.observations, row))
+    except KeyboardInterrupt as exc:
+        failed = _failure(invocation, "interrupted", exc, measured, attempt_index=len(session.prior_failures))
+        return session.report("interrupted", failed)
     except (ValueError, TypeError) as exc:
         failed = _failure(invocation, "verification", exc, measured, attempt_index=len(session.prior_failures))
         _raise_failure(session.report("failed", failed), exc)
@@ -299,7 +302,9 @@ def run_benchmarks(
     A killed attempt contributes no completed row. Resume requires identical source
     and environment metadata; cached timings are never counted as new observations.
     Solver/gate/instrumentation errors raise BenchmarkRunError with failed evidence
-    and the original cause. Cancellation is polled between calls, including cached
+    and the original cause. An interrupt during post-solver verification retains
+    the completed prefix and measured interrupted attempt for explicit resume.
+    Cancellation is polled between calls, including cached
     rows; native solver work caps apply inside a call. No transport or I/O occurs.
     """
     suite = BenchmarkSuite.model_validate(suite)

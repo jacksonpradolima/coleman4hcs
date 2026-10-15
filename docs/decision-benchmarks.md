@@ -322,6 +322,13 @@ Native `cancelled`/`interrupted` attempts retain a required integer work counter
 including known zero. Exception interruptions such as `KeyboardInterrupt` retain
 null work because their interrupted call supplied no trustworthy counter.
 
+An operator interrupt during post-solver verification also returns an interrupted
+report: the verified prefix remains intact, and the interrupted attempt retains
+its measured solver time and memory. The unverified row is not completed evidence.
+Resuming its checkpoint retries that slot and preserves the prior attempt history.
+Repeated interrupts while constructing or validating the interrupted report itself
+can still abort the call; report publication remains an explicit caller action.
+
 A chunk can be persisted after each complete invocation. Process death before that
 checkpoint may require repeating an invocation; cached timings are never called
 new independent samples. A native interrupted partial search is a recorded aborted
