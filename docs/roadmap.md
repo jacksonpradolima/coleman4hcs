@@ -18,9 +18,13 @@ metadata inventory and installed native workflows. It does not complete source
 admission, corpus diversity or the full benchmark program; all seven required
 diversity regimes remain uncovered.
 
-The next compatible feature target is **4.3.0**, starting with #259's exact CI
-resource accounting and cost-aware replay, followed sequentially by #260. Further
-#261 slices cover full profiles, secure fetch/conversion, verified historical and
+**4.3.0** groups #259's exact CI resource accounting and cost-aware replay with
+#260's frozen shadow evaluation. Both reuse the native runner and checkpoints.
+The shadow fixture demonstrates functional recovery, with zero collected forward
+builds and insufficient evidence for adoption.
+
+The next compatible feature target is **4.4.0**, continuing #261 sequentially with
+full profiles and secure fetch/conversion foundations. Further slices cover verified historical and
 controlled-fault sources, stress cases, baselines/statistics and frozen cross-corpus
 evidence. Deliveries can span later 4.x releases. The issue remains open until its
 admission, diversity, execution and evidence gates pass. Inaccessible or unlicensed
@@ -33,16 +37,17 @@ specifications in **M4 — Point-in-time CI adapters and prospective evaluation*
   observations and versioned decision signals; implemented for 4.2 through existing
   temporal contracts and native extensions.
 - [#259](https://github.com/jacksonpradolima/coleman/issues/259): deterministic CI
-  resource accounting and cost-aware replay; depends on #258 and existing
-  allocation/evaluation/benchmark foundations.
+  resource accounting and cost-aware replay; implemented for 4.3 on top of #258
+  and existing allocation/evaluation/benchmark foundations.
 - [#260](https://github.com/jacksonpradolima/coleman/issues/260): prospective shadow
-  evaluation of frozen CI candidates; depends on #259 and protected evaluation.
+  evaluation of frozen CI candidates; implemented for 4.3 on top of #259 and
+  protected evaluation, without fabricating prospective observations.
 
-Implement these sequentially in later 4.x feature releases, with reusable core
-contracts and CI-centered fixtures. Provider dependencies stay outside the core.
-#259 and #260 are specified, not implemented. Generic mechanisms, native CI
-integration, functional recovery and actual prospective evidence each need their own explicit
-validation; an offline replay must never masquerade as a forward observation.
+Continue the remaining public corpus phases sequentially in later 4.x releases,
+with reusable core contracts and CI-centered fixtures. Provider dependencies stay
+outside the core. Generic mechanisms, native CI integration, functional recovery
+and actual prospective evidence each need explicit validation; offline replay
+must never masquerade as a forward observation.
 
 Compatible features use subsequent **4.x minor** versions; compatible fixes use
 **4.x patch** versions. A major version requires an actual breaking public contract,

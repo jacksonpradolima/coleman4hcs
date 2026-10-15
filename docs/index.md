@@ -20,19 +20,23 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.2
+## New in 4.3
 
-Reproduce what a CI decision knew with [point-in-time observations](point-in-time-observations.md):
-late corrections cannot change an earlier snapshot, stale signals fall back conservatively,
-and versioned evidence survives checkpoint continuation. The
-[benchmark corpus foundation](benchmark-corpus.md) provides two known-answer fixtures
-and source registrations; all seven required diversity regimes remain uncovered.
+Audit CI budgets with [exact resource accounting](resource-replay.md): estimates,
+reservations, actual runner work, release and overhead remain separate. Run
+[frozen shadow evaluation](prospective-shadow.md) through the native runner,
+sealing recommendations before feedback and recovering committed evidence after
+interruption. Required tests keep their full base order. The included one-day
+synthetic fixture remains inconclusive against its seven-day evidence requirement.
 
-The [operational CI pilot](operational-pilot.md) continues to audit native selections,
-keep missed failures in recall, and distinguish runner work from elapsed time.
-Use the [application API](application-api.md) and [independent benchmarks](decision-benchmarks.md)
-to run experiments and check finite-model mathematics. See the
-[release notes](releases/4.2.0.md) for complete examples, compatibility and limits.
+[Point-in-time observations](point-in-time-observations.md) preserve what each
+decision knew, including late/corrected outcomes and conservative freshness.
+The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures and
+visible source-admission gaps; all seven diversity regimes remain uncovered.
+Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
+and [independent benchmarks](decision-benchmarks.md) for complete experiments and
+correctness checks. See the [4.3 release notes](releases/4.3.0.md) for examples,
+compatibility and limits.
 
 ## Quick Start
 
