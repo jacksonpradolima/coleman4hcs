@@ -73,6 +73,11 @@ checks real bytes, canonical source grammar, actual row counts, declared field
 semantics and native correctness. A metadata declaration is a producer attestation,
 not cryptographic proof of legal rights, completeness or statistical independence.
 
+Fixture reports embed their parsed source data. Their validation, reads and
+publication therefore require `redistribution="permitted"`. Verified `recipe_only`
+terms can support metadata registration or future download recipes, but cannot
+authorize an embedded-source fixture report through the library API.
+
 The phase-one adapter supports only `ci-fixture-json`, version `1`, for constructed
 synthetic correctness inputs. It never imports an adapter from a user-provided
 name or follows its URI. Other formats remain visible registrations with planned

@@ -535,3 +535,31 @@ def test_fault_layer_retains_consistent_and_unverified_origins(registry, layer, 
     card = registry.card(SERIAL)
     result = changed(card, manifest=changed(card.manifest, layer=layer), fault_origin=origin)
     assert result.fault_origin == origin
+
+
+def test_recipe_only_source_cannot_create_embedded_fixture_report(registry):
+    manifest = registry.card(SERIAL).manifest
+    restricted = changed(manifest, license=changed(manifest.license, redistribution="recipe_only"))
+    restricted.require_ready()  # Metadata registration/recipes do not redistribute source bytes.
+    payload = bundled_fixture_bytes(SERIAL)
+    with pytest.raises(ValueError, match="redistribution"):
+        validate_fixture_source(restricted, payload)
+
+
+def test_recipe_only_embedded_report_cannot_be_read_or_published(registry, tmp_path):
+    report = validate_bundled_source(SERIAL, registry)
+    restricted = changed(report.manifest, license=changed(report.manifest.license, redistribution="recipe_only"))
+    revision = restricted.fingerprint
+    observations = []
+    for observation in report.observations:
+        provenance = changed(observation.record.provenance, spec_fingerprint=revision, evaluation_fingerprint=revision)
+        record = changed(observation.record, run_id=revision, provenance=provenance)
+        observations.append(changed(observation, record=record))
+    forged = report.model_copy(update={"manifest": restricted, "observations": tuple(observations)})
+    payload = json.dumps(forged.model_dump(mode="json"))
+    writer = ArtifactWriter(tmp_path)
+    with pytest.raises(ValueError, match="redistribution"):
+        CorpusFixtureReport.from_json(payload)
+    with pytest.raises(ValueError, match="redistribution"):
+        publish_fixture_report(forged, writer)
+    assert not list(tmp_path.rglob("*.json"))

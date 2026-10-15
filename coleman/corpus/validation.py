@@ -283,8 +283,10 @@ def _compare_records(expected: DomainRecord, actual: DomainRecord) -> None:
 
 
 def _source_checks(manifest: CorpusManifest, payload: bytes) -> None:
-    """Fail closed on unreviewed terms, unsupported adapters, size or digest mismatch."""
+    """Require permission to embed source bytes, supported adapters and matching size/digest."""
     manifest.require_ready()
+    if manifest.license.redistribution != "permitted":
+        raise ValueError("Embedded fixture reports require permitted source redistribution")
     if manifest.adapter.name != "ci-fixture-json" or manifest.adapter.version != "1":
         raise ValueError("Corpus adapter is not implemented by the phase-one fixture validator")
     if manifest.evaluation.purpose != "correctness_fixture" or manifest.outcomes.duration != SECONDS:
