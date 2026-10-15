@@ -497,3 +497,33 @@ class TestDuckDBCatalog:
         df = cat.query("SELECT 1 /* DROP TABLE results */ AS one")
         assert df["one"][0] == 1
         cat.close()
+
+
+def test_reopened_parquet_writers_do_not_overwrite_rows_in_the_same_second(tmp_path, monkeypatch):
+    monkeypatch.setattr("coleman.results.parquet_sink.time.time", lambda: 12345.0)
+    for step in (1, 2):
+        sink = ParquetSink(out_dir=str(tmp_path), batch_size=1)
+        sink.write_row(_make_row(step=step))
+        sink.close()
+    paths = list(tmp_path.rglob("*.parquet"))
+    steps = [step for path in paths for step in pq.ParquetFile(path).read(columns=["step"])["step"].to_pylist()]
+    assert sorted(steps) == [1, 2]
+    assert len(paths) == 2
+
+
+def test_concurrent_parquet_instances_keep_each_completed_flush(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr("coleman.results.parquet_sink.time.time", lambda: 12345.0)
+
+    def write(step):
+        sink = ParquetSink(out_dir=str(tmp_path), batch_size=1)
+        sink.write_row(_make_row(step=step))
+        sink.close()
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(write, range(8)))
+    paths = list(tmp_path.rglob("*.parquet"))
+    steps = [step for path in paths for step in pq.ParquetFile(path).read(columns=["step"])["step"].to_pylist()]
+    assert sorted(steps) == list(range(8))
+    assert len(paths) == 8
