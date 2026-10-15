@@ -6,9 +6,9 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
-COLEMAN 4.1 is published. The next compatible feature target is **4.2.0**;
-compatible corrections use patch versions. Follow the [public roadmap](roadmap.md)
-in dependency order and keep each PR runnable and independently reviewed.
+COLEMAN 4.2 groups reviewed corpus and point-in-time observation increments.
+The next compatible feature target is **4.3.0**; compatible corrections use patch
+versions. Follow the [public roadmap](roadmap.md) in dependency order and keep each PR runnable and independently reviewed.
 
 A release branch can collect related reviewed PRs when a capability needs several
 vertical slices before publication. Keep it synchronized with security fixes from

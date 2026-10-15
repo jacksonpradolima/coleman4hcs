@@ -23,6 +23,7 @@ import os
 import threading
 import time
 from typing import Any
+from uuid import uuid4
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -234,7 +235,13 @@ class ParquetSink(LocalResultsSink):
         return out
 
     def _flush_locked(self) -> None:
-        """Write buffered rows to a new Parquet file (caller holds lock)."""
+        """Append a fresh batch without reusing another writer's filename (caller holds lock).
+
+        A per-flush UUID distinguishes reopened/concurrent instances even when
+        PID, wall-clock second and local counter match. Filenames are operational
+        identifiers, not deterministic mathematical artifact identities. Existing
+        buffering, partition schema and append semantics remain unchanged.
+        """
         if not self._buffer:
             return
 
@@ -245,7 +252,7 @@ class ParquetSink(LocalResultsSink):
 
         self._file_counter += 1
         pid = os.getpid()
-        basename = f"part-{self._file_counter:06d}-{pid}-{int(time.time())}-{{i}}.parquet"
+        basename = f"part-{self._file_counter:06d}-{pid}-{int(time.time())}-{uuid4().hex}-{{i}}.parquet"
 
         pq.write_to_dataset(
             table,

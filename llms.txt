@@ -30,9 +30,11 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/api/spec-sweep.md
 - docs/api-reference.md
 - docs/application-api.md
+- docs/benchmark-corpus.md
 - docs/code-cost.md
 - docs/configuration.md
 - docs/decision-benchmarks.md
+- docs/decisions/001-point-in-time-observations.md
 - docs/dependency-security.md
 - docs/domain-results.md
 - docs/extensibility.md
@@ -41,10 +43,12 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/index.md
 - docs/observability.md
 - docs/operational-pilot.md
+- docs/point-in-time-observations.md
 - docs/protected-evaluation.md
 - docs/releases/3.6.1.md
 - docs/releases/4.0.0.md
 - docs/releases/4.1.0.md
+- docs/releases/4.2.0.md
 - docs/releases.md
 - docs/roadmap.md
 - docs/scenario-payoffs.md
@@ -1765,6 +1769,240 @@ publication, golden fixtures, portability, expiry, malicious inputs and saturati
 
 
 
+### FILE: docs/benchmark-corpus.md
+
+# Versioned CI benchmark corpus: foundation
+
+This is the first implementation slice of
+[#261](https://github.com/jacksonpradolima/coleman/issues/261), introduced in
+**COLEMAN 4.2**. It implements source manifests, a typed registry and data
+cards, bounded independent correctness references, local validation and native
+integration. The diversified benchmark program is **not complete**.
+
+The registry contains two small repository-authored MIT-licensed CI fixtures and
+an inventory of ten existing public example Parquet artifacts. Historical sources
+remain **blocked for evaluation** until their data-specific terms, duration units,
+availability semantics, adapter and conversion evidence are verified. The code
+repository's license is never inferred to license third-party datasets.
+
+Both tiny sources share one constructed build/test family. They are not independent
+CI observations. All seven required diversity regimes remain uncovered, including
+the broad adversarial simulation regime: a three-test fixture is not a stress lab.
+No policy effectiveness, state-of-the-art, production savings or commercial claim
+follows from passing these checks.
+
+## Installed commands
+
+Install the wheel attached to [COLEMAN 4.2](https://github.com/jacksonpradolima/coleman/releases/tag/v4.2.0)
+in a Python 3.14+ environment, or build a development wheel from the reviewed source.
+Copy examples to a directory outside the checkout. Once installed, these local
+operations need no optional dependency, provider subscription, credential or
+network access.
+
+```bash
+python -m coleman.corpus list
+python -m coleman.corpus show ci-serial-boundary-v1
+python -m coleman.corpus schema
+python -m coleman.corpus validate ci-serial-boundary-v1 --output corpus-artifacts
+python -m coleman.corpus validate ci-parallel-occupancy-v1 --output corpus-artifacts
+```
+
+`list` returns registered IDs, explicit blocked reasons, verified fixture IDs
+(empty until validation evidence is supplied), and all missing minimum regimes.
+`show` returns the complete typed card. `schema` emits the manifest's structural
+JSON schema; semantic cross-field checks still require the library validator.
+`validate` writes a deterministic immutable report and returns its path/source
+digest. Exit 0 means the requested metadata or tiny correctness operation passed;
+it does not mean corpus diversity is satisfied. Invalid/blocked sources, unknown
+IDs, future schemas, unsupported adapters, bad bytes or output failures return 2.
+CLI output must remain within the current workspace; existing symlinked report
+parents are resolved and checked before publication. This local path check assumes
+no concurrent hostile filesystem mutation; it is not an OS sandbox. Library callers
+supply their own trusted `ArtifactWriter` root, independently of CLI/MCP transports.
+
+These are the implemented commands. Fetch/cache/extraction, real-source conversion,
+large stress generation, baseline matrices, dependence-aware statistical profiles
+and confirmatory run/report commands belong to subsequent slices of #261.
+
+## Source contract and admission
+
+`CorpusManifest` schema v1 binds:
+
+- source URI/version/citation, SHA-256, byte count and verified local availability;
+- specific data license ID, terms URI/digest/review time and redistribution rule;
+- adapter/version and its actual implementation state;
+- logical observation/group dimensions and shared source dependence group;
+- event, outcome and feature availability fields, timestamp origin and timezone;
+- explicit verdict mapping, failing-test versus genuinely mapped fault unit,
+  duration units/meaning and unknown-outcome policy;
+- intended evaluation purpose, temporal boundaries when available, budget units,
+  budgets, seed labels, metrics and source resource limits;
+- input/output row counts and unique primary exclusion reasons with conservation;
+- validity limitations that remain visible in human and machine reports.
+
+Registration is not admission. `blocking_reasons` exposes unresolved prerequisites;
+`require_ready()` checks metadata only. `validate_fixture_source()` additionally
+checks real bytes, canonical source grammar, actual row counts, declared field
+semantics and native correctness. A metadata declaration is a producer attestation,
+not cryptographic proof of legal rights, completeness or statistical independence.
+
+Fixture reports embed their parsed source data. Their validation, reads and
+publication therefore require `redistribution="permitted"`. Verified `recipe_only`
+terms can support metadata registration or future download recipes, but cannot
+authorize an embedded-source fixture report through the library API.
+
+The phase-one adapter supports only `ci-fixture-json`, version `1`, for constructed
+synthetic correctness inputs. It never imports an adapter from a user-provided
+name or follows its URI. Other formats remain visible registrations with planned
+adapters. In particular, native Parquet inputs are not silently routed through
+legacy missing-value coercions: the new admission gate must establish semantics
+before those inputs can enter a corpus evaluation. Direct native behavior is
+unchanged.
+
+Data cards retain facts separately from claims: observed footer row counts and
+source byte counts are available in the inventory; unverified duration profiles
+are unavailable. Null language/execution axes are unverified; empty axes are
+explicitly inapplicable to a purely numerical fixture. Constructed/control
+histories cannot be labeled observed CI, and synthetic fixtures cannot be labeled
+real faults. Seeded-fault and controlled-real-fault layers must retain matching
+seeded/real origins or explicitly unverified origin; contradictory classifications
+fail when registering or serializing cards. Context/variant artifacts retain shared
+dependence groups rather than becoming additional independent projects.
+
+The initial inventory pins the exact public source revision
+`b743f51d5ba444410b32f2c0e318b2587b882c43`; every file's SHA-256, byte size and Parquet
+footer row count were checked against that Git object. It contains 1,386,730
+source rows across ten artifacts, **not** that many independent observations.
+Full duration/churn/availability/provider profiles remain unverified, not zero.
+
+## Independent known answers
+
+The serial source has t1=1 s/pass, t2=2 s/fail, t3=4 s/fail, base order t1/t2/t3.
+Every excluded known failing test stays in the denominator.
+
+| Budget | Selected | Failing-test recall | NAPFD | APFDc | First failure | Runner work |
+| --- | --- | --- | --- | --- | --- | --- |
+| 3 runner-s | t1, t2 | 1/2 | 1/4 | 5/14 | 3 elapsed-s | 3 runner-s |
+| 7 runner-s | t1, t2, t3 | 1 | 1/3 (full-suite APFD) | 1/2 | 3 elapsed-s | 7 runner-s |
+
+APFDc here names the native **full-universe cost** convention, including excluded
+failures and full-suite duration. It is a normalized ordering/selection measure,
+not financial cost. It cannot be substituted for an unrelated selected-only cost
+formula. No unique-fault recall is inferred from binary test verdicts.
+
+The parallel fixture dispatches all three tests at zero on three distinct workers:
+**7 runner-seconds, 4 elapsed-seconds, first failure at 2 seconds**. No serial
+APFD/APFDc value is inferred for that schedule. Queue, shared setup and overhead
+are not modeled or claimed saved.
+
+Hand-declared source answers are checked against separate exact `Fraction`/tick
+references, then the real native `NAPFDVerdictMetric` or existing event replay is
+checked against those answers. The exact oracle imports no production metric or
+scheduler. Its scope is at most 16 complete binary tests. The native fixture
+projection uses integer seconds <=1,000,000 to preserve exact input costs in
+Float32/Float64; this is a fixture restriction, not a generic unit conversion.
+Actual scalar checking declares binary64 absolute tolerance `1e-12`, with zero
+relative tolerance. Exact rational answers remain authoritative in the source.
+
+Zero is real. No failure detected gives null/right-censored time; a failure at
+time zero remains 0/detected. No failing tests makes recall/ranking ratios
+inapplicable, without rewriting native legacy default rows. Unknown/timeout
+outcomes cannot enter the complete-binary oracle. A zero-work failing serial suite
+is explicitly unsupported by the legacy native APFDc checker, rather than receiving
+a fabricated finite score. Nonfinite quantities/ratios and incompatible units fail.
+Rational text has <=128 characters, no exponent, and numerator/denominator <=256
+bits; decimal precision/scale are bounded to 64 before conversion, preventing tiny
+exponent strings from triggering unbounded integer allocation.
+
+## Complete library workflow
+
+```python
+from pathlib import Path
+
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus import (
+    CorpusFixtureReport, fixture_readiness, load_registry,
+    publish_fixture_report, publish_fixture_readiness, validate_bundled_source,
+)
+
+registry = load_registry()
+reports = tuple(
+    validate_bundled_source(source_id, registry)
+    for source_id in ("ci-serial-boundary-v1", "ci-parallel-occupancy-v1")
+)
+writer = ArtifactWriter("corpus-library-artifacts")
+for report in reports:
+    path = publish_fixture_report(report, writer)
+    assert CorpusFixtureReport.from_json(path.read_bytes()) == report
+readiness = fixture_readiness(registry, reports)
+assert len(readiness.validated_fixture_sources) == 2
+assert len(readiness.fixture_dependence_groups) == 1
+assert len(readiness.uncovered_required_regimes) == 7
+assert readiness.evidence_status == "insufficient_diversity"
+publish_fixture_readiness(readiness, writer)
+```
+
+Readiness artifacts embed the frozen registry and verified fixture reports. Reads
+and publication rederive registered/blocked source IDs, validated sources and
+actual dependence-group identities from that evidence. A fabricated summary cannot
+turn the two related fixtures into independent groups. Reordered identical retries
+canonicalize to the same identity; conflicting reports for one source fail.
+
+To author a derived owned fixture without touching the runner, obtain its typed
+`CIReferenceFixture`, change its explicit fixture identity/cases, serialize with
+`fixture_bytes()`, and create a new reviewed `CorpusManifest`. Update the source
+URI/version/SHA-256/byte count, intended budgets/metrics and actual conversion
+counts. Supply data-specific license evidence; keep the history constructed and
+related dependence group intact. Call `validate_fixture_source(manifest, payload)`
+before publishing. A changed reference, swapped verdict mapping, false timestamp
+field, unsupported metric, broken row conservation or mismatched source fails.
+A real provider needs a separately implemented/verified adapter; marking it
+“implemented” in JSON cannot make the fixture-only validator execute it.
+
+## Real native execution and artifact recovery
+
+Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.2.0/examples/corpus-foundation/ci.py)
+and run `python ci.py native-output` from the installed 4.2 wheel or a source build. It uses
+`api.run()` with native Random/RNFail and a full seven-second budget, verifies each
+actual native ranking's NAPFD/APFDc against the independent oracle, and publishes
+both source checks plus the insufficient-diversity inventory through existing
+artifacts/manifests. Two explicitly constructed copies exercise the runner's
+initial shuffle and next-build path; neither real CI history nor independence is
+claimed. The example requires a fresh output directory for each complete native
+invocation and rejects an existing directory before writing, including pre-existing
+symlinked input/native descendants. Direct native runs retain their existing append
+behavior. Native learning checkpoints remain the runner's responsibility; this adds no second runner/checkpoint store.
+
+Corpus validation/readiness publication is deterministic and idempotent for the
+same input. Concurrent identical retries share the same content address. Existing
+`ArtifactWriter` hard-link/fsync publication prevents partial completed JSON;
+conflicts and I/O failures propagate. The same existing local filesystem and
+power-loss limits apply. Native manifests discover these corpus artifacts and
+pilot reports; no source archive or large generated experiment result is committed.
+
+Unknown/future/missing schema versions, duplicate JSON keys and incompatible
+protocols fail closed. Unverified extra source-revision claims in fixture
+observations are rejected on reads and publication. Older native artifacts keep
+their existing readers and meanings; there is no automatic migration. The new fixture JSON format requires
+canonical UTF-8 JSON plus one newline and a hard 128 KiB cap, independent of a
+larger future-source metadata limit.
+
+```mermaid
+flowchart LR
+  M[Versioned source manifest and data card] --> G[Terms units identity availability gate]
+  B[Bounded source bytes and SHA-256] --> G
+  G --> F[Typed tiny synthetic fixture]
+  F --> O[Independent exact references]
+  F --> N[Existing native metric or event replay]
+  O --> V[Verified versioned fixture evidence]
+  N --> V
+  V --> A[Existing immutable artifacts and native manifest]
+  M --> R[Visible blocked sources and missing diversity cells]
+  V --> R
+```
+
+
+
 ### FILE: docs/code-cost.md
 
 # Code Cost Evaluation
@@ -3070,6 +3308,68 @@ flowchart LR
     Native --> Extension[Existing native CI extension / collector]
     Extension --> CI[Native scheduling, reward, metrics and sinks]
 ```
+
+
+
+### FILE: docs/decisions/001-point-in-time-observations.md
+
+# ADR 001: point-in-time observations and decision signals
+
+Status: accepted in the 4.2 feature line; implements the boundary requested in
+[#258](https://github.com/jacksonpradolima/coleman/issues/258).
+
+## Context
+
+CI outcomes and durations may arrive late or be corrected. Replacing a stored row
+would erase what a policy could know at an earlier decision. The protected
+`Timestamp`, `TemporalObservation` and `TemporalPlan` contracts already validate
+UTC instants, revisions, groups and temporal eligibility. The native runner already
+owns lifecycle, processes, result sinks and checkpoints.
+
+## Decision
+
+Add `coleman.observations` as a transport-independent typed boundary. Immutable
+revision histories preserve source availability, first local receipt and explicit
+predecessors. As-of selection uses only eligible revisions. Source adapter SDKs,
+credentials, collection permissions, clock reconciliation and source-specific
+identity rules stay in provider-owned packages implementing `ObservationProvider`.
+The base package supplies an offline provider for repository-owned CI fixtures.
+No dynamic provider import, network fetch, CLI/MCP dependency or new runner exists.
+
+Reuse protected time/split validation and #251 measurements/provenance. Fit a simple
+nonnegative quantity mean only on eligible training observations, frozen before
+use. Preserve its evidence and explicit rounding; label outputs as estimates or
+priority scores, never calibrated probabilities or inference results. Freshness
+uses source event age at the decision and remains an explicit policy parameter.
+
+Use `RunnerExtension.build_environment_fn` for the native example's policy and
+monitor integration. Emit typed signals and domain sidecars before the existing
+checkpoint advances. Reuse `ArtifactWriter` immutable publication and native
+manifest discovery. No second state/checkpoint store is introduced.
+
+## Assumptions and consequences
+
+- The initial source is owned, offline, synthetic CI data. It establishes functional
+  behavior, not provider completeness, independence, prospective evidence or value.
+- Providers attest identities and complete bounded lineages. First receipt remains
+  fixed across duplicate deliveries. UTC source/local clocks must be comparable;
+  impossible chronology fails. Existing Python datetime semantics have microsecond
+  resolution; providers must declare normalization for finer source clocks.
+- Complete single-parent lineages allow out-of-order delivery and timestamp ties.
+  Missing parents, forks, conflicting duplicates and changed units/identity fail.
+  Truncated histories cannot silently become complete histories.
+- Selected input fingerprints exclude future values; whole-source artifact hashes
+  remain separate. Later evaluation must still apply the complete protected fold
+  grouping protocol; fitting a past view cannot inspect future group memberships.
+- Generic signal readers validate metadata/chronology, without executing a producer
+  by its name/fingerprint. Mean artifacts rederive training estimates; use the
+  frozen model's `verify_signal` when consuming its serialized signals.
+- Provider scraping/authentication, signal calibration, sophisticated forecasting,
+  streaming retention and external deployment remain outside this issue. Base
+  dependencies and native orchestration remain sufficient for the installed demo.
+
+The [human guide](../point-in-time-observations.md) defines the actual v1 API,
+limits, compatibility, recovery and complete CI examples.
 
 
 
@@ -5049,6 +5349,268 @@ flowchart LR
 
 
 
+### FILE: docs/point-in-time-observations.md
+
+# Point-in-time CI observations and decision signals
+
+COLEMAN 4.2 implements
+[#258](https://github.com/jacksonpradolima/coleman/issues/258). CI durations/outcomes
+retain their original availability and revision lineage, so later corrections do
+not rewrite the information used by an earlier decision. The base package needs
+no provider SDK, credential, hosted service or optional MCP dependency.
+
+Install the wheel attached to [COLEMAN 4.2](https://github.com/jacksonpradolima/coleman/releases/tag/v4.2.0),
+or build a development wheel from reviewed source. Run examples outside the
+checkout. [ADR 001](decisions/001-point-in-time-observations.md) records the
+module/dependency/extension decisions.
+
+## Observation and revision contract
+
+`ObservationRevision` schema v1 contains protected `TemporalObservation` metadata,
+a logical entity ID, first local `received_at`, explicit predecessor `supersedes`
+and a typed #251 `Measurement`. Event, source availability and first receipt are
+separate instants. Effective availability is their later availability/receipt;
+receipt cannot precede declared source availability. Source/local clocks must be
+comparable; clock disagreement is rejected, never silently adjusted.
+
+`ObservationHistory` holds at most 4,096 supplied revisions per snapshot. Providers
+must preserve all build/job/stage/test/variant dimensions needed to prevent logical
+collisions. Measurement names/units/meaning, entity, event/group and target interval
+stay stable across a lineage. Revisions can change values and missingness, with
+explicit availability. Each lineage has one root and one successor per revision;
+missing parents, cycles, forks and conflicting duplicates fail. Identical retries
+are idempotent, including their unchanged **first** receipt time. Duplicate payloads
+are compared by canonical serialized content. COLEMAN JSON v1 preserves signed
+float zero: `0.0` and `-0.0` for one revision key are conflicting representations,
+not an input-order-dependent choice. Existing domain JSON semantics are unchanged.
+
+`history.as_of(cutoff)` selects one latest eligible member per logical observation.
+Cutoffs are inclusive. Explicit lineage orders ties; revision names are never
+lexically ranked. A newer revision can arrive before its predecessor; a late
+older delivery cannot replace it. Unknown/unavailable values retain their states
+rather than reviving an obsolete earlier value.
+
+For the issue's CI fixture, event time is `10:00:00Z`, r1 becomes available at
+`10:00:02Z`, and r2 at `10:05:00Z`:
+
+| Query cutoff | Visible revision |
+| --- | --- |
+| 10:00:01Z | None |
+| 10:00:03Z | r1 |
+| 10:05:00Z | r2 |
+
+A receipt later than source availability delays visibility further. Adding or
+changing a valid future revision cannot change the earlier query or its fingerprint.
+Whole-history hashes intentionally change on append; selected-view hashes identify
+only the declared source/version, cutoff and selected eligible content.
+
+Providers attest completeness and source identity. An isolated serialized
+`ObservationSnapshot` checks one-row-per-observation and availability; it cannot
+prove that an upstream provider supplied every revision. `as_of` establishes
+selection for the complete bounded history actually supplied. No stream database,
+tombstone protocol, multi-parent merge or implicit provider import is introduced.
+
+All instants reuse the existing aware UTC time contract and Python datetime's
+microsecond resolution. Providers must declare rounding/rejection for finer source
+clocks before normalization. No local timezone, numeric epoch unit or host clock is
+inferred. Context/variant observations sharing executions are not independent data.
+
+## Frozen training and honest signals
+
+`prepare_training` queries at **min(information cutoff, declared train_end)**,
+selects the named measurement, and reuses `TemporalPlan` eligibility/purging.
+Target intervals must also end by this actual information cutoff, even if the
+predeclared training window ends later. Serialized training artifacts recheck the
+same effective boundary. The model records temporal exclusions without retaining excluded labels. An eligible but
+unknown/unavailable training value fails; no mean-zero imputation or silent
+complete-case fit occurs. Later validation/test labels and post-training
+corrections cannot refit the frozen model.
+
+Fitting only inspects the available past view. The complete later evaluation must
+still apply the existing protected cross-fold group gate; future group membership
+cannot rewrite a past feature. Seeds and repeated synthetic builds never become
+independent observations.
+
+`fit_quantity_mean` implements a simple baseline for nonnegative physical
+quantities, not a claim of superior forecasting. Inputs must be finite, between
+0 and 10^12, in exactly the declared units/meaning. It sums exact rational forms
+of the #251 binary64 inputs and rounds the mean **up to 10^-9 of that unit**,
+independently of Decimal context. For example, `(0, 1, 0)` gives `0.333333334`.
+Binary64 `0.1` is slightly above mathematical 0.1 and therefore rounds up to
+`0.100000001`; this rule does not recover an unknown original decimal spelling.
+Exact rounded `Quantity` values remain in the model; signal values declare their
+binary64 projection. There is no implicit seconds/milliseconds conversion.
+
+A `QuantityMeanModel` retains eligible training evidence, temporal protocol,
+freeze time, means, logical observation counts and latest event times. Reads
+rederive those values and reject tampering. Counts describe observations; they
+are not confidence estimates or proof of independence.
+
+A `DecisionSignal` carries request/target identity, decision time, information
+cutoff, closed future target interval, interpreted measurement, explicit
+availability, producer/model versions, eligible-source/model fingerprints and the
+freshness rule when used. Its cutoff cannot exceed decision time, its target
+cannot precede the decision and its model must already be frozen. Units and
+meanings remain explicit for null values too.
+
+| Availability | Measurement status | Value | Meaning |
+| --- | --- | --- | --- |
+| available | observed | 0 | A real available estimate/score of zero |
+| missing | unknown | null | Insufficient eligible history |
+| stale | unavailable | null | Source event is too old at the decision |
+| unavailable | unavailable | null | Producer declares unavailable information |
+| not_applicable | not_applicable | null | Explicitly inapplicable signal |
+
+The mean helper emits available, missing or stale signals. Age is decision time
+minus latest **event** time; a newly received correction does not make an old event
+fresh. Maximum age uses `EVENT_AGE_SECONDS`, with equality still fresh. The rule
+is stored in the signal and enters specification/logical identity. The resolved
+cutoff/horizon also enter specification identity, so changing context cannot be
+silently treated as an identical domain-record replay. A null generic
+freshness rule means unspecified by that producer, not guaranteed fresh forever.
+
+The generic signal supports signed priority scores when their declared lower
+bound permits them. A negative score remains negative. A priority score is not a
+calibrated probability, reward, causal effect or hypothesis-test result.
+Generic readers validate schema/chronology/metadata without executing arbitrary
+producer code. For a serialized mean signal, call `model.verify_signal(signal)`
+to check the complete canonical value, status, parameters and provenance against
+its frozen training evidence before use, including signed-zero representation.
+
+## Complete installed library example
+
+This repository-owned synthetic fixture uses test occupancy seconds. The future
+correction cannot influence the earlier query or frozen duration estimate.
+
+```python
+from datetime import datetime
+from decimal import Decimal
+
+from coleman.artifacts import ArtifactWriter
+from coleman.evaluation.protected import TemporalPlan
+from coleman.observations import (
+    EVENT_AGE_SECONDS, DecisionSignal, ObservationHistory, ObservationRevision,
+    SignalRequest, fit_quantity_mean, prepare_training, publish_model, publish_signal,
+)
+from coleman.selection import Quantity, UnitSemantics
+
+seconds = UnitSemantics(unit="s", meaning="test-runner-occupancy-v1")
+r1 = ObservationRevision.model_validate({
+    "schema_version": 1,
+    "metadata": {
+        "observation_id": "build-2:test-a:duration", "revision_id": "r1",
+        "group_id": "build-2", "event_at": "2026-01-02T10:00:00Z",
+        "available_at": "2026-01-02T10:00:02Z",
+    },
+    "entity_id": "test-a", "received_at": "2026-01-02T10:00:02Z", "supersedes": None,
+    "measurement": {
+        "name": "ci_duration", "value": 3.0, "unit": "s", "meaning": seconds.meaning,
+        "direction": "none", "status": "observed", "minimum": 0.0,
+    },
+})
+r2 = ObservationRevision.model_validate({
+    **r1.model_dump(), "supersedes": "r1", "received_at": "2026-01-02T10:05:00Z",
+    "metadata": {**r1.metadata.model_dump(), "revision_id": "r2", "available_at": "2026-01-02T10:05:00Z"},
+    "measurement": {**r1.measurement.model_dump(), "value": 9.0},
+})
+history = ObservationHistory(schema_version=1, source_id="owned-ci-demo", source_version="1", revisions=(r1, r2))
+assert history.as_of(datetime.fromisoformat("2026-01-02T10:00:01Z")).observations == ()
+assert history.as_of(datetime.fromisoformat("2026-01-02T10:00:03Z")).observations == (r1,)
+plan = TemporalPlan.model_validate({
+    "train_end": "2026-01-02T10:00:03Z", "validation_end": "2026-01-02T11:00:00Z",
+    "test_end": "2026-01-04T00:00:00Z",
+})
+training = prepare_training(
+    history, plan, information_cutoff=plan.test_end,
+    measurement_name="ci_duration", input_semantics=seconds,
+)
+model = fit_quantity_mean(training, frozen_at=datetime.fromisoformat("2026-01-02T10:00:04Z"))
+request = SignalRequest.model_validate({
+    "schema_version": 1, "decision_id": "build-3", "entity_id": "test-a",
+    "decided_at": "2026-01-03T10:00:00Z", "information_cutoff": "2026-01-03T10:00:00Z",
+    "target_start": "2026-01-03T10:00:00Z", "target_end": "2026-01-03T10:01:00Z",
+})
+signal = model.signal(request, maximum_event_age=Quantity(value=Decimal(86400), semantics=EVENT_AGE_SECONDS))
+assert signal.measurement.value == 3.0
+assert signal.availability == "available"
+writer = ArtifactWriter("point-in-time-library-artifacts")
+publish_model(model, writer)
+path = publish_signal(signal, writer)
+assert model.verify_signal(DecisionSignal.from_json(path.read_bytes())) == signal
+```
+
+To add an authorized provider, implement `ObservationProvider.load_history()` in
+an external adapter package and return typed `ObservationHistory`. Establish
+source-specific identities, units, clock resolution and immutable first receipts;
+retain complete bounded lineage and bound raw payloads before decoding. The core
+never loads a provider from a name, URI or credential. `OfflineObservationProvider`
+revalidates an already supplied owned history without I/O.
+
+## Real native TCPCI and recovery
+
+Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.2.0/examples/point-in-time/ci.py)
+outside the checkout and run `python ci.py native-observation-demo` from the
+installed 4.2 wheel or source build. It fits owned historical quantities at a frozen
+training cutoff before decisions, then runs three constructed native CI copies using
+`run_with_extension`, native Parquet results, RNFail and existing checkpoints.
+
+The native first-build shuffle remains a warmup. On the next two builds, fresh
+estimates produce t2/t3/t1; stale estimates retain the full base order t1/t2/t3.
+The policy reads logical test names and frozen historical signals, without using
+current realized durations/verdicts as predecision estimates. The historical and
+current durations intentionally differ. No required test is removed by fallback.
+This is functional offline replay, with no prospective execution, savings,
+calibration or superiority claim.
+
+Models/signals use existing immutable `ArtifactWriter` publication in
+`observation-models/` and `decision-signals/`. Matching named domain sidecars enter
+the existing sink before checkpoint advancement. Native manifests discover those
+families. Signal paths use the stable logical ID: identical retries succeed and
+changed content for that ID conflicts. Models use their content fingerprints.
+Logical identity derives from dataset/policy/reward/experiment, excluding
+native runtime attempt suffixes, retry clocks and worker IDs. Content digests are
+deterministic. A changed freshness policy changes specification identity. Domain
+sinks retain their existing conflicting-logical-record checks.
+
+The same owned output can resume with `python ci.py native-observation-demo`.
+Immutable input/configuration/actual RunSpec proofs must match before loading a
+checkpoint. Checkpoints live in the existing native run directory; only trusted
+local checkpoints created by the example may be loaded. Unknown output roots,
+changed inputs/parameters/specs and pre-existing symlinks fail before native use.
+Local path checks assume no hostile concurrent filesystem mutation, not an OS
+sandbox. Concurrent native invocations must use separate output roots: the existing
+checkpoint store does not coordinate simultaneous writers of one logical execution.
+Existing native pickle/checkpoint durability limits remain unchanged.
+
+Regression tests interrupt after signal publication, after a synchronous domain
+record commit, and after checkpoint commit, then resume through the real store. Accepted
+signals remain complete; retry reuses the same logical signal path/content digest
+and domain records are not duplicated. Reopened/concurrent Parquet writers now use distinct per-flush
+filenames even within one PID/second, preserving previously committed native rows.
+Legacy Parquet filenames were already operational/non-deterministic; deterministic
+mathematical identities belong to versioned models/signals/domain records.
+
+Unknown/future/missing versions and duplicate JSON keys fail closed. Existing
+native artifacts keep their readers/meaning; there is no automatic migration or
+silent conversion to observation histories. Same-content publication is
+idempotent; conflicts/I/O errors propagate and incomplete temporary files never
+become completed artifacts. There is no additional checkpoint or stream store.
+
+```mermaid
+flowchart LR
+  P[Authorized provider or owned offline fixture] --> H[Typed bounded revision history]
+  H --> A[As-of source availability and first receipt]
+  A --> T[Existing protected training eligibility]
+  T --> M[Frozen simple quantity model]
+  M --> S[Versioned estimate or explicit missing/stale signal]
+  S --> N[Existing native extension policy and conservative fallback]
+  S --> D[Existing domain sidecars and immutable artifacts]
+  N --> C[Existing native checkpoint]
+  D --> C
+```
+
+
+
 ### FILE: docs/protected-evaluation.md
 
 # Protected evaluation for CI decisions
@@ -5452,6 +6014,93 @@ remain work in the [public roadmap](https://jacksonpradolima.github.io/coleman/r
 
 
 
+### FILE: docs/releases/4.2.0.md
+
+# COLEMAN 4.2 — Reproduce what your CI decision knew
+
+CI feedback arrives late. Verdicts get corrected. A useful experiment needs to
+remember which information was available when it made a decision.
+
+COLEMAN 4.2 brings that history into the native TCPCI workflow: reconstruct an
+as-of view, freeze eligible training data, produce unitful decision signals and
+inspect the artifacts after an interrupted run. It also introduces the first
+versioned CI corpus foundation, with independently calculated correctness cases
+and visible source-admission gaps.
+
+## Keep late feedback in its proper place
+
+- Preserve logical observations, source availability, first receipt and explicit
+  revision lineage. Query r1 before a later correction without rewriting the past.
+- Fit a simple historical quantity mean only on eligible training observations.
+  Actual information cutoffs also bound target intervals. Inspect the explicit
+  rounding rule, exact decimal estimates and input/model fingerprints.
+- Keep zero, missing, stale/unavailable and not-applicable signals distinct.
+  Use a declared freshness policy and retain the full base order when the native
+  example lacks usable estimates.
+- Revalidate serialized mean signals against frozen evidence. Conflicting logical
+  retries fail, including signed-zero payload differences that numerical equality
+  alone would miss.
+
+Start with the [point-in-time CI guide](https://jacksonpradolima.github.io/coleman/point-in-time-observations/)
+and its [native example](https://github.com/jacksonpradolima/coleman/blob/v4.2.0/examples/point-in-time/ci.py).
+The installed base package runs both fresh-estimate and stale/fallback cases;
+provider SDKs and source-specific rules remain outside the core.
+
+## Make benchmark readiness inspectable
+
+A typed source registry and data cards now separate registration from admission.
+Two owned, MIT-licensed tiny CI sources check serial budget boundaries and parallel
+accounting against hand-declared answers and independent exact references. An
+excluded known failure stays in the recall denominator; seven runner-seconds on
+three simultaneous workers remain four elapsed seconds.
+
+The initial inventory pins ten existing Parquet artifacts by version, digest,
+size and row count. All ten existing example registrations remain blocked pending
+source-specific rights, units, availability and conversion evidence. All seven
+minimum diversity regimes remain uncovered. These fixtures establish functional
+correctness; the diversified benchmark program in #261 remains open.
+
+Explore the [corpus foundation guide](https://jacksonpradolima.github.io/coleman/benchmark-corpus/)
+from an installed wheel with `python -m coleman.corpus list`.
+
+## Recovery that preserves the evidence
+
+Native extensions publish versioned signals and domain sidecars before checkpoint
+advancement. Fault-injection tests resume after signal publication, after a domain
+record commit and after checkpoint commit with stable logical identities.
+
+This work also fixes a native Parquet data-loss defect: reopened or concurrent
+writers could reuse a counter/PID/second filename. Fresh per-flush filenames now
+preserve each completed batch. Existing partition schemas and readers remain
+compatible; previously overwritten rows cannot be reconstructed automatically.
+
+## Compatibility and evidence
+
+Python 3.14+ and the existing runner, sinks, checkpoints and optional transport
+boundaries remain supported. No new dependency is required. New schema-v1 readers
+reject unknown versions; existing native artifacts retain their original meaning.
+Mathematical model/signal identities are deterministic. The existing native
+checkpoint store requires separate roots for concurrent logical invocations.
+
+The release candidate passed **1,411 tests**, lint/format, both type checkers,
+Pylint, strict documentation, structural cost and package/build checks. A
+noneditable base wheel runs outside the checkout with MCP absent, including real
+native recovery, deterministic mathematical artifacts and the complete docs
+example. Local delegation review covered every changed file, including exclusions.
+
+These are owned synthetic functional workflows, not independent prospective
+observations, calibrated probabilities, policy-superiority evidence or production
+savings. Resource replay, prospective shadow evaluation and broader admitted
+corpus evidence continue in the [public roadmap](https://jacksonpradolima.github.io/coleman/roadmap/).
+
+Install the wheel attached to this GitHub release and verify its digests and
+Sigstore attestations with the [installation guide](https://jacksonpradolima.github.io/coleman/setup/).
+The similarly named PyPI package is a different project.
+
+[Full changes](https://github.com/jacksonpradolima/coleman/compare/v4.1.0...v4.2.0)
+
+
+
 ### FILE: docs/releases.md
 
 # Release preparation
@@ -5462,9 +6111,9 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
-COLEMAN 4.1 is published. The next compatible feature target is **4.2.0**;
-compatible corrections use patch versions. Follow the [public roadmap](roadmap.md)
-in dependency order and keep each PR runnable and independently reviewed.
+COLEMAN 4.2 groups reviewed corpus and point-in-time observation increments.
+The next compatible feature target is **4.3.0**; compatible corrections use patch
+versions. Follow the [public roadmap](roadmap.md) in dependency order and keep each PR runnable and independently reviewed.
 
 A release branch can collect related reviewed PRs when a capability needs several
 vertical slices before publication. Keep it synchronized with security fixes from
@@ -5522,23 +6171,28 @@ pilot in [#257](https://github.com/jacksonpradolima/coleman/issues/257). Its
 claim is auditable accounting and honest evidence, including negative/inconclusive
 findings. It does not promise production savings from a synthetic example.
 
-The next compatible feature target is **4.2.0**. Group related reviewed corpus
-and point-in-time adapter slices on a release branch, preserving independently
-shippable security fixes. The diversified corpus in
-[#261](https://github.com/jacksonpradolima/coleman/issues/261) follows in sequential,
-reviewable vertical slices: manifest/registry and correctness fixtures; existing
-data inventory and diversity cards; bounded secure fetch/conversion; admitted
-historical and controlled-fault sources; synthetic stress cases; baseline and
-protected statistical profiles; frozen cross-corpus evidence. Deliveries can span
-4.2 and later 4.x minor releases. The issue remains open until its admission,
-diversity, execution and evidence gates are satisfied. An inaccessible or
-unlicensed source is a visible blocker, not an invented successful experiment.
+**4.2.0** groups two reviewed public increments: point-in-time observations and
+versioned decision signals in [#258](https://github.com/jacksonpradolima/coleman/issues/258),
+and the first corpus foundation in [#261](https://github.com/jacksonpradolima/coleman/issues/261).
+The foundation includes typed manifests/data cards, two tiny known-answer sources,
+metadata inventory and installed native workflows. It does not complete source
+admission, corpus diversity or the full benchmark program; all seven required
+diversity regimes remain uncovered.
+
+The next compatible feature target is **4.3.0**, starting with #259's exact CI
+resource accounting and cost-aware replay, followed sequentially by #260. Further
+#261 slices cover full profiles, secure fetch/conversion, verified historical and
+controlled-fault sources, stress cases, baselines/statistics and frozen cross-corpus
+evidence. Deliveries can span later 4.x releases. The issue remains open until its
+admission, diversity, execution and evidence gates pass. Inaccessible or unlicensed
+sources remain visible blockers. Security fixes remain independently shippable.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:
 
 - [#258](https://github.com/jacksonpradolima/coleman/issues/258): point-in-time CI
-  observations and versioned decision signals; reuse existing temporal contracts.
+  observations and versioned decision signals; implemented for 4.2 through existing
+  temporal contracts and native extensions.
 - [#259](https://github.com/jacksonpradolima/coleman/issues/259): deterministic CI
   resource accounting and cost-aware replay; depends on #258 and existing
   allocation/evaluation/benchmark foundations.
@@ -5547,8 +6201,8 @@ specifications in **M4 — Point-in-time CI adapters and prospective evaluation*
 
 Implement these sequentially in later 4.x feature releases, with reusable core
 contracts and CI-centered fixtures. Provider dependencies stay outside the core.
-They are specified, not implemented. Generic mechanisms, native CI integration,
-functional recovery and actual prospective evidence each need their own explicit
+#259 and #260 are specified, not implemented. Generic mechanisms, native CI
+integration, functional recovery and actual prospective evidence each need their own explicit
 validation; an offline replay must never masquerade as a forward observation.
 
 Compatible features use subsequent **4.x minor** versions; compatible fixes use
