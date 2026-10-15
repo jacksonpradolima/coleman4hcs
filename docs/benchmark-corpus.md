@@ -1,10 +1,11 @@
-# Versioned CI benchmark corpus: foundation
+# Versioned CI benchmark corpus: foundation and local profiles
 
 This is the first implementation slice of
 [#261](https://github.com/jacksonpradolima/coleman/issues/261), introduced in
 **COLEMAN 4.2**. It implements source manifests, a typed registry and data
 cards, bounded independent correctness references, local validation and native
-integration. The diversified benchmark program is **not complete**.
+integration. The development slice targeting **4.4** adds bounded local native-Parquet profiles
+and a reproducible diversity inventory. The diversified benchmark program is **not complete**.
 
 The registry contains two small repository-authored MIT-licensed CI fixtures and
 an inventory of ten existing public example Parquet artifacts. Historical sources
@@ -100,7 +101,132 @@ The initial inventory pins the exact public source revision
 `b743f51d5ba444410b32f2c0e318b2587b882c43`; every file's SHA-256, byte size and Parquet
 footer row count were checked against that Git object. It contains 1,386,730
 source rows across ten artifacts, **not** that many independent observations.
-Full duration/churn/availability/provider profiles remain unverified, not zero.
+Physical duration/churn/availability/provider semantics remain unverified, not zero.
+The local profiling recipe below describes raw fields without resolving those gates.
+
+## Local profiles and the first diversity matrix (4.4 development)
+
+These additions require a wheel built from this reviewed development source;
+released 4.3 and older wheels retain their previous commands. The profiler is a
+separate descriptive recipe, **not** an implemented corpus evaluation adapter.
+It does not change registry v1, cards, fixture/readiness v1, old native result
+rows, source licenses or admission blockers.
+
+```bash
+# SOURCE is a local copy of the exact registered file, not a download URL.
+python -m coleman.corpus profile native-example-e970afe1686d7fe6 source.parquet --output profiles
+# Copy examples/corpus-profiles/inventory.py outside the checkout first.
+python inventory.py /absolute/path/to/coleman corpus-inventory
+```
+
+The inventory example reads the ten existing files from the explicit checkout,
+checks every frozen digest/size, and publishes ten profiles plus one complete
+inventory. It fetches nothing, copies no source data and runs no evaluation.
+A missing, changed or oversized source prevents publication of a complete new
+inventory. Existing completed inventories remain content-addressed evidence of
+their original inputs; failed later invocations do not erase them.
+
+The pinned source snapshot produces this matrix. Contextual files and separately
+stored variants can share the same executions; these rows must not be added as
+independent projects. Execution groups retain `Variant` when present, whereas
+logical builds count `BuildId` among rows with complete group identity.
+
+| Registered artifact | Raw rows | Logical builds | Execution groups | Repeated identity rows | Conflicting identities | Failed rows | Raw Duration median |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Druid | 308998 | 168 | 168 | 0 | 0 | 237 | 0.002 |
+| Druid contextual | 308998 | 168 | 168 | 0 | 0 | 237 | 0.002 |
+| Retrofit | 71238 | 2711 | 2711 | 0 | 0 | 161 | 0.196 |
+| Retrofit contextual | 71238 | 2711 | 2711 | 0 | 0 | 161 | 0.196 |
+| Dune Debian 10 | 119316 | 1029 | 1029 | 4433 | 3237 | 1417 | 0.07 |
+| Dune Ubuntu 20.04 | 44052 | 367 | 367 | 1408 | 1031 | 532 | 0.09 |
+| Dune Debian 11 | 35140 | 290 | 290 | 1291 | 886 | 193 | 0.03 |
+| Dune total | 229213 | 2186 | 2186 | 6689 | 4858 | 3094 | 0.3 |
+| Dune variants | 198508 | 1036 | 1686 | 7132 | 5154 | 2142 | 0.07 |
+| Synthetic example | 29 | 5 | 5 | 0 | 0 | 14 | 0.134 |
+
+Raw `Duration` medians have **unverified source units**, not seconds. They are not
+comparable across sources and cannot be used to infer runner work, parallel wall
+time or savings. Failed rows use only the explicitly declared binary failing-test
+mapping with exact native-type comparisons, without rounding decimal labels to
+binary64; they are not unique faults. Repeated identity rows count rows beyond
+the first complete declared observation key. A conflicting identity has multiple
+`(Duration, Verdict)` pairs. These are integrity findings, not deduplicated or
+resolved outcomes. Different context values alone are outside that conflict test.
+
+Every profile includes all source column names/null counts, raw duration finite,
+null, nonfinite, negative and zero counts, min/median/p95/max, raw verdict categories,
+missing identity/group counts, and the distribution of raw rows per execution
+group. The latter includes duplicates and is not a count of distinct runnable
+tests. Quantiles use the inverse empirical CDF `ceil(p*n)-1`, without interpolation,
+over finite binary64 values. Quantile ranks use integer arithmetic; signed zeros
+normalize to positive zero in statistical projections while source bytes/digests
+remain unchanged. All-null/nonfinite or empty distributions have null
+quantiles and unavailable measurements; observed zero stays zero. Negative raw
+numbers remain visible and do not certify valid physical execution durations.
+A declared duration unit/meaning is retained when supplied; it is never guessed.
+
+Chronology is explicitly **not evaluated** by this recipe. `LastRun`, numeric
+`BuildId`, file order and repeated seeds cannot establish event order, UTC,
+feature/outcome availability, time span, adjacent-build churn, flakiness, retries
+or independent observations. These facts and provider/language axes remain
+unverified where their original cards lack evidence. All **seven regimes remain
+uncovered**; profiles cannot promote a source or weaken that diversity matrix.
+
+This complete library example uses the same exact local synthetic file as the CLI:
+
+```python
+from pathlib import Path
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus import (
+    CorpusProfileInventory, NativeSourceProfile, load_registry,
+    profile_native_source, publish_profile_inventory, publish_source_profile,
+)
+
+registry = load_registry()
+card = registry.card("native-example-e970afe1686d7fe6")
+profile = profile_native_source(card, Path("source.parquet"))
+assert profile.rows == 29 and profile.logical_builds == 5
+assert profile.raw_duration.zero_count == 3
+assert profile.duration_median.unit == "source-unit-unverified"
+assert profile.card == card  # No admission metadata is rewritten.
+writer = ArtifactWriter("library-profiles")
+path = publish_source_profile(profile, writer)
+assert NativeSourceProfile.from_json(path.read_bytes()) == profile
+inventory = CorpusProfileInventory(
+    schema_version=1, registry=registry, profiles=(profile, profile),
+    uncovered_required_regimes=registry.required_regimes,
+)
+assert len(inventory.profiles) == 1  # Identical retries are idempotent.
+assert len(inventory.uncovered_required_regimes) == 7
+publish_profile_inventory(inventory, writer)
+```
+
+The default ceiling is 16 MiB compressed input, two million rows, 64 columns and
+256 MiB declared uncompressed row-group bytes; tighter manifest bounds also apply.
+One bounded byte snapshot is hashed before decoding. Footer limits precede native
+Parquet decoding, but are not measured peak-memory guarantees or a sandbox for
+malicious codecs. Inputs are explicit trusted local files. Source URI strings
+never trigger downloads or dynamic imports. Numeric summaries are descriptive
+producer attestations: reading validates conservation, membership, sign counts
+against inverse-CDF quantile ranks, equality at shared ranks, and integral
+group-count quantiles consistent with the total rows. Nonempty complete group
+rows require logical builds and execution groups. Key-column null counts bound
+missing identities/groups, and
+duplicates require original identities covering the known build/group grain.
+Observed source-row/byte declarations must agree with the profile; the declared
+row/source-byte resource ceilings also apply on reads. Without `Variant`, logical
+builds and execution groups are equal. Missing group/observation identities retain
+their subset relationships and extra-column null bounds. Reproducing the
+producer's observations still requires the matching source and recipe.
+
+New `NativeSourceProfile` and `CorpusProfileInventory` schema-v1 artifacts use
+`corpus-profiles/` and `corpus-profile-inventories/`; native manifests discover both.
+Missing, duplicate-key, future or unknown versions fail closed. There is no implicit
+migration from old native artifacts/cards into profile evidence. Recompute from
+reviewed source bytes and preserve the old artifact alongside the new family.
+Identical publication and interrupted retry reuse existing immutable artifacts;
+a completed profile is published only after its complete source scan. Profiling
+has no incremental learning state and needs no second checkpoint store.
 
 ## Independent known answers
 
@@ -198,7 +324,13 @@ initial shuffle and next-build path; neither real CI history nor independence is
 claimed. The example requires a fresh output directory for each complete native
 invocation and rejects an existing directory before writing, including pre-existing
 symlinked input/native descendants. Direct native runs retain their existing append
-behavior. Native learning checkpoints remain the runner's responsibility; this adds no second runner/checkpoint store.
+behavior. The development example sets a checkpoint interval of one build and reopens the
+same run before validating that exactly two native rows remain. It profiles the
+exact constructed native input, preserving fixture lineage, declared seconds and
+the constructed-history label, then publishes both new artifact families. The
+4.3-tagged example above retains its previous behavior; use the source-build
+example for these additions. Native learning checkpoints remain the runner's
+responsibility; this adds no second runner/checkpoint store.
 
 Corpus validation/readiness publication is deterministic and idempotent for the
 same input. Concurrent identical retries share the same content address. Existing
@@ -224,6 +356,11 @@ flowchart LR
   O --> V[Verified versioned fixture evidence]
   N --> V
   V --> A[Existing immutable artifacts and native manifest]
+  M --> P[Bounded local Parquet description]
+  B --> P
+  P --> D[Source-bound profile and diversity inventory]
+  D --> A
+  D --> R
   M --> R[Visible blocked sources and missing diversity cells]
   V --> R
 ```
