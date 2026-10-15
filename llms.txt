@@ -1605,6 +1605,9 @@ Registration also checks the actual native duration conversion (Float64 loader
 then the bandit's Float32 schema): overflow and positive-to-zero underflow are
 rejected. Genuine zero and representable subnormal durations remain valid;
 ordinary native rounding is preserved and native result bytes keep that meaning.
+Budget values must produce unique native directory segments of at most 255 UTF-8
+bytes. This also rejects different ratio budgets rounded to the same native label;
+existing unrestricted native naming remains unchanged.
 `CalcPrio` must be an integer column fitting the bandit's signed Int32 schema.
 `LastRun` must survive the existing string conversion; unsupported nested values
 are refused. Duration validation applies the loader's Float64 conversion first,

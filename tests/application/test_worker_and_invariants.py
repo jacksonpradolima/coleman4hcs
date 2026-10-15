@@ -141,6 +141,38 @@ def test_unsupported_native_registrations_fail_before_execution(changes):
         NativeConfiguration.model_validate(invalid)
 
 
+@pytest.mark.parametrize(
+    "mode,values",
+    [("fixed_time", [1e308]), ("subset_size", [1e308]), ("ratio", [0.333, 0.334]), ("fixed_time", [3, 3])],
+)
+def test_native_budget_directory_limits_are_checked_before_admission(mode, values):
+    native = default_registry()[2].problem
+    assert isinstance(native, NativeConfiguration)
+    spec = json.loads(native.spec_json)
+    spec["experiment"]["budget"] = {"mode": mode, "values": values}
+    invalid = {**native.model_dump(), "spec_json": json.dumps(spec), "work_units": 2 * len(values)}
+    with pytest.raises(ValueError, match="budget directory"):
+        NativeConfiguration.model_validate(invalid)
+
+
+@pytest.mark.parametrize("mode,values", [("fixed_time", [1e230]), ("subset_size", [1e230]), ("ratio", [0.25, 0.75])])
+def test_native_budget_directory_segments_remain_compatible(mode, values, tmp_path):
+    from coleman.budget import BudgetMode
+    from coleman.runner import _budget_directory_segment
+
+    native = default_registry()[2].problem
+    assert isinstance(native, NativeConfiguration)
+    spec = json.loads(native.spec_json)
+    spec["experiment"]["budget"] = {"mode": mode, "values": values}
+    valid = {**native.model_dump(), "spec_json": json.dumps(spec), "work_units": 2 * len(values)}
+    validated = NativeConfiguration.model_validate(valid)
+    assert validated.work_units == 2 * len(values)
+    for value in values:
+        directory = tmp_path / _budget_directory_segment(BudgetMode(mode), value)
+        directory.mkdir()
+        assert directory.is_dir()
+
+
 def test_units_are_not_silently_converted():
     config = default_registry()[0]
     payload = config.model_dump(mode="json")

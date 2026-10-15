@@ -233,6 +233,24 @@ def _experiment_contract(spec: RunSpec) -> None:
         raise ValueError("Native reward declarations must be unique")
     if not all(math.isfinite(value) for value in spec.experiment.budget.values):
         raise ValueError("Native budgets must be finite")
+    _budget_directory_contract(spec)
+
+
+def _budget_directory_contract(spec: RunSpec) -> None:
+    """Require unique native budget paths fitting Linux/macOS 255-byte components.
+
+    Reuse the runner's naming function, including its rounded ratio labels. Reject
+    oversized or colliding names before admission; do not rename old artifacts or
+    change unrestricted native runner behavior. This check performs no writes.
+    """
+    from coleman.runner import _budget_directory_segment
+
+    budget = spec.experiment.budget
+    segments = tuple(_budget_directory_segment(budget.mode, value) for value in budget.values)
+    if any(len(segment.encode("utf-8")) > 255 for segment in segments):
+        raise ValueError("Native budget directory segment exceeds 255 bytes")
+    if len(set(segments)) != len(segments):
+        raise ValueError("Native budget directory segments must be unique")
 
 
 def _storage_contract(spec: RunSpec) -> None:
