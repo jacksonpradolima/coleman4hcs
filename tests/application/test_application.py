@@ -144,6 +144,19 @@ def test_command_input_caps_duplicates_and_stable_errors(tmp_path):
             ApplicationService(default_registry() * 2, root=tmp_path)
 
 
+def test_json_decimal_literals_are_validated_before_binary64_rounding(tmp_path):
+    prefix = '{"schema_version":1,"request_id":"decimal","spec_id":"weighted-overlap-3","parameters":{"budget":'
+    with pytest.raises(ValueError):
+        Submit.from_json(prefix + "3.0000000000000001}}")
+    exact = Submit.from_json(prefix + "0.000000000001}}")
+    assert exact.parameters.budget == Decimal("0.000000000001")
+    with ApplicationService(default_registry(), root=tmp_path) as service:
+        commands = ApplicationCommands(service, caller=CALLER)
+        reply = json.loads(commands.invoke("submit", prefix + "3.0000000000000001}}"))
+        assert reply["error"] == "invalid_input"
+        assert not list(tmp_path.rglob("request.json"))
+
+
 def test_native_work_caps_zero_and_exact_decimal_override(tmp_path):
     with ApplicationService(default_registry(), root=tmp_path) as service:
         _, zero_work = completed(service, request("work-zero", limits={"max_work": 0}))

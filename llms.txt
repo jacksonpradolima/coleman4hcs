@@ -1548,6 +1548,9 @@ places, in the registered cost unit and meaning. JSON serializes them as decimal
 strings. Zero is valid; null means **no override**. Negative budgets, non-finite
 values, unknown keys and implicit unit conversions are rejected. Allocation and
 experiment parameters are frozen in their registrations in v1.
+Application JSON readers preserve decimal number literals before precision
+validation, so extra digits cannot disappear through intermediate binary64
+rounding. Existing native readers retain their original compatibility behavior.
 
 One-shot CLI execution uses the same command and services:
 

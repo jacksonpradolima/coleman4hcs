@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 from decimal import Decimal
 from pathlib import PurePosixPath
 from typing import Annotated, Literal, Self
@@ -11,7 +12,7 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, field_serializer, model_validator
 
 from coleman.allocation.results import AllocationResult
-from coleman.results.domain import Fingerprint, Finite
+from coleman.results.domain import Fingerprint, Finite, decode_json
 from coleman.results.versioned import VersionedContract
 from coleman.selection.contracts import Immutable, UnitSemantics, decimal_text
 from coleman.selection.results import CoverageResult
@@ -21,6 +22,22 @@ ErrorCode = Literal[
     "invalid_input", "unknown_spec", "not_found", "forbidden", "expired", "resource_limit", "unavailable_result"
 ]
 JobState = Literal["queued", "running", "completed", "failed", "cancelled", "expired"]
+
+
+class ApplicationContract(VersionedContract):
+    """Preserve JSON decimal literals before scientific quantity validation.
+
+    The shared decoder first rejects duplicate keys; a bounded second parse keeps
+    exact decimal literals rather than rounding them through binary64. Only this
+    new application contract changes reading; existing native readers retain their
+    compatibility behavior. No filesystem or execution side effects occur.
+    """
+
+    @classmethod
+    def from_json(cls, payload: str | bytes) -> Self:
+        """Reject ambiguous JSON and preserve exact scientific decimal input values."""
+        decode_json(payload)
+        return cls.model_validate(json.loads(payload, parse_float=Decimal))
 
 
 class ApplicationError(Exception):
@@ -81,7 +98,7 @@ class Capability(Immutable):
     budget_semantics: UnitSemantics | None = None
 
 
-class Discovery(VersionedContract):
+class Discovery(ApplicationContract):
     """Finite capability discovery without configuration paths or executable details."""
 
     transport_contract: Literal["coleman-application-v1"] = "coleman-application-v1"
@@ -109,7 +126,7 @@ class Parameters(Immutable):
         return None if value is None else decimal_text(value)
 
 
-class Submit(VersionedContract):
+class Submit(ApplicationContract):
     """Idempotent request scoped by trusted caller and immutable registered configuration."""
 
     request_id: SafeId
@@ -118,14 +135,14 @@ class Submit(VersionedContract):
     limits: Limits = Limits()
 
 
-class Handle(VersionedContract):
+class Handle(ApplicationContract):
     """Content-addressed local receipt; neither this digest nor job_id grants access."""
 
     job_id: SafeId
     digest: Fingerprint
 
 
-class JobView(VersionedContract):
+class JobView(ApplicationContract):
     """Job state snapshot; handle exists only after successful immutable publication.
 
     Cancellation/expiry expose no partial result. Native work-limited results may
@@ -186,7 +203,7 @@ class PortableFile(Immutable):
         return self
 
 
-class ExperimentResult(VersionedContract):
+class ExperimentResult(ApplicationContract):
     """Native api.run receipt with original artifact bytes and stable resolved run identity.
 
     No metrics are inferred from an empty RunResult.metrics. Files include native
@@ -207,7 +224,7 @@ class ExperimentResult(VersionedContract):
         return self
 
 
-class ResultBundle(VersionedContract):
+class ResultBundle(ApplicationContract):
     """Explicit portable v1 result with approved-source identity and native proof validation.
 
     Import verifies integrity/math, never authenticates the original producer or

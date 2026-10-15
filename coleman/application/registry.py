@@ -12,6 +12,7 @@ from pydantic import Field, model_validator
 
 from coleman.allocation import AllocationProblem
 from coleman.application.contracts import (
+    ApplicationContract,
     ApplicationError,
     ExperimentResult,
     Limits,
@@ -20,13 +21,12 @@ from coleman.application.contracts import (
     ResultBundle,
     SafeId,
 )
-from coleman.results.versioned import VersionedContract
 from coleman.selection import CoverageProblem, Quantity
 from coleman.selection.resources import SearchLimits, inspect_workload, preflight_reason
 from coleman.spec.models import RunSpec
 
 
-class NativeConfiguration(VersionedContract):
+class NativeConfiguration(ApplicationContract):
     """Snapshot of one approved native TCPCI RunSpec and bounded local Parquet inputs.
 
     Host setup reads files once. Execution uses the snapshot, never the original
@@ -63,7 +63,7 @@ class NativeConfiguration(VersionedContract):
         return self
 
 
-class Configuration(VersionedContract):
+class Configuration(ApplicationContract):
     """Immutable registered native problem or RunSpec snapshot, capped before admission."""
 
     spec_id: SafeId
