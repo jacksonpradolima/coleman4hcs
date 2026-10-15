@@ -20,18 +20,19 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.1
+## New in 4.2
 
-Audit native test selections with the [operational CI pilot](operational-pilot.md):
-keep missed failures in recall, distinguish runner work from elapsed time, and
-retain negative or inconclusive adoption evidence.
+Reproduce what a CI decision knew with [point-in-time observations](point-in-time-observations.md):
+late corrections cannot change an earlier snapshot, stale signals fall back conservatively,
+and versioned evidence survives checkpoint continuation. The
+[benchmark corpus foundation](benchmark-corpus.md) provides two known-answer fixtures
+and source registrations; all seven required diversity regimes remain uncovered.
 
-Use the [bounded application API](application-api.md) from the library, CLI or
-optional local MCP tools. The existing native services make the decisions and
-run TCPCI experiments; versioned portable evidence makes the outcome inspectable.
-[Independent decision benchmarks](decision-benchmarks.md) check finite-model
-mathematics before performance or generalization claims. See the
-[release notes](releases/4.1.0.md) for examples, compatibility and limits.
+The [operational CI pilot](operational-pilot.md) continues to audit native selections,
+keep missed failures in recall, and distinguish runner work from elapsed time.
+Use the [application API](application-api.md) and [independent benchmarks](decision-benchmarks.md)
+to run experiments and check finite-model mathematics. See the
+[release notes](releases/4.2.0.md) for complete examples, compatibility and limits.
 
 ## Quick Start
 
@@ -39,7 +40,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.1.0/coleman-4.1.0-py3-none-any.whl#sha256=41ad29854d95cc91ad8067e2fd6d9d15ba0fefb1b99d39498e7f707e86e83326"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.2.0/coleman-4.2.0-py3-none-any.whl#sha256=8e929093fc2103d0de141c3e64dccb099001dfd6216f9051cfe4ceee120ebef8"
 coleman run --config my-experiment.yaml
 ```
 
