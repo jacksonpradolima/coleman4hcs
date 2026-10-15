@@ -266,7 +266,7 @@ def test_frozen_candidate_mutation_changes_experiment_and_rejects_old_evidence(f
 
     state = completed()
     data = state.model_dump(mode="json")
-    value = fingerprint({"changed": field}) if field.endswith("fingerprint") else "changed-fallback-v2"
+    value = fingerprint({"changed": field}) if field.endswith("fingerprint") else "full-suite-if-estimated-feasible-v1"
     data["protocol"]["candidates"][0][field] = value
     changed = ShadowProtocol.model_validate(data["protocol"])
     assert changed.logical_id != state.logical_id
@@ -494,3 +494,50 @@ def test_closure_releases_known_unused_reservation_before_charging_overhead():
     assert build.actual_ledger.balance.containment == "normal"
     assert state.operational(clock(9, 6)).status == "healthy"
     assert not ShadowReport(schema_version=1, state=state).evidence().known_adverse_findings
+
+
+def test_request_cannot_replace_frozen_no_action_with_full_suite_fallback():
+    proto = protocol()
+    candidates = tuple(replace(candidate, budget=amount(7000)) for candidate in proto.candidates)
+    proto = replace(proto, candidates=candidates)
+    state = connected(proto)
+    event = opening(proto)
+    first = event.decisions[0]
+    request = replace(first.request, priority_status="stale", fallback="full_suite")
+    first = replace(first, request=request)
+    event = replace(event, decisions=(first, event.decisions[1]))
+    changed = state.ingest(event, clock(0, 1))
+    assert changed.journal[-1].reason == "decision_differs_from_frozen_candidate_or_required_universe"
+    assert changed.builds() == ()
+
+
+@pytest.mark.parametrize("budget,overhead,expected", [(7000, 0, ("t1", "t2", "t3")), (3000, 0, ()), (7000, 1, ())])
+def test_declared_full_suite_fallback_requires_all_estimated_work_and_charges_to_fit(budget, overhead, expected):
+    proto = protocol()
+    candidates = tuple(
+        replace(candidate, budget=amount(budget), fallback_version="full-suite-if-estimated-feasible-v1")
+        for candidate in proto.candidates
+    )
+    proto = replace(proto, candidates=candidates)
+    event = opening(proto)
+    decisions = tuple(
+        replace(
+            decision,
+            request=replace(decision.request, priority_status="stale", fallback="full_suite"),
+            decision_overhead=amount(overhead),
+        )
+        for decision in event.decisions
+    )
+    event = replace(event, decisions=decisions)
+    state = connected(proto).ingest(event, clock(0, 1))
+    assert state.journal[-1].disposition == "accepted"
+    assert resolve_selection(decisions[0]).selected_ids == expected
+
+
+@pytest.mark.parametrize("field", ["selection_version", "fallback_version"])
+def test_unknown_core_selection_and_fallback_versions_fail_closed(field):
+    candidate = protocol().candidates[0]
+    payload = {**candidate.model_dump(), field: "future-v2"}
+    contract_class = type(candidate)
+    with pytest.raises(ValueError):
+        contract_class.model_validate(payload)

@@ -84,6 +84,7 @@ def decision_reason(
 ) -> str | None:
     """Bind one predecision request to its frozen model, units, context and complete universe."""
     request = decision.request
+    fallback = "no_action" if candidate.fallback_version == "no-action-v1" else "full_suite"
     actual = (
         decision.model_fingerprint,
         request.configuration_fingerprint,
@@ -92,6 +93,7 @@ def decision_reason(
         request.decided_at,
         request.decision_id,
         sorted(request.ranking),
+        request.fallback,
     )
     expected = (
         candidate.model_fingerprint,
@@ -101,6 +103,7 @@ def decision_reason(
         event.decided_at,
         event.build_id,
         sorted(event.required_ids),
+        fallback,
     )
     if actual != expected:
         return "decision_differs_from_frozen_candidate_or_required_universe"

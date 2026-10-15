@@ -5731,6 +5731,14 @@ above keeps transitions in memory to show the complete contract. Fingerprints bi
 reviewed configurations; they do not prove that arbitrary producer code computed
 an honest model or used the declared features.
 
+The core currently supports `selection_version="serial-prefix-v1"` and two frozen
+fallback versions: `no-action-v1` binds `ResourceRequest.fallback="no_action"`;
+`full-suite-if-estimated-feasible-v1` binds `fallback="full_suite"`. A decision
+cannot substitute another fallback, even when priority is currently available.
+Full-suite fallback still requires every eligible estimate, known inference and
+the declared setup reserve to fit the same budget. Unknown selection/fallback
+versions fail closed rather than executing another algorithm under their names.
+
 ## Real native full-suite workflow
 
 Build and install the wheel in a separate Python 3.14 environment. Copy

@@ -53,15 +53,17 @@ class FrozenCandidate(Immutable):
 
     Producers bind these fingerprints to reviewed actual configurations. No code
     is imported by identifier or fingerprint. A changed declaration changes the
-    experiment fingerprint and requires new untouched evidence.
+    experiment fingerprint and requires new untouched evidence. Core selection
+    supports only the declared serial prefix v1. Known fallback versions bind
+    no-action or estimated-feasible full suite; unknown versions fail closed.
     """
 
     candidate_id: Identifier
     policy_version: Identifier
     model_fingerprint: Fingerprint
     feature_fingerprint: Fingerprint
-    selection_version: Identifier
-    fallback_version: Identifier
+    selection_version: Literal["serial-prefix-v1"]
+    fallback_version: Literal["no-action-v1", "full-suite-if-estimated-feasible-v1"]
     budget: ResourceAmount
     shared_setup_reserve: ResourceAmount
 
