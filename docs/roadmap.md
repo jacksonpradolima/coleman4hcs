@@ -23,12 +23,22 @@ diversity regimes remain uncovered.
 The shadow fixture demonstrates functional recovery, with zero collected forward
 builds and insufficient evidence for adoption.
 
-The next compatible feature target is **4.4.0**, continuing #261 sequentially with
-full profiles and secure fetch/conversion foundations. Further slices cover verified historical and
-controlled-fault sources, stress cases, baselines/statistics and frozen cross-corpus
-evidence. Deliveries can span later 4.x releases. The issue remains open until its
-admission, diversity, execution and evidence gates pass. Inaccessible or unlicensed
-sources remain visible blockers. Security fixes remain independently shippable.
+**4.4.0** groups the reviewed next two #261 slices: bounded native profiles and a
+reproducible inventory in [#284](https://github.com/jacksonpradolima/coleman/pull/284),
+and licensed source-package materialization in
+[#285](https://github.com/jacksonpradolima/coleman/pull/285). Typed integrity receipts,
+external caches, bounded archive validation and installed native recovery workflows
+reuse the existing runner/artifacts/checkpoints. All ten existing native registrations
+retain their admission blockers; all seven required diversity regimes remain
+uncovered.
+
+The next sequential corpus slice is the version-pinned RTPTorrent adapter and
+baseline slice. Later steps cover LRTS, controlled real faults, HCS/variant expansion
+and synthetic stress, comparable baselines/statistics, frozen confirmatory execution
+and the final evidence report. Compatible deliveries continue in later **4.x**
+releases. #261 stays open until its admission, diversity, execution and evidence
+gates pass. Inaccessible or unlicensed sources remain visible blockers. Security
+fixes remain independently shippable.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:

@@ -4,8 +4,9 @@ This is the first implementation slice of
 [#261](https://github.com/jacksonpradolima/coleman/issues/261), introduced in
 **COLEMAN 4.2**. It implements source manifests, a typed registry and data
 cards, bounded independent correctness references, local validation and native
-integration. The development slice targeting **4.4** adds bounded local native-Parquet profiles
-and a reproducible diversity inventory. The diversified benchmark program is **not complete**.
+integration. COLEMAN **4.4** adds bounded local native-Parquet profiles, a reproducible diversity
+inventory and [licensed source-package materialization](corpus-materialization.md).
+The diversified benchmark program remains open.
 
 The registry contains two small repository-authored MIT-licensed CI fixtures and
 an inventory of ten existing public example Parquet artifacts. Historical sources
@@ -21,7 +22,7 @@ follows from passing these checks.
 
 ## Installed commands
 
-Install the wheel attached to [COLEMAN 4.2](https://github.com/jacksonpradolima/coleman/releases/tag/v4.2.0)
+Install the wheel attached to [COLEMAN 4.4](https://github.com/jacksonpradolima/coleman/releases/tag/v4.4.0)
 in a Python 3.14+ environment, or build a development wheel from the reviewed source.
 Copy examples to a directory outside the checkout. Once installed, these local
 operations need no optional dependency, provider subscription, credential or
@@ -48,9 +49,10 @@ parents are resolved and checked before publication. This local path check assum
 no concurrent hostile filesystem mutation; it is not an OS sandbox. Library callers
 supply their own trusted `ArtifactWriter` root, independently of CLI/MCP transports.
 
-These are the implemented commands. Fetch/cache/extraction, real-source conversion,
-large stress generation, baseline matrices, dependence-aware statistical profiles
-and confirmatory run/report commands belong to subsequent slices of #261.
+The profile commands below and [source-package fetch/cache/validation](corpus-materialization.md)
+are also available in 4.4. Source-specific conversion, large stress generation,
+baseline matrices, dependence-aware statistical profiles and confirmatory run/report
+commands remain subsequent slices of #261.
 
 ## Source contract and admission
 
@@ -104,11 +106,10 @@ source rows across ten artifacts, **not** that many independent observations.
 Physical duration/churn/availability/provider semantics remain unverified, not zero.
 The local profiling recipe below describes raw fields without resolving those gates.
 
-## Local profiles and the first diversity matrix (4.4 development)
+## Local profiles and the first diversity matrix (4.4)
 
-These additions require a wheel built from this reviewed development source;
-released 4.3 and older wheels retain their previous commands. The profiler is a
-separate descriptive recipe, **not** an implemented corpus evaluation adapter.
+These additions are available in the 4.4 wheel; 4.3 and older wheels retain their
+previous commands. The profiler is a separate descriptive recipe, **not** an implemented corpus evaluation adapter.
 It does not change registry v1, cards, fixture/readiness v1, old native result
 rows, source licenses or admission blockers.
 
@@ -314,8 +315,8 @@ A real provider needs a separately implemented/verified adapter; marking it
 
 ## Real native execution and artifact recovery
 
-Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.3.0/examples/corpus-foundation/ci.py)
-and run `python ci.py native-output` from the installed 4.3 wheel or a source build. It uses
+Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.4.0/examples/corpus-foundation/ci.py)
+and run `python ci.py native-output` from the installed 4.4 wheel or a source build. It uses
 `api.run()` with native Random/RNFail and a full seven-second budget, verifies each
 actual native ranking's NAPFD/APFDc against the independent oracle, and publishes
 both source checks plus the insufficient-diversity inventory through existing
@@ -324,13 +325,11 @@ initial shuffle and next-build path; neither real CI history nor independence is
 claimed. The example requires a fresh output directory for each complete native
 invocation and rejects an existing directory before writing, including pre-existing
 symlinked input/native descendants. Direct native runs retain their existing append
-behavior. The development example sets a checkpoint interval of one build and reopens the
+behavior. The 4.4 example sets a checkpoint interval of one build and reopens the
 same run before validating that exactly two native rows remain. It profiles the
 exact constructed native input, preserving fixture lineage, declared seconds and
-the constructed-history label, then publishes both new artifact families. The
-4.3-tagged example above retains its previous behavior; use the source-build
-example for these additions. Native learning checkpoints remain the runner's
-responsibility; this adds no second runner/checkpoint store.
+the constructed-history label, then publishes both new artifact families. Native
+learning checkpoints remain the runner's responsibility; this adds no second runner/checkpoint store.
 
 Corpus validation/readiness publication is deterministic and idempotent for the
 same input. Concurrent identical retries share the same content address. Existing

@@ -1,11 +1,11 @@
 # Verified source packages for CI benchmarks
 
-This development slice of [#261](https://github.com/jacksonpradolima/coleman/issues/261)
-targets **COLEMAN 4.4**. It adds bounded, restartable acquisition and offline
-integrity validation for explicitly licensed, pinned raw files and ZIP packages.
-It reuses the existing immutable artifact writer and native runner/checkpoints.
-Install a wheel built from this reviewed source; released 4.3 wheels do not have
-these commands.
+COLEMAN **4.4** adds bounded, restartable acquisition and offline integrity
+validation for explicitly licensed, pinned raw files and ZIP packages as part of
+[#261](https://github.com/jacksonpradolima/coleman/issues/261). It reuses the existing
+immutable artifact writer and native runner/checkpoints. Install the wheel attached
+to [COLEMAN 4.4](https://github.com/jacksonpradolima/coleman/releases/tag/v4.4.0)
+in Python 3.14 or newer; 4.3 and earlier wheels retain their previous commands.
 
 A successful materialization means **source integrity only**. It does not admit a
 source for evaluation, verify its CI chronology/units/identity semantics, establish
@@ -27,7 +27,7 @@ from coleman.artifacts import ArtifactWriter
 from coleman.corpus import (
     MaterializationSpec, MaterializationReceipt, PackageMember, SourceCache,
     bundled_fixture_bytes, load_registry, materialize_source,
-    publish_materialization, validate_fixture_source, validate_materialization,
+    publish_materialization, validate_cache_separation, validate_fixture_source, validate_materialization,
 )
 
 card = load_registry().card("ci-serial-boundary-v1")
@@ -40,14 +40,17 @@ spec = MaterializationSpec(
     schema_version=1, package_id="owned-ci-raw-source-v1", archive="raw",
     source=card.manifest.source, license=card.manifest.license, members=(member,),
 )
-cache = SourceCache(Path("external-source-cache"))
+cache_root = Path("external-source-cache")
+writer = ArtifactWriter("integrity-artifacts")
+validate_cache_separation(cache_root, writer.run_root)  # Before any cache/source writes.
+cache = SourceCache(cache_root)
 receipt = materialize_source(spec, cache, lambda: io.BytesIO(payload))
 assert receipt.admission == "not_evaluated"
 assert materialize_source(spec, cache) == receipt  # Verified cache hit: no source reader.
 validate_materialization(receipt, cache)          # Offline, no repair/network.
 checked = validate_fixture_source(card.manifest, cache.member_path(receipt, "fixture.json").read_bytes())
 assert len(checked.observations) == 2              # Real native metric/oracle checks.
-path = publish_materialization(receipt, cache, ArtifactWriter("integrity-artifacts"))
+path = publish_materialization(receipt, cache, writer)
 assert MaterializationReceipt.from_json(path.read_bytes()) == receipt
 Path("owned-package.json").write_text(spec.to_json() + "\n", encoding="utf-8")
 Path("owned-source.json").write_bytes(payload)
@@ -205,8 +208,8 @@ schema versions and unknown cache markers reject; old native/card/profile artifa
 retain their original readers/meaning. No implicit migration or source copying
 into public artifacts occurs.
 
-Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/main/examples/corpus-materialization/ci.py)
-from this reviewed development source outside the checkout:
+Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.4.0/examples/corpus-materialization/ci.py)
+from the reviewed 4.4 release into a workspace outside the checkout:
 
 ```bash
 python ci.py owned-ci-output /absolute/path/to/external-source-cache

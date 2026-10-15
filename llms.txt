@@ -52,6 +52,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/releases/4.1.0.md
 - docs/releases/4.2.0.md
 - docs/releases/4.3.0.md
+- docs/releases/4.4.0.md
 - docs/releases.md
 - docs/resource-replay.md
 - docs/roadmap.md
@@ -1788,8 +1789,9 @@ This is the first implementation slice of
 [#261](https://github.com/jacksonpradolima/coleman/issues/261), introduced in
 **COLEMAN 4.2**. It implements source manifests, a typed registry and data
 cards, bounded independent correctness references, local validation and native
-integration. The development slice targeting **4.4** adds bounded local native-Parquet profiles
-and a reproducible diversity inventory. The diversified benchmark program is **not complete**.
+integration. COLEMAN **4.4** adds bounded local native-Parquet profiles, a reproducible diversity
+inventory and [licensed source-package materialization](corpus-materialization.md).
+The diversified benchmark program remains open.
 
 The registry contains two small repository-authored MIT-licensed CI fixtures and
 an inventory of ten existing public example Parquet artifacts. Historical sources
@@ -1805,7 +1807,7 @@ follows from passing these checks.
 
 ## Installed commands
 
-Install the wheel attached to [COLEMAN 4.2](https://github.com/jacksonpradolima/coleman/releases/tag/v4.2.0)
+Install the wheel attached to [COLEMAN 4.4](https://github.com/jacksonpradolima/coleman/releases/tag/v4.4.0)
 in a Python 3.14+ environment, or build a development wheel from the reviewed source.
 Copy examples to a directory outside the checkout. Once installed, these local
 operations need no optional dependency, provider subscription, credential or
@@ -1832,9 +1834,10 @@ parents are resolved and checked before publication. This local path check assum
 no concurrent hostile filesystem mutation; it is not an OS sandbox. Library callers
 supply their own trusted `ArtifactWriter` root, independently of CLI/MCP transports.
 
-These are the implemented commands. Fetch/cache/extraction, real-source conversion,
-large stress generation, baseline matrices, dependence-aware statistical profiles
-and confirmatory run/report commands belong to subsequent slices of #261.
+The profile commands below and [source-package fetch/cache/validation](corpus-materialization.md)
+are also available in 4.4. Source-specific conversion, large stress generation,
+baseline matrices, dependence-aware statistical profiles and confirmatory run/report
+commands remain subsequent slices of #261.
 
 ## Source contract and admission
 
@@ -1888,11 +1891,10 @@ source rows across ten artifacts, **not** that many independent observations.
 Physical duration/churn/availability/provider semantics remain unverified, not zero.
 The local profiling recipe below describes raw fields without resolving those gates.
 
-## Local profiles and the first diversity matrix (4.4 development)
+## Local profiles and the first diversity matrix (4.4)
 
-These additions require a wheel built from this reviewed development source;
-released 4.3 and older wheels retain their previous commands. The profiler is a
-separate descriptive recipe, **not** an implemented corpus evaluation adapter.
+These additions are available in the 4.4 wheel; 4.3 and older wheels retain their
+previous commands. The profiler is a separate descriptive recipe, **not** an implemented corpus evaluation adapter.
 It does not change registry v1, cards, fixture/readiness v1, old native result
 rows, source licenses or admission blockers.
 
@@ -2098,8 +2100,8 @@ A real provider needs a separately implemented/verified adapter; marking it
 
 ## Real native execution and artifact recovery
 
-Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.3.0/examples/corpus-foundation/ci.py)
-and run `python ci.py native-output` from the installed 4.3 wheel or a source build. It uses
+Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.4.0/examples/corpus-foundation/ci.py)
+and run `python ci.py native-output` from the installed 4.4 wheel or a source build. It uses
 `api.run()` with native Random/RNFail and a full seven-second budget, verifies each
 actual native ranking's NAPFD/APFDc against the independent oracle, and publishes
 both source checks plus the insufficient-diversity inventory through existing
@@ -2108,13 +2110,11 @@ initial shuffle and next-build path; neither real CI history nor independence is
 claimed. The example requires a fresh output directory for each complete native
 invocation and rejects an existing directory before writing, including pre-existing
 symlinked input/native descendants. Direct native runs retain their existing append
-behavior. The development example sets a checkpoint interval of one build and reopens the
+behavior. The 4.4 example sets a checkpoint interval of one build and reopens the
 same run before validating that exactly two native rows remain. It profiles the
 exact constructed native input, preserving fixture lineage, declared seconds and
-the constructed-history label, then publishes both new artifact families. The
-4.3-tagged example above retains its previous behavior; use the source-build
-example for these additions. Native learning checkpoints remain the runner's
-responsibility; this adds no second runner/checkpoint store.
+the constructed-history label, then publishes both new artifact families. Native
+learning checkpoints remain the runner's responsibility; this adds no second runner/checkpoint store.
 
 Corpus validation/readiness publication is deterministic and idempotent for the
 same input. Concurrent identical retries share the same content address. Existing
@@ -3069,12 +3069,12 @@ coleman validate --config my-experiment.yaml --resolve resolved.json
 
 # Verified source packages for CI benchmarks
 
-This development slice of [#261](https://github.com/jacksonpradolima/coleman/issues/261)
-targets **COLEMAN 4.4**. It adds bounded, restartable acquisition and offline
-integrity validation for explicitly licensed, pinned raw files and ZIP packages.
-It reuses the existing immutable artifact writer and native runner/checkpoints.
-Install a wheel built from this reviewed source; released 4.3 wheels do not have
-these commands.
+COLEMAN **4.4** adds bounded, restartable acquisition and offline integrity
+validation for explicitly licensed, pinned raw files and ZIP packages as part of
+[#261](https://github.com/jacksonpradolima/coleman/issues/261). It reuses the existing
+immutable artifact writer and native runner/checkpoints. Install the wheel attached
+to [COLEMAN 4.4](https://github.com/jacksonpradolima/coleman/releases/tag/v4.4.0)
+in Python 3.14 or newer; 4.3 and earlier wheels retain their previous commands.
 
 A successful materialization means **source integrity only**. It does not admit a
 source for evaluation, verify its CI chronology/units/identity semantics, establish
@@ -3096,7 +3096,7 @@ from coleman.artifacts import ArtifactWriter
 from coleman.corpus import (
     MaterializationSpec, MaterializationReceipt, PackageMember, SourceCache,
     bundled_fixture_bytes, load_registry, materialize_source,
-    publish_materialization, validate_fixture_source, validate_materialization,
+    publish_materialization, validate_cache_separation, validate_fixture_source, validate_materialization,
 )
 
 card = load_registry().card("ci-serial-boundary-v1")
@@ -3109,14 +3109,17 @@ spec = MaterializationSpec(
     schema_version=1, package_id="owned-ci-raw-source-v1", archive="raw",
     source=card.manifest.source, license=card.manifest.license, members=(member,),
 )
-cache = SourceCache(Path("external-source-cache"))
+cache_root = Path("external-source-cache")
+writer = ArtifactWriter("integrity-artifacts")
+validate_cache_separation(cache_root, writer.run_root)  # Before any cache/source writes.
+cache = SourceCache(cache_root)
 receipt = materialize_source(spec, cache, lambda: io.BytesIO(payload))
 assert receipt.admission == "not_evaluated"
 assert materialize_source(spec, cache) == receipt  # Verified cache hit: no source reader.
 validate_materialization(receipt, cache)          # Offline, no repair/network.
 checked = validate_fixture_source(card.manifest, cache.member_path(receipt, "fixture.json").read_bytes())
 assert len(checked.observations) == 2              # Real native metric/oracle checks.
-path = publish_materialization(receipt, cache, ArtifactWriter("integrity-artifacts"))
+path = publish_materialization(receipt, cache, writer)
 assert MaterializationReceipt.from_json(path.read_bytes()) == receipt
 Path("owned-package.json").write_text(spec.to_json() + "\n", encoding="utf-8")
 Path("owned-source.json").write_bytes(payload)
@@ -3274,8 +3277,8 @@ schema versions and unknown cache markers reject; old native/card/profile artifa
 retain their original readers/meaning. No implicit migration or source copying
 into public artifacts occurs.
 
-Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/main/examples/corpus-materialization/ci.py)
-from this reviewed development source outside the checkout:
+Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.4.0/examples/corpus-materialization/ci.py)
+from the reviewed 4.4 release into a workspace outside the checkout:
 
 ```bash
 python ci.py owned-ci-output /absolute/path/to/external-source-cache
@@ -6943,6 +6946,113 @@ Implemented in [#259](https://github.com/jacksonpradolima/coleman/issues/259) an
 
 
 
+### FILE: docs/releases/4.4.0.md
+
+# COLEMAN 4.4 — Know your CI data. Reproduce your inputs.
+
+COLEMAN 4.4 helps you inspect the evidence behind a test-prioritization experiment
+before trusting its results. Profile native CI inputs, pin permitted source
+packages and verify the exact bytes used by a recoverable TCPCI workflow.
+
+## Inspect the history before comparing policies
+
+Bounded offline profiles describe all ten existing native Parquet artifacts with
+explicit unit status, missingness, raw duration distributions and rows per execution
+group. Logical builds,
+variant execution groups, repeated identities and conflicting outcomes remain
+separate. A deterministic inventory makes data-quality limits visible instead of
+turning repeated rows into independent evidence.
+
+Profiles preserve the source data cards and their admission decisions. A readable
+file or a large row count does not establish a licensed, diverse evaluation corpus.
+
+## Pin, verify and reuse permitted source bytes
+
+Versioned source-package recipes freeze source/version/citation, SHA-256, byte
+counts, specific reviewed terms, redistribution rules, member identities and
+resource limits. Raw files and conservative ZIP packages use an external immutable
+cache. Complete streams must pass checksum and size validation before publication;
+interruption cannot create a falsely completed blob or receipt. Identical retries
+and concurrent writers converge, while conflicts fail explicitly.
+
+Offline validation rechecks the source, archive-to-member relation and cached
+members. Metadata-only receipts preserve provenance without exporting recipe-only
+data. CLI acquisition checks cache/export separation first; SDK workflows use an
+explicit shared preflight, repeated at publication. Archive traversal,
+links, aliases, duplicates, unsupported formats and inconsistent sizes are rejected.
+
+The library accepts explicit binary readers. An optional public HTTPS adapter
+supports a reviewed origin with verified TLS and no ambient credentials, proxies
+or redirects. No metadata URI silently initiates a download.
+
+## Run a small native CI example twice
+
+Use Python 3.14 and the verified release wheel attached below. Copy
+[`examples/corpus-materialization/ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.4.0/examples/corpus-materialization/ci.py)
+into a separate workspace and select a cache outside Git repositories and outside
+the output tree:
+
+```bash
+python ci.py owned-ci-output /absolute/path/to/external-source-cache
+python ci.py owned-ci-output /absolute/path/to/external-source-cache
+```
+
+The base package suffices. The example builds an owned deterministic ZIP, verifies
+two CI correctness fixtures, executes the existing native runner, reopens its
+learning checkpoints and checks persisted rankings against an independent tiny
+reference. Repeating the command preserves exactly two native result rows.
+
+Read the complete [source-package guide](https://github.com/jacksonpradolima/coleman/blob/v4.4.0/docs/corpus-materialization.md)
+for executable SDK/CLI examples, byte limits and failure behavior. The
+[corpus guide](https://github.com/jacksonpradolima/coleman/blob/v4.4.0/docs/benchmark-corpus.md)
+covers profiles, the inventory and admission boundaries.
+
+## Validation you can reproduce
+
+The integrated implementation passed **1,947 tests** with **95.21% combined
+statement/branch coverage**, plus lint, formatting, both type checkers, Pylint,
+structural checks, strict documentation and package/install tests. Installed
+base-wheel workflows run outside the checkout with real native CI/checkpoints.
+Golden/version/compatibility checks, source corruption, interruption, concurrent
+publication, compressed-stream boundaries and malformed archive/resource-limit
+cases accompany the implementation. All confirmed PR findings were reproduced or
+verified and corrected; local-only OpenCodeReview and manual exclusions covered
+every changed file before integration.
+
+## Compatibility and honest evidence
+
+This additive 4.x release reuses existing runner, results, sinks, artifacts and
+checkpoints. Existing native outputs and older domain artifacts keep their meaning.
+New profile, package, receipt and cache contracts require explicit schema version 1;
+unknown versions reject. No old row is silently migrated into a source-admission
+or scientific success claim.
+
+Limits apply per operation, with trusted private local filesystem parents. The
+cache has no global quota/eviction policy; this release is not a hostile-filesystem
+sandbox or a hard operating-system deadline for network acquisition. The built-in
+archive recipe excludes tar, ZIP64 and additional compression methods. The optional
+HTTPS adapter is limited to `raw.githubusercontent.com`; explicit library readers
+remain independent of that transport.
+
+All ten existing registrations remain blocked pending source-specific admission
+evidence. All seven required diversity regimes remain uncovered. The owned
+correctness fixtures share one dependence group; they establish functional
+integrity and recovery, not independent projects or algorithm superiority.
+Negative and inconclusive evidence remains valid.
+
+The diversified benchmark program in
+[#261](https://github.com/jacksonpradolima/coleman/issues/261) stays open. Next come
+source-specific historical and controlled-fault adapters, synthetic stress cases,
+comparable baselines, protected statistical protocols and frozen cross-corpus
+reports. COLEMAN remains centered on CI test-case prioritization and selection.
+
+Implemented in [#284](https://github.com/jacksonpradolima/coleman/pull/284) and
+[#285](https://github.com/jacksonpradolima/coleman/pull/285).
+
+[Full changes from 4.3](https://github.com/jacksonpradolima/coleman/compare/v4.3.0...v4.4.0).
+
+
+
 ### FILE: docs/releases.md
 
 # Release preparation
@@ -7234,12 +7344,22 @@ diversity regimes remain uncovered.
 The shadow fixture demonstrates functional recovery, with zero collected forward
 builds and insufficient evidence for adoption.
 
-The next compatible feature target is **4.4.0**, continuing #261 sequentially with
-full profiles and secure fetch/conversion foundations. Further slices cover verified historical and
-controlled-fault sources, stress cases, baselines/statistics and frozen cross-corpus
-evidence. Deliveries can span later 4.x releases. The issue remains open until its
-admission, diversity, execution and evidence gates pass. Inaccessible or unlicensed
-sources remain visible blockers. Security fixes remain independently shippable.
+**4.4.0** groups the reviewed next two #261 slices: bounded native profiles and a
+reproducible inventory in [#284](https://github.com/jacksonpradolima/coleman/pull/284),
+and licensed source-package materialization in
+[#285](https://github.com/jacksonpradolima/coleman/pull/285). Typed integrity receipts,
+external caches, bounded archive validation and installed native recovery workflows
+reuse the existing runner/artifacts/checkpoints. All ten existing native registrations
+retain their admission blockers; all seven required diversity regimes remain
+uncovered.
+
+The next sequential corpus slice is the version-pinned RTPTorrent adapter and
+baseline slice. Later steps cover LRTS, controlled real faults, HCS/variant expansion
+and synthetic stress, comparable baselines/statistics, frozen confirmatory execution
+and the final evidence report. Compatible deliveries continue in later **4.x**
+releases. #261 stays open until its admission, diversity, execution and evidence
+gates pass. Inaccessible or unlicensed sources remain visible blockers. Security
+fixes remain independently shippable.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:
