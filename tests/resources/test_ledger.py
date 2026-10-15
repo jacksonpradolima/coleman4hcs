@@ -408,3 +408,22 @@ def test_terminal_and_retry_cannot_precede_prior_execution_events():
     )
     with pytest.raises(ValueError, match="previously terminal"):
         ledger.append(reversed_retry)
+
+
+def test_full_ledger_still_accepts_identical_retry_without_consuming_a_delivery_slot():
+    events = tuple(OverheadEvent(**metadata(index), component="dispatch", amount=amount(0)) for index in range(1, 4097))
+    ledger = ResourceLedger(
+        schema_version=1,
+        ledger_id="bounded-full-log",
+        source_fingerprint=SOURCE,
+        configuration_fingerprint=SOURCE,
+        capacity=amount(0),
+        events=events,
+    )
+    assert ledger.append(events[-1]).to_json() == ledger.to_json()
+    conflict_payload = events[-1].model_dump()
+    conflict_payload["amount"] = amount(1)
+    conflict = OverheadEvent.model_validate(conflict_payload)
+    with pytest.raises(ValueError, match="Conflicting resource event"):
+        ledger.append(conflict)
+    assert balances(ledger) == (0, 0, 0)

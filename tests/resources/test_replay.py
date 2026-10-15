@@ -227,3 +227,28 @@ def test_unsupported_unbounded_test_universe_fails_at_contract_boundary(example)
     raw = expanded_protocol(example, 1001)
     with pytest.raises(ValueError, match="at most 1000"):
         ResourceReplayProtocol.model_validate(raw)
+
+
+def test_zero_work_feedback_stays_observed_and_fractional_savings_remain_inconclusive(example):
+    protocol, _ = example.fixture()
+    raw = protocol.model_dump(mode="json")
+    for build in raw["native_manifest"]["builds"]:
+        for test in build["tests"]:
+            test["duration"]["value"] = "0"
+    for estimates in raw["estimates"]:
+        for test in estimates["tests"]:
+            test["estimate"]["amount"]["value"] = 0
+    raw["native_manifest"]["dataset_fingerprint"] = fingerprint(raw["native_manifest"]["builds"])
+    changed = ResourceReplayProtocol.model_validate(raw)
+    baseline = replay(changed, overhead="0.001")
+    candidate = replay(changed, "shortest-estimate")
+    first = candidate.accounting().first_failure_elapsed
+    assert first.status == "observed"
+    assert first.value == 0
+    assert candidate.accounting().failing_test_recall.value == 1.0
+    report = ResourceReplayReport(schema_version=1, protocol=changed, runs=(baseline, candidate))
+    (pair,) = report.comparisons()
+    assert pair.work_saving_ms == 0
+    assert pair.net_saving_ms == 1
+    assert pair.gate == "inconclusive"
+    assert "zero_baseline_work" in pair.reasons

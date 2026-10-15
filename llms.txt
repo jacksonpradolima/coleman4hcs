@@ -6252,7 +6252,9 @@ it cannot interrupt an external runner or enforce a hard runtime limit.
   earlier event times across different attempts; each attempt and its retry retain
   causal source order. New out-of-order
   deliveries fail; replay the ordered durable source. Exact accepted duplicates may
-  arrive anywhere and are ignored. Changed canonical payload for an ID conflicts.
+  arrive anywhere and are ignored. Retrying an already accepted event consumes no
+  new slot, including at the 4,096-event limit; raw input arrays are separately bounded.
+  Changed canonical payload for an ID conflicts.
 - Ledger logical identity is its declared `ledger_id`, independent of contents.
   Full content fingerprint includes schema, provenance and events. Producers own
   globally meaningful IDs and immutable estimation/source/config fingerprints.

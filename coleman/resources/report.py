@@ -9,6 +9,7 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, model_validator
 
 from coleman.artifacts import ArtifactWriter
+from coleman.pilot.contracts import AdoptionThresholds
 from coleman.resources.replay import ResourceReplayProtocol, ResourceReplayRun
 from coleman.results.domain import Identifier
 from coleman.results.versioned import VersionedContract
@@ -31,6 +32,51 @@ class ResourceComparison(Immutable):
     gate: Literal["pass", "fail", "inconclusive"]
     reasons: tuple[Identifier, ...]
     adoption: Literal["insufficient_evidence"] = "insufficient_evidence"
+
+
+def _compare_pair(
+    run: ResourceReplayRun,
+    baseline: ResourceReplayRun,
+    thresholds: AdoptionThresholds,
+) -> ResourceComparison:
+    """Apply declared per-build descriptive gates to one verified pair, retaining signed losses."""
+    current, base = run.accounting(), baseline.accounting()
+    work_saving = base.charged_ledger.balance.runner_occupancy - current.charged_ledger.balance.runner_occupancy
+    net_saving = base.charged_ledger.balance.consumed - current.charged_ledger.balance.consumed
+    reasons = []
+    failed = False
+    if current.failing_test_recall.value is None or base.failing_test_recall.value is None:
+        reasons.append("unavailable_or_not_applicable_recall")
+    elif current.failing_test_recall.value < max(base.failing_test_recall.value, thresholds.minimum_recall):
+        reasons.append("recall_regression")
+        failed = True
+    if net_saving <= 0:
+        reasons.append("no_positive_net_resource_saving")
+        failed = True
+    baseline_work = base.charged_ledger.balance.runner_occupancy
+    if not baseline_work:
+        reasons.append("zero_baseline_work")
+    elif Fraction(work_saving, baseline_work) < Fraction(str(thresholds.minimum_runner_saving_fraction)):
+        reasons.append("runner_saving_threshold_failure")
+        failed = True
+    if run.native_run.prioritization_overhead.value > thresholds.maximum_overhead.value:
+        reasons.append("overhead_threshold_failure")
+        failed = True
+    if current.charged_ledger.balance.containment != "normal":
+        reasons.append("resource_overrun_containment")
+        failed = True
+    if base.charged_ledger.balance.containment != "normal":
+        reasons.append("baseline_resource_overrun_containment")
+    if "partial_unmeasured_setup" in {current.accounting_status, base.accounting_status}:
+        reasons.append("unmeasured_setup_occupancy")
+    return ResourceComparison(
+        candidate_id=run.native_run.candidate_id,
+        build_id=run.native_run.build_id,
+        work_saving_ms=work_saving,
+        net_saving_ms=net_saving,
+        gate="fail" if failed else "inconclusive" if reasons else "pass",
+        reasons=tuple(reasons),
+    )
 
 
 class ResourceReplayReport(VersionedContract):
@@ -79,7 +125,15 @@ class ResourceReplayReport(VersionedContract):
 
     def append(self, run: ResourceReplayRun) -> ResourceReplayReport:
         """Return a new validated snapshot; invalid input cannot mutate acknowledged state."""
-        return ResourceReplayReport(schema_version=1, protocol=self.protocol, runs=(*self.runs, run))
+        validated = ResourceReplayReport.model_validate(self)
+        run = ResourceReplayRun.model_validate(run)
+        key = run.native_run.candidate_id, run.native_run.build_id
+        for previous in validated.runs:
+            if (previous.native_run.candidate_id, previous.native_run.build_id) == key:
+                if previous.to_json() != run.to_json():
+                    raise ValueError("Conflicting resource candidate/build replay")
+                return validated
+        return ResourceReplayReport(schema_version=1, protocol=validated.protocol, runs=(*validated.runs, run))
 
     def comparisons(self) -> tuple[ResourceComparison, ...]:
         """Pair only same-build frozen baseline/candidate observations, keeping losses.
@@ -98,45 +152,7 @@ class ResourceReplayReport(VersionedContract):
             baseline = indexed.get((baseline_id, build_id))
             if candidate == baseline_id or baseline is None:
                 continue
-            current, base = run.accounting(), baseline.accounting()
-            work_saving = base.charged_ledger.balance.runner_occupancy - current.charged_ledger.balance.runner_occupancy
-            net_saving = base.charged_ledger.balance.consumed - current.charged_ledger.balance.consumed
-            reasons = []
-            failed = False
-            if current.failing_test_recall.value is None or base.failing_test_recall.value is None:
-                reasons.append("unavailable_or_not_applicable_recall")
-            elif current.failing_test_recall.value < max(base.failing_test_recall.value, thresholds.minimum_recall):
-                reasons.append("recall_regression")
-                failed = True
-            if net_saving <= 0:
-                reasons.append("no_positive_net_resource_saving")
-                failed = True
-            baseline_work = base.charged_ledger.balance.runner_occupancy
-            if baseline_work and Fraction(work_saving, baseline_work) < Fraction(
-                str(thresholds.minimum_runner_saving_fraction)
-            ):
-                reasons.append("runner_saving_threshold_failure")
-                failed = True
-            if run.native_run.prioritization_overhead.value > thresholds.maximum_overhead.value:
-                reasons.append("overhead_threshold_failure")
-                failed = True
-            if current.charged_ledger.balance.containment != "normal":
-                reasons.append("resource_overrun_containment")
-                failed = True
-            if base.charged_ledger.balance.containment != "normal":
-                reasons.append("baseline_resource_overrun_containment")
-            if "partial_unmeasured_setup" in {current.accounting_status, base.accounting_status}:
-                reasons.append("unmeasured_setup_occupancy")
-            results.append(
-                ResourceComparison(
-                    candidate_id=candidate,
-                    build_id=build_id,
-                    work_saving_ms=work_saving,
-                    net_saving_ms=net_saving,
-                    gate="fail" if failed else "inconclusive" if reasons else "pass",
-                    reasons=tuple(reasons),
-                )
-            )
+            results.append(_compare_pair(run, baseline, thresholds))
         return tuple(results)
 
 

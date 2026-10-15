@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Annotated, Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, TypeAdapter, model_validator
 
 from coleman.resources.contracts import (
     IntentEvent,
@@ -21,6 +21,7 @@ from coleman.results.versioned import VersionedContract
 from coleman.selection.contracts import Immutable, UnitSemantics
 
 Total = Annotated[int, Field(strict=True, ge=0, le=4097 * 10**12)]
+_EVENT_ADAPTER = TypeAdapter(ResourceEvent)
 
 
 class ResourceBalance(Immutable):
@@ -223,13 +224,22 @@ class ResourceLedger(VersionedContract):
         """Return a validated new snapshot; identical retries remain unchanged.
 
         Invalid/conflicting events raise ValueError and leave this object intact.
+        An accepted identical retry consumes no new log slot, including at the
+        4,096-event limit. Raw constructor deliveries remain bounded separately.
         Callers persist the returned snapshot before acknowledging an event.
         """
+        validated = ResourceLedger.model_validate(self)
+        event = _EVENT_ADAPTER.validate_python(event)
+        for previous in validated.events:
+            if previous.event_id == event.event_id:
+                if canonical_json(previous.model_dump(mode="json")) != canonical_json(event.model_dump(mode="json")):
+                    raise ValueError(f"Conflicting resource event: {event.event_id}")
+                return validated
         return ResourceLedger(
             schema_version=1,
-            ledger_id=self.ledger_id,
-            source_fingerprint=self.source_fingerprint,
-            configuration_fingerprint=self.configuration_fingerprint,
-            capacity=self.capacity,
-            events=(*self.events, event),
+            ledger_id=validated.ledger_id,
+            source_fingerprint=validated.source_fingerprint,
+            configuration_fingerprint=validated.configuration_fingerprint,
+            capacity=validated.capacity,
+            events=(*validated.events, event),
         )
