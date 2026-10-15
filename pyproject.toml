@@ -18,6 +18,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+mcp = [
+    "mcp==2.3.0",
+]
 dev = [
     "ruff==0.15.9",
     "pyright==1.1.408",
@@ -64,6 +67,7 @@ clickhouse = [
 
 [project.scripts]
 coleman = "coleman.cli:main"
+coleman-mcp = "coleman.transports.mcp:main"
 
 [project.urls]
 homepage = "https://github.com/jacksonpradolima/coleman"
