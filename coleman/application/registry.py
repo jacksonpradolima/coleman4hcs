@@ -271,9 +271,8 @@ def _inspect_native_input(item: PortableFile) -> tuple[int, int]:
         raise ValueError("Null native input values are not admitted")
     if table["BuildId"].cast(pl.Int64, strict=False).null_count():
         raise ValueError("Native BuildId values must fit the loader's signed Int64 range")
-    if not table["Duration"].is_finite().all() or (table["Duration"] < 0).any():
-        raise ValueError("Native durations require finite nonnegative seconds")
     _validate_native_durations(table["Duration"])
+    _validate_native_auxiliary_columns(table)
     if (
         not table["Verdict"].is_in([0, 1]).all()
         or table.select(pl.struct("BuildId", "Name").is_duplicated().any()).item()
@@ -293,6 +292,32 @@ def _validate_native_durations(durations: pl.Series) -> None:
 
     from coleman.bandit.base import BANDIT_SCHEMA
 
-    converted = durations.cast(pl.Float64).cast(BANDIT_SCHEMA["Duration"])
-    if not converted.is_finite().all() or ((durations > 0) & (converted == 0)).any():
+    loaded = durations.cast(pl.Float64)
+    if not loaded.is_finite().all() or (loaded < 0).any():
+        raise ValueError("Native durations require finite nonnegative seconds")
+    converted = loaded.cast(BANDIT_SCHEMA["Duration"])
+    if not converted.is_finite().all() or ((loaded > 0) & (converted == 0)).any():
         raise ValueError("Native duration dtype would overflow or erase a positive duration")
+
+
+def _validate_native_auxiliary_columns(table: pl.DataFrame) -> None:
+    """Check the remaining consumed native fields before any experiment is admitted.
+
+    Priorities require integer values in the bandit's signed Int32 range. LastRun
+    follows the existing loader's string conversion; unsupported/null conversions
+    are refused rather than silently replaced. Optional unused columns are not
+    reinterpreted. Native schemas and source bytes remain unchanged.
+    """
+    import polars as pl
+
+    from coleman.bandit.base import BANDIT_SCHEMA
+
+    if not table.schema["CalcPrio"].is_integer():
+        raise ValueError("Native CalcPrio requires an integer column")
+    try:
+        priorities = table["CalcPrio"].cast(BANDIT_SCHEMA["CalcPrio"], strict=False)
+        last_runs = table["LastRun"].cast(BANDIT_SCHEMA["LastRun"], strict=False)
+    except pl.exceptions.PolarsError as exc:
+        raise ValueError("Unsupported native priority or LastRun conversion") from exc
+    if priorities.null_count() or last_runs.null_count():
+        raise ValueError("Native CalcPrio/LastRun values cannot survive their native dtype conversion")

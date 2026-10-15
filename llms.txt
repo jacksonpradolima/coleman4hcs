@@ -1605,6 +1605,10 @@ Registration also checks the actual native duration conversion (Float64 loader
 then the bandit's Float32 schema): overflow and positive-to-zero underflow are
 rejected. Genuine zero and representable subnormal durations remain valid;
 ordinary native rounding is preserved and native result bytes keep that meaning.
+`CalcPrio` must be an integer column fitting the bandit's signed Int32 schema.
+`LastRun` must survive the existing string conversion; unsupported nested values
+are refused. Duration validation applies the loader's Float64 conversion first,
+so supported decimal/integer source columns retain their native behavior.
 
 Experiment bundles contain original resolved-specification and native result
 bytes with logical filenames, byte counts, SHA-256 and canonical base64.

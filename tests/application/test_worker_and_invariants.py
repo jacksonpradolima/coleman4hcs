@@ -229,6 +229,11 @@ def test_native_resource_claims_replay_actual_input_dimensions(field, value):
         "overflow32",
         "underflow32",
         "build_overflow64",
+        "prio_float",
+        "prio_string",
+        "prio_overflow",
+        "prio_underflow",
+        "last_run_nested",
     ],
 )
 def test_native_invalid_rows_refused_during_registration(change):
@@ -249,6 +254,13 @@ def test_native_invalid_rows_refused_during_registration(change):
         table = table.with_columns(pl.lit(1e100 if change == "overflow32" else 1e-100).alias("Duration"))
     elif change == "build_overflow64":
         table = table.with_columns(pl.Series("BuildId", [2**63] * 3 + [2**63 + 1] * 3, dtype=pl.UInt64))
+    elif change in {"prio_float", "prio_string", "prio_overflow", "prio_underflow"}:
+        priority = {"prio_float": 0.0, "prio_string": "0", "prio_overflow": 2**31, "prio_underflow": -(2**31) - 1}[
+            change
+        ]
+        table = table.with_columns(pl.lit(priority).alias("CalcPrio"))
+    elif change == "last_run_nested":
+        table = table.with_columns(pl.Series("LastRun", [["date"]] * table.height, dtype=pl.List(pl.String)))
     else:
         table = table.with_columns(pl.col("BuildId").cast(pl.Float64))
     stream = io.BytesIO()
@@ -311,6 +323,43 @@ def test_native_build_id_int64_boundaries_remain_valid(value):
     )
     validated = NativeConfiguration.model_validate({**native.model_dump(), "inputs": (item,)})
     assert validated.work_units == 2
+
+
+@pytest.mark.parametrize(
+    "case", ["priority_min", "priority_max", "decimal_duration", "last_run_integer", "last_run_date"]
+)
+def test_supported_native_scalar_conversions_remain_compatible(case):
+    from datetime import date
+
+    import polars as pl
+
+    from coleman.bandit.base import BANDIT_SCHEMA
+
+    native = default_registry()[2].problem
+    assert isinstance(native, NativeConfiguration)
+    table = pl.read_parquet(base64.b64decode(native.inputs[0].content_base64))
+    if case in {"priority_min", "priority_max"}:
+        priority = -(2**31) if case == "priority_min" else 2**31 - 1
+        table = table.with_columns(pl.lit(priority, dtype=pl.Int64).alias("CalcPrio"))
+    elif case == "decimal_duration":
+        table = table.with_columns(pl.Series("Duration", [Decimal("2.0")] * table.height, dtype=pl.Decimal(10, 1)))
+    elif case == "last_run_integer":
+        table = table.with_columns(pl.lit(0).alias("LastRun"))
+    else:
+        table = table.with_columns(pl.lit(date(2026, 1, 1)).alias("LastRun"))
+    stream = io.BytesIO()
+    table.write_parquet(stream)
+    content = stream.getvalue()
+    item = PortableFile(
+        name=native.inputs[0].name,
+        sha256=hashlib.sha256(content).hexdigest(),
+        size_bytes=len(content),
+        content_base64=base64.b64encode(content).decode(),
+    )
+    validated = NativeConfiguration.model_validate({**native.model_dump(), "inputs": (item,)})
+    assert validated.work_units == 2
+    assert table["CalcPrio"].cast(BANDIT_SCHEMA["CalcPrio"]).null_count() == 0
+    assert table["LastRun"].cast(BANDIT_SCHEMA["LastRun"]).null_count() == 0
 
 
 def test_artifact_io_failure_is_safe_and_does_not_consume_admission(tmp_path, monkeypatch):
