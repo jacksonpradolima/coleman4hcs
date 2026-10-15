@@ -20,7 +20,10 @@ review its entire diff, pass the full quality/security/install/native-CI gates, 
 merge its release PR with an explicit major-release Conventional Commit, such as
 `feat!: release COLEMAN 4.0`. This intentionally requests the 4.0.0 bump; do not
 manually edit only the package version while leaving tags or the lock inconsistent.
-The automated workflow updates the version/tag and then synchronizes `uv.lock`.
+The automated workflow updates the package version, synchronizes `uv.lock`, builds
+the distributions, and includes the lock in the version commit before tagging.
+A second lock check after tagging must find no changes. This keeps the tag, source
+archive and wheel metadata consistent.
 
 ## Reviewed release descriptions
 

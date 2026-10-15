@@ -74,17 +74,11 @@ jobs:
             exit 1
           fi
 
-      - name: Update uv.lock
+      - name: Verify released uv.lock
         if: steps.release.outputs.released == 'true'
         run: |
-          uv lock
-          if ! git diff --quiet uv.lock; then
-            git add uv.lock
-            git commit -m "chore: update uv.lock for version ${{ steps.release.outputs.version }}"
-            git push
-          else
-            echo "uv.lock is already up to date"
-          fi
+          uv lock --check
+          git diff --exit-code -- uv.lock
 
       - name: Build package
         if: steps.release.outputs.released == 'true'

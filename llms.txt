@@ -29,8 +29,10 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/api/spec-run-id.md
 - docs/api/spec-sweep.md
 - docs/api-reference.md
+- docs/application-api.md
 - docs/code-cost.md
 - docs/configuration.md
+- docs/decision-benchmarks.md
 - docs/dependency-security.md
 - docs/domain-results.md
 - docs/extensibility.md
@@ -40,6 +42,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/observability.md
 - docs/protected-evaluation.md
 - docs/releases/3.6.1.md
+- docs/releases/4.0.0.md
 - docs/releases.md
 - docs/scenario-payoffs.md
 - docs/setup.md
@@ -60,6 +63,12 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=jacksonpradolima_coleman4hcs)
 [![codecov](https://codecov.io/github/jacksonpradolima/coleman4hcs/branch/main/graph/badge.svg?token=BW04LB0B5Y)](https://codecov.io/github/jacksonpradolima/coleman4hcs)
 
+
+COLEMAN 4.0 brings inspectable, bounded CI decisions to the existing test
+prioritization runner. Use one [application API](docs/application-api.md) across
+the library, CLI and optional local MCP tools, and check decision mathematics
+with [independent benchmarks](docs/decision-benchmarks.md). Read the
+[4.0 release notes](docs/releases/4.0.0.md) for workflows, compatibility and limits.
 
 ### Solving the Test Case Prioritization using Multi-Armed Bandit Algorithms
 
@@ -367,19 +376,21 @@ Each run persists:
 
 Requires Python 3.14 or later in an activated virtual environment. Install the
 wheel published in this repository’s GitHub releases. These examples pin version
-3.6.1 and its published SHA-256 digest:
+4.0.0. For an install that checks the published SHA-256 before executing the
+package, use the complete [verified setup command](docs/setup.md#default-run-no-docker-required).
+The direct download below selects the version; it does not independently pin a hash:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
 ```
 
 Or with optional extras:
 
 ```bash
 # OpenTelemetry SDK
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -551,10 +562,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
 
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
 ```
 
 ## Querying results
@@ -617,7 +628,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list
@@ -1423,6 +1434,328 @@ The core API is documented by module:
 - [Policy](api/policy.md)
 - [Reward](api/reward.md)
 - [Scenarios](api/scenarios.md)
+
+
+
+### FILE: docs/application-api.md
+
+# Bounded CI application API and optional MCP
+
+COLEMAN 4.0 provides a bounded application API while remaining a CI test
+prioritization and selection platform. The application layer makes its existing
+native services available through reusable, bounded commands. It does not introduce a new runner,
+an LLM decision algorithm, or a hosted service.
+
+## Install the release
+
+Use Python 3.14 or later on Linux or macOS in an activated virtual environment:
+
+```bash
+python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl'
+```
+
+For optional tools, install the same GitHub wheel with its extra:
+
+```bash
+python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl'
+```
+
+Use this repository's release assets and verify their published digest and
+attestations. The bare PyPI name belongs to a different project. Base CLI/library
+execution requires no MCP dependency, model, credentials, network service, or
+client. The optional adapter is tested against the pinned MCP Python SDK 2.3.0
+and its negotiated MCP protocol; the independent COLEMAN application contract is
+`coleman-application-v1`.
+Contributor `make install` includes the optional SDK to exercise its tests and
+type annotations; installing the base release wheel still excludes it.
+
+## Architecture and ownership
+
+```mermaid
+flowchart TD
+    Library[Typed library commands] --> Service[ApplicationService]
+    CLI[coleman application] --> Commands[Versioned command boundary]
+    MCP[Optional local MCP stdio tools] --> Commands
+    Commands --> Service
+    Registry[Host-approved immutable registry] --> Service
+    Identity[Trusted caller context] --> Service
+    Service --> Queue[Bounded queue and lifecycle supervisor]
+    Queue --> Worker[Owned subprocess with deadline and resource guards]
+    Worker --> Coverage[Native finite coverage solver]
+    Worker --> Allocation[Native scenario allocation service]
+    Worker --> Runner[Existing api.run and TCPCI runner]
+    Coverage --> Publish[Existing ArtifactWriter: complete immutable JSON]
+    Allocation --> Publish
+    Runner --> Publish
+    Publish --> Receipt[Schema-validated caller-owned result handle]
+    Receipt --> Portable[Explicit portable export and import]
+```
+
+Domain packages never import CLI or MCP. Native `run`, sweeps, extensions, sinks,
+checkpoints and unrestricted library APIs retain their existing behavior. The
+application service owns a unique private session directory under a trusted
+host-selected root. Clients select registered IDs; they cannot send a RunSpec,
+plugin import, path, shell command, dataset URL or exporter endpoint.
+
+The packaged registry contains three **synthetic smoke fixtures**:
+
+| Spec ID | Native service | Meaning |
+|---|---|---|
+| `weighted-overlap-3` | Finite coverage | Overlapping A/B/C capabilities, modeled duration in seconds |
+| `signed-ci-resource-3` | Scenario allocation | Declared joint scenario model with conservative evidence handling |
+| `native-ci-smoke-v1` | TCPCI runner | Two synthetic builds, Random baseline, RNFail, seed 42, fixed-time budget 3 s |
+
+These fixtures validate integration and mathematics; they are not independent
+CI observations or evidence of practical time savings. Seeds do not create
+independent observations. Native allocation retains its insufficient-evidence
+and conservative fallback semantics.
+
+## Complete library example
+
+Run from outside the checkout after installing the wheel:
+
+```python
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from coleman.application import (
+    ApplicationService, Caller, Parameters, ResultBundle, Submit, default_registry,
+)
+from coleman.selection import CoverageResult
+
+caller = Caller(subject="local-analysis")  # supplied by trusted host code
+with TemporaryDirectory() as directory:
+    with ApplicationService(default_registry(), root=Path(directory)) as service:
+        print(service.capabilities().to_json())
+        request = Submit(
+            schema_version=1,
+            request_id="ci-budget-3",
+            spec_id="weighted-overlap-3",
+            parameters=Parameters(budget=3),
+        )
+        initial = service.submit(request, caller=caller)
+        final = service.wait(initial.job_id, caller=caller)
+        assert final.state == "completed" and final.handle is not None
+        bundle = service.result(final.handle, caller=caller)
+        assert isinstance(bundle.result, CoverageResult)
+        assert bundle.result.selected_ids == ("A", "C")
+        assert bundle.result.cost.value == 3
+        assert bundle.result.objective.value == 1
+        assert service.submit(request, caller=caller).job_id == final.job_id
+        exported = service.export_result(final.handle, caller=caller)
+        Path(directory, "portable.json").write_text(exported, encoding="utf-8")
+        assert ResultBundle.from_json(exported) == bundle
+        imported = service.import_result(exported, caller=caller)
+        assert imported.handle is not None
+        assert imported.handle.digest == final.handle.digest
+```
+
+Save the export outside a temporary directory to retain it after shutdown.
+Coverage budget overrides are exact nonnegative decimals, at most twelve decimal
+places, in the registered cost unit and meaning. JSON serializes them as decimal
+strings. Zero is valid; null means **no override**. Negative budgets, non-finite
+values, unknown keys and implicit unit conversions are rejected. Allocation and
+experiment parameters are frozen in their registrations in v1.
+Application JSON readers preserve decimal number literals before precision
+validation, so extra digits cannot disappear through intermediate binary64
+rounding. Existing native readers retain their original compatibility behavior.
+
+One-shot CLI execution uses the same command and services:
+
+```bash
+coleman application --request '{"schema_version":1,"request_id":"ci-budget-3","spec_id":"weighted-overlap-3","parameters":{"budget":3}}'
+coleman application --request '{"schema_version":1,"request_id":"native-ci","spec_id":"native-ci-smoke-v1"}'
+```
+
+CLI output is a canonical JSON envelope. Success contains `ok: true` and `data`;
+errors contain `ok: false`, a stable `error` and safe human `message`. A failed or
+expired one-shot job returns the same error envelope, includes its typed state
+in `data`, and exits with status 2. Existing
+`coleman run --config ...` remains available.
+
+## Native experiment registration by trusted hosts
+
+For your own approved local dataset, create a normal RunSpec in host code, set
+one sequential worker, one to sixteen executions and an explicit seed; use the
+Random baseline, one or two RNFail/TimeRank rewards, and one to eight budgets.
+Disable checkpoints, telemetry, hooks and extensions; use the local Parquet sink.
+Call `register_experiment("approved-ci", spec)` and pass the returned immutable
+`Configuration` to `ApplicationService`. Registration snapshots up to eight
+`<datasets_dir>/<dataset>/features-engineered.parquet` files, totaling 1 MiB, with
+at most 10,000 rows per dataset and 1,000 candidates per build. Dataset IDs use
+the conservative application ID alphabet. This bounded adapter deliberately
+supports a smaller surface than unrestricted native RunSpec execution.
+The seed and every repetition offset (`seed + iteration_index`) must fit the
+unsigned 64-bit range shared by the native NumPy/Polars execution path. Negative
+seeds and overflowing repetition ranges are rejected during registration.
+
+Inputs are copied into an owned worker directory; original files are never
+reread during execution. Normalized relative input/output paths make the native
+resolved run ID independent of temporary directories. Configuration fingerprints
+bind complete input bytes and normalized RunSpec. Work units are total builds ×
+executions × rewards × budget values. An over-limit experiment is rejected before
+queue admission; work-limited decisions can return an explicitly limited native
+result. V1 does not resume application jobs through native checkpoints. Existing
+direct checkpoint APIs remain available separately.
+
+Registration recomputes build/candidate dimensions from the snapshotted bytes.
+The bounded adapter requires integer build IDs and binary verdicts, unique
+testcase names per build, numeric finite nonnegative durations in seconds and
+non-null native required columns. Invalid rows are rejected; this adapter never
+invokes the legacy loader's null-duration-to-zero coercion. The direct legacy
+loader remains compatible with its existing callers. Algorithm overrides are
+outside the approved Random baseline registration surface in v1.
+Build IDs must also survive the native loader's signed Int64 conversion; values
+outside that range are rejected before execution.
+Registration also checks the actual native duration conversion (Float64 loader
+then the bandit's Float32 schema): overflow and positive-to-zero underflow are
+rejected. Genuine zero and representable subnormal durations remain valid;
+ordinary native rounding is preserved and native result bytes keep that meaning.
+Budget values must produce unique native directory segments of at most 255 UTF-8
+bytes. This also rejects different ratio budgets rounded to the same native label;
+existing unrestricted native naming remains unchanged.
+`CalcPrio` must be an integer column fitting the bandit's signed Int32 schema.
+`LastRun` must survive the existing string conversion; unsupported nested values
+are refused. Duration validation applies the loader's Float64 conversion first,
+so supported decimal/integer source columns retain their native behavior.
+
+Experiment bundles contain original resolved-specification and native result
+bytes with logical filenames, byte counts, SHA-256 and canonical base64.
+`provenance.json` in a produced bundle is explicitly a
+`portable-native-provenance-v1` derivative: it records schema version, COLEMAN
+producer/version, Python/platform runtime facts, the original local file's
+SHA-256, and the redacted field names `cwd`, `git`, `uv_lock_hash`. Ambient host
+directories, Git context and lock-file context are not exported. The original
+native provenance file remains unchanged inside the worker until cleanup;
+the source digest permits host-side audit and does not authenticate a producer.
+Import preserves supplied evidence and never extracts files. Existing Parquet fields retain their
+legacy meanings; unavailable metrics are not invented or converted to zero.
+Runtime observations, timestamps and native shard filenames can differ across
+equivalent executions. Mathematical results and approved-source provenance are
+compared separately from runtime metadata and complete artifact digests.
+
+## Limits, states and failures
+
+`Limits` requests are reduced componentwise by `ServerPolicy.caps` before work.
+Default caps are 30 elapsed seconds including queue/startup, 10,000 native work
+units, 100 candidates, 512 MiB worker peak RSS/solver allocation ceiling and
+256 KiB combined native output files plus portable result JSON. Native solver working-memory estimates cap at
+1 GiB even if a host permits larger worker RSS. Native proof/dimension ceilings
+still apply. The service defaults to one active worker, eight pending jobs,
+64 retained job identities, 16 MiB reserved results and 2 GiB reserved active
+worker memory. Limits count bytes, seconds and documented native work units;
+they are not calibrated probabilities or scientific quality guarantees.
+
+Admission reserves each job's maximum output until expiry and sums admitted
+worker memory before starting processes. Registry snapshots are bounded to 32
+configurations of 1.5 MiB each. Parent/interpreter overhead, input snapshots,
+protocol frames and temporary serialization buffers add bounded local overhead
+outside worker RSS. Worker RSS and native-file output are checked before/after
+calculation and sampled every 20 ms; transient overshoot is possible. Unsupported
+RSS measurement fails closed. This is a guard for trusted local native code,
+not a hard memory allocator or hostile-code sandbox. The underlying SDK stdio
+framing is for a trusted local client and is not an untrusted network ingress
+limit. Hosted deployment needs its own authenticated, size/concurrency-limited
+gateway and process/resource isolation; v1 provides none.
+Pending admission counts actual capacity after active memory reservations:
+unused concurrency slots do not expand the pending queue when memory prevents
+their use. Jobs that fit an available slot start before `submit` returns;
+otherwise the finite pending-queue cap applies. A zero queue cap permits only
+immediate starts. Portable evidence imports require storage, not a worker slot.
+
+Completion retains only the validated portable JSON bundle. Native work files,
+input copies and private request files are removed after the worker exits, before
+the completed receipt is issued; the bundle preserves native result/specification
+bytes and the explicit redacted provenance derivative. Retained output reservations therefore cover the entire completed job
+directory. Before final publication, the combined native-file and bundle byte
+count must also fit the admitted output cap.
+
+```mermaid
+stateDiagram-v2
+    [*] --> queued: validated and admitted
+    queued --> running: worker and memory slot
+    queued --> cancelled: cancel wins
+    queued --> failed: worker startup fails
+    queued --> expired: elapsed deadline
+    running --> completed: exit zero and validated immutable JSON
+    running --> failed: native error or resource refusal
+    running --> cancelled: cancel wins
+    running --> expired: elapsed deadline
+    completed --> expired: retention TTL
+    failed --> expired: retention TTL
+    cancelled --> expired: retention TTL
+```
+
+Cancellation and completion commit under the same lock: the first terminal state
+wins. Cancelling a completed job returns completion unchanged; cancelling queued
+or running work terminates/reaps its worker and exposes no partial result. A
+complete native incumbent with a work-limit status is valid evidence, not an
+optimality claim. Native failures never become fabricated negative scientific
+results. Only exit zero plus valid, matching native result JSON permits completion.
+
+Retention starts at a terminal state, defaults to one hour, and deletes result
+bytes on expiry. Status retains an `expired` tombstone; retrieval returns the
+stable expiry error. Request IDs are scoped by trusted caller: identical retries
+reuse the same job, changed commands conflict, and expired IDs never silently
+start new work. Tombstones count toward the finite session job limit. After that
+limit, start a new service session deliberately. `close()` cancels work and removes
+session files. Restart loses job handles; orphaned crash directories require
+trusted operator cleanup. Export/import is the explicit portable continuation,
+not a claim to resume an interrupted native calculation.
+
+| Error | Meaning |
+|---|---|
+| `invalid_input` | Invalid schema/version/parameter, changed request ID or wrong issued digest |
+| `unknown_spec` | No such approved configuration |
+| `not_found` | Job absent from this service session |
+| `forbidden` | Existing job belongs to a different trusted caller |
+| `expired` | Deadline or result retention expired |
+| `resource_limit` | Input, native workload, queue, job, output or memory limit |
+| `unavailable_result` | No completed result, corrupted artifact, worker failure or closed session |
+
+Status is inspectable before a handle exists. A handle includes schema version,
+job ID and content digest. Ownership is checked independently **before** exposing
+its result. A digest proves integrity, not producer identity or authorization.
+Imports recheck decision mathematics and opaque experiment-file hashes, then issue a fresh local
+handle to the importing caller; they do not attest the claimed producer or run
+any imported content. Imported experiment observations remain producer claims,
+not independently rerun evidence. Bundle v1 requires integer version 1; missing, future and
+unknown versions fail closed. Legacy native artifacts keep their existing readers;
+there is no automatic migration or reinterpretation.
+
+## Configure MCP once, then use tools
+
+After installing the optional wheel extra, point an MCP-capable local client at
+the absolute executable `/tmp/coleman-application-env/bin/coleman-mcp`, with no
+arguments. This starts a local stdio server with the packaged registry. A trusted
+custom host can instead call `create_server(service, caller=...)` with its own
+approved registry. Each process has one host-owned local principal; caller fields
+inside requests are rejected. There is no HTTP listener or hosted authentication.
+
+Once configured, the client can discover configurations, submit a bounded CI
+request, poll status, cancel, retrieve and export/import results through tools.
+The user does not run a shell command for each request. No model is required to
+exercise these operations; a natural-language client is only another consumer.
+
+| Tool | Argument | Response |
+|---|---|---|
+| `discover` | none | IDs, kinds, fingerprints, budget units/meaning, policy and submit JSON schema |
+| `submit` | `request_json` | Versioned `JobView` in success envelope |
+| `status` / `cancel` | `command_json`: `{"schema_version":1,"job_id":"..."}` | Job state |
+| `result` / `export_result` | `handle_json`: exact issued handle | Portable bundle in `data` |
+| `import_result` | `bundle_json`: serialized exported `data` | New local completed job and handle |
+
+Commands have a 16 KiB cap before JSON parsing; imports use the server output
+cap. MCP JSON framing and escaping add overhead to the bundle byte cap. Unknown
+fields, duplicate JSON keys, traversal/import/URL attempts and future versions
+fail before execution. Standard SDK protocol/schema failures remain MCP errors;
+valid tool invocations return the versioned COLEMAN success/error envelope.
+
+The no-model tests use the actual optional SDK client both in process and over
+stdio, then repeat the stdio lifecycle from an installed noneditable wheel outside
+the checkout. They also verify base installation without MCP, real two-build
+native execution, CLI/library/tool mathematics, caller isolation, races, immutable
+publication, golden fixtures, portability, expiry, malicious inputs and saturation.
 
 
 
@@ -2336,6 +2669,400 @@ coleman validate --config my-experiment.yaml
 
 # Validate and write the resolved spec
 coleman validate --config my-experiment.yaml --resolve resolved.json
+```
+
+
+
+### FILE: docs/decision-benchmarks.md
+
+# Independent CI decision benchmarks
+
+Check a CI decision extension's mathematics before interpreting runtime or test
+prioritization benefit. COLEMAN's benchmark profiles compare the native finite
+coverage and scenario-allocation services with small independent exhaustive
+references, retain complete mathematical artifacts, and measure the cost of each
+service invocation.
+
+These are **synthetic finite-model checks**, not evidence that an adaptive policy
+generalizes to real CI projects. Repeated seeds do not become independent CI
+observations. Use the [protected evaluation](protected-evaluation.md) contracts
+for eligible empirical comparisons and keep their observation/group assumptions
+separate from these microbenchmarks.
+
+## Run from an installed package
+
+Build a wheel from a checkout containing this module, then execute outside the
+source root with only the base installation:
+
+```sh
+COLEMAN_BENCH_WORKSPACE="$(mktemp -d)"
+uv build --out-dir "$COLEMAN_BENCH_WORKSPACE/dist"
+uv venv "$COLEMAN_BENCH_WORKSPACE/venv" --python 3.14
+uv pip install --python "$COLEMAN_BENCH_WORKSPACE/venv/bin/python" \
+  "$COLEMAN_BENCH_WORKSPACE/dist"/coleman-*.whl
+mkdir "$COLEMAN_BENCH_WORKSPACE/work"
+cd "$COLEMAN_BENCH_WORKSPACE/work"
+"$COLEMAN_BENCH_WORKSPACE/venv/bin/python" -m coleman.benchmarks \
+  --profile correctness --output artifacts
+```
+
+The command prints JSON with `status`, `reproducibility`, mathematical identity,
+observation/failure counts and the exact artifact path. A successful correctness
+profile contains 18 invocations. JSON and Markdown reports appear in
+`artifacts/benchmark-reports/`. Neither a model, MCP client, credentials nor a
+network service is used during execution; installing packages is a separate step.
+
+Output stays within the chosen current workspace. Profiles are known package
+resources, not arbitrary plugin names, paths or provider URLs. Exit codes are
+0 for a complete checked protocol, 1 for a failed/interrupted attempt with a
+report, and 2 for invalid input or publication failure.
+
+## Complete library workflow
+
+```python
+from pathlib import Path
+
+from coleman.artifacts import ArtifactWriter
+from coleman.benchmarks import (
+    BenchmarkExecution,
+    BenchmarkReport,
+    collect_environment,
+    load_suite,
+    publish_benchmark_report,
+    run_benchmarks,
+)
+
+suite = load_suite("correctness")
+# Unknown source metadata remains null. When known, supply the actual 40-character
+# source commit and whether the code used to build the package had local changes.
+environment = collect_environment(source_commit=None, source_dirty=None)
+report = run_benchmarks(suite, execution=BenchmarkExecution(environment=environment))
+assert report.status == "complete"
+assert report.reproducibility == "verified_repeated_labels"
+
+weighted = report.observations[0]
+assert weighted.summary.selected_ids == ("A", "C")
+assert weighted.summary.objective == 1
+assert weighted.summary.absolute_regret == 0
+print(weighted.work_used, weighted.work_unit)
+print(weighted.elapsed_ns, weighted.python_peak_bytes)
+
+path = publish_benchmark_report(report, ArtifactWriter(Path.cwd() / "artifacts"))
+restored = BenchmarkReport.from_json(path.read_bytes())
+assert restored.mathematical_identity == report.mathematical_identity
+assert restored.to_json() == report.to_json()
+print(restored.markdown())
+```
+
+Every observation retains canonical native result JSON, including the complete
+problem, units, selected IDs, costs/payoffs, constraints, proof/counter fields,
+solver status and bounds. Readers recompute independent references and native
+proof/forecast checks. They do not invoke a production selector, but their bounded
+reference enumeration and replay overhead are real; reading is more than parsing
+an unchecked summary.
+Every case's declared reference is checked, including cases with no observation
+in interrupted or failed reports.
+
+## Frozen manifests and independent answers
+
+The installed `coleman/benchmarks/cases/` resources are self-contained version-1
+manifests. A `BenchmarkSuite` declares its cases, methods, work limits and ordered
+seed occurrences. `CoverageCase` and `AllocationCase` embed the actual native
+problem contracts and an explicit `ReferenceAnswer` with unit/meaning metadata.
+Unknown fields are rejected. Inputs and expected values are validated before a
+new solver starts.
+
+The concrete `weighted-overlap-3` case contains:
+
+| Candidate | Modeled duration, seconds | Capabilities |
+| --- | --- | --- |
+| A | 2 | x, y |
+| B | 2 | y, z |
+| C | 1 | z |
+
+Weights are x = 0.5, y = 0.3 and z = 0.2; the budget is 3 seconds. The independent
+answer is A,C, cost 3 and union objective 1. Coverage weights are capability
+weights, not calibrated failure probabilities. Overlapping outcomes count once.
+A duplicate membership/outcome identity is rejected; overlapping coverage across
+candidates cannot inflate utility.
+
+The correctness profile also declares:
+
+- signed joint payoffs `[0,0]`, `[2,2]`, `[10,-8]` with equal weights: expected
+  payoffs 0, 2, 1 and variances 0, 0, 81;
+- all-negative alternatives where unchanged allocation is optimal;
+- quadratic target utility evaluated on the distribution: the variable plan's
+  mean 3 becomes utility 1.2, so the stable plan's utility 2 wins;
+- a deliberately work-limited allocation with a feasible no-action incumbent,
+  objective 0 and independent regret 2, without a false optimality claim.
+
+The reference code uses `Fraction` arithmetic and combinations. It consumes
+validated input contracts, never production search, objective, forecast or
+feasibility helpers. Allocation variance uses direct weighted deviations, separate
+from the production second-moment formula. Complete signed outcomes, terminal
+balances, gross/net/fee accounting, variance, target shortfall and utility are
+checked rather than only an argmax or rounded objective.
+
+All primary comparisons have **zero rational tolerance** (`numeric_tolerance:
+"0"`). Finite decimal inputs become exact rational quantities; JSON uses rational
+strings. Expected numbers reject binary64/boolean coercion and non-finite values.
+No display projection or rounded float establishes a passing mathematical gate.
+
+### Evidence and method classes
+
+| Field | Meaning |
+| --- | --- |
+| `method_class=exact_search` | Finite enumeration/search that can establish an optimum when its completion conditions hold |
+| `method_class=heuristic` | A heuristic procedure; reaching the oracle on one case does not make its method exact |
+| `evidence=exact` | A checked full-scope optimum or independently confirmed infeasibility |
+| `evidence=bounded` | A feasible result with a checked maximizing upper bound dominating the independent optimum |
+| `evidence=heuristic` | A feasible partial result without an admitted optimality bound |
+| `evidence=unavailable` | No incumbent; objective/regret remain null rather than fabricated zeros |
+| `sampled` | A distinct classification, never silently upgraded to exact; current supported finite adapters produce no sampled claims |
+
+Coverage still requires its native certificate for an optimal claim. A case may
+require a declared exact method to complete, in which case an incomplete result
+fails that protocol even if its incumbent is valid. Performance cases can permit
+bounded completion. Benchmark `status=complete` means every declared invocation
+ran and passed its applicable gates; inspect each native solver status/evidence.
+
+Scenario probabilities in these mathematical profiles must be **assumed**. Learned
+weights require protected evidence and retain the conservative decision behavior
+of the [allocation API](scenario-payoffs.md); they are not converted into an
+assumed-model optimum for a benchmark table. No learning reward, ranking,
+calibration or inferential confidence claim is created.
+
+## Repetition and metamorphic checks
+
+The profiles declare labels `[11,11,29]`. Current finite solvers use no RNG: labels
+identify protocol occurrences, not data observations. The two label-11 runs must
+match their **entire canonical mathematical artifacts**, including IDs, proofs,
+bounds, forecasts, work counters and statuses. Equal rounded objectives are
+insufficient. No repeated label means `reproducibility=untested`, even if distinct
+labels happen to return the same objective.
+
+`mathematical_identity` hashes the frozen suite and ordered native mathematical
+artifacts. Timing, environment, availability and failed-attempt metadata are
+excluded. The complete report's content fingerprint includes them. Re-running a
+measurement may produce a new report identity while preserving its mathematical
+identity; publishing the same complete report object is idempotent.
+
+CI tests include input-order invariance, unique-optimum candidate relabeling,
+budget monotonicity and duplicate coverage. A joint payoff/target shift preserves
+variance and shortfall while translating expected utility. Those properties are
+applied under their stated assumptions; arbitrary renaming of tied optima or
+changing a payoff without its relevant risk target is not claimed invariant.
+Deliberately faulty solvers prove that invalid bounds, budget overruns, false
+optimal status and order-dependent streams fail the gates.
+
+## Timing, memory and compute budgets
+
+`elapsed_ns` measures elapsed `perf_counter_ns` time around the native service,
+including its own validation/result construction. Import/setup, independent
+reference checks and report serialization are excluded. `python_peak_bytes` is the
+process-wide `tracemalloc` peak during that call, not RSS, total native allocation
+or an isolated per-thread measurement. Unrelated background allocations can affect
+it. Overlapping benchmark instrumentation is rejected; pre-existing tracing is
+never reset or stopped by this API.
+
+`work_used` retains its explicit `work_unit`:
+
+- coverage: candidate examination or branch-node pop, sharing the native counter;
+- allocation: attempted whole-action evaluation.
+
+Equal counters are not equal CPU budgets across algorithms. Each case fixes its
+native limits, methods and problem before comparison. Correctness protocols require
+`deadline_seconds=None` and use deterministic work limits so machine speed cannot
+change a mathematical assertion. Runtime and memory are reported observations,
+not universal performance thresholds or evidence of algorithm superiority.
+Deadline termination is rejected in native adapter results, serialized mathematical
+observations and interrupted-attempt histories: it contradicts this deadline-free
+protocol, even when a case permits a bounded or heuristic outcome.
+A `work_limit` stop must have consumed its declared work cap; stopping below that
+cap cannot be reported as exhausted computation.
+Completed-observation gates also reject native `cancelled` and `interrupted`
+artifacts. Live execution retains them as aborted attempts; replay cannot promote
+them into successful observations, even for cases permitting nonexact completion.
+
+Local `adapter=` callables execute as trusted Python code. Bundled execution makes
+fresh native service calls. Artifact gates verify supplied mathematics and budget
+consistency; measurement authenticity and disclosure of external precomputation
+remain responsibilities of custom adapter authors.
+
+The `performance` profile adds a 12-candidate overlap instance under a shared
+500-work-unit cap and a 32-action/64-joint-state allocation. Run it explicitly:
+
+```sh
+python -m coleman.benchmarks --profile performance --output artifacts
+```
+
+The `Decision performance observations` workflow runs on manual dispatch. Its
+weekly schedule is disabled unless the repository variable
+`ENABLE_DECISION_PERFORMANCE` is explicitly `true`. It builds a noneditable wheel,
+runs outside the checkout root and preserves JSON/Markdown evidence, including
+failed reports. Ordinary correctness CI has no wall-clock pass/fail threshold.
+No calibrated hardware-specific regression threshold is supplied in this version.
+
+### Committed observed comparison
+
+The repository includes a [JSON observation](https://github.com/jacksonpradolima/coleman/blob/3f306af66e6b45984111c5498d78aadeb9c04098/examples/decision-benchmarks/observations/benchmark-reports/b8c35d14627d94f1c871203e5f9ea25083214dd2f611543f8c3c0dbca85c45a4.json)
+and its [human report](https://github.com/jacksonpradolima/coleman/blob/3f306af66e6b45984111c5498d78aadeb9c04098/examples/decision-benchmarks/observations/benchmark-reports/b8c35d14627d94f1c871203e5f9ea25083214dd2f611543f8c3c0dbca85c45a4.md).
+These are actual measurements from a noneditable base wheel built at
+`38f94a9d65fe59605e3309a2c0ef2b45a38134e2`, running outside the checkout.
+The self-contained suite fixes the weighted-overlap fixture, both coverage methods,
+labels `[11,11,29]`, no deadline and a 100,000-unit per-attempt cap. Both methods
+choose A,C with objective 1; greedy uses 6 counter units and branch search 13.
+The report records individual nanoseconds and Python peak bytes, rather than an
+aggregate winner or inferred confidence interval. Six calls on one synthetic
+instance and one environment do not establish a general performance advantage.
+
+To repeat the exact protocol, obtain that JSON artifact from the public repository
+and run with the installed package from its containing workspace:
+
+```python
+from pathlib import Path
+from coleman.artifacts import ArtifactWriter
+from coleman.benchmarks import (
+    BenchmarkExecution, BenchmarkReport, collect_environment,
+    publish_benchmark_report, run_benchmarks,
+)
+
+source = next(Path(".").glob("b8c35d14627d94f1c871203e5f9ea25083214dd2f611543f8c3c0dbca85c45a4.json"))
+previous = BenchmarkReport.from_json(source.read_bytes())
+observed = run_benchmarks(
+    previous.suite,
+    execution=BenchmarkExecution(environment=collect_environment()),
+)
+assert observed.mathematical_identity == previous.mathematical_identity
+publish_benchmark_report(observed, ArtifactWriter(Path("artifacts")))
+```
+
+Supply actual source metadata when known. Unknown metadata stays null; copying
+the earlier environment onto a new execution would falsely attribute measurements.
+The versioned golden test fixtures use explicitly synthetic metadata and zero
+placeholder timings; they are serialization fixtures, separate from this measured
+observation.
+
+## Interruptions, failed attempts and checkpoints
+
+```python
+from coleman.benchmarks import (
+    BenchmarkCheckpoint, BenchmarkExecution, collect_environment, load_suite,
+    run_benchmarks,
+)
+from coleman.checkpoint import LocalCheckpointStore
+from coleman.checkpoint.state import CheckpointPayload
+
+suite = load_suite()
+environment = collect_environment()
+partial = run_benchmarks(
+    suite, execution=BenchmarkExecution(environment=environment, max_new_invocations=1)
+)
+store = LocalCheckpointStore("checkpoints")
+store.save(CheckpointPayload(
+    run_id="ci-benchmark-example", step=1,
+    extra={"benchmark_v1": partial.checkpoint().to_json()},
+))
+saved = store.load("ci-benchmark-example", 0)
+if saved is None:
+    raise RuntimeError("Expected a saved benchmark checkpoint")
+checkpoint = BenchmarkCheckpoint.from_json(saved.extra["benchmark_v1"])
+resumed = run_benchmarks(
+    suite, checkpoint=checkpoint, execution=BenchmarkExecution(environment=environment)
+)
+assert resumed.status == "complete"
+assert resumed.observations[0] == partial.observations[0]
+```
+
+Store JSON in the existing native checkpoint payload; no second checkpoint system
+is introduced. The local store uses trusted local pickle state. Complete cached
+observations are reverified before new work, including zero-work resumes. Source,
+protocol or environment changes reject the checkpoint. Cancellation is still
+polled when every invocation is cached.
+
+`BenchmarkRunError` retains a typed failed report and the original exception
+cause. Interrupted and failed attempts are distinct from successful mathematical
+rows. `report.checkpoint()` carries prior failed/aborted attempts forward, so a
+later successful resume cannot silently erase their timing, known work or unknown
+costs. Instrumentation rejection records zero solver work and unavailable timing;
+a solver exception may have unknown work rather than zero. Histories retain
+only null work for solver/verification failures; readers reject invented counters
+in both reports and checkpoints. Histories also retain
+stable attempt indices and explicit aware availability timestamps. Unavailable
+future history is rejected before new work. Any known interrupted-work counter
+must fit its matched case's declared work budget, both in current reports and
+in resumed histories, including zero-work resumes.
+Solver, verification and interrupted failures require their measured runtime and
+Python peak bytes on replay; only an instrumentation rejection can leave both
+measurements unavailable.
+Native `cancelled`/`interrupted` attempts retain a required integer work counter,
+including known zero. Exception interruptions such as `KeyboardInterrupt` retain
+null work because their interrupted call supplied no trustworthy counter.
+
+An operator interrupt during post-solver verification also returns an interrupted
+report: the verified prefix remains intact, and the interrupted attempt retains
+its measured solver time and memory. The unverified row is not completed evidence.
+Resuming its checkpoint retries that slot and preserves the prior attempt history.
+Repeated interrupts while constructing or validating the interrupted report itself
+can still abort the call; report publication remains an explicit caller action.
+
+A chunk can be persisted after each complete invocation. Process death before that
+checkpoint may require repeating an invocation; cached timings are never called
+new independent samples. A native interrupted partial search is a recorded aborted
+attempt and restarts with the frozen per-attempt budget. Failed/aborted overhead
+remains visible and is not a free warm start. Unexpected cancellation-callback
+errors propagate; they are not mathematical insufficiency results.
+
+## Persistence, limits and compatibility
+
+Reports use the existing immutable `ArtifactWriter`. Markdown is written first;
+complete JSON is written last and is the publication authority. A Markdown-only
+interruption is not a completed JSON report. Identical concurrent publication is
+idempotent; conflicting bytes are rejected. Existing manifests add a
+`benchmark_report` entry without changing native result or scheduling meanings.
+
+Manifest caps are 16 cases, 16 seed occurrences and 128 declared invocations.
+References allow at most 12 coverage candidates, 256 outcomes and 4,096 memberships,
+or 32 allocation actions and 64 joint scenarios. Failed-attempt histories are
+capped at 128; another retry is refused before solver work once exhausted.
+Publication defaults to 32 MiB across JSON and Markdown, with a maximum configurable
+limit of 64 MiB. Verification/serialization have bounded but repeated overhead;
+these caps are not a hard process-isolation or RSS guarantee.
+
+Schema version 1 is required. Missing, future and unknown versions fail closed,
+as do duplicate JSON keys. This is the first benchmark format: there is no legacy
+benchmark migration to guess. Existing native, domain, coverage, allocation and
+protected-evaluation artifacts retain their versions and interpretation. Versioned
+golden report/checkpoint fixtures preserve exact identities and producer metadata.
+
+## Real native TCPCI integration
+
+The existing `examples/finite-coverage/ci.py` now independently benchmarks its real
+coverage decision before scheduling the second synthetic CI build. It retains
+native agents, first-build shuffle, reward, metrics, sinks and extension callbacks.
+The actual scheduled prefix must be A,C before the collector publishes the
+coverage and benchmark artifacts. The adapter remains specific to this fully
+budget-consuming fixture; it does not implement arbitrary subset scheduling.
+
+Run that script with the installed package as documented in
+[finite coverage selection](finite-coverage.md). The installed-wheel test runs it
+twice outside the checkout, without mocking the principal runner or solver, and
+checks both actual schedules and repeated mathematical artifacts. Modeled coverage
+objectives stay separate from measured NAPFD/APFDc and learning rewards. A positive,
+negative or inconclusive model result is not a policy promotion.
+
+```mermaid
+flowchart LR
+    Manifest[Frozen typed CI benchmark suite] --> Runner[Bounded benchmark service]
+    Runner --> Native[Existing coverage / allocation services]
+    Manifest --> Oracle[Independent tiny rational references]
+    Native --> Gates[Feasibility, bounds, full math and repeat gates]
+    Oracle --> Gates
+    Gates --> Report[Versioned report and failed-attempt history]
+    Report --> Writer[Existing immutable ArtifactWriter]
+    Report --> Checkpoint[JSON in existing native checkpoint payload]
+    Native --> Extension[Existing native CI extension / collector]
+    Extension --> CI[Native scheduling, reward, metrics and sinks]
 ```
 
 
@@ -3889,12 +4616,22 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
+## New in 4.0
+
+Use the [bounded application API](application-api.md) from the library, CLI or
+optional local MCP tools. The existing native services make the decisions and
+run TCPCI experiments; versioned portable evidence makes the outcome inspectable.
+[Independent decision benchmarks](decision-benchmarks.md) check finite-model
+mathematics before performance or generalization claims. See the
+[release notes](releases/4.0.0.md) for examples, compatibility and limits.
+
 ## Quick Start
 
-With Python 3.14 or later in an activated environment, install the GitHub release wheel:
+With Python 3.14 or later in an activated environment, install the GitHub release wheel.
+For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
 coleman run --config my-experiment.yaml
 ```
 
@@ -3998,7 +4735,7 @@ cd examples/observability
 docker compose up -d
 
 # Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
 
 # Enable telemetry — use the telemetry/local pack in your run.yaml:
 #   packs:
@@ -4018,7 +4755,7 @@ coleman run --config run.yaml
 
 ```bash
 docker compose --profile clickhouse up -d
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
 ```
 
 ## Tear down
@@ -4358,6 +5095,60 @@ See the [dependency security guide](https://github.com/jacksonpradolima/coleman/
 
 
 
+### FILE: docs/releases/4.0.0.md
+
+# COLEMAN 4.0 — Make every CI budget decision inspectable
+
+CI budgets force a choice: which tests run now, which wait, and what evidence supports that decision? COLEMAN 4.0 makes those choices easier to execute, inspect and reproduce while keeping test-case prioritization and selection at the center of the project.
+
+This release adds a shared, bounded application API and optional local MCP tools, backed by independent mathematical checks. They build on the recent 3.x foundations for versioned results, protected evaluation, finite coverage selection and scenario-based resource allocation.
+
+## New in 4.0
+
+- **One workflow across library, CLI and tools.** Discover approved configurations, submit bounded CI work, inspect status, cancel, retrieve results and export portable evidence. Native COLEMAN services perform the calculation and execution.
+- **Independent checks before confident claims.** Small exact reference cases check feasibility, objective values, bounds and ties without calling the production solver. Separate opt-in performance observations record their environment, resource use and limitations.
+- **Results with a contract.** Versioned handles and canonical artifacts preserve explicit units, meanings, source identity and provenance. Zero, missing evidence and unavailable results remain distinct.
+- **Bounded execution with clear outcomes.** Queue, work, output, retention and worker resource limits have documented behavior. Cancellation, expiry and interrupted writes cannot masquerade as completed jobs. A feasible incumbent remains explicitly different from a proved optimum.
+- **Optional tools, a service-free base.** The base wheel needs no MCP SDK, model, credentials or remote service. Configure the optional local stdio adapter once; supported clients can then use its tools directly.
+
+## Try a bounded CI decision
+
+With Python 3.14 or later on Linux or macOS, install this repository's GitHub release wheel in an activated virtual environment:
+
+```bash
+python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl'
+coleman application --request '{"schema_version":1,"request_id":"first-ci-decision","spec_id":"weighted-overlap-3","parameters":{"budget":3}}'
+```
+
+The packaged synthetic fixture selects **A+C within a 3-second modeled budget** and returns the complete typed result. It demonstrates a checkable decision; it is not a measurement of production CI savings. `native-ci-smoke-v1` exercises the actual TCPCI runner on two synthetic builds.
+
+For MCP, install the same wheel with its optional extra and configure `coleman-mcp` in a local client:
+
+```bash
+python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl'
+```
+
+Use this repository's assets: the bare PyPI name belongs to a different project. Release assets include signed distributions and an SBOM. The [application guide](https://jacksonpradolima.github.io/coleman/application-api/) includes complete library examples, tool operations, errors and limits.
+
+## Compatibility and evidence
+
+Existing `coleman run`, sweeps, RunSpec workflows and native result/checkpoint interfaces remain available. Existing Parquet fields keep their meanings; old artifacts are not silently reinterpreted. New application bundles use schema version 1 and reject unknown future versions. Portable experiment provenance explicitly declares its redactions and source digest while leaving native result/specification bytes intact.
+
+The release is validated with the full repository suite, native CI workflows, independent reference checks and noneditable installed-wheel tests outside the checkout. Optional MCP lifecycle tests use the real SDK over stdio, offline and without an LLM. Dependency and code-scanning findings are checked before publication; advisory results are time-dependent.
+
+Worker memory and output sampling are local guards with possible transient overshoot, not a hostile-code sandbox. Hosted deployment and durable application-job recovery are outside this release. Export/import retains completed evidence; native checkpoint continuation remains a separate interface.
+
+COLEMAN can report **insufficient evidence**, use a conservative fallback and preserve negative or inconclusive outcomes. Seeds support reproducibility; they do not replace independent observations. No universal algorithm superiority or production wall-clock savings are claimed.
+
+## Explore the release
+
+- [Application API and optional tools](https://jacksonpradolima.github.io/coleman/application-api/)
+- [Independent decision benchmarks](https://jacksonpradolima.github.io/coleman/decision-benchmarks/)
+- [Protected evaluation](https://jacksonpradolima.github.io/coleman/protected-evaluation/)
+- [Full changes since 3.6.1](https://github.com/jacksonpradolima/coleman/compare/v3.6.1...v4.0.0)
+
+
+
 ### FILE: docs/releases.md
 
 # Release preparation
@@ -4382,7 +5173,10 @@ review its entire diff, pass the full quality/security/install/native-CI gates, 
 merge its release PR with an explicit major-release Conventional Commit, such as
 `feat!: release COLEMAN 4.0`. This intentionally requests the 4.0.0 bump; do not
 manually edit only the package version while leaving tags or the lock inconsistent.
-The automated workflow updates the version/tag and then synchronizes `uv.lock`.
+The automated workflow updates the package version, synchronizes `uv.lock`, builds
+the distributions, and includes the lock in the version commit before tagging.
+A second lock check after tagging must find no changes. This keeps the tag, source
+archive and wheel metadata consistent.
 
 ## Reviewed release descriptions
 
@@ -4739,10 +5533,33 @@ generalization needs protected evaluation and diversified-corpus evidence.
 
 Coleman is framework-first: the default installation works without any
 external services. Use Python 3.14 or later in an activated virtual environment.
-Install this repository’s GitHub release wheel, pinned below with its SHA-256:
+Install this repository's GitHub release wheel with its published SHA-256.
+This command reads the selected asset's digest from GitHub release metadata,
+refuses a missing/unsupported digest, and passes the hash to pip for verification
+before installation. It trusts GitHub's HTTPS metadata; it is not an independently
+pinned checksum or a signature check. No MCP SDK or additional installer tool is
+required by this procedure.
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
+python - <<'PY'
+import json
+import re
+import subprocess
+import sys
+import urllib.request
+
+version = "4.0.0"
+wheel = f"coleman-{version}-py3-none-any.whl"
+metadata_url = f"https://api.github.com/repos/jacksonpradolima/coleman/releases/tags/v{version}"
+with urllib.request.urlopen(metadata_url, timeout=30) as response:
+    release = json.load(response)
+asset = next(item for item in release["assets"] if item["name"] == wheel)
+digest = asset.get("digest")
+if not isinstance(digest, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", digest) is None:
+    raise SystemExit("Release has no supported SHA-256 digest; refusing installation")
+url = f"https://github.com/jacksonpradolima/coleman/releases/download/v{version}/{wheel}"
+subprocess.run([sys.executable, "-m", "pip", "install", f"{url}#sha256={digest[7:]}"], check=True)
+PY
 ```
 
 Use the library API or the `coleman` CLI to run experiments:
@@ -4787,6 +5604,12 @@ with near-zero overhead:
 
 ## Configuration system
 
+For registered, bounded CI workflows, the [application API and optional local MCP
+tools](application-api.md) share native services across library, CLI and tool
+clients. This capability is being prepared for 4.0 and adds no dependency to the
+base installation. Its bounded session lifecycle is separate from direct native
+runner checkpoint continuation.
+
 Coleman uses **YAML configuration files** validated against typed
 Pydantic v2 models.  See the [Configuration guide](configuration.md) for
 the full schema reference, config packs, sweep engine, and determinism
@@ -4826,10 +5649,10 @@ coleman run --config experiment.yaml
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
 
 # ClickHouse sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v3.6.1/coleman-3.6.1-py3-none-any.whl#sha256=ad22e85da1ac9ca42d3e70d10e9ff0d6fecca5f7841f01bcb144a15beffc0646"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl"
 ```
 
 ## Optional observability stack
