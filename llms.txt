@@ -1814,8 +1814,8 @@ it does not mean corpus diversity is satisfied. Invalid/blocked sources, unknown
 IDs, future schemas, unsupported adapters, bad bytes or output failures return 2.
 CLI output must remain within the current workspace; existing symlinked report
 parents are resolved and checked before publication. This local path check assumes
-no concurrent hostile filesystem mutation; it is not an OS sandbox. Library callers supply their
-own trusted `ArtifactWriter` root, independently of CLI/MCP transports.
+no concurrent hostile filesystem mutation; it is not an OS sandbox. Library callers
+supply their own trusted `ArtifactWriter` root, independently of CLI/MCP transports.
 
 These are the implemented commands. Fetch/cache/extraction, real-source conversion,
 large stress generation, baseline matrices, dependence-aware statistical profiles
@@ -1958,9 +1958,10 @@ actual native ranking's NAPFD/APFDc against the independent oracle, and publishe
 both source checks plus the insufficient-diversity inventory through existing
 artifacts/manifests. Two explicitly constructed copies exercise the runner's
 initial shuffle and next-build path; neither real CI history nor independence is
-claimed. Use a fresh output directory for each complete native invocation: direct
-native runs retain their existing append behavior. Native learning checkpoints
-remain the runner's responsibility; this adds no second runner/checkpoint store.
+claimed. The example requires a fresh output directory for each complete native
+invocation and rejects an existing directory before writing, including pre-existing
+symlinked input/native descendants. Direct native runs retain their existing append
+behavior. Native learning checkpoints remain the runner's responsibility; this adds no second runner/checkpoint store.
 
 Corpus validation/readiness publication is deterministic and idempotent for the
 same input. Concurrent identical retries share the same content address. Existing
@@ -1970,8 +1971,9 @@ power-loss limits apply. Native manifests discover these corpus artifacts and
 pilot reports; no source archive or large generated experiment result is committed.
 
 Unknown/future/missing schema versions, duplicate JSON keys and incompatible
-protocols fail closed. Older native artifacts keep their existing readers and
-meanings; there is no automatic migration. The new fixture JSON format requires
+protocols fail closed. Unverified extra source-revision claims in fixture
+observations are rejected on reads and publication. Older native artifacts keep
+their existing readers and meanings; there is no automatic migration. The new fixture JSON format requires
 canonical UTF-8 JSON plus one newline and a hard 128 KiB cap, independent of a
 larger future-source metadata limit.
 

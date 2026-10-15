@@ -147,17 +147,17 @@ def _readiness_evidence(readiness: FixtureReadiness) -> None:
     registry = readiness.registry
     reports = _validated_evidence(registry, readiness.validated_reports)
     registered = tuple(card.manifest.benchmark_id for card in registry.cards)
-    blocked = tuple(
+    blocked = [
         SourceBlock(benchmark_id=card.manifest.benchmark_id, reasons=card.manifest.blocking_reasons)
         for card in registry.cards
         if card.manifest.blocking_reasons
-    )
+    ]
     validated = tuple(report.manifest.benchmark_id for report in reports)
     groups = tuple(sorted({report.manifest.dependence_group for report in reports}))
     if (
         readiness.registry_fingerprint != registry.fingerprint
         or readiness.registered_sources != registered
-        or sorted(readiness.blocked_sources, key=lambda source: source.benchmark_id) != list(blocked)
+        or sorted(readiness.blocked_sources, key=lambda source: source.benchmark_id) != blocked
         or readiness.validated_fixture_sources != validated
         or readiness.fixture_dependence_groups != groups
         or readiness.uncovered_required_regimes != registry.required_regimes

@@ -261,6 +261,7 @@ def _compare_records(expected: DomainRecord, actual: DomainRecord) -> None:
         or actual.provenance.spec_fingerprint != expected.provenance.spec_fingerprint
         or actual.provenance.producer != "coleman.corpus.native-verifier"
         or actual.provenance.producer_version != "1"
+        or actual.provenance.source_revision != expected.provenance.source_revision
         or actual.learning_reward is not None
     ):
         raise ValueError("Fixture record context or measurement set differs")

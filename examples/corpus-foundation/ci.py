@@ -31,15 +31,25 @@ from coleman.spec.models import RunSpec
 
 
 def main(output):
+    """Run real native TCPCI into a fresh workspace directory, retaining explicit fixture provenance.
+
+    Existing roots or paths escaping the workspace raise ValueError before writes.
+    Native failures propagate; individual verified evidence files use immutable
+    publication, while the whole native invocation requires a new output root.
+    Declared seconds are synthetic inputs, not measured production CI timings.
+    """
     workspace = Path.cwd().resolve()
     root = (workspace / output).resolve()
     if not root.is_relative_to(workspace):
         raise ValueError("Native fixture output must remain within current workspace")
+    if root.exists():
+        raise ValueError("Native fixture requires a fresh output directory")
     registry = load_registry()
     checked = tuple(
         validate_bundled_source(name, registry) for name in ("ci-serial-boundary-v1", "ci-parallel-occupancy-v1")
     )
     source = checked[0]
+    root.mkdir(parents=True)
     directory = root / "inputs" / "constructed-fixture"
     directory.mkdir(parents=True, exist_ok=True)
     rows = [

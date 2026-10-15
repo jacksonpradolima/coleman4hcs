@@ -467,3 +467,36 @@ def test_readiness_embedded_evidence_roundtrip_and_conflicts(registry):
     alternative = changed(report, observations=(changed(observation, record=record), *report.observations[1:]))
     with pytest.raises(ValueError, match="Conflicting"):
         fixture_readiness(registry, (report, alternative))
+
+
+def test_fixture_report_rejects_unverified_source_revision(registry, tmp_path):
+    report = validate_bundled_source(SERIAL, registry)
+    observation = report.observations[0]
+    record = changed(observation.record, provenance=changed(observation.record.provenance, source_revision="forged"))
+    forged = report.model_copy(update={"observations": (changed(observation, record=record), *report.observations[1:])})
+    writer = ArtifactWriter(tmp_path)
+    with pytest.raises(ValueError):
+        publish_fixture_report(forged, writer)
+    payload = json.dumps(forged.model_dump(mode="json"))
+    with pytest.raises(ValueError):
+        CorpusFixtureReport.from_json(payload)
+    assert not list(tmp_path.rglob("*.json"))
+
+
+@pytest.mark.parametrize("child", ["inputs", "native"])
+def test_native_example_rejects_existing_symlinked_children(tmp_path, monkeypatch, child):
+    import runpy
+
+    example = runpy.run_path(str(ROOT / "examples/corpus-foundation/ci.py"))
+    workspace = tmp_path / "workspace"
+    outside = tmp_path / "outside"
+    workspace.mkdir()
+    outside.mkdir()
+    root = workspace / "output"
+    root.mkdir()
+    (root / child).symlink_to(outside, target_is_directory=True)
+    monkeypatch.chdir(workspace)
+    main = example["main"]
+    with pytest.raises(ValueError, match="fresh output"):
+        main("output")
+    assert not list(outside.iterdir())
