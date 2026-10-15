@@ -88,7 +88,8 @@ failure and recall from events plus the **complete** source universe. It imports
 neither native metric implementations nor transport modules.
 
 For parallel evidence, supply actual worker IDs and start/completion offsets to
-`replay_events`. Two overlapping workers can use 7 runner-seconds in 4 elapsed
+`replay_events`. Offsets must start at the first dispatch (zero); a shifted
+time origin is rejected. Two overlapping workers can use 7 runner-seconds in 4 elapsed
 seconds. That does not validate a parallel candidate against this serial manifest;
 `verify_run` rejects that substitution. Wall-clock savings cannot be derived from
 runner-seconds. Queue time, shared setup, retries, orchestration and infrastructure
@@ -155,7 +156,11 @@ A report's matrix is `partial` until every frozen pair exists. Report snapshots
 also serve as validated checkpoints; restore and run only missing pairs. Identical
 logical retries deduplicate, while conflicting payloads (including changed seed
 or overhead) fail. The installed example reuses completed candidates and retains
-completed build records on an interrupted candidate's replay. Reconstructing
+completed build records on an interrupted candidate's replay. Domain measurements
+are synchronously persisted before advancing the recoverable report; their
+original availability is retained on retries. Outcome audit identity excludes
+attempt-specific overhead, so a retry after audit commit but before checkpoint
+publication can measure fresh overhead without conflicting with that outcome. Reconstructing
 learning history can repeat native execution; native checkpoint state remains a
 separate runner responsibility. This introduces no second runner or storage layer. The example runs sequentially;
 do not launch concurrent native runs against the same output directory. Immutable

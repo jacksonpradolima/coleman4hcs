@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
 from typing import Literal, Self
@@ -9,8 +10,8 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from coleman.artifacts import ArtifactWriter
-from coleman.pilot.contracts import PilotManifest, PilotRun
-from coleman.pilot.replay import verify_run
+from coleman.pilot.contracts import AdoptionThresholds, PilotManifest, PilotRun
+from coleman.pilot.replay import ReplayMetrics, verify_run
 from coleman.results.domain import Identifier
 from coleman.results.versioned import VersionedContract
 from coleman.selection.contracts import Immutable, ticks
@@ -92,61 +93,103 @@ class PilotReport(VersionedContract):
         observed safety gates pass. Confirmatory claims require an independently
         justified protected comparison and representative operational evidence.
         """
-        metrics = {(run.candidate_id, run.build_id): verify_run(self.manifest, run) for run in self.runs}
-        runs = {(run.candidate_id, run.build_id): run for run in self.runs}
-        thresholds = self.manifest.thresholds
-        output = []
-        for candidate in self.manifest.candidates:
-            if candidate == self.manifest.baseline_id:
-                continue
-            recalls: list[float] = []
-            savings: list[float] = []
-            reasons: set[str] = set()
-            failed = False
-            paired = 0
-            for build in self.manifest.builds:
-                key = candidate, build.build_id
-                baseline_key = self.manifest.baseline_id, build.build_id
-                if key not in metrics or baseline_key not in metrics:
-                    reasons.add("missing_candidate_or_baseline")
-                    continue
-                paired += 1
-                metric, baseline = metrics[key], metrics[baseline_key]
-                if metric.failing_test_recall is None or baseline.failing_test_recall is None:
-                    reasons.add("unresolved_or_zero_failure_outcomes")
-                else:
-                    recalls.append(metric.failing_test_recall)
-                    if metric.failing_test_recall < max(thresholds.minimum_recall, baseline.failing_test_recall):
-                        failed = True
-                        reasons.add("detection_regression_or_threshold_failure")
-                baseline_work = ticks(baseline.runner_work.value)
-                if baseline_work == 0:
-                    reasons.add("zero_baseline_work")
-                else:
-                    saving = Fraction(baseline_work - ticks(metric.runner_work.value), baseline_work)
-                    savings.append(float(saving))
-                    if saving < Fraction(str(thresholds.minimum_runner_saving_fraction)):
-                        failed = True
-                        reasons.add("runner_saving_threshold_failure")
-                if runs[key].prioritization_overhead.value > thresholds.maximum_overhead.value:
-                    failed = True
-                    reasons.add("overhead_threshold_failure")
-            if paired < thresholds.minimum_builds:
-                reasons.add("too_few_distinct_builds")
-            if self.manifest.evidence_basis != "observed_ci":
-                reasons.add("synthetic_replay_is_not_operational_evidence")
-            gate = "fail" if failed else "inconclusive" if reasons else "pass"
-            output.append(
-                CandidateFinding(
-                    candidate_id=candidate,
-                    gate=gate,
-                    distinct_builds=paired,
-                    recall_range=(min(recalls), max(recalls)) if recalls else None,
-                    runner_saving_fraction_range=(min(savings), max(savings)) if savings else None,
-                    reasons=tuple(sorted(reasons)),
-                )
-            )
-        return tuple(output)
+        evaluated = {
+            (run.candidate_id, run.build_id): _RunEvidence(run, verify_run(self.manifest, run)) for run in self.runs
+        }
+        return tuple(
+            _candidate_finding(self.manifest, candidate, evaluated)
+            for candidate in self.manifest.candidates
+            if candidate != self.manifest.baseline_id
+        )
+
+
+@dataclass(frozen=True)
+class _RunEvidence:
+    """Keep the native run and independently replayed accounting together internally."""
+
+    run: PilotRun
+    metrics: ReplayMetrics
+
+
+@dataclass(frozen=True)
+class _PairEvidence:
+    """One build's descriptive comparison, retaining unresolved and negative evidence."""
+
+    recall: float | None
+    saving: float | None
+    reasons: tuple[str, ...]
+    failed: bool
+
+
+def _pair_evidence(candidate: _RunEvidence, baseline: _RunEvidence, thresholds: AdoptionThresholds) -> _PairEvidence:
+    """Compare one genuine candidate/baseline pair without pooling away its failures."""
+    metric = candidate.metrics
+    base = baseline.metrics
+    reasons: list[str] = []
+    failed = False
+    recall = metric.failing_test_recall
+    if recall is None or base.failing_test_recall is None:
+        reasons.append("unresolved_or_zero_failure_outcomes")
+        recall = None
+    elif recall < max(thresholds.minimum_recall, base.failing_test_recall):
+        reasons.append("detection_regression_or_threshold_failure")
+        failed = True
+    baseline_work = ticks(base.runner_work.value)
+    saving = None
+    if baseline_work == 0:
+        reasons.append("zero_baseline_work")
+    else:
+        fraction = Fraction(baseline_work - ticks(metric.runner_work.value), baseline_work)
+        saving = float(fraction)
+        if fraction < Fraction(str(thresholds.minimum_runner_saving_fraction)):
+            reasons.append("runner_saving_threshold_failure")
+            failed = True
+    if candidate.run.prioritization_overhead.value > thresholds.maximum_overhead.value:
+        reasons.append("overhead_threshold_failure")
+        failed = True
+    return _PairEvidence(recall, saving, tuple(reasons), failed)
+
+
+def _gate(failed: bool, reasons: set[str]) -> Literal["pass", "fail", "inconclusive"]:
+    """Keep observed regression precedence while preventing insufficient evidence passing."""
+    if failed:
+        return "fail"
+    if reasons:
+        return "inconclusive"
+    return "pass"
+
+
+def _candidate_finding(
+    manifest: PilotManifest,
+    candidate: str,
+    evaluated: dict[tuple[str, str], _RunEvidence],
+) -> CandidateFinding:
+    """Aggregate descriptive pairs only; all missing builds remain explicit reasons."""
+    pairs: list[_PairEvidence] = []
+    reasons: set[str] = set()
+    for build in manifest.builds:
+        key = candidate, build.build_id
+        baseline_key = manifest.baseline_id, build.build_id
+        if key not in evaluated or baseline_key not in evaluated:
+            reasons.add("missing_candidate_or_baseline")
+            continue
+        pairs.append(_pair_evidence(evaluated[key], evaluated[baseline_key], manifest.thresholds))
+    if len(pairs) < manifest.thresholds.minimum_builds:
+        reasons.add("too_few_distinct_builds")
+    if manifest.evidence_basis != "observed_ci":
+        reasons.add("synthetic_replay_is_not_operational_evidence")
+    for pair in pairs:
+        reasons.update(pair.reasons)
+    recalls = [pair.recall for pair in pairs if pair.recall is not None]
+    savings = [pair.saving for pair in pairs if pair.saving is not None]
+    return CandidateFinding(
+        candidate_id=candidate,
+        gate=_gate(any(pair.failed for pair in pairs), reasons),
+        distinct_builds=len(pairs),
+        recall_range=(min(recalls), max(recalls)) if recalls else None,
+        runner_saving_fraction_range=(min(savings), max(savings)) if savings else None,
+        reasons=tuple(sorted(reasons)),
+    )
 
 
 def publish_pilot_report(report: PilotReport, writer: ArtifactWriter) -> Path:

@@ -4929,7 +4929,8 @@ failure and recall from events plus the **complete** source universe. It imports
 neither native metric implementations nor transport modules.
 
 For parallel evidence, supply actual worker IDs and start/completion offsets to
-`replay_events`. Two overlapping workers can use 7 runner-seconds in 4 elapsed
+`replay_events`. Offsets must start at the first dispatch (zero); a shifted
+time origin is rejected. Two overlapping workers can use 7 runner-seconds in 4 elapsed
 seconds. That does not validate a parallel candidate against this serial manifest;
 `verify_run` rejects that substitution. Wall-clock savings cannot be derived from
 runner-seconds. Queue time, shared setup, retries, orchestration and infrastructure
@@ -4996,7 +4997,11 @@ A report's matrix is `partial` until every frozen pair exists. Report snapshots
 also serve as validated checkpoints; restore and run only missing pairs. Identical
 logical retries deduplicate, while conflicting payloads (including changed seed
 or overhead) fail. The installed example reuses completed candidates and retains
-completed build records on an interrupted candidate's replay. Reconstructing
+completed build records on an interrupted candidate's replay. Domain measurements
+are synchronously persisted before advancing the recoverable report; their
+original availability is retained on retries. Outcome audit identity excludes
+attempt-specific overhead, so a retry after audit commit but before checkpoint
+publication can measure fresh overhead without conflicting with that outcome. Reconstructing
 learning history can repeat native execution; native checkpoint state remains a
 separate runner responsibility. This introduces no second runner or storage layer. The example runs sequentially;
 do not launch concurrent native runs against the same output directory. Immutable
@@ -5514,16 +5519,22 @@ protected statistical profiles; frozen cross-corpus evidence. Deliveries can spa
 diversity, execution and evidence gates are satisfied. An inaccessible or
 unlicensed source is a visible blocker, not an invented successful experiment.
 
-Public adapter follow-ups
-[#258](https://github.com/jacksonpradolima/coleman/issues/258),
-[#259](https://github.com/jacksonpradolima/coleman/issues/259) and
-[#260](https://github.com/jacksonpradolima/coleman/issues/260) need scope reconciliation
-before implementation in this repository. COLEMAN's reusable mechanisms can
-support point-in-time observations, exact resource accounting and frozen
-prospective evaluation. Its public product, tutorial examples and validation stay
-centered on CI/TCPCI; provider rules belong outside the core. Generic work does not
-silently satisfy domain-specific issue acceptance criteria. These items are not
-implemented or assigned a release merely because their design exists.
+The existing public adapter issues now have consciously revised generic CI
+specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:
+
+- [#258](https://github.com/jacksonpradolima/coleman/issues/258): point-in-time CI
+  observations and versioned decision signals; reuse existing temporal contracts.
+- [#259](https://github.com/jacksonpradolima/coleman/issues/259): deterministic CI
+  resource accounting and cost-aware replay; depends on #258 and existing
+  allocation/evaluation/benchmark foundations.
+- [#260](https://github.com/jacksonpradolima/coleman/issues/260): prospective shadow
+  evaluation of frozen CI candidates; depends on #259 and protected evaluation.
+
+Implement these sequentially in later 4.x feature releases, with reusable core
+contracts and CI-centered fixtures. Provider dependencies stay outside the core.
+They are specified, not implemented. Generic mechanisms, native CI integration,
+functional recovery and actual prospective evidence each need their own explicit
+validation; an offline replay must never masquerade as a forward observation.
 
 Compatible features use subsequent **4.x minor** versions; compatible fixes use
 **4.x patch** versions. A major version requires an actual breaking public contract,

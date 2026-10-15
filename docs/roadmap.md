@@ -20,16 +20,22 @@ protected statistical profiles; frozen cross-corpus evidence. Deliveries can spa
 diversity, execution and evidence gates are satisfied. An inaccessible or
 unlicensed source is a visible blocker, not an invented successful experiment.
 
-Public adapter follow-ups
-[#258](https://github.com/jacksonpradolima/coleman/issues/258),
-[#259](https://github.com/jacksonpradolima/coleman/issues/259) and
-[#260](https://github.com/jacksonpradolima/coleman/issues/260) need scope reconciliation
-before implementation in this repository. COLEMAN's reusable mechanisms can
-support point-in-time observations, exact resource accounting and frozen
-prospective evaluation. Its public product, tutorial examples and validation stay
-centered on CI/TCPCI; provider rules belong outside the core. Generic work does not
-silently satisfy domain-specific issue acceptance criteria. These items are not
-implemented or assigned a release merely because their design exists.
+The existing public adapter issues now have consciously revised generic CI
+specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:
+
+- [#258](https://github.com/jacksonpradolima/coleman/issues/258): point-in-time CI
+  observations and versioned decision signals; reuse existing temporal contracts.
+- [#259](https://github.com/jacksonpradolima/coleman/issues/259): deterministic CI
+  resource accounting and cost-aware replay; depends on #258 and existing
+  allocation/evaluation/benchmark foundations.
+- [#260](https://github.com/jacksonpradolima/coleman/issues/260): prospective shadow
+  evaluation of frozen CI candidates; depends on #259 and protected evaluation.
+
+Implement these sequentially in later 4.x feature releases, with reusable core
+contracts and CI-centered fixtures. Provider dependencies stay outside the core.
+They are specified, not implemented. Generic mechanisms, native CI integration,
+functional recovery and actual prospective evidence each need their own explicit
+validation; an offline replay must never masquerade as a forward observation.
 
 Compatible features use subsequent **4.x minor** versions; compatible fixes use
 **4.x patch** versions. A major version requires an actual breaking public contract,

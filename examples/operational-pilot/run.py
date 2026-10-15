@@ -132,13 +132,26 @@ class PilotMonitor(MonitorCollector):
                     OVERHEAD_SECONDS,
                 ),
             )
+            previous = next(
+                (
+                    saved
+                    for saved in self.report.runs
+                    if saved.build_id == run.build_id and saved.candidate_id == run.candidate_id
+                ),
+                None,
+            )
+            if previous is not None:
+                if (previous.ranking, previous.events) != (run.ranking, run.events):
+                    raise ValueError("Replayed native decision conflicts with completed checkpoint")
+                run = previous
             metrics = verify_run(self.manifest, run)
-            if (run.candidate_id, run.build_id) not in self.report.missing:
-                super().collect(params)
-                return
-            self.report = self.report.append(run)
-            publish_pilot_report(self.report, self.writer)
             first = metrics.first_failure_elapsed
+            existing = self.sink.read_domain_record(
+                self.run_id,
+                self.candidate,
+                build.build_id,
+                namespace="pilot.ci",
+            )
             record = DomainRecord(
                 schema_version=1,
                 namespace="pilot.ci",
@@ -146,12 +159,18 @@ class PilotMonitor(MonitorCollector):
                 execution_id=self.candidate,
                 decision_id=build.build_id,
                 data_fingerprint=self.manifest.dataset_fingerprint,
-                available_at=datetime.now(UTC),
+                available_at=existing.available_at if existing is not None else datetime.now(UTC),
                 provenance=ResultProvenance(
                     producer="coleman.operational-pilot-example",
                     producer_version="1",
                     spec_fingerprint=self.manifest.fingerprint,
-                    evaluation_fingerprint=fingerprint(run.model_dump(mode="json")),
+                    # Audit measurements describe replayed outcomes, not a particular
+                    # timing attempt. Repeating after audit commit but before the
+                    # checkpoint may measure different overhead without changing
+                    # this record. Its actual original availability is retained.
+                    evaluation_fingerprint=fingerprint(
+                        run.model_dump(mode="json", exclude={"prioritization_overhead"})
+                    ),
                 ),
                 measurements=(
                     Measurement(
@@ -173,6 +192,11 @@ class PilotMonitor(MonitorCollector):
                 ),
             )
             params = replace(params, domain_records=(record,))
+            super().collect(params)  # synchronous replay-safe audit precedes snapshot
+            updated = self.report.append(run)
+            publish_pilot_report(updated, self.writer)
+            self.report = updated
+            return
         super().collect(params)
 
 

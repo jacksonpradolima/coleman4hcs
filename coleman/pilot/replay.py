@@ -75,6 +75,17 @@ def serial_events(build: PilotBuild, ranking: tuple[str, ...], budget: Quantity)
     return tuple(events)
 
 
+def _verified_events(build: PilotBuild, events: tuple[ExecutionEvent, ...]) -> tuple[ExecutionEvent, ...]:
+    """Validate event identity and the common first-dispatch origin before accounting."""
+    verified = tuple(ExecutionEvent.model_validate(event) for event in events)
+    if verified and min(event.started.value for event in verified) != 0:
+        raise ValueError("Event offsets must start at the first dispatch (zero)")
+    ids = [event.test_id for event in verified]
+    if len(set(ids)) != len(ids) or not set(ids).issubset(test.test_id for test in build.tests):
+        raise ValueError("Duplicate or unknown execution identity")
+    return verified
+
+
 def replay_events(build: PilotBuild, events: tuple[ExecutionEvent, ...], price: Quantity) -> ReplayMetrics:
     """Verify explicit serial/parallel events against complete immutable source rows.
 
@@ -90,10 +101,7 @@ def replay_events(build: PilotBuild, events: tuple[ExecutionEvent, ...], price: 
     if price.semantics != RATE:
         raise ValueError("Incompatible variable price")
     tests = {test.test_id: test for test in build.tests}
-    verified = tuple(ExecutionEvent.model_validate(event) for event in events)
-    ids = [event.test_id for event in verified]
-    if len(set(ids)) != len(ids) or not set(ids).issubset(tests):
-        raise ValueError("Duplicate or unknown execution identity")
+    verified = _verified_events(build, events)
     worker_end: dict[str, int] = {}
     work = 0
     failures_at = []
