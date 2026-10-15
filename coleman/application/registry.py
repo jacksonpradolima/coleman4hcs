@@ -269,6 +269,8 @@ def _inspect_native_input(item: PortableFile) -> tuple[int, int]:
         raise ValueError("Native durations require numeric seconds and testcase names require strings")
     if any(table[column].null_count() for column in required):
         raise ValueError("Null native input values are not admitted")
+    if table["BuildId"].cast(pl.Int64, strict=False).null_count():
+        raise ValueError("Native BuildId values must fit the loader's signed Int64 range")
     if not table["Duration"].is_finite().all() or (table["Duration"] < 0).any():
         raise ValueError("Native durations require finite nonnegative seconds")
     _validate_native_durations(table["Duration"])

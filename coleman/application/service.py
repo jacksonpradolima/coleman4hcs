@@ -142,16 +142,27 @@ class ApplicationService:
             {key: min(value, getattr(self.policy.caps, key)) for key, value in requested.model_dump().items()}
         )
 
-    def _admission(self, limits: Limits) -> None:
-        """Reserve worst-case retained output and bounded queue slots before side effects."""
+    def _can_start(self, limits: Limits, running: list[_Job]) -> bool:
+        """Check actual active slots and their memory reservations under the lifecycle lock."""
+        return len(running) < self.policy.max_running and (
+            sum(job.view.limits.max_memory_bytes for job in running) + limits.max_memory_bytes
+            <= self.policy.max_active_memory_bytes
+        )
+
+    def _admission(self, limits: Limits, *, execution: bool = True) -> None:
+        """Reserve retained output and real pending capacity, accounting for memory-limited workers."""
+        if execution:
+            self._start_ready()
         live = [job for job in self._jobs.values() if job.view.state != "expired"]
-        active = [job for job in live if job.view.state not in TERMINAL]
+        running = [job for job in live if job.view.state == "running"]
+        queued = sum(job.view.state == "queued" for job in live)
+        queue_full = execution and not self._can_start(limits, running) and queued >= self.policy.max_queued
         if (
             len(self._jobs) >= self.policy.max_jobs
-            or len(active) >= self.policy.max_running + self.policy.max_queued
+            or queue_full
             or sum(job.view.limits.max_output_bytes for job in live) + limits.max_output_bytes
             > self.policy.max_retained_bytes
-            or limits.max_memory_bytes > self.policy.max_active_memory_bytes
+            or (execution and limits.max_memory_bytes > self.policy.max_active_memory_bytes)
         ):
             raise ApplicationError("resource_limit", "Session job, queue, output or memory reservation exhausted")
 
@@ -214,8 +225,9 @@ class ApplicationService:
             )
             self._jobs[job_id] = _Job(caller.subject, digest, view, directory, time.monotonic(), configuration)
             self._requests[key] = job_id
+            self._start_ready()
             self._condition.notify_all()
-            return view
+            return self._jobs[job_id].view
 
     def _access(self, job_id: str, caller: Caller) -> _Job:
         """Authenticate using host context before exposing lifecycle or checking digests."""
@@ -297,7 +309,7 @@ class ApplicationService:
             limits = self.policy.caps
             if len(content.encode("utf-8")) > limits.max_output_bytes:
                 raise ApplicationError("resource_limit", "Canonical portable input exceeds output cap")
-            self._admission(limits)
+            self._admission(limits, execution=False)
             job_id = uuid.uuid4().hex
             directory = self._publish(job_id, "result.json", content)
             handle = Handle(schema_version=1, job_id=job_id, digest=bundle.fingerprint)
@@ -411,11 +423,12 @@ class ApplicationService:
         """Start only admitted jobs for which concurrency and aggregate memory slots exist."""
         running = [job for job in self._jobs.values() if job.view.state == "running"]
         for job in self._jobs.values():
-            if job.view.state != "queued" or len(running) >= self.policy.max_running:
+            if job.view.state != "queued":
                 continue
-            if sum(item.view.limits.max_memory_bytes for item in running) + job.view.limits.max_memory_bytes > (
-                self.policy.max_active_memory_bytes
-            ):
+            if time.monotonic() - job.admitted >= job.view.limits.deadline_seconds:
+                self._finish(job, "expired", "expired")
+                continue
+            if not self._can_start(job.view.limits, running):
                 continue
             environment = {**os.environ, "POLARS_MAX_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1"}
             try:

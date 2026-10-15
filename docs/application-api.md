@@ -167,6 +167,8 @@ non-null native required columns. Invalid rows are rejected; this adapter never
 invokes the legacy loader's null-duration-to-zero coercion. The direct legacy
 loader remains compatible with its existing callers. Algorithm overrides are
 outside the approved Random baseline registration surface in v1.
+Build IDs must also survive the native loader's signed Int64 conversion; values
+outside that range are rejected before execution.
 Registration also checks the actual native duration conversion (Float64 loader
 then the bandit's Float32 schema): overflow and positive-to-zero underflow are
 rejected. Genuine zero and representable subnormal durations remain valid;
@@ -210,6 +212,11 @@ not a hard memory allocator or hostile-code sandbox. The underlying SDK stdio
 framing is for a trusted local client and is not an untrusted network ingress
 limit. Hosted deployment needs its own authenticated, size/concurrency-limited
 gateway and process/resource isolation; v1 provides none.
+Pending admission counts actual capacity after active memory reservations:
+unused concurrency slots do not expand the pending queue when memory prevents
+their use. Jobs that fit an available slot start before `submit` returns;
+otherwise the finite pending-queue cap applies. A zero queue cap permits only
+immediate starts. Portable evidence imports require storage, not a worker slot.
 
 Completion retains only the validated portable JSON bundle. Native work files,
 input copies and private request files are removed after the worker exits, before
@@ -223,6 +230,7 @@ stateDiagram-v2
     [*] --> queued: validated and admitted
     queued --> running: worker and memory slot
     queued --> cancelled: cancel wins
+    queued --> failed: worker startup fails
     queued --> expired: elapsed deadline
     running --> completed: exit zero and validated immutable JSON
     running --> failed: native error or resource refusal

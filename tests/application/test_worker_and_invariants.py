@@ -176,6 +176,38 @@ def test_aggregate_worker_memory_slots_delay_a_second_admitted_job(tmp_path):
         assert service.wait(second.job_id, caller=caller).state == "completed"
 
 
+def test_memory_limited_execution_does_not_expand_the_pending_queue(tmp_path):
+    caller = Caller(subject="local")
+    policy = ServerPolicy(max_running=4, max_queued=1, max_active_memory_bytes=536870912)
+    with ApplicationService(default_registry(), root=tmp_path, policy=policy) as service, service._condition:
+        first = service.submit(Submit(schema_version=1, request_id="one", spec_id="native-ci-smoke-v1"), caller=caller)
+        second = service.submit(Submit(schema_version=1, request_id="two", spec_id="native-ci-smoke-v1"), caller=caller)
+        third = Submit(schema_version=1, request_id="three", spec_id="native-ci-smoke-v1")
+        with pytest.raises(ApplicationError) as error:
+            service.submit(third, caller=caller)
+        assert error.value.code == "resource_limit"
+        assert service.status(first.job_id, caller=caller).state == "running"
+        assert service.status(second.job_id, caller=caller).state == "queued"
+
+
+def test_zero_pending_capacity_allows_only_immediate_starts_and_evidence_imports(tmp_path):
+    caller = Caller(subject="local")
+    policy = ServerPolicy(max_running=4, max_queued=0, max_active_memory_bytes=536870912)
+    evidence = execute(WorkItem(configuration=default_registry()[0], limits=Limits())).to_json()
+    with ApplicationService(default_registry(), root=tmp_path, policy=policy) as service, service._condition:
+        active = service.submit(
+            Submit(schema_version=1, request_id="active", spec_id="native-ci-smoke-v1"), caller=caller
+        )
+        assert active.state == "running"
+        pending = Submit(schema_version=1, request_id="pending", spec_id="native-ci-smoke-v1")
+        with pytest.raises(ApplicationError) as error:
+            service.submit(pending, caller=caller)
+        assert error.value.code == "resource_limit"
+        imported = service.import_result(evidence, caller=caller)
+        assert imported.state == "completed"
+        service.cancel(active.job_id, caller=caller)
+
+
 @pytest.mark.parametrize("field,value", [("work_units", 1), ("work_units", 3), ("max_candidates", 1)])
 def test_native_resource_claims_replay_actual_input_dimensions(field, value):
     native = default_registry()[2].problem
@@ -187,7 +219,17 @@ def test_native_resource_claims_replay_actual_input_dimensions(field, value):
 
 @pytest.mark.parametrize(
     "change",
-    ["null_duration", "nonfinite", "negative", "duplicate", "missing", "float_build", "overflow32", "underflow32"],
+    [
+        "null_duration",
+        "nonfinite",
+        "negative",
+        "duplicate",
+        "missing",
+        "float_build",
+        "overflow32",
+        "underflow32",
+        "build_overflow64",
+    ],
 )
 def test_native_invalid_rows_refused_during_registration(change):
     import polars as pl
@@ -205,6 +247,8 @@ def test_native_invalid_rows_refused_during_registration(change):
         table = table.drop("CalcPrio")
     elif change in {"overflow32", "underflow32"}:
         table = table.with_columns(pl.lit(1e100 if change == "overflow32" else 1e-100).alias("Duration"))
+    elif change == "build_overflow64":
+        table = table.with_columns(pl.Series("BuildId", [2**63] * 3 + [2**63 + 1] * 3, dtype=pl.UInt64))
     else:
         table = table.with_columns(pl.col("BuildId").cast(pl.Float64))
     stream = io.BytesIO()
@@ -247,6 +291,28 @@ def test_zero_and_representable_native_duration_endpoints_remain_valid(value):
     assert actual[0] == value
 
 
+@pytest.mark.parametrize("value", [-(2**63), 0, 2**63 - 1])
+def test_native_build_id_int64_boundaries_remain_valid(value):
+    import polars as pl
+
+    native = default_registry()[2].problem
+    assert isinstance(native, NativeConfiguration)
+    table = pl.read_parquet(base64.b64decode(native.inputs[0].content_base64))
+    other = value + 1 if value < 2**63 - 1 else value - 1
+    table = table.with_columns(pl.Series("BuildId", [value] * 3 + [other] * 3, dtype=pl.Int64))
+    stream = io.BytesIO()
+    table.write_parquet(stream)
+    content = stream.getvalue()
+    item = PortableFile(
+        name=native.inputs[0].name,
+        sha256=hashlib.sha256(content).hexdigest(),
+        size_bytes=len(content),
+        content_base64=base64.b64encode(content).decode(),
+    )
+    validated = NativeConfiguration.model_validate({**native.model_dump(), "inputs": (item,)})
+    assert validated.work_units == 2
+
+
 def test_artifact_io_failure_is_safe_and_does_not_consume_admission(tmp_path, monkeypatch):
     from coleman.artifacts import ArtifactWriter
 
@@ -278,6 +344,7 @@ def test_interrupted_or_invalid_worker_write_cannot_complete_a_job(tmp_path, exi
             job = service._jobs[view.job_id]
             # Fault injection uses a real child and filesystem; the normal
             # integration tests use unmodified native solvers and runner.
+            service._reap_worker(job)
             script = (
                 "from pathlib import Path; import os; "
                 f"Path('result.json').write_text({partial!r}); os._exit({exit_code})"

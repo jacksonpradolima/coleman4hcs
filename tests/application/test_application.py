@@ -199,14 +199,16 @@ def test_effective_server_limits_and_concurrent_idempotency(tmp_path):
 
 
 def test_queue_saturation_and_cancel_before_start(tmp_path):
-    policy = ServerPolicy(max_running=1, max_queued=0)
+    policy = ServerPolicy(max_running=1, max_queued=1)
     with ApplicationService(default_registry(), root=tmp_path, policy=policy) as service:
         # Hold the lifecycle lock only to make queue admission deterministic.
         with service._condition:
+            running = service.submit(request("running", spec_id="native-ci-smoke-v1"), caller=CALLER)
             view = service.submit(request(), caller=CALLER)
             assert view.state == "queued"
             expect_code("resource_limit", service.submit, request("extra"), caller=CALLER)
             cancelled = service.cancel(view.job_id, caller=CALLER)
+            service.cancel(running.job_id, caller=CALLER)
         assert cancelled.state == "cancelled"
         assert service.cancel(view.job_id, caller=CALLER) == cancelled
         assert service.submit(request(), caller=CALLER) == cancelled
@@ -215,11 +217,8 @@ def test_queue_saturation_and_cancel_before_start(tmp_path):
 
 def test_cancel_running_reaps_worker_without_false_completed_artifact(tmp_path):
     with ApplicationService(default_registry(), root=tmp_path) as service:
-        view = service.submit(request(), caller=CALLER)
-        until = time.monotonic() + 5
-        while service.status(view.job_id, caller=CALLER).state == "queued" and time.monotonic() < until:
-            time.sleep(0.001)
         with service._condition:
+            view = service.submit(request(), caller=CALLER)
             job = service._jobs[view.job_id]
             assert job.view.state == "running"
             process = job.process
