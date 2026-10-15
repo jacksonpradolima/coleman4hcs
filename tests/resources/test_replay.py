@@ -252,3 +252,21 @@ def test_zero_work_feedback_stays_observed_and_fractional_savings_remain_inconcl
     assert pair.net_saving_ms == 1
     assert pair.gate == "inconclusive"
     assert "zero_baseline_work" in pair.reasons
+
+
+def test_detached_selection_and_comparison_carry_units_and_semantics(example):
+    protocol, _ = example.fixture()
+    baseline = replay(protocol)
+    candidate = replay(protocol, "shortest-estimate")
+    selection = baseline.selection
+    assert selection.semantics == RUNNER_MS
+    assert selection.model_dump(mode="json")["semantics"] == RUNNER_MS.model_dump(mode="json")
+    report = ResourceReplayReport(schema_version=1, protocol=protocol, runs=(baseline, candidate))
+    (pair,) = report.comparisons()
+    assert pair.semantics == RUNNER_MS
+    wrong = pair.model_dump(mode="json")
+    wrong["semantics"]["meaning"] = "execution-elapsed-v1"
+    from coleman.resources import ResourceComparison
+
+    with pytest.raises(ValueError, match="occupied runner milliseconds"):
+        ResourceComparison.model_validate(wrong)

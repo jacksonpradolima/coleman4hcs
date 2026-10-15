@@ -10,10 +10,11 @@ from pydantic import Field, model_validator
 
 from coleman.artifacts import ArtifactWriter
 from coleman.pilot.contracts import AdoptionThresholds
+from coleman.resources.contracts import RUNNER_MS
 from coleman.resources.replay import ResourceReplayProtocol, ResourceReplayRun
 from coleman.results.domain import Identifier
 from coleman.results.versioned import VersionedContract
-from coleman.selection.contracts import Immutable
+from coleman.selection.contracts import Immutable, UnitSemantics
 
 
 class ResourceComparison(Immutable):
@@ -29,9 +30,17 @@ class ResourceComparison(Immutable):
     build_id: Identifier
     work_saving_ms: Annotated[int, Field(strict=True)]
     net_saving_ms: Annotated[int, Field(strict=True)]
+    semantics: UnitSemantics
     gate: Literal["pass", "fail", "inconclusive"]
     reasons: tuple[Identifier, ...]
     adoption: Literal["insufficient_evidence"] = "insufficient_evidence"
+
+    @model_validator(mode="after")
+    def _units(self) -> Self:
+        """Require occupied runner milliseconds for both signed comparison deltas."""
+        if self.semantics != RUNNER_MS:
+            raise ValueError("Resource comparisons require occupied runner milliseconds")
+        return self
 
 
 def _compare_pair(
@@ -74,6 +83,7 @@ def _compare_pair(
         build_id=run.native_run.build_id,
         work_saving_ms=work_saving,
         net_saving_ms=net_saving,
+        semantics=RUNNER_MS,
         gate="fail" if failed else "inconclusive" if reasons else "pass",
         reasons=tuple(reasons),
     )

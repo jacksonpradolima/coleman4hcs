@@ -10,7 +10,7 @@ from coleman.evaluation.protected.temporal import Timestamp
 from coleman.resources.contracts import ResourceAmount, ResourceEstimate
 from coleman.results.domain import Fingerprint, Identifier
 from coleman.results.versioned import VersionedContract
-from coleman.selection.contracts import Immutable
+from coleman.selection.contracts import Immutable, UnitSemantics
 
 
 class TestEstimate(Immutable):
@@ -61,6 +61,7 @@ class ResourceSelection(Immutable):
 
     selected_ids: tuple[Identifier, ...]
     estimated_units: int
+    semantics: UnitSemantics
     disposition: Literal["ranked_prefix", "full_suite_fallback", "no_action"]
     reason: Literal["eligible", "ineligible_estimate", "priority_fallback", "fallback_infeasible"]
 
@@ -79,7 +80,11 @@ def select_resources(request: ResourceRequest) -> ResourceSelection:
         for estimate in estimates.values()
     ):
         return ResourceSelection(
-            selected_ids=(), estimated_units=0, disposition="no_action", reason="ineligible_estimate"
+            selected_ids=(),
+            estimated_units=0,
+            semantics=request.capacity.semantics,
+            disposition="no_action",
+            reason="ineligible_estimate",
         )
     costs = {key: estimate.amount.value for key, estimate in estimates.items() if estimate is not None}
     if request.priority_status != "available":
@@ -87,11 +92,16 @@ def select_resources(request: ResourceRequest) -> ResourceSelection:
             return ResourceSelection(
                 selected_ids=request.ranking,
                 estimated_units=sum(costs.values()),
+                semantics=request.capacity.semantics,
                 disposition="full_suite_fallback",
                 reason="priority_fallback",
             )
         return ResourceSelection(
-            selected_ids=(), estimated_units=0, disposition="no_action", reason="fallback_infeasible"
+            selected_ids=(),
+            estimated_units=0,
+            semantics=request.capacity.semantics,
+            disposition="no_action",
+            reason="fallback_infeasible",
         )
     selected = []
     occupied = 0
@@ -101,5 +111,9 @@ def select_resources(request: ResourceRequest) -> ResourceSelection:
         selected.append(test_id)
         occupied += costs[test_id]
     return ResourceSelection(
-        selected_ids=tuple(selected), estimated_units=occupied, disposition="ranked_prefix", reason="eligible"
+        selected_ids=tuple(selected),
+        estimated_units=occupied,
+        semantics=request.capacity.semantics,
+        disposition="ranked_prefix",
+        reason="eligible",
     )
