@@ -88,7 +88,8 @@ class ObservationHistory(VersionedContract):
     Source ID/version describe the appendable provider/schema identity, not a hash
     of future history. Whole-history fingerprints intentionally change on append;
     selected-view fingerprints do not include those future values. Identical
-    duplicate revisions are idempotent; changed values/first receipts conflict.
+    duplicate revisions require identical canonical JSON; changed values, signed-zero
+    representations or first receipts conflict.
     Missing parents, forks, cycles and changed logical/measurement semantics fail.
     Out-of-order delivery is supported; explicit lineage orders equal timestamps.
     """
@@ -104,7 +105,7 @@ class ObservationHistory(VersionedContract):
         for row in self.revisions:
             key = row.metadata.observation_id, row.metadata.revision_id
             previous = unique.setdefault(key, row)
-            if previous != row:
+            if previous is not row and previous.to_json() != row.to_json():
                 raise ValueError("Conflicting observation revision or first receipt")
         rows = tuple(unique[key] for key in sorted(unique))
         _chains(rows)

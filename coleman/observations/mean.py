@@ -242,7 +242,7 @@ class QuantityMeanModel(VersionedContract):
         if signal.maximum_event_age is None:
             raise ValueError("Mean signal is missing its freshness policy")
         expected = self.signal(signal.request, maximum_event_age=signal.maximum_event_age)
-        if signal != expected:
+        if signal.to_json() != expected.to_json():
             raise ValueError("Signal disagrees with its frozen model and eligible training evidence")
         return signal
 

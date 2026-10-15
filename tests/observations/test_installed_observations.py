@@ -61,7 +61,8 @@ def test_installed_base_wheel_real_native_fresh_stale_resume_and_documentation(t
     assert {result["case"] for result in results} == {"fresh", "stale"}
     snapshots = {}
     for result in results:
-        assert result["signals"] == 6 and result["evidence"] == "synthetic_functional_only"
+        assert result["signals"] == 6
+        assert result["evidence"] == "synthetic_functional_only"
         root = Path(result["artifacts_dir"])
         snapshots[result["case"]] = mathematical_artifacts(root)
         assert len(snapshots[result["case"]]) == 13

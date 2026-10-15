@@ -278,11 +278,14 @@ def test_training_freeze_ignores_validation_and_late_corrections(source, plan, m
 
 def test_missing_stale_zero_and_signed_uncalibrated_scores(model):
     fresh = model.signal(request("test-b"), maximum_event_age=quantity(1000000))
-    assert fresh.measurement.value == 0 and fresh.measurement.status == "observed"
+    assert fresh.measurement.value == 0
+    assert fresh.measurement.status == "observed"
     missing = model.signal(request("unknown"), maximum_event_age=quantity(1000000))
-    assert missing.measurement.value is None and missing.availability == "missing"
+    assert missing.measurement.value is None
+    assert missing.availability == "missing"
     stale = model.signal(request("test-b"), maximum_event_age=quantity(0))
-    assert stale.measurement.value is None and stale.availability == "stale"
+    assert stale.measurement.value is None
+    assert stale.availability == "stale"
     elapsed = request().decided_at - model.estimates[0].latest_event_at
     boundary = elapsed.days * 86400 + elapsed.seconds
     assert model.signal(request(), maximum_event_age=quantity(boundary)).availability == "available"
@@ -558,8 +561,10 @@ def test_latest_unavailable_revision_does_not_revive_an_obsolete_zero():
     source = history(first, later)
     early = source.as_of(instant("2026-01-02T10:00:03Z")).observations[0]
     current = source.as_of(instant("2026-01-02T10:05:00Z")).observations[0]
-    assert early.measurement.value == 0 and early.measurement.status == "observed"
-    assert current == later and current.measurement.value is None
+    assert early.measurement.value == 0
+    assert early.measurement.status == "observed"
+    assert current == later
+    assert current.measurement.value is None
     assert current.measurement.status == "unavailable"
 
 
@@ -626,3 +631,28 @@ def test_signal_publication_rejects_conflicting_values_for_one_logical_decision(
         publish_signal(conflicting, writer)
     assert DecisionSignal.from_json(path.read_bytes()) == signal
     assert len(list(tmp_path.rglob("decision-signals/*.json"))) == 1
+
+
+@pytest.mark.parametrize("field", ["value", "minimum"])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_signed_zero_duplicate_revisions_conflict_by_canonical_content(field, reverse):
+    root = revision(value=0.0)
+    root = changed(root, measurement=changed(root.measurement, minimum=0.0))
+    signed = changed(root, measurement=changed(root.measurement, **{field: -0.0}))
+    assert root == signed  # Numerical equality alone cannot establish identical serialized input.
+    assert root.to_json() != signed.to_json()
+    rows = (signed, root) if reverse else (root, signed)
+    with pytest.raises(ValueError, match="Conflicting observation"):
+        history(*rows)
+    assert history(root, root).fingerprint == history(root).fingerprint
+    assert history(signed, signed).fingerprint == history(signed).fingerprint
+
+
+@pytest.mark.parametrize("field", ["value", "minimum"])
+def test_mean_verifier_rejects_signed_zero_payload_drift(model, field):
+    signal = model.signal(request("test-b"), maximum_event_age=quantity(1000000))
+    signed = changed(signal, measurement=changed(signal.measurement, **{field: -0.0}))
+    assert signed == signal
+    assert signed.fingerprint != signal.fingerprint
+    with pytest.raises(ValueError, match="evidence"):
+        model.verify_signal(signed)

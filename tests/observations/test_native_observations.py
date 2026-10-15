@@ -19,7 +19,8 @@ ROOT = Path(__file__).parents[2]
 def example():
     name = "coleman_owned_observation_ci_fixture"
     spec = importlib.util.spec_from_file_location(name, ROOT / "examples/point-in-time/ci.py")
-    assert spec is not None and spec.loader is not None
+    assert spec is not None
+    assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
     spec.loader.exec_module(module)

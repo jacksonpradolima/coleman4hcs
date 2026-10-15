@@ -5378,7 +5378,10 @@ collisions. Measurement names/units/meaning, entity, event/group and target inte
 stay stable across a lineage. Revisions can change values and missingness, with
 explicit availability. Each lineage has one root and one successor per revision;
 missing parents, cycles, forks and conflicting duplicates fail. Identical retries
-are idempotent, including their unchanged **first** receipt time.
+are idempotent, including their unchanged **first** receipt time. Duplicate payloads
+are compared by canonical serialized content. COLEMAN JSON v1 preserves signed
+float zero: `0.0` and `-0.0` for one revision key are conflicting representations,
+not an input-order-dependent choice. Existing domain JSON semantics are unchanged.
 
 `history.as_of(cutoff)` selects one latest eligible member per logical observation.
 Cutoffs are inclusive. Explicit lineage orders ties; revision names are never
@@ -5470,8 +5473,8 @@ bound permits them. A negative score remains negative. A priority score is not a
 calibrated probability, reward, causal effect or hypothesis-test result.
 Generic readers validate schema/chronology/metadata without executing arbitrary
 producer code. For a serialized mean signal, call `model.verify_signal(signal)`
-to check the complete value, status, parameters and provenance against its frozen
-training evidence before use.
+to check the complete canonical value, status, parameters and provenance against
+its frozen training evidence before use, including signed-zero representation.
 
 ## Complete installed library example
 
