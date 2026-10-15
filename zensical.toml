@@ -22,6 +22,7 @@ nav = [
   { "Protected Evaluation" = "protected-evaluation.md" },
   { "Finite Coverage Selection" = "finite-coverage.md" },
   { "Scenario Payoff Allocation" = "scenario-payoffs.md" },
+  { "CI Benchmark Corpus Foundation" = "benchmark-corpus.md" },
   { "Operational CI Pilot" = "operational-pilot.md" },
   { "Independent Decision Benchmarks" = "decision-benchmarks.md" },
   { "Bounded Application API & MCP" = "application-api.md" },
