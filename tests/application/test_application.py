@@ -140,8 +140,9 @@ def test_command_input_caps_duplicates_and_stable_errors(tmp_path):
         expect_code("invalid_input", service.submit, {}, caller=CALLER)
         with pytest.raises(ValueError):
             ApplicationService((), root=tmp_path)
+        duplicated = default_registry() * 2
         with pytest.raises(ValueError):
-            ApplicationService(default_registry() * 2, root=tmp_path)
+            ApplicationService(duplicated, root=tmp_path)
 
 
 def test_json_decimal_literals_are_validated_before_binary64_rounding(tmp_path):
@@ -416,3 +417,44 @@ assert not any(name == 'mcp' or name.startswith('mcp.') for name in sys.modules)
 assert not any(name.startswith('coleman.transports') for name in sys.modules)
 """
     subprocess.run([sys.executable, "-c", script], check=True, timeout=10)
+
+
+@pytest.mark.parametrize(
+    "limits,error",
+    [
+        ({"deadline_seconds": 0.000000001}, "expired"),
+        ({"max_output_bytes": 1024}, "resource_limit"),
+    ],
+)
+def test_cli_terminal_errors_keep_the_versioned_response_envelope(limits, error):
+    output = subprocess.run(
+        [sys.executable, "-m", "coleman.cli", "application", "--request", request(limits=limits).to_json()],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert output.returncode == 2
+    reply = json.loads(output.stdout)
+    assert reply["schema_version"] == 1
+    assert reply["ok"] is False
+    assert reply["error"] == error
+    assert reply["data"]["handle"] is None
+
+
+@pytest.mark.parametrize("seed,repetitions", [(-1, 1), (2**64, 1), (2**64 - 1, 2)])
+def test_native_rng_seed_and_every_repetition_are_validated_before_admission(tmp_path, seed, repetitions):
+    spec, _ = native_registration(tmp_path)
+    spec.execution.seed = seed
+    spec.execution.independent_executions = repetitions
+    with pytest.raises(ValueError, match="seed"):
+        register_experiment("invalid-seed", spec)
+
+
+@pytest.mark.parametrize("seed", [0, 2**64 - 1])
+def test_valid_rng_endpoints_execute_through_the_real_native_runner(tmp_path, seed):
+    spec, _ = native_registration(tmp_path)
+    spec.execution.seed = seed
+    configuration = register_experiment("rng-endpoint", spec)
+    with ApplicationService((configuration,), root=tmp_path / "service") as service:
+        _, bundle = completed(service, request(spec_id="rng-endpoint"))
+        assert bundle.kind == "experiment"

@@ -155,6 +155,7 @@ def _cmd_application(args: argparse.Namespace) -> None:
 
     from coleman.application import ApplicationService, Caller, default_registry
     from coleman.application.commands import ApplicationCommands
+    from coleman.results.domain import canonical_json
 
     caller = Caller(subject="local-cli")
     with (
@@ -169,7 +170,17 @@ def _cmd_application(args: argparse.Namespace) -> None:
             raise SystemExit(2)
         view = service.wait(reply["data"]["job_id"], caller=caller)
         if view.handle is None:
-            print(view.to_json())
+            print(
+                canonical_json(
+                    {
+                        "schema_version": 1,
+                        "ok": False,
+                        "error": view.error or "unavailable_result",
+                        "message": "Job terminated without a completed result",
+                        "data": view.model_dump(mode="json"),
+                    }
+                )
+            )
             raise SystemExit(2)
         print(commands.invoke("result", view.handle.to_json()))
 

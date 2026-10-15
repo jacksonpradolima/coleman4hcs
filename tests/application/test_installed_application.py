@@ -21,17 +21,46 @@ def test_installed_base_and_optional_tools_outside_checkout_offline(tmp_path):
     environment = {**os.environ, "UV_OFFLINE": "1", "UV_NO_PROGRESS": "1", "UV_LINK_MODE": "copy"}
 
     def command(arguments, cwd=tmp_path):
-        return subprocess.run(
-            arguments, cwd=cwd, env=environment, check=True, capture_output=True, text=True, timeout=180
-        )
+        completed = subprocess.run(arguments, cwd=cwd, env=environment, capture_output=True, text=True, timeout=180)
+        assert completed.returncode == 0, completed.stderr
+        return completed
 
     distributions = tmp_path / "dist"
-    command([uv, "build", "--out-dir", str(distributions)], ROOT)
+    command([uv, "build", "--no-build-isolation", "--python", sys.executable, "--out-dir", str(distributions)], ROOT)
     wheel = next(distributions.glob("*.whl"))
     virtual = tmp_path / "installed"
     command([uv, "venv", str(virtual), "--python", sys.executable])
     python = virtual / "bin/python"
-    command([uv, "pip", "install", "--python", str(python), str(wheel)])
+
+    def dependency_setup(*extras):
+        # Frozen sync uses audited artifact URLs from uv.lock. Offline pip
+        # resolution instead requires index metadata not populated by CI's
+        # frozen install, even when every required wheel is already cached.
+        arguments = [
+            uv,
+            "sync",
+            "--frozen",
+            "--offline",
+            "--no-default-groups",
+            "--no-dev",
+            "--no-install-project",
+            "--inexact",
+            "--python",
+            str(python),
+            *extras,
+        ]
+        setup = subprocess.run(
+            arguments,
+            cwd=ROOT,
+            env={**environment, "UV_PROJECT_ENVIRONMENT": str(virtual)},
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        assert setup.returncode == 0, setup.stderr
+
+    dependency_setup()
+    command([uv, "pip", "install", "--no-deps", "--python", str(python), str(wheel)])
     assert not tmp_path.is_relative_to(ROOT)
     base = tmp_path / "base.py"
     base.write_text("""
@@ -73,7 +102,7 @@ print(json.dumps({"base":"verified","mcp":False}))
     cli = json.loads(command([str(virtual / "bin/coleman"), "application", "--request", request]).stdout)
     assert cli["ok"]
     assert cli["data"] == json.loads((tmp_path / "expected.json").read_text())
-    command([uv, "pip", "install", "--python", str(python), f"{wheel}[mcp]"])
+    dependency_setup("--extra", "mcp")
     host = tmp_path / "host.py"
     host.write_text("""
 from pathlib import Path
@@ -89,12 +118,14 @@ with TemporaryDirectory() as directory:
     optional.write_text("""
 import asyncio,base64,json,sys
 import polars as pl
+import coleman
 from pathlib import Path
 from mcp.client import Client
 from mcp.client.stdio import StdioServerParameters
 from coleman.application import Limits,ResultBundle,Submit
 
 async def main():
+    assert Path(coleman.__file__).resolve().is_relative_to(Path.cwd() / "installed")
     async with Client(StdioServerParameters(command=sys.executable,args=["host.py"])) as client:
         assert len((await client.list_tools()).tools) == 7
         async def call(name,arguments):

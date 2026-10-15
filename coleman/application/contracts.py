@@ -203,11 +203,30 @@ class PortableFile(Immutable):
         return self
 
 
+class PortableNativeProvenance(ApplicationContract):
+    """Explicit derivative of native provenance without ambient server filesystem context.
+
+    The source digest binds the original local artifact for host-side audit; it
+    does not authenticate a producer. Only runtime facts are copied. Redaction
+    is explicit and versioned; the existing native artifact is never modified.
+    """
+
+    artifact_type: Literal["portable-native-provenance-v1"] = "portable-native-provenance-v1"
+    producer: Literal["coleman.api.run"] = "coleman.api.run"
+    producer_version: Annotated[str, Field(strict=True, min_length=1, max_length=128)]
+    source_sha256: Fingerprint
+    python_version: Annotated[str, Field(strict=True, min_length=1, max_length=512)]
+    platform: Annotated[str, Field(strict=True, min_length=1, max_length=512)]
+    redacted_fields: tuple[Literal["cwd"], Literal["git"], Literal["uv_lock_hash"]] = ("cwd", "git", "uv_lock_hash")
+
+
 class ExperimentResult(ApplicationContract):
     """Native api.run receipt with original artifact bytes and stable resolved run identity.
 
     No metrics are inferred from an empty RunResult.metrics. Files include native
-    resolved specification/provenance and retain their own compatibility contracts.
+    result/specification bytes and an explicitly versioned, redacted derivative
+    of provenance. Original native provenance remains unchanged locally and is
+    never exported by execution. Imported files retain their declared contracts.
     Runtime timestamps and measurements may differ between equivalent experiments.
     """
 

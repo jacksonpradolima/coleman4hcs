@@ -19,6 +19,7 @@ from coleman.application import (
     Handle,
     Limits,
     Parameters,
+    PortableNativeProvenance,
     ServerPolicy,
     Submit,
     default_registry,
@@ -36,7 +37,8 @@ def test_budget_monotonicity_and_decimal_spelling_metamorphic_properties():
         config = base.resolve(Parameters(budget=Decimal(value)), Limits())
         result = execute(WorkItem(configuration=config, limits=Limits())).result
         assert isinstance(result, CoverageResult)
-        assert result.cost is not None and result.objective is not None
+        assert result.cost is not None
+        assert result.objective is not None
         assert result.status == "optimal"
         assert result.cost.value <= value
         objectives.append(result.objective.value)
@@ -64,6 +66,31 @@ def test_native_execution_adapter_in_process_preserves_real_artifacts(tmp_path, 
     assert result.result.work_units == 2
     assert (tmp_path / "run" / result.result.run_id / "provenance.json").exists()
     assert ResultBundle.from_json(result.to_json()) == result
+
+
+def test_portable_provenance_hides_host_context_and_explicitly_binds_original_bytes(tmp_path, monkeypatch):
+    work = tmp_path / "host-private-root"
+    work.mkdir()
+    monkeypatch.chdir(work)
+    bundle = execute(WorkItem(configuration=default_registry()[2], limits=Limits()))
+    assert isinstance(bundle.result, ExperimentResult)
+    file = next(item for item in bundle.result.files if item.name == "provenance.json")
+    content = base64.b64decode(file.content_base64)
+    portable = json.loads(content)
+    parsed = PortableNativeProvenance.from_json(content)
+    assert parsed.to_json().encode() == content
+    assert str(work).encode() not in content
+    assert portable["schema_version"] == 1
+    assert portable["artifact_type"] == "portable-native-provenance-v1"
+    assert portable["redacted_fields"] == ["cwd", "git", "uv_lock_hash"]
+    original = (work / "run" / bundle.result.run_id / "provenance.json").read_bytes()
+    assert json.loads(original)["cwd"] == str(work)
+    assert portable["source_sha256"] == "sha256:" + hashlib.sha256(original).hexdigest()
+    assert file.sha256 != hashlib.sha256(original).hexdigest()
+    assert all(str(work).encode() not in base64.b64decode(item.content_base64) for item in bundle.result.files)
+    future = json.dumps({**portable, "schema_version": 2})
+    with pytest.raises(ValueError):
+        PortableNativeProvenance.from_json(future)
 
 
 def test_combined_native_and_bundle_output_limit_is_enforced(tmp_path, monkeypatch):
@@ -108,8 +135,9 @@ def test_unsupported_native_registrations_fail_before_execution(changes):
     spec = json.loads(native.spec_json)
     for section, values in changes.items():
         spec[section].update(values)
+    invalid = {**native.model_dump(), "spec_json": json.dumps(spec)}
     with pytest.raises(ValueError):
-        NativeConfiguration.model_validate({**native.model_dump(), "spec_json": json.dumps(spec)})
+        NativeConfiguration.model_validate(invalid)
 
 
 def test_units_are_not_silently_converted():
@@ -151,8 +179,9 @@ def test_aggregate_worker_memory_slots_delay_a_second_admitted_job(tmp_path):
 def test_native_resource_claims_replay_actual_input_dimensions(field, value):
     native = default_registry()[2].problem
     assert isinstance(native, NativeConfiguration)
+    invalid = {**native.model_dump(), field: value}
     with pytest.raises(ValueError, match="resource declarations"):
-        NativeConfiguration.model_validate({**native.model_dump(), field: value})
+        NativeConfiguration.model_validate(invalid)
 
 
 @pytest.mark.parametrize("change", ["null_duration", "nonfinite", "negative", "duplicate", "missing", "float_build"])
@@ -183,8 +212,9 @@ def test_native_invalid_rows_refused_during_registration(change):
         size_bytes=len(content),
         content_base64=base64.b64encode(content).decode(),
     )
+    invalid = {**native.model_dump(), "inputs": (item,)}
     with pytest.raises(ValueError):
-        NativeConfiguration.model_validate({**native.model_dump(), "inputs": (item,)})
+        NativeConfiguration.model_validate(invalid)
 
 
 def test_artifact_io_failure_is_safe_and_does_not_consume_admission(tmp_path, monkeypatch):
@@ -198,8 +228,9 @@ def test_artifact_io_failure_is_safe_and_does_not_consume_admission(tmp_path, mo
                 raise OSError("private local storage diagnostic")
 
             failed_io.setattr(ArtifactWriter, "write_immutable", interrupted)
+            command = Submit(schema_version=1, request_id="io", spec_id="weighted-overlap-3")
             with pytest.raises(ApplicationError) as error:
-                service.submit(Submit(schema_version=1, request_id="io", spec_id="weighted-overlap-3"), caller=caller)
+                service.submit(command, caller=caller)
             assert error.value.code == "unavailable_result"
             assert "private" not in str(error.value)
         job = service.submit(Submit(schema_version=1, request_id="io", spec_id="weighted-overlap-3"), caller=caller)
@@ -281,19 +312,21 @@ def test_resource_guard_unknown_rss_and_real_output_boundaries(tmp_path, monkeyp
     def stopped(code):
         raise SystemExit(code)
 
+    limits = Limits()
+    small_output = Limits(max_output_bytes=1024)
     monkeypatch.setattr(worker.os, "_exit", stopped)
     monkeypatch.setattr("coleman.telemetry.resources._get_peak_rss_mib", lambda: None)
     with pytest.raises(SystemExit, match="74"):
-        _check_resources(Limits())
+        _check_resources(limits)
     monkeypatch.setattr("coleman.telemetry.resources._get_peak_rss_mib", lambda: 1.0)
     (tmp_path / "run").mkdir()
     (tmp_path / "run/data").write_bytes(b"x" * 1025)
     with pytest.raises(SystemExit, match="74"):
-        _check_resources(Limits(max_output_bytes=1024))
+        _check_resources(small_output)
     (tmp_path / "run/data").unlink()
     (tmp_path / "run/link").symlink_to(tmp_path / "request.json")
     with pytest.raises(SystemExit, match="74"):
-        _check_resources(Limits())
+        _check_resources(limits)
 
 
 def test_application_domain_imports_do_not_point_to_transports_or_cli():
@@ -315,8 +348,10 @@ def test_application_domain_imports_do_not_point_to_transports_or_cli():
 def test_raw_legacy_artifact_is_not_silently_reinterpreted(tmp_path):
     legacy = Path(__file__).parents[1] / "fixtures/domain-results/native-v3.2.json"
     original = legacy.read_bytes()
+    payload = original.decode()
+    caller = Caller(subject="local")
     with ApplicationService(default_registry(), root=tmp_path, policy=ServerPolicy()) as service:
         with pytest.raises(ApplicationError) as error:
-            service.import_result(original.decode(), caller=Caller(subject="local"))
+            service.import_result(payload, caller=caller)
         assert error.value.code == "invalid_input"
     assert legacy.read_bytes() == original

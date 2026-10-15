@@ -1460,6 +1460,8 @@ does not identify this repository. Base CLI/library execution requires no MCP
 dependency, model, credentials, network service, or client. The optional adapter
 is tested against the pinned MCP Python SDK 2.3.0 and its negotiated MCP protocol;
 the independent COLEMAN application contract is `coleman-application-v1`.
+Contributor `make install` includes the optional SDK to exercise its tests and
+type annotations; installing the base release wheel still excludes it.
 
 ## Architecture and ownership
 
@@ -1561,7 +1563,8 @@ coleman application --request '{"schema_version":1,"request_id":"native-ci","spe
 
 CLI output is a canonical JSON envelope. Success contains `ok: true` and `data`;
 errors contain `ok: false`, a stable `error` and safe human `message`. A failed or
-expired one-shot job returns its typed state and exits with status 2. Existing
+expired one-shot job returns the same error envelope, includes its typed state
+in `data`, and exits with status 2. Existing
 `coleman run --config ...` remains available.
 
 ## Native experiment registration by trusted hosts
@@ -1576,6 +1579,9 @@ Call `register_experiment("approved-ci", spec)` and pass the returned immutable
 at most 10,000 rows per dataset and 1,000 candidates per build. Dataset IDs use
 the conservative application ID alphabet. This bounded adapter deliberately
 supports a smaller surface than unrestricted native RunSpec execution.
+The seed and every repetition offset (`seed + iteration_index`) must fit the
+unsigned 64-bit range shared by the native NumPy/Polars execution path. Negative
+seeds and overflowing repetition ranges are rejected during registration.
 
 Inputs are copied into an owned worker directory; original files are never
 reread during execution. Normalized relative input/output paths make the native
@@ -1594,9 +1600,16 @@ invokes the legacy loader's null-duration-to-zero coercion. The direct legacy
 loader remains compatible with its existing callers. Algorithm overrides are
 outside the approved Random baseline registration surface in v1.
 
-Experiment bundles contain the original resolved specification, provenance and
-native artifact bytes with logical filenames, byte counts, SHA-256 and canonical
-base64. Import never extracts these files. Existing Parquet fields retain their
+Experiment bundles contain original resolved-specification and native result
+bytes with logical filenames, byte counts, SHA-256 and canonical base64.
+`provenance.json` in a produced bundle is explicitly a
+`portable-native-provenance-v1` derivative: it records schema version, COLEMAN
+producer/version, Python/platform runtime facts, the original local file's
+SHA-256, and the redacted field names `cwd`, `git`, `uv_lock_hash`. Ambient host
+directories, Git context and lock-file context are not exported. The original
+native provenance file remains unchanged inside the worker until cleanup;
+the source digest permits host-side audit and does not authenticate a producer.
+Import preserves supplied evidence and never extracts files. Existing Parquet fields retain their
 legacy meanings; unavailable metrics are not invented or converted to zero.
 Runtime observations, timestamps and native shard filenames can differ across
 equivalent executions. Mathematical results and approved-source provenance are
@@ -1628,8 +1641,8 @@ gateway and process/resource isolation; v1 provides none.
 
 Completion retains only the validated portable JSON bundle. Native work files,
 input copies and private request files are removed after the worker exits, before
-the completed receipt is issued; the bundle preserves original native artifact
-bytes. Retained output reservations therefore cover the entire completed job
+the completed receipt is issued; the bundle preserves native result/specification
+bytes and the explicit redacted provenance derivative. Retained output reservations therefore cover the entire completed job
 directory. Before final publication, the combined native-file and bundle byte
 count must also fit the admitted output cap.
 

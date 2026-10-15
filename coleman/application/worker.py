@@ -8,11 +8,13 @@ import os
 import stat
 import sys
 import threading
+from importlib.metadata import version
 from pathlib import Path
 
-from coleman.application.contracts import ExperimentResult, Limits, PortableFile, ResultBundle
+from coleman.application.contracts import ExperimentResult, Limits, PortableFile, PortableNativeProvenance, ResultBundle
 from coleman.application.registry import Configuration, NativeConfiguration
 from coleman.artifacts import ArtifactWriter
+from coleman.results.domain import decode_json
 from coleman.selection.contracts import Immutable
 
 
@@ -72,7 +74,7 @@ def _guard(limits: Limits, stopped: threading.Event) -> None:
 
 
 def _experiment(configuration: NativeConfiguration, limits: Limits) -> ExperimentResult:
-    """Run approved native RunSpec unchanged and package bounded original artifacts."""
+    """Run native RunSpec unchanged; export native data/spec bytes and explicitly redacted provenance."""
     from coleman.api import run
     from coleman.spec.models import RunSpec
 
@@ -91,6 +93,16 @@ def _experiment(configuration: NativeConfiguration, limits: Limits) -> Experimen
             total += len(content)
             if len(files) >= 64 or total > limits.max_output_bytes:
                 sys.exit(74)
+            if path == root / "provenance.json":
+                raw = decode_json(content)
+                provenance = PortableNativeProvenance(
+                    schema_version=1,
+                    source_sha256="sha256:" + hashlib.sha256(content).hexdigest(),
+                    producer_version=version("coleman"),
+                    python_version=raw["python_version"],
+                    platform=raw["platform"],
+                )
+                content = provenance.to_json().encode("utf-8")
             files.append(
                 PortableFile(
                     name=path.relative_to(root).as_posix(),

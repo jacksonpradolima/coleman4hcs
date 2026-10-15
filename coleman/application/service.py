@@ -331,8 +331,9 @@ class ApplicationService:
             raise ValueError("Worker output exceeds admitted bytes")
         return content
 
-    def _finish(self, job: _Job, state: str, error: str | None = None, *, handle: Handle | None = None) -> None:
-        """Reap children before committing a terminal state; uncommitted bytes remain inaccessible."""
+    @staticmethod
+    def _reap_worker(job: _Job) -> None:
+        """Terminate/reap an owned child while the caller holds the lifecycle lock."""
         if job.process is not None:
             if job.process.poll() is None:
                 job.process.terminate()
@@ -342,17 +343,30 @@ class ApplicationService:
                     job.process.kill()
             job.process.wait()
             job.process = None
+
+    @staticmethod
+    def _remove_work_files(job: _Job) -> None:
+        """Remove duplicated native work bytes after their validated portable bundle exists."""
+        # Native artifacts are already embedded in the validated bundle;
+        # retain only its bytes, matching the output reservation exactly.
+        for name in ("run", "inputs"):
+            path = job.directory / name
+            if path.exists():
+                shutil.rmtree(path)
+        (job.directory / "request.json").unlink(missing_ok=True)
+
+    def _finish(self, job: _Job, state: str, error: str | None = None, *, handle: Handle | None = None) -> None:
+        """Reap children before committing a terminal state; uncommitted bytes remain inaccessible."""
+        self._reap_worker(job)
         if state == "completed":
-            # Native artifacts are already embedded in the validated bundle;
-            # retain only its bytes, matching the output reservation exactly.
-            for name in ("run", "inputs"):
-                path = job.directory / name
-                if path.exists():
-                    shutil.rmtree(path)
-            (job.directory / "request.json").unlink(missing_ok=True)
+            self._remove_work_files(job)
             if time.monotonic() - job.admitted >= job.view.limits.deadline_seconds:
                 state, error, handle = "expired", "expired", None
-        receipt = handle if state == "completed" else job.view.handle if state == "expired" else None
+        receipt = None
+        if state == "completed":
+            receipt = handle
+        elif state == "expired":
+            receipt = job.view.handle
         job.view = JobView.model_validate(
             {
                 **job.view.model_dump(),

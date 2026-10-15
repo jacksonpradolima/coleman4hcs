@@ -207,8 +207,11 @@ def _execution_contract(spec: RunSpec) -> None:
     """Keep approved runs sequential, reproducible and free from extension code or exporters."""
     if spec.execution.parallel_pool_size != 1 or not 1 <= spec.execution.independent_executions <= 16:
         raise ValueError("Native execution must be sequential with one to sixteen repetitions")
-    if spec.execution.seed is None or spec.hooks.plugins or spec.extensions:
+    seed = spec.execution.seed
+    if seed is None or spec.hooks.plugins or spec.extensions:
         raise ValueError("Native runs require an explicit seed and no client extensions")
+    if seed < 0 or seed + spec.execution.independent_executions - 1 > 2**64 - 1:
+        raise ValueError("Native seed and all repetition offsets must fit unsigned 64-bit RNG inputs")
     if spec.telemetry.enabled or spec.checkpoint.enabled or spec.hcs_configuration.wts_strategy:
         raise ValueError("Bounded v1 does not enable exporters, checkpoint resume or HCS")
     if spec.algorithm.model_dump():
