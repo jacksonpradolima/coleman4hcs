@@ -5,6 +5,7 @@ from __future__ import annotations
 import stat
 import struct
 import zipfile
+import zlib
 from collections.abc import Callable
 from pathlib import Path
 
@@ -91,7 +92,49 @@ def _zip_entries(archive: zipfile.ZipFile, spec: MaterializationSpec) -> tuple[z
     for name, info in files.items():
         if info.file_size != expected[name].size_bytes:
             raise ValueError("ZIP member decoded size disagrees with frozen expectation")
-    return tuple(files[name] for name in sorted(files))
+    return tuple(sorted(entries, key=lambda info: info.filename))
+
+
+def _validate_deflate(path: Path, info: zipfile.ZipInfo) -> None:
+    """Boundedly verify that one raw deflate stream consumes every declared compressed byte.
+
+    ZipExtFile verifies CRC/decoded data later but can ignore compressed tails.
+    This independent first pass rejects tails, concatenated/truncated streams
+    and decoded-size disagreement. Both passes limit each decoded chunk to 64 KiB;
+    no complete member is retained. ZipFile.open validates the local header and
+    overlap before this helper runs. The trusted-local-filesystem contract applies.
+    """
+    decoder = zlib.decompressobj(-zlib.MAX_WBITS)
+    total = 0
+
+    def consume(chunk: bytes) -> None:
+        """Drain one bounded compressed chunk without allocating beyond the expected decoded byte count plus one."""
+        nonlocal total
+        while chunk:
+            decoded = decoder.decompress(chunk, min(65536, info.file_size - total + 1))
+            total += len(decoded)
+            if total > info.file_size:
+                raise ValueError("ZIP deflate decoded size exceeds frozen expectation")
+            if decoder.unused_data:
+                raise ValueError("ZIP deflate contains unused compressed tail bytes")
+            chunk = decoder.unconsumed_tail
+
+    with path.open("rb") as stream:
+        stream.seek(info.header_offset)
+        header = stream.read(30)
+        if len(header) != 30 or header[:4] != b"PK\x03\x04":
+            raise ValueError("ZIP deflate local header is incomplete")
+        name_bytes, extra_bytes = struct.unpack_from("<HH", header, 26)
+        stream.seek(name_bytes + extra_bytes, 1)
+        remaining = info.compress_size
+        while remaining:
+            chunk = stream.read(min(65536, remaining))
+            if not chunk or decoder.eof:
+                raise ValueError("ZIP deflate compressed size is inconsistent")
+            remaining -= len(chunk)
+            consume(chunk)
+    if not decoder.eof or total != info.file_size:
+        raise ValueError("ZIP deflate stream is truncated or has inconsistent decoded size")
 
 
 def consume_zip_members(
@@ -113,6 +156,12 @@ def consume_zip_members(
             members = {member.name: member for member in spec.members}
             for info in entries:
                 with archive.open(info) as stream:
-                    consume(members[info.filename], stream)
-    except (zipfile.BadZipFile, RuntimeError) as exc:
+                    if info.compress_type == zipfile.ZIP_DEFLATED:
+                        _validate_deflate(path, info)
+                    if info.is_dir():
+                        if stream.read(1):
+                            raise ValueError("ZIP directory entries cannot contain data")
+                    else:
+                        consume(members[info.filename], stream)
+    except (zipfile.BadZipFile, RuntimeError, zlib.error) as exc:
         raise ValueError("Invalid or unsupported ZIP source package") from exc

@@ -91,7 +91,9 @@ published artifact trees cannot overlap, keeping recipe-only source
 bytes out of exported artifacts. CLI and native example check this before cache
 creation or acquisition. SDK workflows that acquire and publish must call
 `validate_cache_separation(cache_root, output_root)` first; publication also
-rechecks the roots. Output paths/family parents must remain within
+rechecks the roots. The physical materialization-family path must remain within
+its output root; a symlink to a sibling cache or other external tree rejects
+before acquisition. Output paths/family parents must remain within
 the current workspace. These checks assume trusted private parent directories;
 concurrent hostile filesystem mutation is outside the local-file contract.
 
@@ -125,6 +127,11 @@ Source digest verification precedes ZIP metadata/decoding. End-record bounds are
 checked before central-directory allocation. V1 supports single-disk, non-ZIP64
 stored/deflated ZIP only. Encrypted files, links, devices, unsafe/ambiguous paths,
 unsupported compression, duplicate names and inconsistent sizes/CRC reject.
+Stored entries require equal compressed/decoded sizes. Deflated entries, including
+empty directories, receive a bounded first decode pass that requires exactly one
+complete stream consuming all declared compressed bytes, without unused tails.
+Regular members then pass through the standard ZIP CRC and frozen hash checks;
+this intentionally decodes deflated regular members twice with 64 KiB chunks.
 Logical names are conservative portable ASCII relative names. Materialized bytes
 are stored under digest filenames; archive names never become filesystem output
 paths. Tar, ZIP64 and additional compression/provider formats require separately

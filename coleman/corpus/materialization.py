@@ -217,13 +217,16 @@ def validate_cache_separation(cache_root: str | Path, output_root: str | Path) -
     """Reject physically overlapping cache/export roots before any acquisition or output writes.
 
     Resolve both roots, including existing symlink parents, without creating files.
-    Equal roots or either ancestor relation raises ValueError. Callers planning
+    Equal roots, either ancestor relation or an escaping materialization-family
+    symlink raises ValueError. Callers planning
     acquisition plus publication must run this preflight before constructing the
     cache; publication repeats the check. Trusted private parent directories are
     required: this does not prevent concurrent hostile filesystem mutation.
     """
     cache = Path(cache_root).resolve()
     output = Path(output_root).resolve()
+    if not (output / "corpus-materializations").resolve().is_relative_to(output):
+        raise ValueError("Materialization artifacts must remain within the published artifact tree")
     if cache.is_relative_to(output) or output.is_relative_to(cache):
         raise ValueError("Source cache and published artifact tree must remain separate")
 

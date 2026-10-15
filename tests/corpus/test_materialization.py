@@ -648,3 +648,148 @@ def test_stored_zip_rejects_unconsumed_or_truncated_declared_member_bytes(tmp_pa
         materialize_source(spec, cache, lambda: reader(bytes(payload)))
     assert not (cache.root / "blobs" / member.sha256.removeprefix("sha256:")).exists()
     assert not list(tmp_path.rglob("corpus-materializations/*.json"))
+
+
+@pytest.mark.parametrize(
+    "tail", [b"unconsumed-bytes!", b"\x03\x00", b"x" * 65537], ids=["opaque", "second-stream", "large"]
+)
+def test_deflated_zip_rejects_unused_compressed_tail(tmp_path, tail):
+    fixture = bundled_fixture_bytes(ID)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("fixture.json", fixture)
+    payload = bytearray(buffer.getvalue())
+    directory = payload.index(b"PK\x01\x02")
+    compressed = struct.unpack_from("<I", payload, directory + 20)[0]
+    payload[directory:directory] = tail
+    directory += len(tail)
+    footer = payload.rfind(b"PK\x05\x06")
+    struct.pack_into("<I", payload, footer + 16, directory)
+    struct.pack_into("<I", payload, 18, compressed + len(tail))
+    struct.pack_into("<I", payload, directory + 20, compressed + len(tail))
+    members = ({"name": "fixture.json", "sha256": digest(fixture), "size_bytes": len(fixture)},)
+    spec, _ = recipe(bytes(payload), archive="zip", members=members)
+    cache = SourceCache(tmp_path / "cache")
+    with pytest.raises(ValueError, match="deflate"):
+        materialize_source(spec, cache, lambda: reader(bytes(payload)))
+    assert not (cache.root / "blobs" / digest(fixture).removeprefix("sha256:")).exists()
+    assert not list(tmp_path.rglob("corpus-materializations/*.json"))
+
+
+@pytest.mark.parametrize("kind", ["empty", "fixture", "compressible", "incompressible"])
+def test_valid_deflate_member_boundaries_roundtrip_and_offline_verification(tmp_path, kind):
+    import random
+
+    payloads = {
+        "empty": b"",
+        "fixture": bundled_fixture_bytes(ID),
+        "compressible": b"owned-ci-duration-ms:12;verdict:pass\n" * 6000,
+        "incompressible": random.Random(42).randbytes(180000),
+    }
+    data = payloads[kind]
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("fixture.json", data)
+    members = ({"name": "fixture.json", "sha256": digest(data), "size_bytes": len(data)},)
+    spec, payload = recipe(buffer.getvalue(), archive="zip", members=members)
+    cache = SourceCache(tmp_path / "cache")
+    receipt = materialize_source(spec, cache, lambda: reader(payload))
+    assert cache.member_path(receipt, "fixture.json").read_bytes() == data
+    validate_materialization(receipt, cache)
+    assert materialize_source(spec, cache) == receipt
+
+
+@pytest.mark.parametrize("corruption", ["truncated", "invalid-stream", "decoded-smaller", "decoded-larger", "crc"])
+def test_deflate_stream_integrity_rejects_before_member_publication(tmp_path, corruption):
+    data = bundled_fixture_bytes(ID)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("fixture.json", data)
+    payload = bytearray(buffer.getvalue())
+    directory = payload.index(b"PK\x01\x02")
+    decoded_size = len(data)
+    if corruption == "truncated":
+        compressed = struct.unpack_from("<I", payload, directory + 20)[0] - 1
+        del payload[directory - 1]
+        directory -= 1
+        struct.pack_into("<I", payload, 18, compressed)
+        struct.pack_into("<I", payload, directory + 20, compressed)
+        struct.pack_into("<I", payload, payload.rfind(b"PK\x05\x06") + 16, directory)
+    elif corruption == "invalid-stream":
+        payload[30 + len("fixture.json")] = 7  # Reserved raw-deflate block type.
+    elif corruption == "crc":
+        struct.pack_into("<I", payload, directory + 16, 0)
+    else:
+        decoded_size += -1 if corruption == "decoded-smaller" else 1
+        struct.pack_into("<I", payload, 22, decoded_size)
+        struct.pack_into("<I", payload, directory + 24, decoded_size)
+    members = ({"name": "fixture.json", "sha256": digest(data), "size_bytes": decoded_size},)
+    spec, _ = recipe(bytes(payload), archive="zip", members=members)
+    cache = SourceCache(tmp_path / "cache")
+    with pytest.raises(ValueError, match="ZIP"):
+        materialize_source(spec, cache, lambda: reader(bytes(payload)))
+    assert not (cache.root / "blobs" / digest(data).removeprefix("sha256:")).exists()
+    assert not list(cache.root.rglob("*.tmp"))
+
+
+@pytest.mark.parametrize("hidden_data", [False, True])
+def test_deflated_directories_are_verified_without_creating_member_paths(tmp_path, hidden_data):
+    data = bundled_fixture_bytes(ID)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("owned/", b"undeclared directory data" if hidden_data else b"")
+        archive.writestr("fixture.json", data)
+    payload = bytearray(buffer.getvalue())
+    if hidden_data:
+        directory = payload.index(b"PK\x01\x02")
+        struct.pack_into("<I", payload, 22, 0)
+        struct.pack_into("<I", payload, directory + 24, 0)
+    members = ({"name": "fixture.json", "sha256": digest(data), "size_bytes": len(data)},)
+    spec, _ = recipe(bytes(payload), archive="zip", members=members)
+    cache = SourceCache(tmp_path / "cache")
+    if hidden_data:
+        with pytest.raises(ValueError, match="deflate decoded size"):
+            materialize_source(spec, cache, lambda: reader(bytes(payload)))
+    else:
+        receipt = materialize_source(spec, cache, lambda: reader(bytes(payload)))
+        validate_materialization(receipt, cache)
+        assert cache.member_path(receipt, "fixture.json").read_bytes() == data
+    assert not (cache.root / "owned").exists()
+
+
+@pytest.mark.parametrize("target", ["cache", "sibling"])
+def test_cli_rejects_metadata_family_escape_before_acquisition(tmp_path, monkeypatch, target):
+    from coleman.corpus.__main__ import main
+
+    monkeypatch.chdir(tmp_path)
+    output = tmp_path / "export"
+    output.mkdir()
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    alias_target = tmp_path / target
+    alias_target.mkdir(exist_ok=True)
+    (output / "corpus-materializations").symlink_to(alias_target, target_is_directory=True)
+    spec, payload = recipe()
+    spec = changed(spec, license=changed(spec.license, redistribution="recipe_only"))
+    (tmp_path / "package.json").write_text(spec.to_json())
+    (tmp_path / "source.json").write_bytes(payload)
+    assert main(["fetch", "package.json", "--source", "source.json", "--cache", str(cache), "--output", "export"]) == 2
+    assert not (cache / "cache-format.json").exists()
+    assert not list(alias_target.iterdir())
+    assert not list(cache.rglob("blobs/*"))
+
+
+def test_sdk_publication_rejects_metadata_family_alias_to_cache(tmp_path):
+    spec, cache = _raw_cached(tmp_path / "cache")
+    receipt = MaterializationReceipt(schema_version=1, spec=spec)
+    output = tmp_path / "export"
+    output.mkdir()
+    (output / "corpus-materializations").symlink_to(cache.root, target_is_directory=True)
+    writer = ArtifactWriter(output)
+    before = sorted(path.relative_to(cache.root).as_posix() for path in cache.root.rglob("*") if path.is_file())
+    with pytest.raises(ValueError, match="published artifact tree"):
+        publish_materialization(receipt, cache, writer)
+    after = sorted(path.relative_to(cache.root).as_posix() for path in cache.root.rglob("*") if path.is_file())
+    assert before == after
+    assert {path.name for path in cache.root.glob("*.json")} == {"cache-format.json"}
+    assert not list(cache.root.glob("corpus-materializations/*.json"))
