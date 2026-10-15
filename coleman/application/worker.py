@@ -153,7 +153,8 @@ def main() -> None:
         bundle = execute(item)
         _check_resources(item.limits)
         content = bundle.to_json()
-        if len(content.encode("utf-8")) > item.limits.max_output_bytes:
+        encoded_size = len(content.encode("utf-8"))
+        if encoded_size > item.limits.max_output_bytes or _output_exceeds(item.limits.max_output_bytes - encoded_size):
             sys.exit(74)
         ArtifactWriter(Path.cwd()).write_immutable(Path("result.json"), content)
     finally:

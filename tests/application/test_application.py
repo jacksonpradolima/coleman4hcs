@@ -180,7 +180,8 @@ def test_effective_server_limits_and_concurrent_idempotency(tmp_path):
         assert jobs[0].limits.max_candidates == 5
         view = service.wait(jobs[0].job_id, caller=CALLER)
         assert view.state == "completed"
-        assert len(list(tmp_path.rglob("request.json"))) == 1
+        assert len(list(tmp_path.rglob("result.json"))) == 1
+        assert not list(tmp_path.rglob("request.json"))
 
 
 def test_queue_saturation_and_cancel_before_start(tmp_path):
@@ -377,6 +378,9 @@ def test_real_native_runspec_immutable_inputs_legacy_artifacts_and_portable_roun
         assert json.loads(base64.b64decode(resolved.content_base64))["execution"]["seed"] == 42
         portable = service.export_result(view.handle, caller=CALLER)
         assert ResultBundle.from_json(portable) == bundle
+        assert sorted(
+            path.name for path in next(tmp_path.joinpath("service").glob("*/")).joinpath(view.job_id).iterdir()
+        ) == ["result.json"]
 
 
 def test_cli_library_equivalence_and_import_boundary(tmp_path):

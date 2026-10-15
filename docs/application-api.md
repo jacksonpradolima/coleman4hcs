@@ -172,7 +172,7 @@ compared separately from runtime metadata and complete artifact digests.
 `Limits` requests are reduced componentwise by `ServerPolicy.caps` before work.
 Default caps are 30 elapsed seconds including queue/startup, 10,000 native work
 units, 100 candidates, 512 MiB worker peak RSS/solver allocation ceiling and
-256 KiB portable result JSON. Native solver working-memory estimates cap at
+256 KiB combined native output files plus portable result JSON. Native solver working-memory estimates cap at
 1 GiB even if a host permits larger worker RSS. Native proof/dimension ceilings
 still apply. The service defaults to one active worker, eight pending jobs,
 64 retained job identities, 16 MiB reserved results and 2 GiB reserved active
@@ -190,6 +190,13 @@ not a hard memory allocator or hostile-code sandbox. The underlying SDK stdio
 framing is for a trusted local client and is not an untrusted network ingress
 limit. Hosted deployment needs its own authenticated, size/concurrency-limited
 gateway and process/resource isolation; v1 provides none.
+
+Completion retains only the validated portable JSON bundle. Native work files,
+input copies and private request files are removed after the worker exits, before
+the completed receipt is issued; the bundle preserves original native artifact
+bytes. Retained output reservations therefore cover the entire completed job
+directory. Before final publication, the combined native-file and bundle byte
+count must also fit the admitted output cap.
 
 ```mermaid
 stateDiagram-v2

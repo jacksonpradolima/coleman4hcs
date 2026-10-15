@@ -331,7 +331,7 @@ class ApplicationService:
             raise ValueError("Worker output exceeds admitted bytes")
         return content
 
-    def _finish(self, job: _Job, state: str, error: str | None = None) -> None:
+    def _finish(self, job: _Job, state: str, error: str | None = None, *, handle: Handle | None = None) -> None:
         """Reap children before committing a terminal state; uncommitted bytes remain inaccessible."""
         if job.process is not None:
             if job.process.poll() is None:
@@ -342,7 +342,23 @@ class ApplicationService:
                     job.process.kill()
             job.process.wait()
             job.process = None
-        job.view = JobView.model_validate({**job.view.model_dump(), "state": state, "error": error})
+        if state == "completed":
+            # Native artifacts are already embedded in the validated bundle;
+            # retain only its bytes, matching the output reservation exactly.
+            for name in ("run", "inputs"):
+                path = job.directory / name
+                if path.exists():
+                    shutil.rmtree(path)
+            (job.directory / "request.json").unlink(missing_ok=True)
+        receipt = handle if state == "completed" else job.view.handle if state == "expired" else None
+        job.view = JobView.model_validate(
+            {
+                **job.view.model_dump(),
+                "state": state,
+                "error": error,
+                "handle": receipt.model_dump() if receipt is not None else None,
+            }
+        )
         job.finished = time.monotonic()
         if state != "completed":
             shutil.rmtree(job.directory, ignore_errors=True)
@@ -371,10 +387,7 @@ class ApplicationService:
                 self._finish(job, "expired", "expired")
                 return
             handle = Handle(schema_version=1, job_id=job.view.job_id, digest=bundle.fingerprint)
-            job.view = JobView.model_validate(
-                {**job.view.model_dump(), "state": "completed", "handle": handle.model_dump()}
-            )
-            self._finish(job, "completed")
+            self._finish(job, "completed", handle=handle)
         except (ValueError, OSError, RecursionError):
             self._finish(job, "failed", "unavailable_result")
 

@@ -65,6 +65,26 @@ def test_native_execution_adapter_in_process_preserves_real_artifacts(tmp_path, 
     assert ResultBundle.from_json(result.to_json()) == result
 
 
+def test_combined_native_and_bundle_output_limit_is_enforced(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    native = default_registry()[2]
+    limits = Limits(max_output_bytes=20000)
+    bundle = execute(WorkItem(configuration=native, limits=limits))
+    assert isinstance(bundle.result, ExperimentResult)
+    bundle_bytes = len(bundle.to_json().encode())
+    assert bundle_bytes < limits.max_output_bytes
+    assert bundle_bytes + sum(file.size_bytes for file in bundle.result.files) > limits.max_output_bytes
+    caller = Caller(subject="local")
+    with ApplicationService((native,), root=tmp_path / "service") as service:
+        initial = service.submit(
+            Submit(schema_version=1, request_id="output", spec_id=native.spec_id, limits=limits), caller=caller
+        )
+        final = service.wait(initial.job_id, caller=caller)
+        assert final.state == "failed"
+        assert final.error == "resource_limit"
+        assert final.handle is None
+
+
 @pytest.mark.parametrize(
     "changes",
     [
