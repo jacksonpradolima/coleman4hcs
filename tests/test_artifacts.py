@@ -66,3 +66,44 @@ def test_artifact_writer_path_uses_budget_segment_for_non_ratio(tmp_path):
     )
 
     assert "budget_fixed_time_30" in path.as_posix()
+
+
+def test_immutable_binary_stream_limits_interruption_and_utf8_compatibility(tmp_path):
+    from collections.abc import Iterable
+    from typing import cast
+
+    import pytest
+
+    writer = ArtifactWriter(tmp_path)
+    path = tmp_path / "complete.bin"
+    writer.write_immutable_stream(path, (b"\x00\xff", b"end"), maximum_bytes=5)
+    assert path.read_bytes() == b"\x00\xffend"
+    writer.write_immutable_stream(path, (b"\x00", b"\xffend"), maximum_bytes=5)
+    with pytest.raises(ValueError, match="Conflicting"):
+        writer.write_immutable_stream(path, (b"other",), maximum_bytes=5)
+    target = tmp_path / "partial.bin"
+
+    def interrupted():
+        yield b"begin"
+        raise OSError("checksum validation interrupted")
+
+    with pytest.raises(OSError, match="interrupted"):
+        writer.write_immutable_stream(target, interrupted(), maximum_bytes=10)
+    with pytest.raises(ValueError, match="byte limit"):
+        writer.write_immutable_stream(target, (b"too long",), maximum_bytes=1)
+    invalid_chunks = cast(Iterable[bytes], ("not binary",))
+    with pytest.raises(TypeError, match="must be bytes"):
+        writer.write_immutable_stream(target, invalid_chunks, maximum_bytes=10)
+    for bound in (True, -1, 1.5):
+        invalid_bound = cast(int, bound)
+        with pytest.raises(ValueError, match="integer"):
+            writer.write_immutable_stream(target, (), maximum_bytes=invalid_bound)
+    assert not target.exists()
+    assert not list(tmp_path.glob("*.tmp"))
+    text = tmp_path / "old.json"
+    writer.write_immutable(text, '"CI: ação"\n')
+    assert text.read_bytes() == '"CI: ação"\n'.encode()
+    writer.write_immutable(text, '"CI: ação"\n')
+    empty = tmp_path / "empty"
+    writer.write_immutable_stream(empty, (), maximum_bytes=0)
+    assert empty.read_bytes() == b""
