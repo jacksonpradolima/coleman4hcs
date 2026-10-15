@@ -27,6 +27,7 @@ nav = [
   { "ADR 001: Point-in-time Boundary" = "decisions/001-point-in-time-observations.md" },
   { "Operational CI Pilot" = "operational-pilot.md" },
   { "Exact CI Resource Replay" = "resource-replay.md" },
+  { "Frozen CI Shadow Evaluation" = "prospective-shadow.md" },
   { "Independent Decision Benchmarks" = "decision-benchmarks.md" },
   { "Bounded Application API & MCP" = "application-api.md" },
   { "Configuration" = "configuration.md" },

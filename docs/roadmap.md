@@ -40,7 +40,9 @@ specifications in **M4 — Point-in-time CI adapters and prospective evaluation*
 
 Implement these sequentially in later 4.x feature releases, with reusable core
 contracts and CI-centered fixtures. Provider dependencies stay outside the core.
-#259 and #260 are specified, not implemented. Generic mechanisms, native CI
+#259 is implemented on the reviewed 4.3 integration branch. #260 adds frozen
+shadow evaluation in the same release; actual prospective observations remain
+uncollected. Generic mechanisms, native CI
 integration, functional recovery and actual prospective evidence each need their own explicit
 validation; an offline replay must never masquerade as a forward observation.
 

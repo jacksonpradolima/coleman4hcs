@@ -83,6 +83,11 @@ def generate_manifest(run_dir: str | Path, *, run_id: str) -> Path:
         "resource_run": "resource-runs/*.json",
         "resource_report": "resource-reports/*.json",
         "resource_ledger": "resource-ledgers/*/checkpoints/*.json",
+        "shadow_protocol": "shadow-journals/*/protocol.json",
+        "shadow_event": "shadow-journals/*/frames/*.json",
+        "shadow_checkpoint": "shadow-journals/*/checkpoints/*.json",
+        "shadow_report": "shadow-reports/*.json",
+        "shadow_source_batch": "shadow-source-batches/*.json",
     }
     for artifact_type, pattern in versioned_patterns.items():
         for file_path in sorted(root.rglob(pattern)):
