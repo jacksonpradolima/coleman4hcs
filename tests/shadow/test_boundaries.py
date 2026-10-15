@@ -182,8 +182,9 @@ def test_unknown_inference_contains_operation_without_inventing_an_adverse_measu
 def test_unknown_and_observed_zero_inference_cannot_share_an_interpretation():
     event = opening(protocol()).decisions[0]
     payload = {**event.model_dump(), "decision_overhead": None}
+    contract_class = type(event)
     with pytest.raises(ValueError, match="availability and interpretation disagree"):
-        type(event).model_validate(payload)
+        contract_class.model_validate(payload)
 
 
 def test_no_data_cannot_create_a_report_or_evaluation_timestamp():

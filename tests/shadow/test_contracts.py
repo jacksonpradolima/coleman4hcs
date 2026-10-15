@@ -41,8 +41,9 @@ def test_unsupported_versions_fail_closed(version):
         else:
             data["schema_version"] = version
         payload = json.dumps(data)
+        contract_class = type(model)
         with pytest.raises(ValueError):
-            type(model).from_json(payload)
+            contract_class.from_json(payload)
 
 
 def test_duplicate_json_keys_and_legacy_artifacts_are_never_reinterpreted(tmp_path):
