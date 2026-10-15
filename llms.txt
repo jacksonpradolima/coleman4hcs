@@ -33,6 +33,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/benchmark-corpus.md
 - docs/code-cost.md
 - docs/configuration.md
+- docs/corpus-materialization.md
 - docs/decision-benchmarks.md
 - docs/decisions/001-point-in-time-observations.md
 - docs/dependency-security.md
@@ -51,6 +52,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/releases/4.1.0.md
 - docs/releases/4.2.0.md
 - docs/releases/4.3.0.md
+- docs/releases/4.4.0.md
 - docs/releases.md
 - docs/resource-replay.md
 - docs/roadmap.md
@@ -1781,13 +1783,15 @@ publication, golden fixtures, portability, expiry, malicious inputs and saturati
 
 ### FILE: docs/benchmark-corpus.md
 
-# Versioned CI benchmark corpus: foundation
+# Versioned CI benchmark corpus: foundation and local profiles
 
 This is the first implementation slice of
 [#261](https://github.com/jacksonpradolima/coleman/issues/261), introduced in
 **COLEMAN 4.2**. It implements source manifests, a typed registry and data
 cards, bounded independent correctness references, local validation and native
-integration. The diversified benchmark program is **not complete**.
+integration. COLEMAN **4.4** adds bounded local native-Parquet profiles, a reproducible diversity
+inventory and [licensed source-package materialization](corpus-materialization.md).
+The diversified benchmark program remains open.
 
 The registry contains two small repository-authored MIT-licensed CI fixtures and
 an inventory of ten existing public example Parquet artifacts. Historical sources
@@ -1803,7 +1807,7 @@ follows from passing these checks.
 
 ## Installed commands
 
-Install the wheel attached to [COLEMAN 4.2](https://github.com/jacksonpradolima/coleman/releases/tag/v4.2.0)
+Install the wheel attached to [COLEMAN 4.4](https://github.com/jacksonpradolima/coleman/releases/tag/v4.4.0)
 in a Python 3.14+ environment, or build a development wheel from the reviewed source.
 Copy examples to a directory outside the checkout. Once installed, these local
 operations need no optional dependency, provider subscription, credential or
@@ -1830,9 +1834,10 @@ parents are resolved and checked before publication. This local path check assum
 no concurrent hostile filesystem mutation; it is not an OS sandbox. Library callers
 supply their own trusted `ArtifactWriter` root, independently of CLI/MCP transports.
 
-These are the implemented commands. Fetch/cache/extraction, real-source conversion,
-large stress generation, baseline matrices, dependence-aware statistical profiles
-and confirmatory run/report commands belong to subsequent slices of #261.
+The profile commands below and [source-package fetch/cache/validation](corpus-materialization.md)
+are also available in 4.4. Source-specific conversion, large stress generation,
+baseline matrices, dependence-aware statistical profiles and confirmatory run/report
+commands remain subsequent slices of #261.
 
 ## Source contract and admission
 
@@ -1883,7 +1888,131 @@ The initial inventory pins the exact public source revision
 `b743f51d5ba444410b32f2c0e318b2587b882c43`; every file's SHA-256, byte size and Parquet
 footer row count were checked against that Git object. It contains 1,386,730
 source rows across ten artifacts, **not** that many independent observations.
-Full duration/churn/availability/provider profiles remain unverified, not zero.
+Physical duration/churn/availability/provider semantics remain unverified, not zero.
+The local profiling recipe below describes raw fields without resolving those gates.
+
+## Local profiles and the first diversity matrix (4.4)
+
+These additions are available in the 4.4 wheel; 4.3 and older wheels retain their
+previous commands. The profiler is a separate descriptive recipe, **not** an implemented corpus evaluation adapter.
+It does not change registry v1, cards, fixture/readiness v1, old native result
+rows, source licenses or admission blockers.
+
+```bash
+# SOURCE is a local copy of the exact registered file, not a download URL.
+python -m coleman.corpus profile native-example-e970afe1686d7fe6 source.parquet --output profiles
+# Copy examples/corpus-profiles/inventory.py outside the checkout first.
+python inventory.py /absolute/path/to/coleman corpus-inventory
+```
+
+The inventory example reads the ten existing files from the explicit checkout,
+checks every frozen digest/size, and publishes ten profiles plus one complete
+inventory. It fetches nothing, copies no source data and runs no evaluation.
+A missing, changed or oversized source prevents publication of a complete new
+inventory. Existing completed inventories remain content-addressed evidence of
+their original inputs; failed later invocations do not erase them.
+
+The pinned source snapshot produces this matrix. Contextual files and separately
+stored variants can share the same executions; these rows must not be added as
+independent projects. Execution groups retain `Variant` when present, whereas
+logical builds count `BuildId` among rows with complete group identity.
+
+| Registered artifact | Raw rows | Logical builds | Execution groups | Repeated identity rows | Conflicting identities | Failed rows | Raw Duration median |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Druid | 308998 | 168 | 168 | 0 | 0 | 237 | 0.002 |
+| Druid contextual | 308998 | 168 | 168 | 0 | 0 | 237 | 0.002 |
+| Retrofit | 71238 | 2711 | 2711 | 0 | 0 | 161 | 0.196 |
+| Retrofit contextual | 71238 | 2711 | 2711 | 0 | 0 | 161 | 0.196 |
+| Dune Debian 10 | 119316 | 1029 | 1029 | 4433 | 3237 | 1417 | 0.07 |
+| Dune Ubuntu 20.04 | 44052 | 367 | 367 | 1408 | 1031 | 532 | 0.09 |
+| Dune Debian 11 | 35140 | 290 | 290 | 1291 | 886 | 193 | 0.03 |
+| Dune total | 229213 | 2186 | 2186 | 6689 | 4858 | 3094 | 0.3 |
+| Dune variants | 198508 | 1036 | 1686 | 7132 | 5154 | 2142 | 0.07 |
+| Synthetic example | 29 | 5 | 5 | 0 | 0 | 14 | 0.134 |
+
+Raw `Duration` medians have **unverified source units**, not seconds. They are not
+comparable across sources and cannot be used to infer runner work, parallel wall
+time or savings. Failed rows use only the explicitly declared binary failing-test
+mapping with exact native-type comparisons, without rounding decimal labels to
+binary64; they are not unique faults. Repeated identity rows count rows beyond
+the first complete declared observation key. A conflicting identity has multiple
+`(Duration, Verdict)` pairs. These are integrity findings, not deduplicated or
+resolved outcomes. Different context values alone are outside that conflict test.
+
+Every profile includes all source column names/null counts, raw duration finite,
+null, nonfinite, negative and zero counts, min/median/p95/max, raw verdict categories,
+missing identity/group counts, and the distribution of raw rows per execution
+group. The latter includes duplicates and is not a count of distinct runnable
+tests. Quantiles use the inverse empirical CDF `ceil(p*n)-1`, without interpolation,
+over finite binary64 values. Quantile ranks use integer arithmetic; signed zeros
+normalize to positive zero in statistical projections while source bytes/digests
+remain unchanged. All-null/nonfinite or empty distributions have null
+quantiles and unavailable measurements; observed zero stays zero. Negative raw
+numbers remain visible and do not certify valid physical execution durations.
+A declared duration unit/meaning is retained when supplied; it is never guessed.
+
+Chronology is explicitly **not evaluated** by this recipe. `LastRun`, numeric
+`BuildId`, file order and repeated seeds cannot establish event order, UTC,
+feature/outcome availability, time span, adjacent-build churn, flakiness, retries
+or independent observations. These facts and provider/language axes remain
+unverified where their original cards lack evidence. All **seven regimes remain
+uncovered**; profiles cannot promote a source or weaken that diversity matrix.
+
+This complete library example uses the same exact local synthetic file as the CLI:
+
+```python
+from pathlib import Path
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus import (
+    CorpusProfileInventory, NativeSourceProfile, load_registry,
+    profile_native_source, publish_profile_inventory, publish_source_profile,
+)
+
+registry = load_registry()
+card = registry.card("native-example-e970afe1686d7fe6")
+profile = profile_native_source(card, Path("source.parquet"))
+assert profile.rows == 29 and profile.logical_builds == 5
+assert profile.raw_duration.zero_count == 3
+assert profile.duration_median.unit == "source-unit-unverified"
+assert profile.card == card  # No admission metadata is rewritten.
+writer = ArtifactWriter("library-profiles")
+path = publish_source_profile(profile, writer)
+assert NativeSourceProfile.from_json(path.read_bytes()) == profile
+inventory = CorpusProfileInventory(
+    schema_version=1, registry=registry, profiles=(profile, profile),
+    uncovered_required_regimes=registry.required_regimes,
+)
+assert len(inventory.profiles) == 1  # Identical retries are idempotent.
+assert len(inventory.uncovered_required_regimes) == 7
+publish_profile_inventory(inventory, writer)
+```
+
+The default ceiling is 16 MiB compressed input, two million rows, 64 columns and
+256 MiB declared uncompressed row-group bytes; tighter manifest bounds also apply.
+One bounded byte snapshot is hashed before decoding. Footer limits precede native
+Parquet decoding, but are not measured peak-memory guarantees or a sandbox for
+malicious codecs. Inputs are explicit trusted local files. Source URI strings
+never trigger downloads or dynamic imports. Numeric summaries are descriptive
+producer attestations: reading validates conservation, membership, sign counts
+against inverse-CDF quantile ranks, equality at shared ranks, and integral
+group-count quantiles consistent with the total rows. Nonempty complete group
+rows require logical builds and execution groups. Key-column null counts bound
+missing identities/groups, and
+duplicates require original identities covering the known build/group grain.
+Observed source-row/byte declarations must agree with the profile; the declared
+row/source-byte resource ceilings also apply on reads. Without `Variant`, logical
+builds and execution groups are equal. Missing group/observation identities retain
+their subset relationships and extra-column null bounds. Reproducing the
+producer's observations still requires the matching source and recipe.
+
+New `NativeSourceProfile` and `CorpusProfileInventory` schema-v1 artifacts use
+`corpus-profiles/` and `corpus-profile-inventories/`; native manifests discover both.
+Missing, duplicate-key, future or unknown versions fail closed. There is no implicit
+migration from old native artifacts/cards into profile evidence. Recompute from
+reviewed source bytes and preserve the old artifact alongside the new family.
+Identical publication and interrupted retry reuse existing immutable artifacts;
+a completed profile is published only after its complete source scan. Profiling
+has no incremental learning state and needs no second checkpoint store.
 
 ## Independent known answers
 
@@ -1971,8 +2100,8 @@ A real provider needs a separately implemented/verified adapter; marking it
 
 ## Real native execution and artifact recovery
 
-Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.3.0/examples/corpus-foundation/ci.py)
-and run `python ci.py native-output` from the installed 4.3 wheel or a source build. It uses
+Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.4.0/examples/corpus-foundation/ci.py)
+and run `python ci.py native-output` from the installed 4.4 wheel or a source build. It uses
 `api.run()` with native Random/RNFail and a full seven-second budget, verifies each
 actual native ranking's NAPFD/APFDc against the independent oracle, and publishes
 both source checks plus the insufficient-diversity inventory through existing
@@ -1981,7 +2110,11 @@ initial shuffle and next-build path; neither real CI history nor independence is
 claimed. The example requires a fresh output directory for each complete native
 invocation and rejects an existing directory before writing, including pre-existing
 symlinked input/native descendants. Direct native runs retain their existing append
-behavior. Native learning checkpoints remain the runner's responsibility; this adds no second runner/checkpoint store.
+behavior. The 4.4 example sets a checkpoint interval of one build and reopens the
+same run before validating that exactly two native rows remain. It profiles the
+exact constructed native input, preserving fixture lineage, declared seconds and
+the constructed-history label, then publishes both new artifact families. Native
+learning checkpoints remain the runner's responsibility; this adds no second runner/checkpoint store.
 
 Corpus validation/readiness publication is deterministic and idempotent for the
 same input. Concurrent identical retries share the same content address. Existing
@@ -2007,6 +2140,11 @@ flowchart LR
   O --> V[Verified versioned fixture evidence]
   N --> V
   V --> A[Existing immutable artifacts and native manifest]
+  M --> P[Bounded local Parquet description]
+  B --> P
+  P --> D[Source-bound profile and diversity inventory]
+  D --> A
+  D --> R
   M --> R[Visible blocked sources and missing diversity cells]
   V --> R
 ```
@@ -2923,6 +3061,255 @@ coleman validate --config my-experiment.yaml
 
 # Validate and write the resolved spec
 coleman validate --config my-experiment.yaml --resolve resolved.json
+```
+
+
+
+### FILE: docs/corpus-materialization.md
+
+# Verified source packages for CI benchmarks
+
+COLEMAN **4.4** adds bounded, restartable acquisition and offline integrity
+validation for explicitly licensed, pinned raw files and ZIP packages as part of
+[#261](https://github.com/jacksonpradolima/coleman/issues/261). It reuses the existing
+immutable artifact writer and native runner/checkpoints. Install the wheel attached
+to [COLEMAN 4.4](https://github.com/jacksonpradolima/coleman/releases/tag/v4.4.0)
+in Python 3.14 or newer; 4.3 and earlier wheels retain their previous commands.
+
+A successful materialization means **source integrity only**. It does not admit a
+source for evaluation, verify its CI chronology/units/identity semantics, establish
+independent observations or demonstrate policy effectiveness. The ten existing
+native registrations retain their admission blockers and all seven minimum
+corpus diversity regimes remain uncovered. Real-source adapters/conversion,
+row-level exclusions and confirmatory studies remain later phases.
+
+## Complete installed library example
+
+Run outside a Git checkout. This uses one tiny repository-authored MIT fixture,
+not a third-party archive. No network or optional MCP SDK is required.
+
+```python
+import io
+from pathlib import Path
+
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus import (
+    MaterializationSpec, MaterializationReceipt, PackageMember, SourceCache,
+    bundled_fixture_bytes, load_registry, materialize_source,
+    publish_materialization, validate_cache_separation, validate_fixture_source, validate_materialization,
+)
+
+card = load_registry().card("ci-serial-boundary-v1")
+payload = bundled_fixture_bytes(card.manifest.benchmark_id)
+member = PackageMember(
+    name="fixture.json", sha256=card.manifest.source.sha256,
+    size_bytes=card.manifest.source.size_bytes,
+)
+spec = MaterializationSpec(
+    schema_version=1, package_id="owned-ci-raw-source-v1", archive="raw",
+    source=card.manifest.source, license=card.manifest.license, members=(member,),
+)
+cache_root = Path("external-source-cache")
+writer = ArtifactWriter("integrity-artifacts")
+validate_cache_separation(cache_root, writer.run_root)  # Before any cache/source writes.
+cache = SourceCache(cache_root)
+receipt = materialize_source(spec, cache, lambda: io.BytesIO(payload))
+assert receipt.admission == "not_evaluated"
+assert materialize_source(spec, cache) == receipt  # Verified cache hit: no source reader.
+validate_materialization(receipt, cache)          # Offline, no repair/network.
+checked = validate_fixture_source(card.manifest, cache.member_path(receipt, "fixture.json").read_bytes())
+assert len(checked.observations) == 2              # Real native metric/oracle checks.
+path = publish_materialization(receipt, cache, writer)
+assert MaterializationReceipt.from_json(path.read_bytes()) == receipt
+Path("owned-package.json").write_text(spec.to_json() + "\n", encoding="utf-8")
+Path("owned-source.json").write_bytes(payload)
+```
+
+`SourceArtifact` and `LicenseReview` are the same typed metadata contracts used
+by the corpus registry. Acquisition requires a digest, exact source byte count,
+version/citation, verified data-specific terms and a permitted/recipe-only rule.
+Pending, prohibited or incomplete terms fail before opening a source reader.
+Source URIs are descriptive; models and the core never follow them or dynamically
+import an adapter. Source availability declarations remain frozen; the receipt
+records its separate integrity scope.
+
+## Installed commands
+
+The preceding example creates the metadata/source used by these commands:
+
+```bash
+python -m coleman.corpus materialization-schema
+python -m coleman.corpus fetch owned-package.json \
+  --source owned-source.json --cache external-source-cache --output cli-integrity
+python -m coleman.corpus fetch owned-package.json \
+  --cache external-source-cache --output cli-integrity
+python -m coleman.corpus validate-cache \
+  cli-integrity/corpus-materializations/RECEIPT_FINGERPRINT.json --cache external-source-cache
+```
+
+Use the actual receipt path returned in `artifact`; the fingerprint filename has
+no `sha256:` prefix. `fetch` with no source option is cache-only. An explicit
+`--source` is always rechecked, even on a cache hit. A changed local source cannot
+hide behind previously cached bytes. `validate-cache` rehashes the complete source,
+archive-to-member relation and cached members without downloading or repairing.
+Exit 0 means integrity verification, never scientific admission; invalid/unknown
+metadata, missing/corrupt bytes or I/O/publication failures return 2.
+
+The cache defaults to `~/.cache/coleman/corpus`. The physical root must be outside
+Git worktree markers. Supply an explicit external cache for automation/tests.
+Spec/receipt JSON paths must resolve within the current workspace, including
+symlink targets; SDK callers retain explicit filesystem control. Cache and
+published artifact trees cannot overlap, keeping recipe-only source
+bytes out of exported artifacts. CLI and native example check this before cache
+creation or acquisition. SDK workflows that acquire and publish must call
+`validate_cache_separation(cache_root, output_root)` first; publication also
+rechecks the roots. The physical materialization-family path must remain within
+its output root; a symlink to a sibling cache or other external tree rejects
+before acquisition. Output paths/family parents must remain within
+the current workspace. These checks assume trusted private parent directories;
+concurrent hostile filesystem mutation is outside the local-file contract.
+
+## Frozen ZIP recipe and provenance
+
+A `MaterializationSpec` schema v1 declares:
+
+- source identity/version/citation/SHA-256 and entity byte count;
+- specific terms evidence and redistribution policy;
+- `archive="raw"` or `archive="zip"` with the fixed `bounded-source-package-v1` recipe;
+- every expected regular member's canonical logical name, SHA-256 and decoded bytes;
+- source/member/total decoded bytes, archive-entry and ZIP metadata limits.
+
+Member order canonicalizes by name. Duplicates/conflicts reject. Raw recipes must
+name exactly the unchanged source hash/size; they cannot silently convert bytes.
+ZIP requires exactly the declared regular files; extra or missing members reject.
+Directories are checked but never created as output paths. All decoded member
+streams are hashed even on cache hits, so an unrelated cached blob cannot certify
+that an archive actually contains it.
+
+Defaults are 64 MiB source entity bytes, 128 MiB per member, 256 MiB total decoded
+bytes, 128 archive entries and 1 MiB central-directory metadata. Tighter declared
+limits apply. Source/member/total limits can be explicitly raised up to 8 GiB;
+streaming publication never loads full large bodies for comparison. Source-plus-
+members and one member verification temporary file can coexist; existing cached
+packages and interrupted-process temporaries consume additional disk. This is a
+per-operation bound, not a global cache eviction/quota or measured peak-memory
+promise.
+
+Source digest verification precedes ZIP metadata/decoding. End-record bounds are
+checked before central-directory allocation. A streaming fixed-header pass also
+checks actual record counts, variable-field lengths and every entry's disk reference
+before the standard ZIP reader allocates metadata objects; false footer counts
+cannot bypass the entry limit. ZIP64 locator auto-detection is rejected even
+when the legacy footer has no sentinel, preventing a second metadata interpretation.
+V1 supports single-disk, non-ZIP64
+stored/deflated ZIP with required extraction version at most 2.0. The
+[PKWARE ZIP specification](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT)
+describes these metadata fields; v1 intentionally supports this bounded subset. Encrypted files, links, devices, unsafe/ambiguous paths,
+unsupported compression, duplicate names and inconsistent sizes/CRC reject.
+Local names, required versions, flags and compression methods must agree with
+central entries. Local CRC/compressed/decoded byte counts must match too, except
+that descriptor-mode headers may use zero placeholders. Signed and unsigned
+32-bit descriptors must match central counts/CRC and fit before the next record.
+All local records pass this preflight before any member decoding. Both extra-field
+sections are checked for valid framing and prohibited ZIP64 records; legitimate
+inert vendor differences are allowed. Encryption and reserved flags reject.
+Stored entries require equal compressed/decoded sizes. Deflated entries, including
+empty directories, receive a bounded first decode pass that requires exactly one
+complete stream consuming all declared compressed bytes, without unused tails.
+Regular members then pass through the standard ZIP CRC and frozen hash checks;
+this intentionally decodes deflated regular members twice with 64 KiB chunks.
+Logical names are conservative portable ASCII relative names. Materialized bytes
+are stored under digest filenames; archive names never become filesystem output
+paths. Tar, ZIP64 and additional compression/provider formats require separately
+reviewed support before those sources can be used.
+
+The standard library documents [ZIP decompression and interruption pitfalls](https://docs.python.org/3.14/library/zipfile.html#decompression-pitfalls).
+The core avoids `extract()`/`extractall()` and implicit overwrites.
+
+## Explicit public HTTPS transport
+
+`--public-https URL` opts into the separate HTTPS adapter. V1 permits only
+`raw.githubusercontent.com`; provider expansion requires reviewed source-specific
+integration. Credentials, query/fragment, non-HTTPS origins, redirects, partial
+responses, transfer/content compression and inconsistent Content-Length reject.
+The adapter uses verified TLS and no ambient proxy/cookie/authentication state.
+The frozen digest remains authoritative, regardless of transport.
+
+For example, the owned serial fixture is available at the pinned public source
+revision below; its content is checked against the same package metadata:
+
+```bash
+python -m coleman.corpus fetch owned-package.json \
+  --public-https https://raw.githubusercontent.com/jacksonpradolima/coleman/fd50ef4bc5c13123217d578dcfcf26dcaa7928d6/coleman/corpus/resources/ci-serial-boundary-v1.json \
+  --cache external-source-cache --output cli-integrity
+```
+
+The reader factory is lazy on a verified cache hit. A cache miss performs the
+explicit public request. Socket inactivity defaults to 15 seconds, with elapsed
+checks between reads against a 60-second budget. These are not a hard OS deadline
+for DNS/header processing or accounting of packet/TLS/header overhead. Automated
+tests use local owned bytes and protocol doubles; they make no network calls.
+Python's [HTTP client](https://docs.python.org/3.14/library/http.client.html) and
+[TLS context](https://docs.python.org/3.14/library/ssl.html#ssl.create_default_context)
+document the underlying transport behavior.
+
+## Recovery, compatibility and native CI
+
+`SourceCache` creates a versioned small format marker and stores immutable SHA-256
+blobs. Every accessed blob is size/hash verified; a filename or receipt alone is
+never proof. Identical concurrent publications converge. Changed/corrupt bytes
+reject rather than silently repairing or relabeling an old artifact. A refresh
+verifies supplied input even when cached source bytes already exist.
+
+The existing `ArtifactWriter` now accepts bounded binary streams while preserving
+its UTF-8 immutable API. The complete iterator must finish, including its final
+checksum check, before hard-link publication. Normal exception unwinding removes
+temporaries. SIGKILL/power loss can leave uncommitted temporary files; they never
+count as completed blobs. A retry reuses only verified completed source bytes and
+repeats member verification. Source/member files can survive an interruption
+without a completed package receipt. No learning checkpoint store is duplicated.
+
+`publish_materialization` verifies actual offline source/member bytes before
+publishing a deterministic metadata-only receipt under `corpus-materializations/`.
+Native manifests discover that family. A manually constructed/deserialized receipt
+is metadata, not an assertion that cached files still exist. Missing/future/legacy
+schema versions and unknown cache markers reject; old native/card/profile artifacts
+retain their original readers/meaning. No implicit migration or source copying
+into public artifacts occurs.
+
+Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.4.0/examples/corpus-materialization/ci.py)
+from the reviewed 4.4 release into a workspace outside the checkout:
+
+```bash
+python ci.py owned-ci-output /absolute/path/to/external-source-cache
+python ci.py owned-ci-output /absolute/path/to/external-source-cache
+```
+
+It builds a tiny owned ZIP containing both existing CI correctness fixtures,
+materializes them, verifies their actual JSON/native metrics, and feeds two
+constructed copies of the serial fixture through native Random/RNFail. It reopens
+the real learning checkpoint, checks both persisted rankings against the independent
+oracle, and publishes the integrity and correctness receipts via the native
+manifest. Repeated invocation keeps exactly two native rows. The two fixtures
+share one dependence group; there is no observed CI history, independent sample
+or policy superiority claim. All seven required diversity regimes remain uncovered.
+
+```mermaid
+flowchart LR
+  S[Frozen source and member recipe] --> T[Specific terms pins and byte limits]
+  T --> R[Explicit local or optional public HTTPS reader]
+  R --> H[Streaming source SHA and size]
+  H --> C[External immutable content cache]
+  C --> Z[ZIP metadata names types and limits]
+  Z --> L[Local and central agreement plus bounded descriptors]
+  L --> D[Complete stored or deflated stream]
+  D --> M[Streaming member SHA and size]
+  M --> C
+  C --> V[Offline complete package verification]
+  V --> A[Metadata-only versioned receipt]
+  A --> N[Existing native artifact manifest]
+  V --> G[Separate CI schema units identity and temporal gate]
+  G --> E[Existing native runner and learning checkpoints]
 ```
 
 
@@ -6559,6 +6946,113 @@ Implemented in [#259](https://github.com/jacksonpradolima/coleman/issues/259) an
 
 
 
+### FILE: docs/releases/4.4.0.md
+
+# COLEMAN 4.4 — Know your CI data. Reproduce your inputs.
+
+COLEMAN 4.4 helps you inspect the evidence behind a test-prioritization experiment
+before trusting its results. Profile native CI inputs, pin permitted source
+packages and verify the exact bytes used by a recoverable TCPCI workflow.
+
+## Inspect the history before comparing policies
+
+Bounded offline profiles describe all ten existing native Parquet artifacts with
+explicit unit status, missingness, raw duration distributions and rows per execution
+group. Logical builds,
+variant execution groups, repeated identities and conflicting outcomes remain
+separate. A deterministic inventory makes data-quality limits visible instead of
+turning repeated rows into independent evidence.
+
+Profiles preserve the source data cards and their admission decisions. A readable
+file or a large row count does not establish a licensed, diverse evaluation corpus.
+
+## Pin, verify and reuse permitted source bytes
+
+Versioned source-package recipes freeze source/version/citation, SHA-256, byte
+counts, specific reviewed terms, redistribution rules, member identities and
+resource limits. Raw files and conservative ZIP packages use an external immutable
+cache. Complete streams must pass checksum and size validation before publication;
+interruption cannot create a falsely completed blob or receipt. Identical retries
+and concurrent writers converge, while conflicts fail explicitly.
+
+Offline validation rechecks the source, archive-to-member relation and cached
+members. Metadata-only receipts preserve provenance without exporting recipe-only
+data. CLI acquisition checks cache/export separation first; SDK workflows use an
+explicit shared preflight, repeated at publication. Archive traversal,
+links, aliases, duplicates, unsupported formats and inconsistent sizes are rejected.
+
+The library accepts explicit binary readers. An optional public HTTPS adapter
+supports a reviewed origin with verified TLS and no ambient credentials, proxies
+or redirects. No metadata URI silently initiates a download.
+
+## Run a small native CI example twice
+
+Use Python 3.14 and the verified release wheel attached below. Copy
+[`examples/corpus-materialization/ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.4.0/examples/corpus-materialization/ci.py)
+into a separate workspace and select a cache outside Git repositories and outside
+the output tree:
+
+```bash
+python ci.py owned-ci-output /absolute/path/to/external-source-cache
+python ci.py owned-ci-output /absolute/path/to/external-source-cache
+```
+
+The base package suffices. The example builds an owned deterministic ZIP, verifies
+two CI correctness fixtures, executes the existing native runner, reopens its
+learning checkpoints and checks persisted rankings against an independent tiny
+reference. Repeating the command preserves exactly two native result rows.
+
+Read the complete [source-package guide](https://github.com/jacksonpradolima/coleman/blob/v4.4.0/docs/corpus-materialization.md)
+for executable SDK/CLI examples, byte limits and failure behavior. The
+[corpus guide](https://github.com/jacksonpradolima/coleman/blob/v4.4.0/docs/benchmark-corpus.md)
+covers profiles, the inventory and admission boundaries.
+
+## Validation you can reproduce
+
+The integrated implementation passed **1,947 tests** with **95.21% combined
+statement/branch coverage**, plus lint, formatting, both type checkers, Pylint,
+structural checks, strict documentation and package/install tests. Installed
+base-wheel workflows run outside the checkout with real native CI/checkpoints.
+Golden/version/compatibility checks, source corruption, interruption, concurrent
+publication, compressed-stream boundaries and malformed archive/resource-limit
+cases accompany the implementation. All confirmed PR findings were reproduced or
+verified and corrected; local-only OpenCodeReview and manual exclusions covered
+every changed file before integration.
+
+## Compatibility and honest evidence
+
+This additive 4.x release reuses existing runner, results, sinks, artifacts and
+checkpoints. Existing native outputs and older domain artifacts keep their meaning.
+New profile, package, receipt and cache contracts require explicit schema version 1;
+unknown versions reject. No old row is silently migrated into a source-admission
+or scientific success claim.
+
+Limits apply per operation, with trusted private local filesystem parents. The
+cache has no global quota/eviction policy; this release is not a hostile-filesystem
+sandbox or a hard operating-system deadline for network acquisition. The built-in
+archive recipe excludes tar, ZIP64 and additional compression methods. The optional
+HTTPS adapter is limited to `raw.githubusercontent.com`; explicit library readers
+remain independent of that transport.
+
+All ten existing registrations remain blocked pending source-specific admission
+evidence. All seven required diversity regimes remain uncovered. The owned
+correctness fixtures share one dependence group; they establish functional
+integrity and recovery, not independent projects or algorithm superiority.
+Negative and inconclusive evidence remains valid.
+
+The diversified benchmark program in
+[#261](https://github.com/jacksonpradolima/coleman/issues/261) stays open. Next come
+source-specific historical and controlled-fault adapters, synthetic stress cases,
+comparable baselines, protected statistical protocols and frozen cross-corpus
+reports. COLEMAN remains centered on CI test-case prioritization and selection.
+
+Implemented in [#284](https://github.com/jacksonpradolima/coleman/pull/284) and
+[#285](https://github.com/jacksonpradolima/coleman/pull/285).
+
+[Full changes from 4.3](https://github.com/jacksonpradolima/coleman/compare/v4.3.0...v4.4.0).
+
+
+
 ### FILE: docs/releases.md
 
 # Release preparation
@@ -6850,12 +7344,22 @@ diversity regimes remain uncovered.
 The shadow fixture demonstrates functional recovery, with zero collected forward
 builds and insufficient evidence for adoption.
 
-The next compatible feature target is **4.4.0**, continuing #261 sequentially with
-full profiles and secure fetch/conversion foundations. Further slices cover verified historical and
-controlled-fault sources, stress cases, baselines/statistics and frozen cross-corpus
-evidence. Deliveries can span later 4.x releases. The issue remains open until its
-admission, diversity, execution and evidence gates pass. Inaccessible or unlicensed
-sources remain visible blockers. Security fixes remain independently shippable.
+**4.4.0** groups the reviewed next two #261 slices: bounded native profiles and a
+reproducible inventory in [#284](https://github.com/jacksonpradolima/coleman/pull/284),
+and licensed source-package materialization in
+[#285](https://github.com/jacksonpradolima/coleman/pull/285). Typed integrity receipts,
+external caches, bounded archive validation and installed native recovery workflows
+reuse the existing runner/artifacts/checkpoints. All ten existing native registrations
+retain their admission blockers; all seven required diversity regimes remain
+uncovered.
+
+The next sequential corpus slice is the version-pinned RTPTorrent adapter and
+baseline slice. Later steps cover LRTS, controlled real faults, HCS/variant expansion
+and synthetic stress, comparable baselines/statistics, frozen confirmatory execution
+and the final evidence report. Compatible deliveries continue in later **4.x**
+releases. #261 stays open until its admission, diversity, execution and evidence
+gates pass. Inaccessible or unlicensed sources remain visible blockers. Security
+fixes remain independently shippable.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:

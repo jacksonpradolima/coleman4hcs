@@ -27,6 +27,28 @@ from coleman.corpus.fixtures import (
     fixture_bytes,
     parallel_reference,
 )
+from coleman.corpus.materialization import (
+    SourceCache,
+    materialize_source,
+    publish_materialization,
+    validate_cache_separation,
+    validate_materialization,
+)
+from coleman.corpus.materialization_contracts import (
+    MaterializationLimits,
+    MaterializationReceipt,
+    MaterializationSpec,
+    PackageMember,
+)
+from coleman.corpus.profiles import (
+    ColumnMissingness,
+    CorpusProfileInventory,
+    NativeSourceProfile,
+    NumericProfile,
+    profile_native_source,
+    publish_profile_inventory,
+    publish_source_profile,
+)
 from coleman.corpus.reference import RatioReference, TinyCIReference, tiny_ci_reference
 from coleman.corpus.registry import (
     REQUIRED_REGIMES,
@@ -41,12 +63,13 @@ from coleman.corpus.registry import (
 from coleman.corpus.validation import CorpusFixtureReport, publish_fixture_report, validate_fixture_source
 
 __all__ = [
-    "REQUIRED_REGIMES",
     "AdapterReference",
     "CIReferenceFixture",
+    "ColumnMissingness",
     "ConversionSummary",
     "CorpusFixtureReport",
     "CorpusManifest",
+    "CorpusProfileInventory",
     "CorpusRegistry",
     "CorpusResources",
     "DataCard",
@@ -54,13 +77,21 @@ __all__ = [
     "ExclusionCount",
     "FixtureReadiness",
     "LicenseReview",
+    "MaterializationLimits",
+    "MaterializationReceipt",
+    "MaterializationSpec",
+    "NativeSourceProfile",
+    "NumericProfile",
     "ObservationIdentity",
     "OutcomeSemantics",
+    "PackageMember",
     "ParallelFixtureCase",
     "ParallelReference",
+    "REQUIRED_REGIMES",
     "RatioReference",
     "SerialFixtureCase",
     "SourceArtifact",
+    "SourceCache",
     "TimeSemantics",
     "TinyCIReference",
     "VerdictMapping",
@@ -68,10 +99,17 @@ __all__ = [
     "fixture_bytes",
     "fixture_readiness",
     "load_registry",
+    "materialize_source",
     "parallel_reference",
-    "publish_fixture_report",
+    "profile_native_source",
     "publish_fixture_readiness",
+    "publish_fixture_report",
+    "publish_materialization",
+    "publish_profile_inventory",
+    "publish_source_profile",
     "tiny_ci_reference",
     "validate_bundled_source",
     "validate_fixture_source",
+    "validate_cache_separation",
+    "validate_materialization",
 ]

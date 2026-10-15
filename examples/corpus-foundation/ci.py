@@ -17,15 +17,26 @@ import polars as pl
 from coleman.api import run
 from coleman.artifacts import ArtifactWriter
 from coleman.corpus import (
+    AdapterReference,
+    CorpusProfileInventory,
+    CorpusRegistry,
+    DataCard,
+    ObservationIdentity,
+    TimeSemantics,
+    VerdictMapping,
     fixture_readiness,
     load_registry,
+    profile_native_source,
     publish_fixture_readiness,
     publish_fixture_report,
+    publish_profile_inventory,
+    publish_source_profile,
     tiny_ci_reference,
     validate_bundled_source,
 )
 from coleman.manifest import generate_manifest
 from coleman.pilot import SECONDS
+from coleman.results.domain import Measurement
 from coleman.selection import Quantity
 from coleman.spec.models import RunSpec
 
@@ -77,6 +88,7 @@ def main(output):
                 "rewards": ["RNFail"],
                 "budget": {"mode": "fixed_time", "values": [7]},
             },
+            "checkpoint": {"enabled": True, "interval": 1},
             "extensions": {
                 "corpus_demo": {
                     "source_manifest_fingerprint": source.manifest.fingerprint,
@@ -89,7 +101,7 @@ def main(output):
         }
     )
     native = run(spec)
-    run_root = Path(native.artifacts_dir)
+    run_root = _resume_native(spec, native)
     native_rows = pl.read_parquet(str(run_root / "results" / "**" / "*.parquet"), hive_partitioning=True)
     if native_rows.height != 2:
         raise ValueError("Expected two explicitly constructed native build copies")
@@ -106,6 +118,7 @@ def main(output):
             raise ValueError("Real native ranking APFDc disagrees with independent exact reference")
     writer = ArtifactWriter(run_root)
     paths = [publish_fixture_report(report, writer) for report in checked]
+    paths.extend(_profile_constructed(source, data_path, writer, registry))
     readiness = fixture_readiness(registry, checked)
     paths.append(publish_fixture_readiness(readiness, writer))
     generated = generate_manifest(run_root, run_id=native.run_id)
@@ -125,6 +138,85 @@ def main(output):
             }
         )
     )
+
+
+def _resume_native(spec, native):
+    """Reopen the real native checkpoint; missing progress or changed run identity raises ValueError."""
+    run_root = Path(native.artifacts_dir)
+    if not list((run_root / "checkpoints").rglob("progress_*.json")):
+        raise ValueError("Native fixture did not persist its continuation checkpoint")
+    restored = run(spec)
+    if restored.run_id != native.run_id:
+        raise ValueError("Checkpoint continuation changed native run identity")
+    return run_root
+
+
+def _profile_constructed(source, data_path, writer, registry):
+    """Describe the exact native input while retaining owned-source lineage and constructed history."""
+    manifest_data = source.manifest.model_dump()
+    manifest_data.update(
+        benchmark_id="ci-native-constructed-copies-v1",
+        adapter=AdapterReference(name="native-parquet-corpus", version="planned", implementation="planned"),
+        identity=ObservationIdentity(observation_fields=("BuildId", "Name"), group_fields=("BuildId",)),
+        time=TimeSemantics(
+            origin="constructed",
+            event_field=None,
+            outcome_available_field=None,
+            feature_available_field=None,
+            timezone="unverified",
+        ),
+        outcomes={
+            **source.manifest.outcomes.model_dump(),
+            "mapping": (VerdictMapping(source_value="0", verdict=0), VerdictMapping(source_value="1", verdict=1)),
+        },
+        source={
+            **source.manifest.source.model_dump(),
+            "uri": "urn:coleman:constructed-native-copies:v1",
+            "version": "constructed-native-v1",
+            "citation": "Two copies of " + source.manifest.fingerprint,
+            "sha256": "sha256:" + hashlib.sha256(data_path.read_bytes()).hexdigest(),
+            "size_bytes": data_path.stat().st_size,
+        },
+        conversion={"status": "not_validated", "input_rows": 6, "output_rows": None, "exclusions": ()},
+        limitations=(
+            "Two constructed copies of one owned fixture; no independent CI observations.",
+            "Profile validates local native shape, not source admission or protected evaluation.",
+        ),
+    )
+    card = DataCard(
+        schema_version=1,
+        manifest=manifest_data,
+        history="constructed",
+        fault_origin="synthetic",
+        languages=(),
+        execution_models=("serial",),
+        measurements=(
+            Measurement(
+                name="corpus_source_rows",
+                value=6.0,
+                unit="1",
+                meaning="constructed-native-row-count-v1",
+                direction="none",
+                status="observed",
+                minimum=0.0,
+            ),
+        ),
+        covered_regimes=(),
+        missing_regimes=registry.required_regimes,
+    )
+    report = profile_native_source(card, data_path)
+    if report.rows != 6 or report.logical_builds != 2 or report.failed_rows != 4:
+        raise ValueError("Native constructed source profile lost known fixture counts")
+    extended = CorpusRegistry(
+        schema_version=1,
+        registry_id="ci-native-demo-v1",
+        cards=(*registry.cards, card),
+        required_regimes=registry.required_regimes,
+    )
+    inventory = CorpusProfileInventory(
+        schema_version=1, registry=extended, profiles=(report,), uncovered_required_regimes=extended.required_regimes
+    )
+    return [publish_source_profile(report, writer), publish_profile_inventory(inventory, writer)]
 
 
 if __name__ == "__main__":
