@@ -188,8 +188,8 @@ A real provider needs a separately implemented/verified adapter; marking it
 
 ## Real native execution and artifact recovery
 
-Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.2.0/examples/corpus-foundation/ci.py)
-and run `python ci.py native-output` from the installed 4.2 wheel or a source build. It uses
+Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.3.0/examples/corpus-foundation/ci.py)
+and run `python ci.py native-output` from the installed 4.3 wheel or a source build. It uses
 `api.run()` with native Random/RNFail and a full seven-second budget, verifies each
 actual native ranking's NAPFD/APFDc against the independent oracle, and publishes
 both source checks plus the insufficient-diversity inventory through existing

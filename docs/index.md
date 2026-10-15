@@ -44,7 +44,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.2.0/coleman-4.2.0-py3-none-any.whl#sha256=8e929093fc2103d0de141c3e64dccb099001dfd6216f9051cfe4ceee120ebef8"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
 coleman run --config my-experiment.yaml
 ```
 
