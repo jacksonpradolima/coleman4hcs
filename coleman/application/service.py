@@ -350,6 +350,8 @@ class ApplicationService:
                 if path.exists():
                     shutil.rmtree(path)
             (job.directory / "request.json").unlink(missing_ok=True)
+            if time.monotonic() - job.admitted >= job.view.limits.deadline_seconds:
+                state, error, handle = "expired", "expired", None
         receipt = handle if state == "completed" else job.view.handle if state == "expired" else None
         job.view = JobView.model_validate(
             {

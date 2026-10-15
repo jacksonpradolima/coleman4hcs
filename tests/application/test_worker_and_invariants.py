@@ -16,6 +16,7 @@ from coleman.application import (
     ApplicationError,
     ApplicationService,
     Caller,
+    Handle,
     Limits,
     Parameters,
     ServerPolicy,
@@ -238,6 +239,21 @@ def test_shutdown_while_queued_is_idempotent_and_reaps_session(tmp_path):
     service.close()
     service.close()
     assert not list(tmp_path.iterdir())
+
+
+def test_completion_deadline_rechecked_after_work_file_cleanup(tmp_path):
+    caller = Caller(subject="local")
+    with ApplicationService(default_registry(), root=tmp_path) as service, service._condition:
+        view = service.submit(
+            Submit(schema_version=1, request_id="deadline", spec_id="weighted-overlap-3"), caller=caller
+        )
+        job = service._jobs[view.job_id]
+        job.admitted -= view.limits.deadline_seconds + 1
+        receipt = Handle(schema_version=1, job_id=view.job_id, digest="sha256:" + "0" * 64)
+        service._finish(job, "completed", handle=receipt)
+        assert job.view.state == "expired"
+        assert job.view.handle is None
+        assert not job.directory.exists()
 
 
 def test_resource_checks_before_work_and_atomic_last_publication(tmp_path, monkeypatch):
