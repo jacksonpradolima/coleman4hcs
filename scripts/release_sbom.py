@@ -14,6 +14,7 @@ import os
 import re
 import subprocess
 import tempfile
+import tomllib
 import zipfile
 from email import policy
 from email.parser import BytesParser
@@ -34,9 +35,11 @@ def validate_inventory(payload: dict, version: str, wheel_name: str) -> None:
         raise ValueError("SBOM must contain the expected COLEMAN distribution")
 
 
-def build_sbom(wheel: Path, version: str, output: Path) -> None:
+def _build_sbom(wheel: Path, version: str, output: Path) -> None:
     """Run installed Syft against bounded wheel METADATA and atomically publish JSON.
 
+    Paths are trusted release/test workspace locations, never application inputs.
+    The public command derives all paths from its own checkout and accepts no arguments.
     Only a fixed metadata member is read: no archive paths are extracted and no
     wheel code executes. Missing/duplicate/oversized metadata, version mismatches,
     malformed Syft output or tool failure abort without replacing existing output.
@@ -44,7 +47,7 @@ def build_sbom(wheel: Path, version: str, output: Path) -> None:
     Syft timestamps and serial numbers remain observations; identical SBOM bytes
     are not promised.
     """
-    if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
+    if re.fullmatch(r"\d+\.\d+\.\d+", version, flags=re.ASCII) is None:
         raise ValueError("Expected a stable semantic release version")
     if wheel.name != f"coleman-{version}-py3-none-any.whl":
         raise ValueError("Expected this release's COLEMAN wheel")
@@ -115,9 +118,11 @@ def build_sbom(wheel: Path, version: str, output: Path) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--wheel", required=True, type=Path)
-    parser.add_argument("--version", required=True)
-    parser.add_argument("--output", required=True, type=Path)
-    args = parser.parse_args()
-    build_sbom(args.wheel, args.version, args.output)
+    # This release-only command accepts no client paths or request parameters.
+    argparse.ArgumentParser(description=__doc__).parse_args()
+    checkout = Path(__file__).resolve().parents[1]
+    release_version = tomllib.loads((checkout / "pyproject.toml").read_text())["project"]["version"]
+    distributions = checkout / "dist"
+    _build_sbom(
+        distributions / f"coleman-{release_version}-py3-none-any.whl", release_version, distributions / "sbom.json"
+    )

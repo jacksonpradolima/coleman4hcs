@@ -93,12 +93,7 @@ jobs:
 
       - name: Generate SBOM (CycloneDX)
         if: steps.release.outputs.released == 'true'
-        env:
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
-        run: >-
-          python scripts/release_sbom.py
-          --wheel "dist/coleman-${RELEASE_VERSION}-py3-none-any.whl"
-          --version "$RELEASE_VERSION" --output dist/sbom.json
+        run: python scripts/release_sbom.py
 
       - name: Sign distributions with Sigstore
         if: steps.release.outputs.released == 'true'

@@ -5,13 +5,15 @@ import importlib.util
 import json
 import shutil
 import subprocess
+import sys
 import zipfile
 from pathlib import Path
 
 import pytest
 
 SPEC = importlib.util.spec_from_file_location("release_sbom", Path(__file__).parents[1] / "scripts/release_sbom.py")
-assert SPEC is not None and SPEC.loader is not None
+assert SPEC is not None
+assert SPEC.loader is not None
 sbom = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(sbom)
 VERSION = "4.0.0"
@@ -53,7 +55,7 @@ def test_wrong_wheel_identity_never_replaces_prior_inventory(tmp_path, metadata)
     output = tmp_path / "sbom.json"
     output.write_text("previous complete inventory")
     with pytest.raises(ValueError, match="Wheel metadata"):
-        sbom.build_sbom(wheel, VERSION, output)
+        sbom._build_sbom(wheel, VERSION, output)
     assert output.read_text() == "previous complete inventory"
 
 
@@ -71,7 +73,7 @@ def test_invalid_tool_output_does_not_publish_or_replace_bytes(tmp_path, monkeyp
 
     monkeypatch.setattr(sbom.subprocess, "run", empty_inventory)
     with pytest.raises(ValueError):
-        sbom.build_sbom(wheel, VERSION, output)
+        sbom._build_sbom(wheel, VERSION, output)
     assert output.read_text() == "previous complete inventory"
 
 
@@ -82,7 +84,7 @@ def test_real_syft_catalogs_wheel_metadata_without_host_paths(tmp_path):
         archive.writestr("coleman-4.0.0.dist-info/METADATA", "Metadata-Version: 2.4\nName: coleman\nVersion: 4.0.0\n")
         archive.writestr("../../outside", "not extracted")
     output = tmp_path / "sbom.json"
-    sbom.build_sbom(wheel, VERSION, output)
+    sbom._build_sbom(wheel, VERSION, output)
     payload = json.loads(output.read_text())
     sbom.validate_inventory(payload, VERSION, WHEEL)
     assert payload["metadata"]["component"]["hashes"] == [
@@ -111,7 +113,7 @@ def test_interrupted_atomic_publication_preserves_prior_bytes_and_cleans_tempora
     monkeypatch.setattr(sbom.subprocess, "run", valid_inventory)
     monkeypatch.setattr(sbom.os, "replace", interrupted)
     with pytest.raises(OSError, match="interrupted publication"):
-        sbom.build_sbom(wheel, VERSION, output)
+        sbom._build_sbom(wheel, VERSION, output)
     assert output.read_text() == "previous complete inventory"
     assert {path.name for path in tmp_path.iterdir()} == {WHEEL, "sbom.json"}
 
@@ -131,10 +133,21 @@ def test_source_binding_keeps_dependency_references_coherent(tmp_path, monkeypat
         return subprocess.CompletedProcess(command, 0)
 
     monkeypatch.setattr(sbom.subprocess, "run", catalog)
-    sbom.build_sbom(wheel, VERSION, output)
+    sbom._build_sbom(wheel, VERSION, output)
     result = json.loads(output.read_text())
     references = {item["bom-ref"] for item in result["components"]} | {"wheel"}
     assert all(edge["ref"] in references for edge in result["dependencies"])
     assert all(target in references for edge in result["dependencies"] for target in edge["dependsOn"])
     assert previous not in output.read_text()
     assert "guessed-cpe" not in output.read_text()
+
+
+def test_release_command_refuses_caller_supplied_output_paths(tmp_path):
+    script = Path(__file__).parents[1] / "scripts/release_sbom.py"
+    outside = tmp_path / "caller-selected.json"
+    completed = subprocess.run(
+        [sys.executable, str(script), "--output", str(outside)], capture_output=True, text=True, check=False
+    )
+    assert completed.returncode == 2
+    assert "unrecognized arguments" in completed.stderr
+    assert not outside.exists()

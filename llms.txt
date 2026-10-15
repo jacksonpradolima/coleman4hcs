@@ -3185,11 +3185,11 @@ installed in the wheel.
 The complete lock advisory audit above covers those version pins separately.
 
 ```sh
-python scripts/release_sbom.py \
-  --wheel dist/coleman-4.0.0-py3-none-any.whl \
-  --version 4.0.0 --output dist/sbom.json
+python scripts/release_sbom.py
 ```
 
+The command accepts no arguments: it reads its checkout's package version and
+uses the corresponding wheel and SBOM under that checkout's `dist/`.
 The helper reads only the fixed METADATA member; it does not extract archive paths
 or execute package code. Empty/mismatched inventories fail before publication.
 Host file metadata is excluded, so local extraction paths do not become public
