@@ -24,6 +24,7 @@ from coleman.corpus import (
     publish_materialization,
     publish_source_profile,
     validate_bundled_source,
+    validate_cache_separation,
     validate_materialization,
 )
 
@@ -109,7 +110,11 @@ def _publish(args: argparse.Namespace, registry: CorpusRegistry) -> dict:
 
 def _contract_bytes(path: Path) -> bytes:
     """Read bounded metadata only; source/archive data uses the streaming materialization core."""
-    with path.open("rb") as stream:
+    workspace = Path.cwd().resolve()
+    resolved = (workspace / path).resolve()
+    if not resolved.is_relative_to(workspace):
+        raise ValueError("Source package metadata must remain within the current workspace")
+    with resolved.open("rb") as stream:
         payload = stream.read(256 * 1024 + 1)
     if len(payload) > 256 * 1024:
         raise ValueError("Source package metadata exceeds 256 KiB")
@@ -125,6 +130,7 @@ def _materialization(args: argparse.Namespace) -> dict:
         return {"integrity": "verified", "admission": receipt.admission, "fingerprint": receipt.fingerprint}
     spec = MaterializationSpec.from_json(_contract_bytes(args.spec))
     writer = _workspace_writer(args.output, "corpus-materializations")
+    validate_cache_separation(args.cache, writer.run_root)
     cache = SourceCache(args.cache)
     factory = None
     if args.source is not None:

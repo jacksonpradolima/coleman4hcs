@@ -69,6 +69,8 @@ def _entry_name(info: zipfile.ZipInfo) -> str:
         raise ValueError("ZIP links and special file entries are prohibited")
     if info.compress_type not in {zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED}:
         raise ValueError("ZIP compression method is unsupported by this recipe")
+    if info.compress_type == zipfile.ZIP_STORED and info.compress_size != info.file_size:
+        raise ValueError("ZIP stored member compressed and decoded sizes must agree")
     if info.is_dir() and info.file_size:
         raise ValueError("ZIP directory entries cannot contain data")
     return name
@@ -112,5 +114,5 @@ def consume_zip_members(
             for info in entries:
                 with archive.open(info) as stream:
                     consume(members[info.filename], stream)
-    except (zipfile.BadZipFile, NotImplementedError, RuntimeError) as exc:
+    except (zipfile.BadZipFile, RuntimeError) as exc:
         raise ValueError("Invalid or unsupported ZIP source package") from exc

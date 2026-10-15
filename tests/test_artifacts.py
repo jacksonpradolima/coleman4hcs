@@ -87,8 +87,9 @@ def test_immutable_binary_stream_limits_interruption_and_utf8_compatibility(tmp_
         yield b"begin"
         raise OSError("checksum validation interrupted")
 
+    interrupted_chunks = interrupted()
     with pytest.raises(OSError, match="interrupted"):
-        writer.write_immutable_stream(target, interrupted(), maximum_bytes=10)
+        writer.write_immutable_stream(target, interrupted_chunks, maximum_bytes=10)
     with pytest.raises(ValueError, match="byte limit"):
         writer.write_immutable_stream(target, (b"too long",), maximum_bytes=1)
     invalid_chunks = cast(Iterable[bytes], ("not binary",))

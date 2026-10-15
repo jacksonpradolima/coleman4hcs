@@ -3154,8 +3154,13 @@ metadata, missing/corrupt bytes or I/O/publication failures return 2.
 
 The cache defaults to `~/.cache/coleman/corpus`. The physical root must be outside
 Git worktree markers. Supply an explicit external cache for automation/tests.
-Cache and published artifact trees cannot overlap, keeping recipe-only source
-bytes out of exported artifacts. Output paths/family parents must remain within
+Spec/receipt JSON paths must resolve within the current workspace, including
+symlink targets; SDK callers retain explicit filesystem control. Cache and
+published artifact trees cannot overlap, keeping recipe-only source
+bytes out of exported artifacts. CLI and native example check this before cache
+creation or acquisition. SDK workflows that acquire and publish must call
+`validate_cache_separation(cache_root, output_root)` first; publication also
+rechecks the roots. Output paths/family parents must remain within
 the current workspace. These checks assume trusted private parent directories;
 concurrent hostile filesystem mutation is outside the local-file contract.
 

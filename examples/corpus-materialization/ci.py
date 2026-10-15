@@ -27,6 +27,7 @@ from coleman.corpus import (
     publish_fixture_report,
     publish_materialization,
     tiny_ci_reference,
+    validate_cache_separation,
     validate_fixture_source,
     validate_materialization,
 )
@@ -34,6 +35,8 @@ from coleman.manifest import generate_manifest
 from coleman.pilot import SECONDS
 from coleman.selection import Quantity
 from coleman.spec.models import RunSpec
+
+_SHA256_PREFIX = "sha256:"
 
 
 def owned_bundle():
@@ -49,7 +52,11 @@ def owned_bundle():
             entry.external_attr = (stat.S_IFREG | 0o644) << 16
             archive.writestr(entry, payload)
             members.append(
-                {"name": name, "sha256": "sha256:" + hashlib.sha256(payload).hexdigest(), "size_bytes": len(payload)}
+                {
+                    "name": name,
+                    "sha256": _SHA256_PREFIX + hashlib.sha256(payload).hexdigest(),
+                    "size_bytes": len(payload),
+                }
             )
     payload = buffer.getvalue()
     spec = MaterializationSpec.model_validate(
@@ -61,7 +68,7 @@ def owned_bundle():
                 "uri": "urn:coleman:owned-ci-bundle:v1",
                 "version": "owned-bundle-v1",
                 "citation": "Two repository-authored CI correctness fixtures with one shared dependence group",
-                "sha256": "sha256:" + hashlib.sha256(payload).hexdigest(),
+                "sha256": _SHA256_PREFIX + hashlib.sha256(payload).hexdigest(),
                 "size_bytes": len(payload),
                 "availability": "not_verified",
             },
@@ -107,7 +114,7 @@ def _native_spec(root, source, receipt):
                 "corpus_materialization": {
                     "spec_fingerprint": receipt.spec.fingerprint,
                     "source_fingerprint": source.manifest.fingerprint,
-                    "native_source_sha256": "sha256:" + hashlib.sha256(data).hexdigest(),
+                    "native_source_sha256": _SHA256_PREFIX + hashlib.sha256(data).hexdigest(),
                     "history": "two-constructed-copies-of-one-owned-fixture-not-independent-observations-v1",
                 }
             },
@@ -146,6 +153,7 @@ def main(output, cache_root):
         path = root / relative
         if path.is_symlink() or not path.resolve().is_relative_to(root):
             raise ValueError("Owned CI output descendants must remain within its trusted root")
+    validate_cache_separation(cache_root, root)
     spec, payload = owned_bundle()
     cache = SourceCache(cache_root)
     receipt = materialize_source(spec, cache, lambda: io.BytesIO(payload))

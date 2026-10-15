@@ -31,6 +31,7 @@ from coleman.corpus.materialization import (
     SourceCache,
     materialize_source,
     publish_materialization,
+    validate_cache_separation,
     validate_materialization,
 )
 from coleman.corpus.materialization_contracts import (
@@ -109,5 +110,6 @@ __all__ = [
     "tiny_ci_reference",
     "validate_bundled_source",
     "validate_fixture_source",
+    "validate_cache_separation",
     "validate_materialization",
 ]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections import deque
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager
 from pathlib import Path
@@ -107,8 +108,7 @@ class SourceCache:
             raise ValueError("Source cache requires a bounded nonnegative integer byte count")
         path = self._blob(digest)
         with path.open("rb") as stream:
-            for _ in _verified_chunks(stream, digest, size):
-                pass
+            deque(_verified_chunks(stream, digest, size), maxlen=0)
         return path
 
     def store_blob(self, digest: str, size: int, reader: ByteReader) -> Path:
@@ -206,12 +206,26 @@ def validate_materialization(receipt: MaterializationReceipt, cache: SourceCache
 
     def verify_member(member: PackageMember, stream: ByteReader) -> None:
         """Verify actual archive contents and their independently cached copy before accepting membership."""
-        for _ in _verified_chunks(stream, member.sha256, member.size_bytes):
-            pass
+        deque(_verified_chunks(stream, member.sha256, member.size_bytes), maxlen=0)
         cache.verify_blob(member.sha256, member.size_bytes)
 
     if spec.archive == "zip":
         consume_zip_members(path, spec, verify_member)
+
+
+def validate_cache_separation(cache_root: str | Path, output_root: str | Path) -> None:
+    """Reject physically overlapping cache/export roots before any acquisition or output writes.
+
+    Resolve both roots, including existing symlink parents, without creating files.
+    Equal roots or either ancestor relation raises ValueError. Callers planning
+    acquisition plus publication must run this preflight before constructing the
+    cache; publication repeats the check. Trusted private parent directories are
+    required: this does not prevent concurrent hostile filesystem mutation.
+    """
+    cache = Path(cache_root).resolve()
+    output = Path(output_root).resolve()
+    if cache.is_relative_to(output) or output.is_relative_to(cache):
+        raise ValueError("Source cache and published artifact tree must remain separate")
 
 
 def publish_materialization(receipt: MaterializationReceipt, cache: SourceCache, writer: ArtifactWriter) -> Path:
@@ -222,9 +236,7 @@ def publish_materialization(receipt: MaterializationReceipt, cache: SourceCache,
     writer/root and process-interruption/power-loss limits apply.
     """
     receipt = MaterializationReceipt.model_validate(receipt)
-    output = writer.run_root.resolve()
-    if cache.root.is_relative_to(output) or output.is_relative_to(cache.root):
-        raise ValueError("Source cache and published artifact tree must remain separate")
+    validate_cache_separation(cache.root, writer.run_root)
     validate_materialization(receipt, cache)
     path = writer.run_root / "corpus-materializations" / f"{receipt.fingerprint.removeprefix('sha256:')}.json"
     writer.write_immutable(path, receipt.to_json() + "\n")

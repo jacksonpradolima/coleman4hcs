@@ -442,8 +442,9 @@ def test_cache_low_level_bounds_missing_inputs_and_bad_reader_contract(tmp_path)
     for size in (-1, True, 8 * 1024**3 + 1):
         with pytest.raises(ValueError, match="byte count"):
             cache.verify_blob("sha256:" + "0" * 64, size)
+        empty_reader = io.BytesIO()
         with pytest.raises(ValueError, match="byte count"):
-            cache.store_blob("sha256:" + "0" * 64, size, io.BytesIO())
+            cache.store_blob("sha256:" + "0" * 64, size, empty_reader)
     with pytest.raises(ValueError, match="SHA-256"):
         cache.verify_blob("../outside", 0)
     spec, _ = recipe()
@@ -457,8 +458,9 @@ def test_cache_low_level_bounds_missing_inputs_and_bad_reader_contract(tmp_path)
         def read(self, maximum, /):
             return "not binary"
 
+    bad_reader = BadReader()
     with pytest.raises(TypeError, match="return bytes"):
-        cache.store_blob("sha256:" + "0" * 64, 3, BadReader())
+        cache.store_blob("sha256:" + "0" * 64, 3, bad_reader)
     assert not list(cache.root.glob("blobs/*"))
 
 
@@ -508,8 +510,9 @@ def test_reader_cannot_bypass_fixed_chunk_bound(tmp_path):
         def read(self, maximum, /):
             return b"x" * (maximum + 1)
 
+    oversized_reader = OversizedReader()
     with pytest.raises(ValueError, match="chunk bound"):
-        cache.store_blob("sha256:" + "0" * 64, 1_000_000, OversizedReader())
+        cache.store_blob("sha256:" + "0" * 64, 1_000_000, oversized_reader)
     assert not list(cache.root.glob("blobs/*"))
     assert not list(cache.root.rglob("*.tmp"))
 
@@ -561,3 +564,87 @@ def test_additional_real_zip_metadata_boundaries(tmp_path, kind):
     else:
         with pytest.raises(ValueError, match="ZIP"):
             materialize_source(spec, cache, lambda: reader(bytes(payload)))
+
+
+def test_cli_metadata_paths_reject_external_and_symlink_targets_before_read(tmp_path, monkeypatch):
+    from coleman.corpus.__main__ import _contract_bytes
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    outside = tmp_path / "outside.json"
+    outside.write_bytes(b"{}")
+    monkeypatch.chdir(workspace)
+    link = workspace / "linked.json"
+    link.symlink_to(outside)
+    for path in (outside, Path("../outside.json"), link):
+        with pytest.raises(ValueError, match="metadata must remain"):
+            _contract_bytes(path)
+    inside = workspace / "inside.json"
+    inside.write_bytes(b"{}")
+    assert _contract_bytes(inside) == b"{}"
+    inside.write_bytes(b"x" * (256 * 1024 + 1))
+    with pytest.raises(ValueError, match="256 KiB"):
+        _contract_bytes(inside)
+    assert outside.read_bytes() == b"{}"
+
+
+@pytest.mark.parametrize("entrypoint", ["cli", "example"])
+@pytest.mark.parametrize("relation", ["cache-inside", "output-inside", "equal", "symlink"])
+def test_acquisition_rejects_overlapping_export_before_creating_any_bytes(tmp_path, monkeypatch, entrypoint, relation):
+    import runpy
+
+    from coleman.corpus.__main__ import main
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    monkeypatch.chdir(workspace)
+    output = workspace / "export"
+    cache = output / "cache"
+    if relation == "output-inside":
+        cache = workspace / "cache"
+        output = cache / "export"
+    elif relation == "equal":
+        cache = output
+    elif relation == "symlink":
+        cache = workspace / "cache-alias"
+        cache.symlink_to(output, target_is_directory=True)
+    spec, payload = recipe()
+    spec = changed(spec, license=changed(spec.license, redistribution="recipe_only"))
+    package = workspace / "package.json"
+    package.write_text(spec.to_json())
+    source = workspace / "source.json"
+    source.write_bytes(payload)
+    if entrypoint == "cli":
+        assert (
+            main(["fetch", str(package), "--source", str(source), "--cache", str(cache), "--output", str(output)]) == 2
+        )
+    else:
+        example = runpy.run_path(str(ROOT / "examples/corpus-materialization/ci.py"))["main"]
+        with pytest.raises(ValueError, match="separate"):
+            example(str(output), str(cache))
+    assert not output.exists()
+    assert not list(workspace.rglob("cache-format.json"))
+    assert not list(workspace.rglob("blobs/*"))
+    assert not list(workspace.rglob("corpus-materializations/*.json"))
+
+
+@pytest.mark.parametrize("delta", [-1, 1, 24])
+def test_stored_zip_rejects_unconsumed_or_truncated_declared_member_bytes(tmp_path, delta):
+    spec, original = zipped()
+    payload = bytearray(original)
+    directory = payload.index(b"PK\x01\x02")
+    size = struct.unpack_from("<I", payload, directory + 20)[0]
+    if delta > 0:
+        payload[directory:directory] = b"x" * delta
+        directory += delta
+        footer = payload.rfind(b"PK\x05\x06")
+        struct.pack_into("<I", payload, footer + 16, directory)
+    struct.pack_into("<I", payload, 18, size + delta)
+    struct.pack_into("<I", payload, directory + 20, size + delta)
+    spec = changed(spec, source=changed(spec.source, sha256=digest(payload), size_bytes=len(payload)))
+    cache = SourceCache(tmp_path / "cache")
+    member = spec.members[0]
+    with pytest.raises(ValueError, match="stored member compressed and decoded sizes"):
+        materialize_source(spec, cache, lambda: reader(bytes(payload)))
+    assert not (cache.root / "blobs" / member.sha256.removeprefix("sha256:")).exists()
+    assert not list(tmp_path.rglob("corpus-materializations/*.json"))

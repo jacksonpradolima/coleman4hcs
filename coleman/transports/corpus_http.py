@@ -45,7 +45,7 @@ def _identity_response(response: http.client.HTTPResponse, size: int) -> None:
     ):
         raise ValueError("Public source must provide an unencoded known-size entity")
     lengths = response.headers.get_all("Content-Length", [])
-    if len(lengths) != 1 or re.fullmatch(r"[0-9]+", lengths[0]) is None or int(lengths[0]) != size:
+    if len(lengths) != 1 or re.fullmatch(r"\d+", lengths[0], flags=re.ASCII) is None or int(lengths[0]) != size:
         raise ValueError("Public source Content-Length disagrees with frozen byte count")
 
 
