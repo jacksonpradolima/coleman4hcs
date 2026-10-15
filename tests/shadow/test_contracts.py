@@ -40,8 +40,9 @@ def test_unsupported_versions_fail_closed(version):
             data.pop("schema_version")
         else:
             data["schema_version"] = version
+        payload = json.dumps(data)
         with pytest.raises(ValueError):
-            type(model).from_json(json.dumps(data))
+            type(model).from_json(payload)
 
 
 def test_duplicate_json_keys_and_legacy_artifacts_are_never_reinterpreted(tmp_path):
@@ -66,8 +67,9 @@ def test_occupied_milliseconds_require_finite_nonnegative_integers(value):
 def test_nonfinite_outcomes_and_protocol_thresholds_are_rejected(value):
     with pytest.raises(ValidationError):
         feedback("t1", 1, 0, value)
+    proto = protocol()
     with pytest.raises(ValidationError):
-        replace(protocol(), minimum_recall=value)
+        replace(proto, minimum_recall=value)
 
 
 def test_queue_delay_cannot_be_used_as_runner_work_or_inference_cost():
@@ -190,23 +192,25 @@ def test_duplicate_at_event_limit_is_idempotent_but_new_event_is_not_acknowledge
     entry = state.journal[0]
     assert state.ingest(entry.event, clock(100, 100)).to_json() == state.to_json()
     event = SourceStatus(event_id="new", connected=True, available_at=clock(0).utc_at)
+    receipt = clock(0, 1)
     with pytest.raises(ValueError, match="event retention"):
-        state.ingest(event, clock(0, 1))
+        state.ingest(event, receipt)
     assert len(state.journal) == 1
 
 
 def test_payload_and_journal_byte_limits_reject_without_changing_prior_state():
     limited = replace(protocol(), maximum_event_bytes=1024, maximum_journal_bytes=4096)
     state = connected(limited)
+    event = opening(limited)
+    receipt = clock(0, 1)
     with pytest.raises(ValueError, match="event exceeds its byte"):
-        state.ingest(opening(limited), clock(0, 1))
+        state.ingest(event, receipt)
     assert len(state.journal) == 1
     state = connected(replace(protocol(), maximum_event_bytes=4096, maximum_journal_bytes=4096))
+    event = SourceStatus(event_id="x" * 3500, connected=True, available_at=receipt.utc_at)
     with pytest.raises(ValueError, match="journal byte retention"):
-        for index in range(1, 40):
-            event = SourceStatus(event_id=f"heartbeat-{index}", connected=True, available_at=clock(index).utc_at)
-            state = state.ingest(event, clock(index, index))
-    assert len(state.to_json().encode()) < 10000
+        state.ingest(event, receipt)
+    assert len(state.journal) == 1
 
 
 def test_quarantined_only_source_never_claims_complete_actual_accounting():
@@ -309,7 +313,9 @@ def test_changed_same_ordinal_concurrent_history_conflicts_without_overwriting(t
     assert load_shadow_state(first.protocol, writer).to_json() == first.to_json()
 
 
-@pytest.mark.parametrize("corruption", ["future_frame", "missing_frame", "changed_predecessor", "changed_reference"])
+@pytest.mark.parametrize(
+    "corruption", ["future_frame", "missing_frame", "changed_predecessor", "changed_reference", "noncanonical_ordinal"]
+)
 def test_committed_artifact_corruption_is_never_a_successful_restore(tmp_path, corruption):
     from coleman.artifacts import ArtifactWriter
     from coleman.shadow import load_shadow_state, publish_shadow_state, verify_shadow_checkpoint
@@ -320,6 +326,8 @@ def test_committed_artifact_corruption_is_never_a_successful_restore(tmp_path, c
     frames = sorted(tmp_path.rglob("frames/*.json"))
     if corruption == "missing_frame":
         frames[0].unlink()
+    elif corruption == "noncanonical_ordinal":
+        frames[1].rename(frames[1].with_name("2.json"))
     elif corruption == "changed_reference":
         data = json.loads(checkpoint.read_bytes())
         data["state_fingerprint"] = state.protocol.fingerprint
@@ -338,12 +346,12 @@ def test_committed_artifact_corruption_is_never_a_successful_restore(tmp_path, c
             load_shadow_state(state.protocol, writer)
 
 
-@pytest.mark.parametrize("adverse", [False, True])
-def test_synthetic_gate_branch_fixture_requires_all_predeclared_days_and_groups(adverse):
+def synthetic_gate_state(adverse=False, minimum_net_saving_ms=1):
     # This unit fixture exercises the authorized-source contract's descriptive
     # branch. It is simulated, not collected forward evidence or a study result.
     proto = replace(
         protocol("authorized_forward_ci"),
+        minimum_net_saving_ms=minimum_net_saving_ms,
         minimum_observation_days=2,
         independent_groups=("group-a", "group-b"),
         independence_justification="unit-fixture-only-no-empirical-independence-claim",
@@ -368,6 +376,12 @@ def test_synthetic_gate_branch_fixture_requires_all_predeclared_days_and_groups(
         state = state.ingest(closure(event.build_id, offset + 8), clock(offset + 8, 5, session))
         if day == 0:
             assert ShadowReport(schema_version=1, state=state).evidence().outcome == "inconclusive"
+    return state
+
+
+@pytest.mark.parametrize("adverse", [False, True])
+def test_synthetic_gate_branch_fixture_requires_all_predeclared_days_and_groups(adverse):
+    state = synthetic_gate_state(adverse)
     evidence = ShadowReport(schema_version=1, state=state).evidence()
     if adverse:
         assert evidence.known_adverse_findings
@@ -387,10 +401,11 @@ def test_reused_clock_session_retains_its_admitted_high_watermark(restored):
         state = ShadowState.from_json(state.to_json())
     reused = SourceStatus(event_id="reused-session-a", available_at=clock(10).utc_at, connected=True)
     before = state.to_json()
+    invalid_clock = clock(10, 1, "first")
     with pytest.raises(ValueError, match="Monotonic host tick moved backwards"):
-        state.ingest(reused, clock(10, 1, "first"))
+        state.ingest(reused, invalid_clock)
     with pytest.raises(ValueError, match="Monotonic host tick moved backwards"):
-        state.operational(clock(10, 1, "first"))
+        state.operational(invalid_clock)
     assert state.to_json() == before
     # Legitimately continuing that clock is safe; ticks are never compared to B's 100.
     resumed = state.ingest(reused, clock(10, 60, "first"))
@@ -414,3 +429,67 @@ def test_upstream_closure_cannot_precede_physical_work(case):
         expected = "physical_completion_after_upstream_closure"
     assert state.journal[-1].disposition == "quarantined"
     assert state.journal[-1].reason == expected
+
+
+@pytest.mark.parametrize("label", [-1.0, 0.000000000001, 0.999999999999, 1.000000000001])
+def test_binary_failure_indicators_never_use_approximate_equality(label):
+    with pytest.raises(ValueError):
+        feedback("t1", 1, 0, label)
+
+
+def test_feedback_outside_frozen_build_horizon_cannot_complete_quality_evidence():
+    from datetime import timedelta
+
+    from test_shadow import START
+
+    state = connected()
+    event = replace(opening(state.protocol), target_end=START + timedelta(seconds=2))
+    state = state.ingest(event, clock(0, 1))
+    for tick, (name, second, cost, label) in enumerate(
+        (("t1", 1, 1000, 0.0), ("t2", 3, 2000, 1.0), ("t3", 7, 4000, 1.0)), 2
+    ):
+        state = state.ingest(feedback(name, second, cost, label), clock(second, tick))
+    state = state.ingest(closure(), clock(8, 5))
+    report = ShadowReport(schema_version=1, state=state)
+    assert report.evidence().scored_logical_builds == 0
+    assert all(row.recall.value is None and row.recall.status == "unavailable" for row in report.findings())
+    assert report.evidence().actual_known_required_runner.value == 7000
+    assert report.evidence().actual_accounting_complete
+
+
+@pytest.mark.parametrize("arrival", ["after_target", "after_study"])
+def test_post_window_correction_cannot_rewrite_predeclared_passing_evidence(arrival):
+    from test_shadow import START
+
+    state = synthetic_gate_state()
+    report = ShadowReport(schema_version=1, state=state)
+    assert report.evidence().outcome == "pass"
+    seconds = 86400 + 120
+    if arrival == "after_study":
+        seconds = int((state.protocol.temporal_plan.test_end - START).total_seconds()) + 1
+    received = clock(seconds, 0, "late-source-session")
+    event = feedback("t2", 86400 + 2, 2000, 0.0, build_id="build-1", revision_id="r2", supersedes="r1")
+    metadata = replace(event.revision.metadata, group_id="group-b", available_at=received.utc_at)
+    event = replace(event, revision=replace(event.revision, metadata=metadata, received_at=received.utc_at))
+    changed = state.ingest(event, received)
+    assert changed.journal[-1].disposition == "accepted"
+    assert changed.fingerprint != state.fingerprint
+    assert changed.builds()[1].actual_ledger.balance.consumed == 7000
+    updated = ShadowReport(schema_version=1, state=changed)
+    assert updated.findings() == report.findings()
+    assert updated.evidence() == report.evidence()
+
+
+def test_closure_releases_known_unused_reservation_before_charging_overhead():
+    state = connected()
+    state = state.ingest(opening(state.protocol), clock(0, 1))
+    for index, name in enumerate(("t1", "t2", "t3"), 1):
+        state = state.ingest(feedback(name, index, 1000, float(index > 1)), clock(index, index + 1))
+    state = state.ingest(replace(closure(), dispatch_occupancy=amount(2000)), clock(8, 5))
+    build = state.builds()[0]
+    assert build.actual_ledger.balance.consumed == 5000
+    assert build.actual_ledger.balance.available == 3000
+    assert build.actual_ledger.balance.reserved == 0
+    assert build.actual_ledger.balance.containment == "normal"
+    assert state.operational(clock(9, 6)).status == "healthy"
+    assert not ShadowReport(schema_version=1, state=state).evidence().known_adverse_findings

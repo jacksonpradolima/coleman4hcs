@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Annotated, Self
 
@@ -132,7 +131,7 @@ def load_shadow_state(protocol: ShadowProtocol, writer: ArtifactWriter) -> Shado
     admissions = []
     total = 0
     for ordinal, path in enumerate(paths, start=1):
-        if re.fullmatch(r"[0-9]{4}\.json", path.name) is None or path.name != f"{ordinal:04d}.json":
+        if path.name != f"{ordinal:04d}.json":
             raise ValueError("Committed shadow journal has a missing or invalid ordinal")
         size = path.stat().st_size
         total += size

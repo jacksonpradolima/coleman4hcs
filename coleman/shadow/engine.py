@@ -132,29 +132,34 @@ class _Engine:
         elif isinstance(event, BuildOpened):
             self._open(event, clock)
         elif isinstance(event, TestFeedback):
-            build = self.builds[event.build_id]
-            first = event.test_id not in build.feedback
-            build.feedback.setdefault(event.test_id, []).append(admitted)
-            if first and event.occupancy is not None:
-                build.emit(
-                    OccupancyEvent(
-                        **build.resource_metadata(f"work:{event.event_id}", clock),
-                        execution_id=event.build_id,
-                        amount=event.occupancy,
-                        terminal=None,
-                    )
-                )
-            if build.resources.contained:
-                self.risk_reasons.add("actual_required_ci_resource_overrun")
-            build.settle(self.protocol, clock)
-            if build.settled:
-                build.selection_risks(self.protocol)
-            self.risk_reasons.update(build.risk_reasons)
+            self._feedback(admitted, event)
         else:
             build = self.builds[event.build_id]
             build.closure = admitted
             build.settle(self.protocol, clock)
             self.risk_reasons.update(build.risk_reasons)
+
+    def _feedback(self, admitted: AdmittedEvent, event: TestFeedback) -> None:
+        """Book first physical work once, then settle/recheck sticky resource and quality risk."""
+        clock = admitted.clock
+        build = self.builds[event.build_id]
+        first = event.test_id not in build.feedback
+        build.feedback.setdefault(event.test_id, []).append(admitted)
+        if first and event.occupancy is not None:
+            build.emit(
+                OccupancyEvent(
+                    **build.resource_metadata(f"work:{event.event_id}", clock),
+                    execution_id=event.build_id,
+                    amount=event.occupancy,
+                    terminal=None,
+                )
+            )
+        if build.resources.contained:
+            self.risk_reasons.add("actual_required_ci_resource_overrun")
+        build.settle(self.protocol, clock)
+        if build.settled:
+            build.selection_risks(self.protocol)
+        self.risk_reasons.update(build.risk_reasons)
 
     def _open(self, event: BuildOpened, clock: HostClock) -> None:
         """Model required upstream work analytically without dispatching or cancelling CI."""

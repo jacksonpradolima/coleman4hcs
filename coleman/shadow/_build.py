@@ -92,14 +92,6 @@ class _Build:
             ("dispatch", closure.dispatch_occupancy),
             ("shared_setup", closure.shared_setup_occupancy),
         )
-        for component, amount in charges:
-            self.emit(
-                OverheadEvent(
-                    **self.resource_metadata(f"{component}:{closure.event_id}", clock),
-                    component=component,
-                    amount=amount,
-                )
-            )
         self.emit(
             OccupancyEvent(
                 **self.resource_metadata(f"settle:{closure.event_id}", clock),
@@ -108,6 +100,14 @@ class _Build:
                 terminal="unknown",
             )
         )
+        for component, amount in charges:
+            self.emit(
+                OverheadEvent(
+                    **self.resource_metadata(f"{component}:{closure.event_id}", clock),
+                    component=component,
+                    amount=amount,
+                )
+            )
         self.settled = True
         if self.resources.contained:
             self.risk_reasons.add("actual_required_ci_resource_overrun")
@@ -117,11 +117,12 @@ class _Build:
         """Contain modeled selection overruns without changing actual required CI work."""
         history = self.history(protocol)
         last_clock = max(rows[-1].clock.utc_at for rows in self.feedback.values())
-        labels = {row.entity_id: row.measurement for row in history.as_of(last_clock).observations}
+        cutoff = min(last_clock, self.opening.target_end, protocol.temporal_plan.test_end)
+        labels = {row.entity_id: row.measurement for row in history.as_of(cutoff).observations}
         complete_labels = len(labels) == len(self.opening.required_ids) and all(
             measure.status == "observed" for measure in labels.values()
         )
-        failures = {key for key, measure in labels.items() if measure.value == 1.0}
+        failures = {key for key, measure in labels.items() if measure.value is not None and int(measure.value) == 1}
         for decision in self.opening.decisions:
             selection = resolve_selection(decision)
             work = self.selected_cost(decision, selection.selected_ids)

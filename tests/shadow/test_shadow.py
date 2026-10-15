@@ -226,8 +226,9 @@ def test_same_source_retry_retains_first_clock_and_never_double_counts():
     changed = event.model_dump(mode="json")
     changed["revision"]["measurement"]["value"] = 0.0
     conflict = CIFeedback.model_validate(changed)
+    receipt = clock(9, 60)
     with pytest.raises(ValueError, match="Conflicting shadow source event"):
-        state.ingest(conflict, clock(9, 60))
+        state.ingest(conflict, receipt)
     assert state.builds()[0].actual_ledger.balance.consumed == 7000
 
 
@@ -277,8 +278,9 @@ def test_missing_build_is_quarantined_and_bounded_instead_of_invented():
     assert blocked.operational(clock(1, 11)).status == "stopped"
     assert blocked.builds() == ()
     second = feedback("t2", 2, 2000, 1.0)
+    receipt = clock(2, 20)
     with pytest.raises(ValueError, match="quarantine is full"):
-        blocked.ingest(second, clock(2, 20))
+        blocked.ingest(second, receipt)
     assert len(blocked.journal) == 2
 
 

@@ -5806,7 +5806,9 @@ the fixture, retrying builds or changing synthetic dates cannot establish value.
   work twice. V1 allows label changes with identical occupancy only. Unknown-to-known
   occupancy is also an unsupported accounting correction, not a free adjustment.
 - An explicit closure with missing feedback or unknown occupancy keeps reservation
-  and accounting pending. Late required feedback can finish it. Unknown labels can
+  and accounting pending. Late required feedback can finish it. Once physical work
+  is known complete, unused reservation is released before closure overhead is
+  charged, avoiding a transient accounting overrun from already-unused resources. Unknown labels can
   settle known work but cannot score complete quality evidence. No closed build is
   assumed successful merely because its job ended. Closures before upstream start
   or known physical completion, and physical completion after upstream closure,
@@ -5830,7 +5832,10 @@ independence justification, quality/practical thresholds and stopping policy bef
 collection. Changes produce another experiment fingerprint and cannot inherit old
 protected outcomes as untouched evidence.
 
-Only complete required labels support membership recall. Zero failures makes
+Only complete required labels support membership recall. Each build is scored at
+the earliest of its frozen target end, the study test end and the last application
+admission. Later corrections remain in raw history but cannot rewrite that
+protected finding or introduce a post-window sticky research-risk breach. Zero failures makes
 recall `not_applicable`, not one. A passed test has observed zero, an unknown or
 unavailable label has null with its status, and missing work remains null. Negative
 net savings remain valid adverse results. All quantities reject nonfinite values;

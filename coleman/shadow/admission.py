@@ -155,6 +155,12 @@ def feedback_reason(protocol: ShadowProtocol, event: TestFeedback, clock: HostCl
         and revision.metadata.event_at > build.closure.event.available_at
     ):
         return "physical_completion_after_upstream_closure"
+    return lineage_reason(protocol, event, clock, build)
+
+
+def lineage_reason(protocol: ShadowProtocol, event: TestFeedback, clock: HostClock, build: _Build) -> str | None:
+    """Validate correction parents, immutable physical work and application-visible lineage."""
+    revision = event.revision
     previous = build.feedback.get(event.test_id, [])
     if not previous and revision.supersedes is not None:
         return "correction_parent_unavailable"

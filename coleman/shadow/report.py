@@ -85,7 +85,7 @@ def _recall(build: ShadowBuildSnapshot, cutoff, selected: tuple[str, ...] | None
         and set(labels) == set(build.opening.required_ids)
     )
     known = complete and all(measure.status == "observed" for measure in labels.values())
-    failures = {key for key, measure in labels.items() if measure.value == 1.0}
+    failures = {key for key, measure in labels.items() if measure.value is not None and int(measure.value) == 1}
     value = None
     if selected is not None and known and failures:
         value = float(Fraction(len(failures.intersection(selected)), len(failures)))
@@ -127,7 +127,7 @@ def _modeled_cost(state: ShadowState, build: ShadowBuildSnapshot, decision, sele
 
 def _finding(state: ShadowState, build: ShadowBuildSnapshot, candidate_id: str) -> ShadowFinding:
     """Compute one sealed subset without treating actual required-suite execution as avoided."""
-    cutoff = min(state.journal[-1].clock.utc_at, state.protocol.temporal_plan.test_end)
+    cutoff = min(state.journal[-1].clock.utc_at, build.opening.target_end, state.protocol.temporal_plan.test_end)
     decision = next((item for item in build.opening.decisions if item.candidate_id == candidate_id), None)
     selected = resolve_selection(decision).selected_ids if decision is not None else None
     recall, complete, known = _recall(build, cutoff, selected)

@@ -58,6 +58,10 @@ from coleman.spec.models import RunSpec
 from coleman.utils.monitor import MonitorCollector
 
 BASE = ("t1", "t2", "t3")
+PRIOR_EVENT_AT = "2025-12-29T00:00:00Z"
+PRIOR_AVAILABLE_AT = "2025-12-30T00:00:00Z"
+STUDY_END = "2026-01-09T00:00:00Z"
+OPENED_SUFFIX = ":opened"
 SESSION = uuid.uuid4().hex
 DAY = datetime.fromisoformat("2026-01-02T10:00:00Z")
 
@@ -85,14 +89,14 @@ def owned_model():
             {
                 "schema_version": 1,
                 "entity_id": name,
-                "received_at": "2025-12-30T00:00:00Z",
+                "received_at": PRIOR_AVAILABLE_AT,
                 "supersedes": None,
                 "metadata": TemporalObservation.model_validate(
                     {
                         "observation_id": "prior:" + name,
                         "group_id": "prior-build",
-                        "event_at": "2025-12-29T00:00:00Z",
-                        "available_at": "2025-12-30T00:00:00Z",
+                        "event_at": PRIOR_EVENT_AT,
+                        "available_at": PRIOR_AVAILABLE_AT,
                     }
                 ),
                 "measurement": Measurement(
@@ -113,7 +117,7 @@ def owned_model():
         {
             "train_end": "2025-12-31T00:00:00Z",
             "validation_end": "2026-01-01T00:00:00Z",
-            "test_end": "2026-01-09T00:00:00Z",
+            "test_end": STUDY_END,
         }
     )
     training = prepare_training(
@@ -202,9 +206,9 @@ def configuration():
                 {
                     "amount": amount(ms),
                     "source_fingerprint": feature,
-                    "observed_at": "2025-12-29T00:00:00Z",
-                    "available_at": "2025-12-30T00:00:00Z",
-                    "valid_until": "2026-01-09T00:00:00Z",
+                    "observed_at": PRIOR_EVENT_AT,
+                    "available_at": PRIOR_AVAILABLE_AT,
+                    "valid_until": STUDY_END,
                 }
             ),
         )
@@ -238,7 +242,7 @@ class RequiredSuiteObserver(Policy):
         writer = ArtifactWriter(self.root)
         state = load_shadow_state(config.protocol, writer)
         build_id = f"build-{step}"
-        if state.source_event(build_id + ":opened") is not None:
+        if state.source_event(build_id + OPENED_SUFFIX) is not None:
             return list(BASE)  # Already sealed before an interrupted native checkpoint.
         at = start_for(step)
         heartbeat = SourceStatus(event_id=f"connected:{build_id}:{SESSION}", available_at=at, connected=True)
@@ -297,7 +301,7 @@ class RequiredSuiteObserver(Policy):
                     )
                 )
         opened = BuildOpened(
-            event_id=build_id + ":opened",
+            event_id=build_id + OPENED_SUFFIX,
             build_id=build_id,
             logical_build_id=build_id,
             group_id="owned-project",
@@ -308,9 +312,9 @@ class RequiredSuiteObserver(Policy):
                 {
                     "amount": amount(7000),
                     "source_fingerprint": config.fingerprint,
-                    "observed_at": "2025-12-29T00:00:00Z",
-                    "available_at": "2025-12-30T00:00:00Z",
-                    "valid_until": "2026-01-09T00:00:00Z",
+                    "observed_at": PRIOR_EVENT_AT,
+                    "available_at": PRIOR_AVAILABLE_AT,
+                    "valid_until": STUDY_END,
                 }
             ),
             decisions=tuple(decisions),
@@ -419,7 +423,7 @@ class ShadowMonitor(MonitorCollector):
                 batch = previous  # Retain first measured timing even when failure preceded the native checkpoint.
             self.writer.write_immutable(path, batch.to_json() + "\n")
             state = load_shadow_state(self.configuration.protocol, self.writer)
-            if state.source_event(batch.build_id + ":opened") is None:
+            if state.source_event(batch.build_id + OPENED_SUFFIX) is None:
                 raise ValueError("Native feedback has no pre-outcome sealed declaration")
             for event in (*batch.feedback, batch.closure):
                 state = state.ingest(event, witness(batch.closure.available_at))
