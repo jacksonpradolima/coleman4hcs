@@ -1085,3 +1085,34 @@ def test_exact_zip_entry_limit_accepts_complete_actual_directory(tmp_path):
     receipt = materialize_source(spec, cache, lambda: reader(payload))
     validate_materialization(receipt, cache)
     assert cache.member_path(receipt, "fixture.json").read_bytes() == data
+
+
+@pytest.mark.parametrize("archive_comment_bytes", [0, 65535])
+def test_embedded_zip64_ending_rejects_before_standard_reader_metadata_override(
+    tmp_path, monkeypatch, archive_comment_bytes
+):
+    import coleman.corpus.archives as archives
+
+    _, original = zipped()
+    payload = bytearray(original)
+    directory = payload.index(b"PK\x01\x02")
+    footer = payload.rfind(b"PK\x05\x06")
+    directory_size = footer - directory
+    record = struct.pack("<4sQ2H2I4Q", b"PK\x06\x06", 44, 45, 45, 0, 0, 1, 1, directory_size, directory)
+    locator = struct.pack("<4sIQI", b"PK\x06\x07", 0, footer, 1)
+    struct.pack_into("<H", payload, directory + 32, len(record) + len(locator))
+    payload[footer:footer] = record + locator
+    footer += len(record) + len(locator)
+    struct.pack_into("<I", payload, footer + 12, directory_size + len(record) + len(locator))
+    struct.pack_into("<H", payload, footer + 20, archive_comment_bytes)
+    payload.extend(b"c" * archive_comment_bytes)
+    spec = _freeze_fixture_zip(payload)
+    cache = SourceCache(tmp_path / "cache")
+
+    def forbid_allocation(*args, **kwargs):
+        raise AssertionError("ZIP64 metadata override must reject before standard ZIP allocations")
+
+    monkeypatch.setattr(archives.zipfile, "ZipFile", forbid_allocation)
+    with pytest.raises(ValueError, match="ZIP64 end locator"):
+        materialize_source(spec, cache, lambda: reader(bytes(payload)))
+    assert not list(tmp_path.rglob("corpus-materializations/*.json"))

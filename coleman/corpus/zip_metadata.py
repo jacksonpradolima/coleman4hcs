@@ -50,10 +50,15 @@ def validate_directory(path: Path, offset: int, size: int, count: int) -> None:
     The caller first bounds declared count/size and physical offsets. Read one
     fixed 46-byte record at a time, skipping bounded variable fields. Reject
     count/length/signature inconsistencies and per-entry nonzero disk references.
-    No names, extra sections or complete metadata directory are allocated here.
+    Reject standard-reader ZIP64 locator auto-detection even when legacy fields
+    have no ZIP64 sentinel. No complete metadata directory is allocated here.
     """
     consumed = 0
     with path.open("rb") as stream:
+        if offset + size >= 20:
+            stream.seek(offset + size - 20)
+            if stream.read(4) == b"PK\x06\x07":
+                raise ValueError("ZIP64 end locator is unsupported by this recipe")
         stream.seek(offset)
         for _ in range(count):
             if size - consumed < 46:

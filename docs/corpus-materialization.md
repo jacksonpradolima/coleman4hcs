@@ -127,7 +127,9 @@ Source digest verification precedes ZIP metadata/decoding. End-record bounds are
 checked before central-directory allocation. A streaming fixed-header pass also
 checks actual record counts, variable-field lengths and every entry's disk reference
 before the standard ZIP reader allocates metadata objects; false footer counts
-cannot bypass the entry limit. V1 supports single-disk, non-ZIP64
+cannot bypass the entry limit. ZIP64 locator auto-detection is rejected even
+when the legacy footer has no sentinel, preventing a second metadata interpretation.
+V1 supports single-disk, non-ZIP64
 stored/deflated ZIP with required extraction version at most 2.0. The
 [PKWARE ZIP specification](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT)
 describes these metadata fields; v1 intentionally supports this bounded subset. Encrypted files, links, devices, unsafe/ambiguous paths,
