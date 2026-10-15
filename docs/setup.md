@@ -52,6 +52,12 @@ with near-zero overhead:
 
 ## Configuration system
 
+For registered, bounded CI workflows, the [application API and optional local MCP
+tools](application-api.md) share native services across library, CLI and tool
+clients. This capability is being prepared for 4.0 and adds no dependency to the
+base installation. Its bounded session lifecycle is separate from direct native
+runner checkpoint continuation.
+
 Coleman uses **YAML configuration files** validated against typed
 Pydantic v2 models.  See the [Configuration guide](configuration.md) for
 the full schema reference, config packs, sweep engine, and determinism

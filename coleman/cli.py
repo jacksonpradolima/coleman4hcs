@@ -148,6 +148,43 @@ def _cmd_analyze(args: argparse.Namespace) -> None:
     print(rendered, end="")  # noqa: T201
 
 
+def _cmd_application(args: argparse.Namespace) -> None:
+    """Execute one approved bounded command through the shared local application service."""
+    import json
+    import tempfile
+
+    from coleman.application import ApplicationService, Caller, default_registry
+    from coleman.application.commands import ApplicationCommands
+    from coleman.results.domain import canonical_json
+
+    caller = Caller(subject="local-cli")
+    with (
+        tempfile.TemporaryDirectory(prefix="coleman-cli-") as directory,
+        ApplicationService(default_registry(), root=Path(directory)) as service,
+    ):
+        commands = ApplicationCommands(service, caller=caller)
+        submitted = commands.invoke("submit", args.request)
+        reply = json.loads(submitted)
+        if not reply["ok"]:
+            print(submitted)
+            raise SystemExit(2)
+        view = service.wait(reply["data"]["job_id"], caller=caller)
+        if view.handle is None:
+            print(
+                canonical_json(
+                    {
+                        "schema_version": 1,
+                        "ok": False,
+                        "error": view.error or "unavailable_result",
+                        "message": "Job terminated without a completed result",
+                        "data": view.model_dump(mode="json"),
+                    }
+                )
+            )
+            raise SystemExit(2)
+        print(commands.invoke("result", view.handle.to_json()))
+
+
 def main(argv: list[str] | None = None) -> None:
     """CLI entry-point.
 
@@ -161,6 +198,9 @@ def main(argv: list[str] | None = None) -> None:
         "--packs-dir", default=None, help="Root directory for config packs (default: <config_dir>/packs)"
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    p_application = sub.add_parser("application", help="Execute one approved bounded CI decision")
+    p_application.add_argument("--request", required=True, help="Versioned submit JSON; no paths or plugin imports")
 
     # --- run ---
     p_run = sub.add_parser("run", help="Execute a single run")
@@ -201,6 +241,7 @@ def main(argv: list[str] | None = None) -> None:
         "sweep": _cmd_sweep,
         "validate": _cmd_validate,
         "analyze": _cmd_analyze,
+        "application": _cmd_application,
     }
     dispatch[args.command](args)
 
