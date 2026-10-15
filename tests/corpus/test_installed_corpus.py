@@ -81,7 +81,8 @@ def test_installed_registry_correctness_fixtures_and_real_native_ci(tmp_path):
     assert len([entry for entry in entries if entry["type"] == "corpus_source_profile"]) == 1
     assert len([entry for entry in entries if entry["type"] == "corpus_profile_inventory"]) == 1
     source_profile = NativeSourceProfile.from_json(next(run_root.glob("corpus-profiles/*.json")).read_bytes())
-    assert source_profile.rows == 6 and source_profile.logical_builds == 2
+    assert source_profile.rows == 6
+    assert source_profile.logical_builds == 2
     assert source_profile.duration_median.unit == "s"
     assert source_profile.card.history == "constructed"
     assert source_profile.card.manifest.dependence_group == "coleman-tiny-ci-fixture-family-v1"

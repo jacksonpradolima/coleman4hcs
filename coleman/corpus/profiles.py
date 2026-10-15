@@ -241,6 +241,12 @@ def _source_frame(card: DataCard, path: Path) -> tuple[pl.DataFrame, tuple[str, 
         raise ValueError("Missing or duplicate native profile columns")
     selected = required | ({"Variant"} if "Variant" in names else set())
     frame = pl.DataFrame(source.read())
+    _native_column_types(frame, selected)
+    return frame, tuple(names)
+
+
+def _native_column_types(frame: pl.DataFrame, selected: set[str]) -> None:
+    """Reject unsupported identity/quantity types without coercing decimal verdict labels."""
     for name in sorted(selected):
         dtype = frame.schema[name]
         allowed = dtype.is_integer() or dtype in {pl.String, pl.Null}
@@ -248,7 +254,6 @@ def _source_frame(card: DataCard, path: Path) -> tuple[pl.DataFrame, tuple[str, 
             allowed = dtype.is_numeric() or dtype == pl.Null
         if not allowed:
             raise ValueError(f"Unsupported profile column type: {name}")
-    return frame, tuple(names)
 
 
 def profile_native_source(card: DataCard, path: str | Path) -> NativeSourceProfile:

@@ -78,10 +78,12 @@ def test_golden_roundtrip_old_cards_and_versions():
             del payload["schema_version"]
         else:
             payload["schema_version"] = version
+        serialized = json.dumps(payload)
         with pytest.raises(ValueError):
-            NativeSourceProfile.from_json(json.dumps(payload))
+            NativeSourceProfile.from_json(serialized)
+    legacy = card.to_json()
     with pytest.raises(ValueError):
-        NativeSourceProfile.from_json(card.to_json())
+        NativeSourceProfile.from_json(legacy)
     with pytest.raises(ValueError, match="Duplicate JSON"):
         NativeSourceProfile.from_json('{"schema_version":1,"schema_version":1}')
 
@@ -170,10 +172,9 @@ def test_row_permutation_preserves_statistics_and_replay_identity(tmp_path):
 
 def test_source_bounds_integrity_and_schema_before_publication(tmp_path, monkeypatch):
     card, path = materialize(tmp_path)
+    mismatched = changed(card, manifest=changed(card.manifest, source=changed(card.manifest.source, size_bytes=1)))
     with pytest.raises(ValueError, match="digest/size"):
-        profile_native_source(
-            changed(card, manifest=changed(card.manifest, source=changed(card.manifest.source, size_bytes=1))), path
-        )
+        profile_native_source(mismatched, path)
     with monkeypatch.context() as patch:
         patch.setattr(implementation, "MAX_SOURCE_BYTES", 1)
         with pytest.raises(ValueError, match="byte limit"):
@@ -184,20 +185,23 @@ def test_source_bounds_integrity_and_schema_before_publication(tmp_path, monkeyp
             with pytest.raises(ValueError, match=message):
                 profile_native_source(card, path)
     path.write_bytes(b"not a parquet")
+    invalid = local_card(path)
     with pytest.raises(ValueError):
-        profile_native_source(local_card(path), path)
+        profile_native_source(invalid, path)
     for frame in (
         pl.DataFrame({"BuildId": [1]}),
         pl.DataFrame({"BuildId": [1], "Name": [1], "Verdict": [0], "Duration": [True]}),
         pl.DataFrame({"BuildId": [1], "Name": [1.5], "Verdict": [0], "Duration": [1.0]}),
     ):
         frame.write_parquet(path)
+        invalid = local_card(path)
         with pytest.raises(ValueError, match="columns|type"):
-            profile_native_source(local_card(path), path)
+            profile_native_source(invalid, path)
     frame = pl.DataFrame({f"extra_{i}": [i] for i in range(65)})
     frame.write_parquet(path)
+    invalid = local_card(path)
     with pytest.raises(ValueError, match="column limit"):
-        profile_native_source(local_card(path), path)
+        profile_native_source(invalid, path)
 
 
 @pytest.mark.parametrize("mutation", ["adapter", "identity", "mapping", "digest", "size"])
@@ -213,8 +217,9 @@ def test_unsupported_semantics_fail_closed(tmp_path, mutation):
     else:
         key = "sha256" if mutation == "digest" else "size_bytes"
         manifest = changed(manifest, source=changed(manifest.source, **{key: None}))
+    invalid = changed(card, manifest=manifest)
     with pytest.raises(ValueError):
-        profile_native_source(changed(card, manifest=manifest), path)
+        profile_native_source(invalid, path)
 
 
 @pytest.mark.parametrize(
@@ -372,8 +377,9 @@ def test_column_missingness_and_complete_group_distribution_are_validated(tmp_pa
     bad = changed(report.column_missingness[0], null_count=report.rows + 1)
     with pytest.raises(ValueError, match="Missingness"):
         changed(report, column_missingness=(bad, *report.column_missingness[1:]))
+    invalid = changed(report.tests_per_execution_group, zero_count=1)
     with pytest.raises(ValueError, match="positive"):
-        changed(report, tests_per_execution_group=changed(report.tests_per_execution_group, zero_count=1))
+        changed(report, tests_per_execution_group=invalid)
 
 
 @pytest.mark.parametrize("count,median,p95", [(1, 0, 0), (20, 9, 18), (21, 10, 19)])

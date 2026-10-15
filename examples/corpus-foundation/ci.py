@@ -101,12 +101,7 @@ def main(output):
         }
     )
     native = run(spec)
-    run_root = Path(native.artifacts_dir)
-    if not list((run_root / "checkpoints").rglob("progress_*.json")):
-        raise ValueError("Native fixture did not persist its continuation checkpoint")
-    restored = run(spec)
-    if restored.run_id != native.run_id:
-        raise ValueError("Checkpoint continuation changed native run identity")
+    run_root = _resume_native(spec, native)
     native_rows = pl.read_parquet(str(run_root / "results" / "**" / "*.parquet"), hive_partitioning=True)
     if native_rows.height != 2:
         raise ValueError("Expected two explicitly constructed native build copies")
@@ -143,6 +138,17 @@ def main(output):
             }
         )
     )
+
+
+def _resume_native(spec, native):
+    """Reopen the real native checkpoint; missing progress or changed run identity raises ValueError."""
+    run_root = Path(native.artifacts_dir)
+    if not list((run_root / "checkpoints").rglob("progress_*.json")):
+        raise ValueError("Native fixture did not persist its continuation checkpoint")
+    restored = run(spec)
+    if restored.run_id != native.run_id:
+        raise ValueError("Checkpoint continuation changed native run identity")
+    return run_root
 
 
 def _profile_constructed(source, data_path, writer, registry):
