@@ -80,6 +80,8 @@ def generate_manifest(run_dir: str | Path, *, run_id: str) -> Path:
         "corpus_readiness": "corpus-readiness/*.json",
         "observation_model": "observation-models/*.json",
         "decision_signal": "decision-signals/*.json",
+        "resource_run": "resource-runs/*.json",
+        "resource_ledger": "resource-ledgers/*/checkpoints/*.json",
     }
     for artifact_type, pattern in versioned_patterns.items():
         for file_path in sorted(root.rglob(pattern)):
