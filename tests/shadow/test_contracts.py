@@ -541,3 +541,65 @@ def test_unknown_core_selection_and_fallback_versions_fail_closed(field):
     contract_class = type(candidate)
     with pytest.raises(ValueError):
         contract_class.model_validate(payload)
+
+
+@pytest.mark.parametrize("test_id,changed_ms", [("t1", 4000), ("t2", 4000), ("t3", 0)])
+def test_estimate_provenance_cannot_change_the_frozen_feature_evidence(test_id, changed_ms):
+    from coleman.results.domain import fingerprint
+
+    proto = protocol()
+    event = opening(proto)
+    decision = event.decisions[0]
+    changed_source = fingerprint({"other": "cost-evidence"})
+    estimates = tuple(
+        replace(item, estimate=replace(item.estimate, source_fingerprint=changed_source, amount=amount(changed_ms)))
+        if item.test_id == test_id
+        else item
+        for item in decision.request.tests
+    )
+    changed = replace(decision, request=replace(decision.request, tests=estimates))
+    assert resolve_selection(changed).selected_ids != resolve_selection(decision).selected_ids
+    event = replace(event, decisions=(changed, event.decisions[1]))
+    state = connected(proto).ingest(event, clock(0, 1))
+    assert state.journal[-1].reason == "estimate_differs_from_frozen_feature_evidence"
+    assert state.builds() == ()
+
+
+def test_missing_estimation_evidence_remains_unavailable_without_invented_provenance():
+    event = opening(protocol())
+    decision = event.decisions[0]
+    estimates = tuple(replace(item, estimate=None) if item.test_id == "t3" else item for item in decision.request.tests)
+    decision = replace(decision, request=replace(decision.request, tests=estimates))
+    event = replace(event, decisions=(decision, event.decisions[1]))
+    state = connected().ingest(event, clock(0, 1))
+    assert state.journal[-1].disposition == "accepted"
+    result = resolve_selection(decision)
+    assert result.selected_ids == ()
+    assert result.reason == "ineligible_estimate"
+
+
+def test_reviewed_new_feature_evidence_requires_a_distinct_frozen_experiment():
+    from coleman.results.domain import fingerprint
+
+    old = protocol()
+    new_source = fingerprint({"reviewed": "new-feature-evidence"})
+    candidates = tuple(replace(candidate, feature_fingerprint=new_source) for candidate in old.candidates)
+    proto = replace(old, candidates=candidates)
+    event = opening(proto)
+    decisions = tuple(
+        replace(
+            decision,
+            request=replace(
+                decision.request,
+                tests=tuple(
+                    replace(item, estimate=replace(item.estimate, source_fingerprint=new_source))
+                    for item in decision.request.tests
+                ),
+            ),
+        )
+        for decision in event.decisions
+    )
+    event = replace(event, decisions=decisions)
+    state = connected(proto).ingest(event, clock(0, 1))
+    assert state.journal[-1].disposition == "accepted"
+    assert state.logical_id != old.logical_id

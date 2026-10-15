@@ -56,6 +56,9 @@ class FrozenCandidate(Immutable):
     experiment fingerprint and requires new untouched evidence. Core selection
     supports only the declared serial prefix v1. Known fallback versions bind
     no-action or estimated-feasible full suite; unknown versions fail closed.
+    feature_fingerprint also identifies the reviewed cost-estimation evidence:
+    every available request estimate must carry that same source fingerprint.
+    This binds a declaration; producers must still verify actual computations.
     """
 
     candidate_id: Identifier

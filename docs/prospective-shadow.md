@@ -117,6 +117,12 @@ cannot substitute another fallback, even when priority is currently available.
 Full-suite fallback still requires every eligible estimate, known inference and
 the declared setup reserve to fit the same budget. Unknown selection/fallback
 versions fail closed rather than executing another algorithm under their names.
+Each non-null request estimate must carry the frozen candidate's
+`feature_fingerprint` as its `source_fingerprint`, binding the reviewed feature
+and cost-estimation evidence. Swapping provenance requires a new frozen experiment;
+missing estimates remain unavailable and cannot acquire invented provenance. This
+check does not prove arbitrary producer computations: verify their evidence/model
+before publication, as the native example does for its owned configuration.
 
 ## Real native full-suite workflow
 

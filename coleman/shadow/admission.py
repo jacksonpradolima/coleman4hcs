@@ -107,6 +107,11 @@ def decision_reason(
     )
     if actual != expected:
         return "decision_differs_from_frozen_candidate_or_required_universe"
+    if any(
+        item.estimate is not None and item.estimate.source_fingerprint != candidate.feature_fingerprint
+        for item in request.tests
+    ):
+        return "estimate_differs_from_frozen_feature_evidence"
     for signal in decision.signals:
         issue = signal_reason(protocol, event, candidate, signal)
         if issue is not None:
