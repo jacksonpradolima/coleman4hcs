@@ -1,14 +1,14 @@
 # Point-in-time CI observations and decision signals
 
-This 4.2 integration feature implements
+COLEMAN 4.2 implements
 [#258](https://github.com/jacksonpradolima/coleman/issues/258). CI durations/outcomes
 retain their original availability and revision lineage, so later corrections do
 not rewrite the information used by an earlier decision. The base package needs
 no provider SDK, credential, hosted service or optional MCP dependency.
 
-The published 4.1 wheel does not contain this module. Until 4.2 is published, build
-and install a wheel from the reviewed integration source. Run the examples outside
-the checkout. [ADR 001](decisions/001-point-in-time-observations.md) records the
+Install the wheel attached to [COLEMAN 4.2](https://github.com/jacksonpradolima/coleman/releases/tag/v4.2.0),
+or build a development wheel from reviewed source. Run examples outside the
+checkout. [ADR 001](decisions/001-point-in-time-observations.md) records the
 module/dependency/extension decisions.
 
 ## Observation and revision contract
@@ -195,9 +195,9 @@ revalidates an already supplied owned history without I/O.
 
 ## Real native TCPCI and recovery
 
-Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/release/4.2/examples/point-in-time/ci.py)
+Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.2.0/examples/point-in-time/ci.py)
 outside the checkout and run `python ci.py native-observation-demo` from the
-installed development wheel. It fits owned historical quantities at a frozen
+installed 4.2 wheel or source build. It fits owned historical quantities at a frozen
 training cutoff before decisions, then runs three constructed native CI copies using
 `run_with_extension`, native Parquet results, RNFail and existing checkpoints.
 

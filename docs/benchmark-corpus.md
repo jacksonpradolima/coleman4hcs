@@ -1,8 +1,8 @@
 # Versioned CI benchmark corpus: foundation
 
 This is the first implementation slice of
-[#261](https://github.com/jacksonpradolima/coleman/issues/261), prepared on the
-**4.2 integration line**. It implements source manifests, a typed registry and data
+[#261](https://github.com/jacksonpradolima/coleman/issues/261), introduced in
+**COLEMAN 4.2**. It implements source manifests, a typed registry and data
 cards, bounded independent correctness references, local validation and native
 integration. The diversified benchmark program is **not complete**.
 
@@ -20,11 +20,11 @@ follows from passing these checks.
 
 ## Installed commands
 
-Until 4.2 is published, build a wheel from the reviewed integration source and
-install that wheel in a Python 3.14+ environment. The published 4.1 wheel does not
-contain this new module. Copy examples to a directory outside the checkout.
-No optional dependency, provider subscription, credential or network access is
-needed during these operations.
+Install the wheel attached to [COLEMAN 4.2](https://github.com/jacksonpradolima/coleman/releases/tag/v4.2.0)
+in a Python 3.14+ environment, or build a development wheel from the reviewed source.
+Copy examples to a directory outside the checkout. Once installed, these local
+operations need no optional dependency, provider subscription, credential or
+network access.
 
 ```bash
 python -m coleman.corpus list
@@ -188,8 +188,8 @@ A real provider needs a separately implemented/verified adapter; marking it
 
 ## Real native execution and artifact recovery
 
-Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/release/4.2/examples/corpus-foundation/ci.py)
-and run `python ci.py native-output` from an installed development wheel. It uses
+Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.2.0/examples/corpus-foundation/ci.py)
+and run `python ci.py native-output` from the installed 4.2 wheel or a source build. It uses
 `api.run()` with native Random/RNFail and a full seven-second budget, verifies each
 actual native ranking's NAPFD/APFDc against the independent oracle, and publishes
 both source checks plus the insufficient-diversity inventory through existing

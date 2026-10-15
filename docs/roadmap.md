@@ -10,23 +10,28 @@ pilot in [#257](https://github.com/jacksonpradolima/coleman/issues/257). Its
 claim is auditable accounting and honest evidence, including negative/inconclusive
 findings. It does not promise production savings from a synthetic example.
 
-The next compatible feature target is **4.2.0**. Group related reviewed corpus
-and point-in-time adapter slices on a release branch, preserving independently
-shippable security fixes. The diversified corpus in
-[#261](https://github.com/jacksonpradolima/coleman/issues/261) follows in sequential,
-reviewable vertical slices: manifest/registry and correctness fixtures; existing
-data inventory and diversity cards; bounded secure fetch/conversion; admitted
-historical and controlled-fault sources; synthetic stress cases; baseline and
-protected statistical profiles; frozen cross-corpus evidence. Deliveries can span
-4.2 and later 4.x minor releases. The issue remains open until its admission,
-diversity, execution and evidence gates are satisfied. An inaccessible or
-unlicensed source is a visible blocker, not an invented successful experiment.
+**4.2.0** groups two reviewed public increments: point-in-time observations and
+versioned decision signals in [#258](https://github.com/jacksonpradolima/coleman/issues/258),
+and the first corpus foundation in [#261](https://github.com/jacksonpradolima/coleman/issues/261).
+The foundation includes typed manifests/data cards, two tiny known-answer sources,
+metadata inventory and installed native workflows. It does not complete source
+admission, corpus diversity or the full benchmark program; all seven required
+diversity regimes remain uncovered.
+
+The next compatible feature target is **4.3.0**, starting with #259's exact CI
+resource accounting and cost-aware replay, followed sequentially by #260. Further
+#261 slices cover full profiles, secure fetch/conversion, verified historical and
+controlled-fault sources, stress cases, baselines/statistics and frozen cross-corpus
+evidence. Deliveries can span later 4.x releases. The issue remains open until its
+admission, diversity, execution and evidence gates pass. Inaccessible or unlicensed
+sources remain visible blockers. Security fixes remain independently shippable.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:
 
 - [#258](https://github.com/jacksonpradolima/coleman/issues/258): point-in-time CI
-  observations and versioned decision signals; reuse existing temporal contracts.
+  observations and versioned decision signals; implemented for 4.2 through existing
+  temporal contracts and native extensions.
 - [#259](https://github.com/jacksonpradolima/coleman/issues/259): deterministic CI
   resource accounting and cost-aware replay; depends on #258 and existing
   allocation/evaluation/benchmark foundations.
@@ -35,8 +40,8 @@ specifications in **M4 — Point-in-time CI adapters and prospective evaluation*
 
 Implement these sequentially in later 4.x feature releases, with reusable core
 contracts and CI-centered fixtures. Provider dependencies stay outside the core.
-They are specified, not implemented. Generic mechanisms, native CI integration,
-functional recovery and actual prospective evidence each need their own explicit
+#259 and #260 are specified, not implemented. Generic mechanisms, native CI
+integration, functional recovery and actual prospective evidence each need their own explicit
 validation; an offline replay must never masquerade as a forward observation.
 
 Compatible features use subsequent **4.x minor** versions; compatible fixes use

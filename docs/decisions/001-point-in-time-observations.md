@@ -1,6 +1,6 @@
 # ADR 001: point-in-time observations and decision signals
 
-Status: accepted for the 4.2 integration line; implements the boundary requested in
+Status: accepted in the 4.2 feature line; implements the boundary requested in
 [#258](https://github.com/jacksonpradolima/coleman/issues/258).
 
 ## Context
