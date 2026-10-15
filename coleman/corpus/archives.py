@@ -8,12 +8,15 @@ import zipfile
 import zlib
 from collections.abc import Callable
 from pathlib import Path
-from typing import BinaryIO
 
 from coleman.corpus.materialization_contracts import ByteReader, MaterializationSpec, PackageMember, safe_member_name
+from coleman.corpus.zip_metadata import entry_boundaries, local_data_offset, validate_directory, validate_extra_records
+
+_UTF8_DESCRIPTOR_FLAGS = 0x0808
+_DEFLATE_LEVEL_FLAGS = 0x0006
 
 
-def _zip_footer(path: Path, spec: MaterializationSpec) -> None:
+def _zip_footer(path: Path, spec: MaterializationSpec) -> int:
     """Bound central-directory bytes/entries before ZipFile allocates its metadata structures.
 
     V1 rejects multi-disk, ZIP64, missing/trailing EOCD and metadata beyond declared
@@ -40,29 +43,24 @@ def _zip_footer(path: Path, spec: MaterializationSpec) -> None:
         raise ValueError("ZIP metadata exceeds declared resource limits")
     if metadata_offset + metadata_size != size - len(tail) + offset:
         raise ValueError("ZIP central-directory offsets are inconsistent")
+    validate_directory(path, metadata_offset, metadata_size, count)
+    return metadata_offset
 
 
 def _entry_extra(info: zipfile.ZipInfo) -> None:
     """Reject ZIP64 entry extensions and malformed bounded extra-field records before decoding."""
-    if info.extract_version > 20:
-        raise ValueError("ZIP entry version is unsupported by this recipe")
-    offset = 0
-    while offset < len(info.extra):
-        if len(info.extra) - offset < 4:
-            raise ValueError("ZIP extra metadata is truncated")
-        tag, size = struct.unpack_from("<HH", info.extra, offset)
-        if tag == 1:
-            raise ValueError("ZIP64 member metadata is unsupported by this recipe")
-        offset += 4 + size
-        if offset > len(info.extra):
-            raise ValueError("ZIP extra metadata size is inconsistent")
+    needed_version = info.extract_version | (info.reserved << 8)
+    if needed_version > 20 or 0xFFFFFFFF in (info.compress_size, info.file_size):
+        raise ValueError("ZIP entry version or ZIP64 sizes are unsupported by this recipe")
+    validate_extra_records(info.extra)
 
 
 def _entry_name(info: zipfile.ZipInfo) -> str:
     """Reject encrypted, aliased, linked/special or unsafe entries before opening member bytes."""
     _entry_extra(info)
-    if info.orig_filename != info.filename or info.flag_bits & 1:
-        raise ValueError("ZIP contains aliased or encrypted member metadata")
+    allowed_flags = _UTF8_DESCRIPTOR_FLAGS | (_DEFLATE_LEVEL_FLAGS if info.compress_type == zipfile.ZIP_DEFLATED else 0)
+    if info.orig_filename != info.filename or info.flag_bits & ~allowed_flags:
+        raise ValueError("ZIP contains aliased, encrypted or unsupported member metadata")
     name = info.filename[:-1] if info.is_dir() else info.filename
     safe_member_name(name)
     mode = stat.S_IFMT(info.external_attr >> 16)
@@ -94,21 +92,6 @@ def _zip_entries(archive: zipfile.ZipFile, spec: MaterializationSpec) -> tuple[z
         if info.file_size != expected[name].size_bytes:
             raise ValueError("ZIP member decoded size disagrees with frozen expectation")
     return tuple(sorted(entries, key=lambda info: info.filename))
-
-
-def _seek_member_data(stream: BinaryIO, info: zipfile.ZipInfo) -> None:
-    """Position a caller-owned stream at member bytes after bounded local-header verification.
-
-    Reads only the fixed 30-byte header and skips the declared name/extra fields.
-    ZipFile.open has already validated name and entry overlap. Incomplete local
-    metadata raises ValueError; seek/read failures propagate without publication.
-    """
-    stream.seek(info.header_offset)
-    header = stream.read(30)
-    if len(header) != 30 or header[:4] != b"PK\x03\x04":
-        raise ValueError("ZIP deflate local header is incomplete")
-    name_bytes, extra_bytes = struct.unpack_from("<HH", header, 26)
-    stream.seek(name_bytes + extra_bytes, 1)
 
 
 class _DeflateVerifier:
@@ -148,7 +131,7 @@ class _DeflateVerifier:
             raise ValueError("ZIP deflate stream is truncated or has inconsistent decoded size")
 
 
-def _validate_deflate(path: Path, info: zipfile.ZipInfo) -> None:
+def _validate_deflate(path: Path, info: zipfile.ZipInfo, data_offset: int) -> None:
     """Verify that one raw deflate stream consumes every declared compressed byte with bounded memory.
 
     ZipExtFile verifies CRC/decoded data later but can ignore compressed tails.
@@ -159,7 +142,7 @@ def _validate_deflate(path: Path, info: zipfile.ZipInfo) -> None:
     """
     verifier = _DeflateVerifier(info.file_size)
     with path.open("rb") as stream:
-        _seek_member_data(stream, info)
+        stream.seek(data_offset)
         remaining = info.compress_size
         while remaining:
             chunk = stream.read(min(65536, remaining))
@@ -182,15 +165,19 @@ def consume_zip_members(
     Zip/CRC/I/O failures propagate as ValueError/OSError. All archive/member input
     handles close on successful consumption or any callback/decoder exception.
     """
-    _zip_footer(path, spec)
+    directory_offset = _zip_footer(path, spec)
     try:
         with zipfile.ZipFile(path) as archive:
             entries = _zip_entries(archive, spec)
+            boundaries = entry_boundaries(entries, directory_offset)
+            data_offsets = {
+                info.filename: local_data_offset(path, info, boundaries[info.header_offset]) for info in entries
+            }
             members = {member.name: member for member in spec.members}
             for info in entries:
                 with archive.open(info) as stream:
                     if info.compress_type == zipfile.ZIP_DEFLATED:
-                        _validate_deflate(path, info)
+                        _validate_deflate(path, info, data_offsets[info.filename])
                     if info.is_dir():
                         if stream.read(1):
                             raise ValueError("ZIP directory entries cannot contain data")

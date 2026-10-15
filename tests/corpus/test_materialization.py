@@ -813,3 +813,275 @@ def test_deflate_output_chunk_boundaries_preserve_members_across_compression_lev
         assert materialize_source(spec, cache) == receipt
         identities.append(receipt.spec.members)
     assert identities[0] == identities[1] == identities[2]
+
+
+def _descriptor_zip(data, compression):
+    class StreamingOutput(io.BytesIO):
+        def seek(self, *args):
+            raise io.UnsupportedOperation("nonseekable output exercises standard ZIP data descriptors")
+
+    buffer = StreamingOutput()
+    with zipfile.ZipFile(buffer, "w", compression=compression) as archive:
+        archive.writestr("fixture.json", data)
+    return bytearray(buffer.getvalue())
+
+
+def _freeze_fixture_zip(payload):
+    data = bundled_fixture_bytes(ID)
+    members = ({"name": "fixture.json", "sha256": digest(data), "size_bytes": len(data)},)
+    return recipe(bytes(payload), archive="zip", members=members)[0]
+
+
+def _reset_directory_offset(payload):
+    directory = payload.index(b"PK\x01\x02")
+    struct.pack_into("<I", payload, payload.rfind(b"PK\x05\x06") + 16, directory)
+    return directory
+
+
+@pytest.mark.parametrize("compression", [zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED])
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "signature",
+        "version",
+        "flags",
+        "encryption",
+        "crc",
+        "compressed-size",
+        "decoded-size",
+        "name",
+        "zip64-extra",
+        "extra-framing",
+        "extra-overflow",
+        "extra-truncated",
+    ],
+)
+def test_local_zip_header_mismatches_and_bad_extras_reject(tmp_path, compression, kind):
+    data = bundled_fixture_bytes(ID)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=compression) as archive:
+        archive.writestr("fixture.json", data)
+    payload = bytearray(buffer.getvalue())
+    if kind == "signature":
+        payload[:4] = b"BAD!"
+    elif kind == "version":
+        struct.pack_into("<H", payload, 4, 21)
+    elif kind in {"flags", "encryption"}:
+        struct.pack_into("<H", payload, 6, 2048 if kind == "flags" else 1)
+    elif kind in {"crc", "compressed-size", "decoded-size"}:
+        offset = {"crc": 14, "compressed-size": 18, "decoded-size": 22}[kind]
+        struct.pack_into("<I", payload, offset, struct.unpack_from("<I", payload, offset)[0] ^ 1)
+    elif kind == "name":
+        payload[30] = ord("X")
+    elif kind == "extra-truncated":
+        struct.pack_into("<H", payload, 28, 65535)
+    else:
+        extra = {"zip64-extra": b"\x01\x00\x00\x00", "extra-framing": b"\x02", "extra-overflow": b"\xfe\xca\x04\x00x"}[
+            kind
+        ]
+        offset = 30 + len("fixture.json")
+        payload[offset:offset] = extra
+        struct.pack_into("<H", payload, 28, len(extra))
+        _reset_directory_offset(payload)
+    spec = _freeze_fixture_zip(payload)
+    cache = SourceCache(tmp_path / "cache")
+    with pytest.raises(ValueError, match="ZIP"):
+        materialize_source(spec, cache, lambda: reader(bytes(payload)))
+    assert not (cache.root / "blobs" / digest(data).removeprefix("sha256:")).exists()
+    assert not list(tmp_path.rglob("corpus-materializations/*.json"))
+
+
+@pytest.mark.parametrize("compression", [zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED])
+def test_valid_local_vendor_extra_can_differ_from_central_metadata(tmp_path, compression):
+    data = bundled_fixture_bytes(ID)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=compression) as archive:
+        archive.writestr("fixture.json", data)
+    payload = bytearray(buffer.getvalue())
+    extra = b"\xfe\xca\x03\x00own"
+    offset = 30 + len("fixture.json")
+    payload[offset:offset] = extra
+    struct.pack_into("<H", payload, 28, len(extra))
+    directory = _reset_directory_offset(payload)
+    # Consistent UTF-8 flags are valid for these ASCII names too.
+    struct.pack_into("<H", payload, 6, 2048)
+    struct.pack_into("<H", payload, directory + 8, 2048)
+    spec = _freeze_fixture_zip(payload)
+    cache = SourceCache(tmp_path / "cache")
+    receipt = materialize_source(spec, cache, lambda: reader(bytes(payload)))
+    validate_materialization(receipt, cache)
+    assert cache.member_path(receipt, "fixture.json").read_bytes() == data
+
+
+@pytest.mark.parametrize("compression", [zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED])
+@pytest.mark.parametrize("signed", [False, True])
+@pytest.mark.parametrize("placeholders", ["zero", "matching"])
+def test_valid_signed_and_unsigned_zip_descriptors_roundtrip(tmp_path, compression, signed, placeholders):
+    data = bundled_fixture_bytes(ID)
+    payload = _descriptor_zip(data, compression)
+    directory = payload.index(b"PK\x01\x02")
+    descriptor = directory - 16
+    assert payload[descriptor : descriptor + 4] == b"PK\x07\x08"
+    if placeholders == "matching":
+        payload[14:26] = payload[descriptor + 4 : directory]
+    if not signed:
+        del payload[descriptor : descriptor + 4]
+        _reset_directory_offset(payload)
+    spec = _freeze_fixture_zip(payload)
+    cache = SourceCache(tmp_path / "cache")
+    receipt = materialize_source(spec, cache, lambda: reader(bytes(payload)))
+    validate_materialization(receipt, cache)
+    assert materialize_source(spec, cache) == receipt
+    assert cache.member_path(receipt, "fixture.json").read_bytes() == data
+
+
+@pytest.mark.parametrize("compression", [zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED])
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "crc",
+        "compressed",
+        "decoded",
+        "signature",
+        "missing",
+        "truncated",
+        "local-crc",
+        "local-compressed",
+        "local-decoded",
+    ],
+)
+def test_invalid_zip_data_descriptors_and_placeholders_reject(tmp_path, compression, kind):
+    data = bundled_fixture_bytes(ID)
+    payload = _descriptor_zip(data, compression)
+    directory = payload.index(b"PK\x01\x02")
+    descriptor = directory - 16
+    if kind in {"missing", "truncated"}:
+        del payload[descriptor + (8 if kind == "truncated" else 0) : directory]
+        _reset_directory_offset(payload)
+    elif kind == "signature":
+        payload[descriptor : descriptor + 4] = b"BAD!"
+    else:
+        field = kind.removeprefix("local-")
+        offset = {"crc": 0, "compressed": 4, "decoded": 8}[field]
+        frozen = struct.unpack_from("<I", payload, descriptor + 4 + offset)[0]
+        location = 14 + offset if kind.startswith("local-") else descriptor + 4 + offset
+        struct.pack_into("<I", payload, location, frozen ^ 1)
+    spec = _freeze_fixture_zip(payload)
+    cache = SourceCache(tmp_path / "cache")
+    with pytest.raises(ValueError, match="ZIP"):
+        materialize_source(spec, cache, lambda: reader(bytes(payload)))
+    assert not (cache.root / "blobs" / digest(data).removeprefix("sha256:")).exists()
+
+
+@pytest.mark.parametrize("kind", ["duplicate-offset", "offset-after-directory", "data-overlap", "descriptor-overlap"])
+def test_zip_local_entry_boundaries_prevent_record_overlap(tmp_path, kind):
+    first, second = b"owned-ci-first", b"owned-ci-second"
+
+    class StreamingOutput(io.BytesIO):
+        def seek(self, *args):
+            raise io.UnsupportedOperation("nonseekable ZIP")
+
+    buffer = StreamingOutput()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("first.json", first)
+        archive.writestr("second.json", second)
+    payload = bytearray(buffer.getvalue())
+    directory = payload.index(b"PK\x01\x02")
+    second_record = payload.index(b"PK\x01\x02", directory + 4)
+    second_local = struct.unpack_from("<I", payload, second_record + 42)[0]
+    if kind == "duplicate-offset":
+        struct.pack_into("<I", payload, second_record + 42, 0)
+    elif kind == "offset-after-directory":
+        struct.pack_into("<I", payload, second_record + 42, directory + 1)
+    elif kind == "data-overlap":
+        struct.pack_into("<I", payload, directory + 20, second_local)
+        struct.pack_into("<I", payload, 18, second_local)
+    else:
+        del payload[second_local - 16 : second_local]
+        directory = _reset_directory_offset(payload)
+        second_record = payload.index(b"PK\x01\x02", directory + 4)
+        struct.pack_into("<I", payload, second_record + 42, second_local - 16)
+    members = tuple(
+        {"name": name, "sha256": digest(data), "size_bytes": len(data)}
+        for name, data in (("first.json", first), ("second.json", second))
+    )
+    spec, _ = recipe(bytes(payload), archive="zip", members=members)
+    cache = SourceCache(tmp_path / "cache")
+    with pytest.raises(ValueError, match="ZIP"):
+        materialize_source(spec, cache, lambda: reader(bytes(payload)))
+    assert not list(tmp_path.rglob("corpus-materializations/*.json"))
+
+
+@pytest.mark.parametrize(
+    "kind",
+    ["reserved-flags", "stored-deflate-flags", "future-needed-version", "zip64-compressed-size", "zip64-decoded-size"],
+)
+def test_unsupported_central_flags_and_zip64_member_sentinels_reject(tmp_path, kind):
+    spec, original = zipped()
+    payload = bytearray(original)
+    directory = payload.index(b"PK\x01\x02")
+    if kind in {"reserved-flags", "stored-deflate-flags"}:
+        flags = 1 << 14 if kind == "reserved-flags" else 2
+        struct.pack_into("<H", payload, 6, flags)
+        struct.pack_into("<H", payload, directory + 8, flags)
+    elif kind == "future-needed-version":
+        struct.pack_into("<H", payload, 4, 276)
+        struct.pack_into("<H", payload, directory + 6, 276)
+    else:
+        struct.pack_into("<I", payload, directory + (20 if kind == "zip64-compressed-size" else 24), 0xFFFFFFFF)
+    spec = changed(spec, source=changed(spec.source, sha256=digest(payload), size_bytes=len(payload)))
+    cache = SourceCache(tmp_path / "cache")
+    with pytest.raises(ValueError, match="ZIP"):
+        materialize_source(spec, cache, lambda: reader(bytes(payload)))
+
+
+@pytest.mark.parametrize(
+    "kind", ["count-zero", "count-too-large", "signature", "record-length", "member-disk", "undercounted-limit"]
+)
+def test_bad_central_records_reject_before_zip_object_allocation(tmp_path, monkeypatch, kind):
+    import coleman.corpus.archives as archives
+
+    data = bundled_fixture_bytes(ID)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("fixture.json", data)
+        if kind == "undercounted-limit":
+            for index in range(128):
+                archive.writestr(f"dir-{index:03d}/", b"")
+    payload = bytearray(buffer.getvalue())
+    directory = payload.index(b"PK\x01\x02")
+    footer = payload.rfind(b"PK\x05\x06")
+    if kind in {"count-zero", "count-too-large", "undercounted-limit"}:
+        count = {"count-zero": 0, "count-too-large": 2, "undercounted-limit": 128}[kind]
+        struct.pack_into("<HH", payload, footer + 8, count, count)
+    elif kind == "signature":
+        payload[directory : directory + 4] = b"BAD!"
+    elif kind == "record-length":
+        struct.pack_into("<H", payload, directory + 28, 65535)
+    else:
+        struct.pack_into("<H", payload, directory + 34, 1)
+    spec = _freeze_fixture_zip(payload)
+    cache = SourceCache(tmp_path / "cache")
+
+    def forbid_allocation(*args, **kwargs):
+        raise AssertionError("Malformed central records must reject before standard ZIP object allocation")
+
+    monkeypatch.setattr(archives.zipfile, "ZipFile", forbid_allocation)
+    with pytest.raises(ValueError, match="ZIP central"):
+        materialize_source(spec, cache, lambda: reader(bytes(payload)))
+    assert not (cache.root / "blobs" / digest(data).removeprefix("sha256:")).exists()
+
+
+def test_exact_zip_entry_limit_accepts_complete_actual_directory(tmp_path):
+    data = bundled_fixture_bytes(ID)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for index in range(127):
+            archive.writestr(f"dir-{index:03d}/", b"")
+        archive.writestr("fixture.json", data)
+    payload = buffer.getvalue()
+    spec = _freeze_fixture_zip(payload)
+    cache = SourceCache(tmp_path / "cache")
+    receipt = materialize_source(spec, cache, lambda: reader(payload))
+    validate_materialization(receipt, cache)
+    assert cache.member_path(receipt, "fixture.json").read_bytes() == data

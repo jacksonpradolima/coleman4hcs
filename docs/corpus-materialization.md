@@ -124,9 +124,21 @@ per-operation bound, not a global cache eviction/quota or measured peak-memory
 promise.
 
 Source digest verification precedes ZIP metadata/decoding. End-record bounds are
-checked before central-directory allocation. V1 supports single-disk, non-ZIP64
-stored/deflated ZIP only. Encrypted files, links, devices, unsafe/ambiguous paths,
+checked before central-directory allocation. A streaming fixed-header pass also
+checks actual record counts, variable-field lengths and every entry's disk reference
+before the standard ZIP reader allocates metadata objects; false footer counts
+cannot bypass the entry limit. V1 supports single-disk, non-ZIP64
+stored/deflated ZIP with required extraction version at most 2.0. The
+[PKWARE ZIP specification](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT)
+describes these metadata fields; v1 intentionally supports this bounded subset. Encrypted files, links, devices, unsafe/ambiguous paths,
 unsupported compression, duplicate names and inconsistent sizes/CRC reject.
+Local names, required versions, flags and compression methods must agree with
+central entries. Local CRC/compressed/decoded byte counts must match too, except
+that descriptor-mode headers may use zero placeholders. Signed and unsigned
+32-bit descriptors must match central counts/CRC and fit before the next record.
+All local records pass this preflight before any member decoding. Both extra-field
+sections are checked for valid framing and prohibited ZIP64 records; legitimate
+inert vendor differences are allowed. Encryption and reserved flags reject.
 Stored entries require equal compressed/decoded sizes. Deflated entries, including
 empty directories, receive a bounded first decode pass that requires exactly one
 complete stream consuming all declared compressed bytes, without unused tails.
@@ -215,7 +227,9 @@ flowchart LR
   R --> H[Streaming source SHA and size]
   H --> C[External immutable content cache]
   C --> Z[ZIP metadata names types and limits]
-  Z --> M[Streaming member SHA and size]
+  Z --> L[Local and central agreement plus bounded descriptors]
+  L --> D[Complete stored or deflated stream]
+  D --> M[Streaming member SHA and size]
   M --> C
   C --> V[Offline complete package verification]
   V --> A[Metadata-only versioned receipt]
