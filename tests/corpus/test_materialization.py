@@ -793,3 +793,23 @@ def test_sdk_publication_rejects_metadata_family_alias_to_cache(tmp_path):
     assert before == after
     assert {path.name for path in cache.root.glob("*.json")} == {"cache-format.json"}
     assert not list(cache.root.glob("corpus-materializations/*.json"))
+
+
+@pytest.mark.parametrize("size", [65535, 65536, 65537, 131073, 196609])
+@pytest.mark.parametrize("pattern", [b"a", b"\x00", b"owned-ci"])
+def test_deflate_output_chunk_boundaries_preserve_members_across_compression_levels(tmp_path, size, pattern):
+    data = (pattern * (size // len(pattern) + 1))[:size]
+    members = ({"name": "fixture.json", "sha256": digest(data), "size_bytes": len(data)},)
+    identities = []
+    for level in (1, 6, 9):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=level) as archive:
+            archive.writestr("fixture.json", data)
+        spec, payload = recipe(buffer.getvalue(), archive="zip", members=members)
+        cache = SourceCache(tmp_path / str(level))
+        receipt = materialize_source(spec, cache, lambda payload=payload: reader(payload))
+        validate_materialization(receipt, cache)
+        assert cache.member_path(receipt, "fixture.json").read_bytes() == data
+        assert materialize_source(spec, cache) == receipt
+        identities.append(receipt.spec.members)
+    assert identities[0] == identities[1] == identities[2]
