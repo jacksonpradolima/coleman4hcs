@@ -22,6 +22,7 @@ nav = [
   { "Protected Evaluation" = "protected-evaluation.md" },
   { "Finite Coverage Selection" = "finite-coverage.md" },
   { "Scenario Payoff Allocation" = "scenario-payoffs.md" },
+  { "Operational CI Pilot" = "operational-pilot.md" },
   { "Independent Decision Benchmarks" = "decision-benchmarks.md" },
   { "Bounded Application API & MCP" = "application-api.md" },
   { "Configuration" = "configuration.md" },
@@ -29,6 +30,7 @@ nav = [
   { "Code Cost Evaluation" = "code-cost.md" },
   { "Dependency Security" = "dependency-security.md" },
   { "COLEMAN 4.0" = "releases/4.0.0.md" },
+  { "Public Roadmap" = "roadmap.md" },
   { "Release Preparation" = "releases.md" },
   { "Observability" = "observability.md" },
   { "API Reference" = [{ "Overview" = "api-reference.md" }, { "Agent" = "api/agent.md" }, { "Bandit" = "api/bandit.md" }, { "Environment" = "api/environment.md" }, { "Evaluation" = "api/evaluation.md" }, { "Policy" = "api/policy.md" }, { "Reward" = "api/reward.md" }, { "Scenarios" = "api/scenarios.md" }] }

@@ -40,10 +40,13 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/getting-started.md
 - docs/index.md
 - docs/observability.md
+- docs/operational-pilot.md
 - docs/protected-evaluation.md
 - docs/releases/3.6.1.md
 - docs/releases/4.0.0.md
+- docs/releases/4.1.0.md
 - docs/releases.md
+- docs/roadmap.md
 - docs/scenario-payoffs.md
 - docs/setup.md
 - docs/workflow.md
@@ -4834,6 +4837,200 @@ GROUP BY reward_function;
 
 
 
+### FILE: docs/operational-pilot.md
+
+# Budget-aware CI operational pilot
+
+The pilot audits actual native TCPCI rankings and scheduled tests using an
+independent event replay. It preserves the existing runner, agents, rewards,
+metrics, sinks, manifests and checkpoint infrastructure. It does not rewrite the
+legacy `ttf`, NAPFD or APFDc columns or interpret them as new measurements.
+
+## Run from an installed package
+
+Install a [verified COLEMAN release wheel](setup.md), then copy
+[`run.py`](https://github.com/jacksonpradolima/coleman/blob/main/examples/operational-pilot/run.py)
+to a directory outside the checkout. This example requires a wheel containing
+`coleman.pilot` (introduced after 4.0.1; use a locally built development wheel
+until 4.1 is published). No optional dependency, network, CI credential or data
+subscription is used during execution.
+
+```bash
+python run.py pilot-output
+python run.py pilot-output  # completed candidate/build pairs are reused
+```
+
+The example generates an openly available synthetic fixture under the repository's
+MIT license, writes its exact source bytes and SHA-256, freezes `manifest.json`
+before running candidates, and produces `report.md` plus immutable
+`pilot-reports/<sha256>.json` snapshots. Native outputs, provenance and domain
+records remain in each candidate's run directory. No external dataset is copied.
+`source.json` is a canonical versioned fixture interpretation, not production CI
+history. Its timestamps/splits are synthetic. The example's predeclared protocol
+is a replay design; it is not proof that real outcomes were hidden from an analyst.
+
+Inputs are three tests (t1: 1 s/pass, t2: 2 s/fail, t3: 4 s/fail), a fixed
+**3 runner-second** execution budget, and **0.01 modeled credit/runner-second**.
+A native initial-shuffle warmup build is excluded. Two following builds compare
+base order, shortest first, native Random and native Greedy under the same native
+seed 42, RNFail reward and budget. This is not two independent real observations.
+Shortest first equals base order here; its policy reads only predeclared durations,
+never outcomes. There is no genuine coverage mapping, so a coverage candidate is
+ineligible. The example does not fabricate capabilities from failure labels.
+
+The native budget uses accumulated prefix durations: stop at the first test that
+cannot fit, even if a shorter later test could fit. Zero-duration tests are valid.
+This v1 pilot validates that precise policy; it does not add a new scheduler.
+
+## Contract and complete library example
+
+```python
+from pathlib import Path
+
+from coleman.artifacts import ArtifactWriter
+from coleman.pilot import (
+    PilotManifest, PilotReport, PilotRun, OVERHEAD_SECONDS,
+    publish_pilot_report, render_pilot_report, serial_events, verify_run,
+)
+from coleman.selection import Quantity
+
+manifest = PilotManifest.from_json(Path("pilot-output/manifest.json").read_bytes())
+build = manifest.builds[0]
+run = PilotRun(
+    candidate_id=manifest.baseline_id,
+    build_id=build.build_id,
+    seed=42,
+    ranking=build.baseline_order,
+    events=serial_events(build, build.baseline_order, manifest.budget),
+    # An illustrative explicitly measured overhead, not inferred runner work.
+    prioritization_overhead=Quantity(value="0.001", semantics=OVERHEAD_SECONDS),
+)
+metric = verify_run(manifest, run)
+assert metric.failing_test_recall == 0.5
+assert metric.runner_work.value == 3
+assert metric.first_failure_elapsed is not None
+assert metric.first_failure_elapsed.value == 3
+assert metric.modeled_variable_cost.value == Quantity(
+    value="0.03", semantics=metric.modeled_variable_cost.semantics,
+).value
+partial = PilotReport(schema_version=1, manifest=manifest).append(run)
+assert partial.status == "partial"  # other candidates/builds still missing
+path = publish_pilot_report(partial, ArtifactWriter("checkpoint-output"))
+restored = PilotReport.from_json(path.read_bytes())
+assert restored.append(run) == partial  # identical retry
+print(render_pilot_report(restored))
+```
+
+`serial_events` is a pure replay helper, not an executor. The native collector
+compares its predicted selected identities against the actual native metric's
+scheduled identities before accepting a run. `replay_events` independently
+reconstructs occupied runner-seconds, explicit elapsed time, first observed
+failure and recall from events plus the **complete** source universe. It imports
+neither native metric implementations nor transport modules.
+
+For parallel evidence, supply actual worker IDs and start/completion offsets to
+`replay_events`. Two overlapping workers can use 7 runner-seconds in 4 elapsed
+seconds. That does not validate a parallel candidate against this serial manifest;
+`verify_run` rejects that substitution. Wall-clock savings cannot be derived from
+runner-seconds. Queue time, shared setup, retries, orchestration and infrastructure
+failures require additional observed evidence before deployment claims.
+
+## States, units and accounting
+
+- Recall is **failing-test recall**, not unique-fault recall. Every excluded known
+  failing test remains in the denominator. Excluding all failures gives recall 0,
+  never improved quality. No known failures gives null, not perfect recall.
+- Unknown and timeout outcomes are explicit states, not pass/fail. Their occupied
+  duration still counts. Any unresolved outcome makes complete recall unavailable
+  and prevents a descriptive safety pass.
+- No observed failure gives null/right-censored first-failure time. A genuinely
+  instantaneous failure gives 0/detected. Negative durations, null durations,
+  NaN and infinity are invalid; unavailable duration needs upstream resolution.
+- Durations, budget, elapsed offsets, overhead, price and modeled credits each
+  declare unit **and meaning**. Even a zero with incompatible units fails. No
+  conversion between seconds/milliseconds or meanings happens implicitly.
+- Exact quantities use the existing decimal contract: at most 12 fractional
+  places, finite/nonnegative, maximum `10^24`. Products that cannot be represented
+  exactly fail validation rather than rounding modeled costs silently. Native
+  measured overhead is explicitly rounded **up** to nanoseconds; its meaning
+  names that conversion. Timing precision is not claimed to be nanoseconds.
+- Modeled credits are variable runner occupancy times the frozen price. Fees,
+  fixed costs and overhead are excluded explicitly. Lower modeled credits alone
+  never imply detection improvement, net savings or customer demand.
+
+For base order the fixture yields recall 0.5, first failure at 3 s, work 3 s and
+0.03 modeled credits. Reversing only t1/t2 gives first failure at 2 s with the same
+recall/work/cost. Native Random can spend less by missing both failures; the
+predeclared detection gate rejects that apparent advantage. See the
+[recorded bounded evidence](https://github.com/jacksonpradolima/coleman/blob/main/examples/operational-pilot/evidence.md).
+
+## Evidence, adoption and recovery
+
+Manifest v1 freezes source identity/license, interpreted-data digest, chronological
+split boundaries (reusing `TemporalPlan`), evaluation availability cutoff, baseline
+order, candidates, scheduling rule, budget, price and thresholds. It rejects
+future/unavailable test outcomes, changed interpretations and duplicate identities.
+These validations are not a replacement for protected data access or a justified
+independence model. Whole manifests contain evaluation outcomes and must stay
+outside policy feature construction.
+
+The default fixture requires at least two distinct builds, recall >=0.5 with no
+baseline regression, runner saving fraction >=0 and overhead <=1 s **on every
+paired build**. Missing pairs, zero baseline work, unresolved or zero-failure
+outcomes, too few builds and synthetic evidence remain visible. A measured safety
+regression fails even when cost improves. Otherwise insufficient evidence yields
+inconclusive. Per-build ranges show heterogeneity; they are not confidence
+intervals. There is no defensible statistical interval from this repeated
+synthetic suite. Seeds do not increase the independent sample size.
+
+Adoption always remains `insufficient_evidence` in this bounded v1 report, even
+when descriptive observed-CI gates pass. A deployment decision additionally needs
+representative authorized CI, justified independent units or temporal blocks,
+protected comparative evidence, measured end-to-end overhead and retry/setup/queue
+costs, required-suite constraints, human overrides and a conservative full-suite
+fallback. This delivery establishes correct replay accounting and a negative or
+inconclusive operational finding; it does not establish production value or
+commercial demand.
+
+A report's matrix is `partial` until every frozen pair exists. Report snapshots
+also serve as validated checkpoints; restore and run only missing pairs. Identical
+logical retries deduplicate, while conflicting payloads (including changed seed
+or overhead) fail. The installed example reuses completed candidates and retains
+completed build records on an interrupted candidate's replay. Reconstructing
+learning history can repeat native execution; native checkpoint state remains a
+separate runner responsibility. This introduces no second runner or storage layer. The example runs sequentially;
+do not launch concurrent native runs against the same output directory. Immutable
+report publication itself supports concurrent identical retries. Snapshot recovery
+merges all completed pairs and rejects conflicting histories rather than choosing
+an arbitrary longest snapshot.
+
+Publication reuses `ArtifactWriter.write_immutable`: complete bytes are fsynced
+before atomic create-if-absent, identical concurrent retries succeed and conflicts
+raise `ValueError`. An interrupted write cannot expose a partially completed JSON
+artifact. Local hard-link and directory-fsync requirements, and power-loss limits,
+remain those of the existing writer. I/O errors propagate.
+
+Only explicit integer schema version 1 is accepted. Unknown/future/missing
+versions and duplicate JSON keys fail closed. Older native artifacts continue to
+use their original readers and meanings; no implicit migration is available or
+necessary. Reports embed the manifest/runs and recompute summaries on read. Serialization is
+deterministic for identical observations; a fresh timing measurement legitimately
+changes report content and its digest.
+
+```mermaid
+flowchart LR
+  F[Frozen licensed fixture and manifest] --> N[Existing native runner and policies]
+  N --> S[Existing native metrics and sinks]
+  N --> C[Monitor extension: actual ranking and schedule]
+  F --> R[Independent event replay]
+  C --> R
+  R --> P[Validated partial or completed pilot report]
+  P --> A[Existing ArtifactWriter and manifests]
+  P --> E[Descriptive evidence and insufficient-evidence adoption]
+```
+
+
+
 ### FILE: docs/protected-evaluation.md
 
 # Protected evaluation for CI decisions
@@ -5178,6 +5375,65 @@ published wheel digest.
 
 
 
+### FILE: docs/releases/4.1.0.md
+
+# COLEMAN 4.1 — Know what your CI budget actually buys
+
+A faster first failure is useful. Missing the failures that matter is not a saving.
+COLEMAN 4.1 adds a reproducible operational pilot that makes that distinction
+inspectable, using the native TCPCI runner and independent execution accounting.
+
+## From a ranking to accountable CI evidence
+
+Run a small, MIT-licensed synthetic CI workflow with base order, shortest first,
+native Random and native Greedy. Freeze its source identity, evaluation period,
+execution budget and quality thresholds before execution. Inspect every build's
+failing-test recall, first failure, occupied runner time, elapsed execution time
+and separately measured prioritization overhead.
+
+The fixture's three-second budget costs 0.03 modeled credits at its explicit price.
+A candidate that spends less by missing failures fails the detection gate. Faster
+feedback with unchanged recall stays a feedback improvement, without being sold
+as improved detection. Synthetic replay remains **insufficient evidence for
+production adoption**. Negative and inconclusive findings are first-class outputs.
+
+## Small contracts, reusable evidence
+
+- Versioned, immutable pilot manifests and typed execution events with explicit
+  units, source identity, licenses, complete test universes and frozen thresholds.
+- Independent serial/parallel event accounting that keeps runner-seconds separate
+  from elapsed time, and excluded failures inside the recall denominator.
+- Explicit unknown/timeout outcomes, censored no-detection times and genuine zero
+  values; no silent reinterpretation of existing native metrics.
+- Validated report snapshots, deterministic serialization, conflicting-retry
+  detection and restart from completed candidate/build pairs using existing
+  artifact infrastructure.
+- An installed-package native workflow, a recorded bounded evidence report and a
+  practical adoption checklist covering real overhead, protected comparisons,
+  mandatory suites and conservative fallback.
+
+Start with the [operational pilot guide](https://jacksonpradolima.github.io/coleman/operational-pilot/)
+and [runnable example](https://github.com/jacksonpradolima/coleman/blob/main/examples/operational-pilot/run.py).
+Install the COLEMAN wheel attached to this GitHub release; the similarly named
+PyPI package is a different project. Verify published asset digests and Sigstore
+attestations using the [installation guide](https://jacksonpradolima.github.io/coleman/setup/).
+
+## Compatibility and limits
+
+Python 3.14+ and existing native scheduling/results/checkpoints remain unchanged.
+No new dependency is required. Pilot schema v1 rejects unknown versions; old native
+artifacts keep their original readers and meanings, with no implicit migration.
+
+This release validates a bounded synthetic replay, not production savings,
+algorithm superiority, calibrated probabilities or commercial demand. Per-build
+ranges are descriptive rather than confidence intervals. Real source admission,
+diverse cross-project evidence and dependence-aware confirmatory comparisons
+remain work in the [public roadmap](https://jacksonpradolima.github.io/coleman/roadmap/).
+
+[Full changes](https://github.com/jacksonpradolima/coleman/compare/v4.0.1...v4.1.0)
+
+
+
 ### FILE: docs/releases.md
 
 # Release preparation
@@ -5186,22 +5442,22 @@ COLEMAN keeps public product documentation centered on CI test prioritization,
 selection and evidence. Generic decision contracts support that product; a release
 should explain the value to CI users before listing internal implementation work.
 
-## The 4.0 integration line
+## Versioning and integration
 
-Prepare the next feature release in `release/4.0`, using small reviewed PRs in
-prerequisite order. This branch collects completed capabilities without publishing
-a new stable release for each PR. Keep it synchronized with reviewed security fixes
-from `main`. Do not merge unvalidated parallel implementations to accelerate a
-version number.
+COLEMAN 4.0 is published. The next compatible feature target is **4.1.0**;
+compatible corrections use patch versions. Follow the [public roadmap](roadmap.md)
+in dependency order and keep each PR runnable and independently reviewed.
 
-Security corrections may ship on the supported 3.x line before 4.0. A large feature
-release is not a reason to hold an available vulnerability fix.
+A release branch can collect related reviewed PRs when a capability needs several
+vertical slices before publication. Keep it synchronized with security fixes from
+`main`; available security corrections must not wait for a feature release.
+The publication workflow runs on `main`. A compatible `feat:` merge requests the
+next minor version; `fix:` requests a patch. Reserve `feat!:` or an explicit
+breaking-change declaration for an actual incompatible public contract.
 
-The release workflow publishes from `main`. When the integration line is complete,
-review its entire diff, pass the full quality/security/install/native-CI gates, and
-merge its release PR with an explicit major-release Conventional Commit, such as
-`feat!: release COLEMAN 4.0`. This intentionally requests the 4.0.0 bump; do not
-manually edit only the package version while leaving tags or the lock inconsistent.
+Before integrating a release branch, review its entire diff and pass the full
+quality/security/install/native-CI gates. Do not manually edit only the package
+version while leaving tags or the lock inconsistent.
 The automated workflow updates the package version, synchronizes `uv.lock`, builds
 the distributions, and includes the lock in the version commit before tagging.
 A second lock check after tagging must find no changes. This keeps the tag, source
@@ -5209,7 +5465,7 @@ archive and wheel metadata consistent.
 
 ## Reviewed release descriptions
 
-Before the final release PR, commit `docs/releases/4.0.0.md` with an en-US release
+Before the final release PR, commit `docs/releases/<version>.md` with an en-US release
 description. The publication workflow uses `docs/releases/<version>.md` when
 present; otherwise it preserves the generated description. These notes are part
 of the reviewed diff and must describe only completed, validated public features.
@@ -5231,6 +5487,55 @@ After automatic publication, check the rendered GitHub description, assets,
 checksums, attestations, SBOM, package version and source/lock consistency. If the
 automatic description needs an editorial correction, update it from a reviewed
 notes file rather than replacing it with an unverified marketing claim.
+
+
+
+### FILE: docs/roadmap.md
+
+# Public CI Intelligence roadmap
+
+COLEMAN 4.0 established versioned domain results, protected temporal evaluation,
+finite coverage and scenario-payoff decisions, independent solver benchmarks and
+a bounded application API. These foundations supplement its native TCPCI runner.
+A completed foundation is not evidence that the remaining roadmap is implemented.
+
+The next additive target is **4.1.0**, beginning with the bounded operational CI
+pilot in [#257](https://github.com/jacksonpradolima/coleman/issues/257). Its first
+claim is auditable accounting and honest evidence, including negative/inconclusive
+findings. It does not promise production savings from a synthetic example.
+
+The diversified corpus in
+[#261](https://github.com/jacksonpradolima/coleman/issues/261) follows in sequential,
+reviewable vertical slices: manifest/registry and correctness fixtures; existing
+data inventory and diversity cards; bounded secure fetch/conversion; admitted
+historical and controlled-fault sources; synthetic stress cases; baseline and
+protected statistical profiles; frozen cross-corpus evidence. Deliveries can span
+4.1.x and later 4.x minor releases. The issue remains open until its admission,
+diversity, execution and evidence gates are satisfied. An inaccessible or
+unlicensed source is a visible blocker, not an invented successful experiment.
+
+Public adapter follow-ups
+[#258](https://github.com/jacksonpradolima/coleman/issues/258),
+[#259](https://github.com/jacksonpradolima/coleman/issues/259) and
+[#260](https://github.com/jacksonpradolima/coleman/issues/260) need scope reconciliation
+before implementation in this repository. COLEMAN's reusable mechanisms can
+support point-in-time observations, exact resource accounting and frozen
+prospective evaluation. Its public product, tutorial examples and validation stay
+centered on CI/TCPCI; provider rules belong outside the core. Generic work does not
+silently satisfy domain-specific issue acceptance criteria. These items are not
+implemented or assigned a release merely because their design exists.
+
+Compatible features use subsequent **4.x minor** versions; compatible fixes use
+**4.x patch** versions. A major version requires an actual breaking public contract,
+not a large issue count. Release branches may group related reviewed PRs where
+needed, while security fixes remain independently shippable. Only implemented,
+reviewed, tested behavior belongs in published release notes.
+
+Every slice reuses existing runner, results, artifact and checkpoint interfaces;
+includes installed-package examples and independent correctness evidence; passes
+local review and repository checks; and receives PR review before integration.
+No source admission, performance result, prospective observation, independence
+assumption or commercial value is inferred from a planned feature.
 
 
 
