@@ -38,6 +38,11 @@ policy efficacy or prospective savings. Source admission and confirmation remain
 The release also corrects Linux worker memory accounting while retaining its
 limits and historical general telemetry. See the [4.8 release notes](releases/4.8.0.md).
 
+This revision also provides [larger LRTS histories with explicit stage
+views](lrts-stage-views.md): four-build ActiveMQ and Log4j profiles, complete
+analytical records and exact source-node bindings. Its guide builds this
+revision's wheel; the published 4.8 workflows above remain available.
+
 [Controlled observations](controlled-faults.md), the
 [pinned JUnit3 source recipe](junit-source-capture.md),
 [RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) readers,

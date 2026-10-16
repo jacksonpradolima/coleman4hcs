@@ -56,13 +56,14 @@ fixes remain independently shippable.
 ## Remaining corpus subtasks
 
 The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
-4.8; #303–#313 track the remaining work. An opened subtask does not establish
-implementation or admission.
+4.8. This revision adds #303's [larger LRTS stage views](lrts-stage-views.md);
+#304–#313 track the remaining work. Source conversion does not establish admission.
 
 | Stage | Subtasks | Dependency |
 | --- | --- | --- |
 | RTPTorrent source path — delivered in 4.8 | [#301 ZIP64 integrity](https://github.com/jacksonpradolima/coleman/issues/301), [#302 real Parquet ETL/replay](https://github.com/jacksonpradolima/coleman/issues/302) | #302 requires #301 |
-| Other source expansion | [#303 LRTS](https://github.com/jacksonpradolima/coleman/issues/303), [#304 Java faults](https://github.com/jacksonpradolima/coleman/issues/304), [#305 non-Java faults](https://github.com/jacksonpradolima/coleman/issues/305), [#306 seeded faults](https://github.com/jacksonpradolima/coleman/issues/306), [#307 HCS](https://github.com/jacksonpradolima/coleman/issues/307), [#308 stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main |
+| LRTS source expansion — this revision | [#303 larger histories and explicit stage views](https://github.com/jacksonpradolima/coleman/issues/303) | Existing reviewed main; temporal blockers remain explicit |
+| Other source expansion | [#304 Java faults](https://github.com/jacksonpradolima/coleman/issues/304), [#305 non-Java faults](https://github.com/jacksonpradolima/coleman/issues/305), [#306 seeded faults](https://github.com/jacksonpradolima/coleman/issues/306), [#307 HCS](https://github.com/jacksonpradolima/coleman/issues/307), [#308 stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main |
 | Evidence integration | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | #302–#308 |
 | Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
 | Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
@@ -81,7 +82,9 @@ explicit eight-source-job simulation and checkpoint recovery through
 [#315](https://github.com/jacksonpradolima/coleman/pull/315). The signed published
 wheel was exercised outside checkout with the actual source cache, native runs
 and checkpoint continuation. Remaining source admission, diversity and
-confirmatory work continues in #303–#313, beginning with the prepared LRTS expansion.
+confirmatory work continues through the public subtasks. #303's new profiles
+preserve all raw/processed stages and use exact context/node bindings, while
+retaining explicit missing temporal evidence. Remaining expansion begins with #304.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:

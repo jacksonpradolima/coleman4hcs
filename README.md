@@ -75,6 +75,13 @@ from LRTS and class observations from RTPTorrent retain their distinct units.
 Both workflows are explicit post-hoc simulations; the admission and comparison
 gates remain visible in the [benchmark readiness table](#datasets).
 
+For larger method histories, this revision also adds
+[ActiveMQ and separate Log4j stage views](docs/lrts-stage-views.md). Four source
+builds per project retain complete analytical reports and explicit raw-node
+bindings. The guide builds and tests a wheel from this revision; the published
+4.8 installation above covers the existing Karaf/RTPTorrent workflows. Stage
+views share source build groups, and missing temporal evidence remains explicit.
+
 # Getting started
 
 - [Coleman](#coleman)
@@ -648,6 +655,7 @@ controlled reproductions and empirical benchmark corpora have different roles:
 | Dataset or benchmark | What you can use now | Scope and readiness |
 | --- | --- | --- |
 | **LRTS / Karaf real CI reports** | [Pinned download → analytical/native Parquet → Random/UCB → checkpoint recovery](docs/lrts-parquet-etl.md) | Complete eight-build preset; explicit post-hoc serial simulation. Protected historical admission remains blocked. |
+| **LRTS / ActiveMQ and Log4j stage views** | [Build this revision's wheel → explicit local archive → analytical/native Parquet → checkpoint recovery](docs/lrts-stage-views.md) | Four-build profiles; exact context/node bindings. All raw stages retained; Log4j views share source observations. Temporal admission remains blocked. |
 | **Druid and Retrofit** | Bundled native/contextual Parquet examples, native runner and [descriptive profiles](docs/benchmark-corpus.md#local-profiles-and-the-first-diversity-matrix-44) | Runnable legacy experiments. Source terms, duration units and outcome availability still need corpus admission evidence. |
 | **Dune and its variants** | Bundled native Parquet, WTS/VTS workflows and [variant-aware inventory](docs/benchmark-corpus.md) | Runnable HCS examples. Variants/context files may share executions; broad HCS benchmark admission remains unfinished. |
 | **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | Available in 4.8: 46,995 class executions / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |

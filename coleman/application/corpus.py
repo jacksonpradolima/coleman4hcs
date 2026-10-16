@@ -9,6 +9,8 @@ from coleman.api import RunResult, run
 from coleman.artifacts import ArtifactWriter
 from coleman.corpus.lrts_etl import validate_lrts_etl
 from coleman.corpus.lrts_etl_contracts import LRTSETLReceipt
+from coleman.corpus.lrts_stage_contracts import LRTSStageReceipt
+from coleman.corpus.lrts_stage_etl import validate_lrts_stage_etl
 from coleman.corpus.materialization import SourceCache, validate_cache_separation, validate_source_storage
 from coleman.corpus.rtptorrent_etl import validate_rtptorrent_etl
 from coleman.corpus.rtptorrent_etl_contracts import RTPTorrentETLReceipt
@@ -24,7 +26,7 @@ class _VerifiedReplay(NamedTuple):
     dataset_id: str
     receipt: VersionedContract
     evidence: str
-    extension: Literal["lrts_etl", "rtptorrent_etl"]
+    extension: Literal["lrts_etl", "rtptorrent_etl", "lrts_stage_etl"]
 
 
 def _payload(completion: Path) -> bytes:
@@ -151,6 +153,44 @@ def run_rtptorrent_replay(
         raise ValueError("RTPTorrent ETL has no compatible native source-job rounds")
     return _run_verified(
         _VerifiedReplay(root, receipt.recipe.dataset_id, receipt, receipt.evidence, "rtptorrent_etl"),
+        cache,
+        output,
+        policies,
+        budgets,
+        seed,
+    )
+
+
+def run_lrts_stage_replay(
+    completion: Path,
+    cache: SourceCache,
+    output: Path,
+    *,
+    policies: tuple[str, ...] = ("Random", "UCB"),
+    budgets: tuple[float, ...] = (0.5,),
+    seed: int = 42,
+) -> RunResult:
+    """Verify one explicit LRTS stage view and execute/resume through the existing API/checkpoint.
+
+    Every raw observation and processed stage remains in the analytical export;
+    the native input selects the recipe's declared stage. Stage views share
+    source project/PR/build groups, never independent projects or unique faults.
+    Scheduled-label rounds, additive reported method seconds and label/occurrence
+    continuity remain simulation assumptions. Native RNFail is budget-censored:
+    zero nondetection reward for unscheduled cases never means an observed pass.
+    No executor/outcome/feature clock or temporal admission is inferred.
+    Exact receipt provenance participates in run identity and the manifest.
+    Empty projections reject; source/path/byte errors raise ValueError/OSError;
+    native errors propagate. Output is separate from cache/ETL and outside Git.
+    Identical arguments resume the same checkpoint without duplicating results.
+    """
+    receipt = LRTSStageReceipt.from_json(_payload(completion))
+    root = completion.parent
+    validate_lrts_stage_etl(receipt, cache, root)
+    if receipt.native_builds == 0:
+        raise ValueError("LRTS stage ETL has no compatible native cases")
+    return _run_verified(
+        _VerifiedReplay(root, receipt.recipe.dataset_id, receipt, receipt.evidence, "lrts_stage_etl"),
         cache,
         output,
         policies,
