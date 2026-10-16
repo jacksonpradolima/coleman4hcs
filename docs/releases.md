@@ -6,9 +6,9 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
-[COLEMAN 4.4.0](releases/4.4.0.md) publishes bounded native corpus profiles and
-secure source-package materialization. The public corpus program continues in
-subsequent compatible **4.x** feature releases; compatible corrections use patch
+[COLEMAN 4.4.1](releases/4.4.1.md) corrects exact numeric validation while retaining
+the bounded corpus profiles and secure source materialization delivered in 4.4.0.
+The public corpus program continues in subsequent compatible **4.x** feature releases; compatible corrections use patch
 versions. Follow the [public roadmap](roadmap.md) in dependency order and keep each
 PR runnable and independently reviewed. Publishing a slice does not complete the
 remaining corpus-admission or confirmatory-evidence gates.

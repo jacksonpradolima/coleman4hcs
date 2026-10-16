@@ -195,9 +195,9 @@ revalidates an already supplied owned history without I/O.
 
 ## Real native TCPCI and recovery
 
-Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.4.0/examples/point-in-time/ci.py)
+Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.4.1/examples/point-in-time/ci.py)
 outside the checkout and run `python ci.py native-observation-demo` from the
-installed 4.4 wheel or source build. It fits owned historical quantities at a frozen
+installed 4.4.1 wheel or source build. It fits owned historical quantities at a frozen
 training cutoff before decisions, then runs three constructed native CI copies using
 `run_with_extension`, native Parquet results, RNFail and existing checkpoints.
 
