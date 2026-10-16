@@ -42,13 +42,15 @@ assert len(recipe.test_ids) == 95
 assert Path(sys.modules['coleman.transports.junit'].__file__).resolve().is_relative_to(Path(sys.prefix))
 proof = {'installed': True, 'tests': len(recipe.test_ids), 'real_source_capture': False}
 if sys.argv[1] != '-':
+    from uuid import uuid4
     from coleman.artifacts import ArtifactWriter
     from coleman.corpus import SourceCache
     from coleman.transports.junit_capture import capture_junit_source
     cache = SourceCache(sys.argv[1])
     writer = ArtifactWriter('real-junit-source')
-    first = capture_junit_source(recipe, cache, writer, 'installed-source-001')
-    second = capture_junit_source(recipe, cache, writer, 'installed-source-001')
+    trial = 'installed-source-' + uuid4().hex
+    first = capture_junit_source(recipe, cache, writer, trial)
+    second = capture_junit_source(recipe, cache, writer, trial)
     assert first == second
     assert [item.status for item in first.captures] == ['collected','collected']
     pairs = dict(Counter(pair.classification for pair in first.dataset.pairs))
