@@ -55,10 +55,12 @@ print(adapter.__file__)
             .splitlines()[-1]
         )
         observations.append(Path(outcome["dataset"]).read_bytes())
-        assert outcome["native_rows"] == 1 and outcome["classifications"] == ["expected", "inconclusive"]
+        assert outcome["native_rows"] == 1
+        assert outcome["classifications"] == ["expected", "inconclusive"]
         dataset = ControlledDataset.from_json(observations[-1])
         assert dataset.spec.context.fault_origin == "synthetic"
-        assert dataset.admission == "not_evaluated" and dataset.generalization == "insufficient_evidence"
+        assert dataset.admission == "not_evaluated"
+        assert dataset.generalization == "insufficient_evidence"
         assert len(dataset.observations) == 3
         assert all(item.elapsed.value is None for item in dataset.observations)
         root = Path(outcome["native_root"])

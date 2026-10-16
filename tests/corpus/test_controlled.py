@@ -126,7 +126,8 @@ def test_roundtrip_golden_cache_source_and_manifest(tmp_path):
     assert result.to_json() + "\n" == golden.read_text()
     validate_controlled_dataset(result, cache)
     assert [p.classification for p in result.pairs] == ["expected"]
-    assert result.history == "constructed" and result.admission == "not_evaluated"
+    assert result.history == "constructed"
+    assert result.admission == "not_evaluated"
     with pytest.raises(ValueError, match="not historical CI"):
         result.require_temporal_evaluation()
     writer = ArtifactWriter(tmp_path / "out")
@@ -153,8 +154,9 @@ def test_unknown_versions_reject_without_legacy_migration(tmp_path, kind, versio
         del payload["schema_version"]
     else:
         payload["schema_version"] = version
+    encoded = json.dumps(payload)
     with pytest.raises(ValueError):
-        kind.from_json(json.dumps(payload))
+        kind.from_json(encoded)
 
 
 @pytest.mark.parametrize(
@@ -210,15 +212,18 @@ def test_duplicate_accounting_conflicts_input_order_and_logical_identity(tmp_pat
     first = convert_controlled_source(source(cache, (a, b, a), ctx), cache)
     second = convert_controlled_source(source(cache, (b, a, a), ctx), cache)
     assert first.observations == second.observations
-    assert first.input_rows == 3 and first.duplicates_excluded == 1
+    assert first.input_rows == 3
+    assert first.duplicates_excluded == 1
     assert first.spec.context.fingerprint == second.spec.context.fingerprint
     assert changed(a, outcome="passed").execution_id(ctx) == a.execution_id(ctx)
     assert changed(a, trial_id="trial-2").execution_id(ctx) != a.execution_id(ctx)
     assert changed(ctx, inputs=tuple(reversed(ctx.inputs)), test_ids=tuple(reversed(ctx.test_ids))) == ctx
+    conflicting = source(cache, (a, changed(a, outcome="passed")), ctx)
     with pytest.raises(ValueError, match="Conflicting"):
-        convert_controlled_source(source(cache, (a, changed(a, outcome="passed")), ctx), cache)
+        convert_controlled_source(conflicting, cache)
     single = convert_controlled_source(source(cache, (a,), ctx), cache)
-    assert single.pairs[0].fixed is None and single.pairs[0].classification == "inconclusive"
+    assert single.pairs[0].fixed is None
+    assert single.pairs[0].classification == "inconclusive"
     assert convert_controlled_source(source(cache, (), ctx), cache).pairs == ()
 
 
@@ -235,14 +240,17 @@ def test_context_binding_missing_inputs_revisions_and_universe(tmp_path):
         with pytest.raises(ValueError):
             changed(ctx, **updates)
     spec = source(cache, ctx=ctx)
+    mismatched = changed(spec, context=changed(ctx, project="other"))
     with pytest.raises(ValueError, match="fingerprint mismatch"):
-        convert_controlled_source(changed(spec, context=changed(ctx, project="other")), cache)
+        convert_controlled_source(mismatched, cache)
+    outside_universe = source(cache, (changed(observation(), test_id="other"),), ctx)
     with pytest.raises(ValueError, match="outside declared universe"):
-        convert_controlled_source(source(cache, (changed(observation(), test_id="other"),), ctx), cache)
+        convert_controlled_source(outside_universe, cache)
+    valid_observation = observation()
     with pytest.raises(ValueError, match="finishes before"):
-        changed(observation(), capture_finished_at="2025-12-31T23:59:59Z")
+        changed(valid_observation, capture_finished_at="2025-12-31T23:59:59Z")
     with pytest.raises(ValueError):
-        changed(observation(), capture_started_at="2026-01-01T00:00:00")
+        changed(valid_observation, capture_started_at="2026-01-01T00:00:00")
     with pytest.raises(ValueError, match="member missing"):
         changed(spec, report_member="missing")
 
@@ -254,11 +262,9 @@ def test_tampering_conservation_and_duplicate_dataset_reject(tmp_path):
     for updates in ({"input_rows": 0}, {"duplicates_excluded": 1}, {"observations": (result.observations[0],) * 2}):
         with pytest.raises(ValueError):
             changed(result, **updates)
+    altered = changed(result, observations=(changed(result.observations[0], outcome="passed"), result.observations[1]))
     with pytest.raises(ValueError, match="disagrees"):
-        validate_controlled_dataset(
-            changed(result, observations=(changed(result.observations[0], outcome="passed"), result.observations[1])),
-            cache,
-        )
+        validate_controlled_dataset(altered, cache)
     path = cache.member_path(spec.report_materialization, spec.report_member)
     path.write_bytes(b"{}")
     with pytest.raises(ValueError):
@@ -271,7 +277,8 @@ def test_concurrent_publication_replay_and_interruption(tmp_path, monkeypatch):
     writer = ArtifactWriter(tmp_path / "out")
     with ThreadPoolExecutor(max_workers=4) as pool:
         paths = list(pool.map(lambda _: publish_controlled_dataset(result, cache, writer), range(8)))
-    assert len(set(paths)) == 1 and len(list(writer.run_root.rglob("*.json"))) == 1
+    assert len(set(paths)) == 1
+    assert len(list(writer.run_root.rglob("*.json"))) == 1
     other = ArtifactWriter(tmp_path / "interrupted")
     import coleman.artifacts as artifacts
 
@@ -283,11 +290,13 @@ def test_concurrent_publication_replay_and_interruption(tmp_path, monkeypatch):
     monkeypatch.setattr(artifacts.os, "link", interrupted)
     with pytest.raises(OSError, match="interrupted"):
         publish_controlled_dataset(result, cache, other)
-    assert not list(other.run_root.rglob("*.json")) and not list(other.run_root.rglob("*.tmp"))
+    assert not list(other.run_root.rglob("*.json"))
+    assert not list(other.run_root.rglob("*.tmp"))
     monkeypatch.setattr(artifacts.os, "link", original)
     assert publish_controlled_dataset(result, cache, other).exists()
+    overlapping = ArtifactWriter(cache.root)
     with pytest.raises(ValueError):
-        publish_controlled_dataset(result, cache, ArtifactWriter(cache.root))
+        publish_controlled_dataset(result, cache, overlapping)
 
 
 def test_runtime_container_identity_and_revision_kind_cardinality(tmp_path):
@@ -310,8 +319,9 @@ def test_report_member_limit_and_context_source_tampering(tmp_path):
     receipt = spec.report_materialization
     member = changed(receipt.spec.members[0], size_bytes=8 * 1024**2 + 1)
     raw = changed(receipt.spec, source=changed(receipt.spec.source, size_bytes=member.size_bytes), members=(member,))
+    oversized = changed(receipt, spec=raw)
     with pytest.raises(ValueError, match="exceeds 8 MiB"):
-        changed(spec, report_materialization=changed(receipt, spec=raw))
+        changed(spec, report_materialization=oversized)
     source_receipt = spec.context.inputs[0].materialization
     cache.member_path(source_receipt, source_receipt.spec.members[0].name).write_bytes(b"changed input")
     with pytest.raises(ValueError):
@@ -338,8 +348,9 @@ def test_unchecked_dataset_and_unsafe_publication_cannot_bypass_validation(tmp_p
     cache = SourceCache(tmp_path / "cache")
     result = convert_controlled_source(source(cache), cache)
     unchecked = result.model_copy(update={"input_rows": -1})
+    invalid_output = ArtifactWriter(tmp_path / "out")
     with pytest.raises(ValueError):
-        publish_controlled_dataset(unchecked, cache, ArtifactWriter(tmp_path / "out"))
+        publish_controlled_dataset(unchecked, cache, invalid_output)
     writer = ArtifactWriter(tmp_path / "unsafe")
     outside = tmp_path / "elsewhere"
     outside.mkdir()
