@@ -5,9 +5,15 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Annotated
 
-from pydantic import AfterValidator, Field
+from pydantic import AfterValidator, Field, WrapValidator
 
-from coleman.selection.contracts import INPUT_MAXIMUM, Quantity, UnitSemantics
+from coleman.selection.contracts import (
+    INPUT_MAXIMUM,
+    Quantity,
+    UnitSemantics,
+    validate_decimal_places,
+    validate_decimal_schema,
+)
 
 
 def _input_cap(value: Quantity) -> Quantity:
@@ -18,7 +24,12 @@ def _input_cap(value: Quantity) -> Quantity:
 
 
 InputAmount = Annotated[Quantity, AfterValidator(_input_cap)]
-Probability = Annotated[Decimal, Field(ge=0, le=1, max_digits=13, decimal_places=12)]
+Probability = Annotated[
+    Decimal,
+    Field(ge=0, le=1, max_digits=13, decimal_places=12),
+    AfterValidator(validate_decimal_places),
+    WrapValidator(validate_decimal_schema),
+]
 
 
 class SignedPayoff(Quantity):

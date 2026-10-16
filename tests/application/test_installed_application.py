@@ -73,6 +73,19 @@ from coleman.application import ApplicationService, Caller, Limits, ServerPolicy
 import coleman
 assert Path(coleman.__file__).resolve().is_relative_to(Path(__file__).parent / "installed")
 assert importlib.util.find_spec("mcp") is None
+from decimal import Decimal
+from coleman.selection.contracts import Quantity, UnitSemantics
+from coleman.allocation.quantities import ExactPayoff, SignedPayoff
+units = UnitSemantics(unit="s", meaning="owned-ci-work-v1")
+for kind in (Quantity, SignedPayoff, ExactPayoff):
+    try:
+        kind.model_validate({"value":"1e-999999999","semantics":units})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Compact exponent bypassed installed decimal contract")
+assert SignedPayoff(value=Decimal("-1.25"),semantics=units).value == Decimal("-1.25")
+assert ExactPayoff(value=Decimal("1e-48"),semantics=units).model_dump(mode="json")["value"].endswith("1")
 caller = Caller(subject="installed")
 with ApplicationService(default_registry(), root=Path("jobs"),
                         policy=ServerPolicy(caps=Limits(deadline_seconds=120))) as service:

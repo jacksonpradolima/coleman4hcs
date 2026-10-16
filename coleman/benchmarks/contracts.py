@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from decimal import Context, Decimal
 from fractions import Fraction
 from typing import Annotated, Literal, Self
 
-from pydantic import BeforeValidator, Field, model_validator
+from pydantic import AfterValidator, BeforeValidator, Field, model_validator
 
 from coleman.allocation import AllocationLimits, AllocationProblem
 from coleman.results.domain import Identifier
@@ -14,14 +15,54 @@ from coleman.selection import CoverageProblem, SearchLimits, UnitSemantics
 from coleman.selection.contracts import Immutable
 
 
-def _exact_rational(value):
-    """Reject implicit binary64 rounding and boolean-as-number coercion in exact expected values."""
-    if isinstance(value, (float, bool)):
-        raise ValueError("Exact reference numbers require integers, decimals or rational strings")
+def _bounded_reference(value: Fraction) -> Fraction:
+    """Require every parsed/preconstructed numerator and denominator to fit 4096 bits."""
+    if max(value.numerator.bit_length(), value.denominator.bit_length()) > 4096:
+        raise ValueError("Exact reference fraction exceeds 4096 bits")
     return value
 
 
-ExactFraction = Annotated[Fraction, BeforeValidator(_exact_rational)]
+def _decimal_reference(value: Decimal) -> Decimal | Fraction:
+    """Reject nonfinite or oversized Decimal references before Fraction expands their exponent."""
+    if not value.is_finite():
+        raise ValueError("Exact reference decimal must be finite")
+    if not value:
+        return Fraction(0)
+    parts = value.as_tuple()
+    if len(parts.digits) > 512 or abs(int(parts.exponent)) > 512:
+        raise ValueError("Exact reference decimal exceeds bounded coefficient/exponent")
+    return value
+
+
+def _exact_rational(value):
+    """Bound exact-reference parsing before Fraction can expand compact decimal exponents.
+
+    Text has at most 4096 characters; nonzero Decimal coefficients/exponents are
+    bounded to 512 digits/places, and integers/fractions to 4096 bits. The text
+    ceiling admits every bounded fraction's canonical serialization.
+    Scientific notation remains supported within those bounds. No rounding or
+    float/boolean coercion is performed; malformed/oversized values reject.
+    """
+    if isinstance(value, (float, bool)):
+        raise ValueError("Exact reference numbers require integers, decimals or rational strings")
+    if isinstance(value, str):
+        if len(value) > 4096:
+            raise ValueError("Exact reference literal exceeds 4096 characters")
+        if "e" in value.lower():
+            value = Decimal(value, context=Context(traps=[]))
+    if isinstance(value, Decimal):
+        return _decimal_reference(value)
+    if isinstance(value, int):
+        if value.bit_length() > 4096:
+            raise ValueError("Exact reference integer exceeds 4096 bits")
+    elif isinstance(value, Fraction):
+        return _bounded_reference(value)
+    elif not isinstance(value, str):
+        raise ValueError("Unsupported exact reference type")
+    return value
+
+
+ExactFraction = Annotated[Fraction, BeforeValidator(_exact_rational), AfterValidator(_bounded_reference)]
 
 
 class ReferenceAnswer(Immutable):
