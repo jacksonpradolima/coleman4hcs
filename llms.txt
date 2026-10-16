@@ -58,6 +58,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/releases/4.4.0.md
 - docs/releases/4.4.1.md
 - docs/releases/4.5.0.md
+- docs/releases/4.6.0.md
 - docs/releases.md
 - docs/resource-replay.md
 - docs/roadmap.md
@@ -7903,6 +7904,139 @@ Implemented in [#290](https://github.com/jacksonpradolima/coleman/pull/290) and
 
 
 
+### FILE: docs/releases/4.6.0.md
+
+# COLEMAN 4.6 — Reproducible fault evidence for CI
+
+A CI prioritization decision needs evidence you can inspect and reproduce.
+COLEMAN 4.6 connects pinned buggy/fixed source revisions to versioned test
+observations, retained diagnostics and immutable artifacts. You can rerun a
+controlled fault recipe, recover interrupted collection and keep unexpected
+outcomes visible before considering a source for a benchmark.
+
+This release brings together the reviewed controlled-observation foundation and
+an optional Java/JUnit3 producer. The existing TCPCI runner continues to execute
+learning experiments, write results and resume its own checkpoints.
+
+## From a source revision to an auditable result
+
+The new controlled records retain the project, curated fault label, common test
+fixture, source revisions, runtime, component receipts and actual producer bytes.
+Each observation has a stable logical identity, explicit outcome and integer
+monotonic nanoseconds. Zero, unavailable and not applicable keep distinct meanings.
+Parent-process timing and per-test harness timing have separate semantics.
+Neither becomes an invented CI completion time or removable scheduling cost.
+
+Same-test comparisons preserve expected, both-pass, both-fail, reversed and
+inconclusive outcomes. Missing observations stay missing. Diagnostic digests bind
+to separately verified report members; schemas, source bytes and duplicate
+identities are validated before immutable publication.
+
+The bundled Apache Commons CLI-13 recipe pins both public source revisions, a
+common fixed-tree fixture, component dependencies, the COLEMAN-authored harness
+and a platform-specific Temurin image. Individually pinned files form bounded,
+deterministic source views. Foreign source code and datasets are not bundled in
+the package or mirrored into the repository.
+
+A real installed-wheel execution collected **190 observations across 95 tests per
+revision**: 92 pairs passed in both revisions, two failed in both and one failed
+then passed. The two additional failures remain in the evidence. These are
+functional reproduction results for this declared runtime and fixture, not an
+independent-fault count or a policy-performance comparison.
+
+## Try the pinned recipe
+
+Use Python 3.14+, a local arm64 Docker engine and an external workspace. Install
+the wheel attached to this release and explicitly prepare its public image:
+
+```bash
+python -m pip install https://github.com/jacksonpradolima/coleman/releases/download/v4.6.0/coleman-4.6.0-py3-none-any.whl
+docker pull --platform linux/arm64 eclipse-temurin@sha256:e4b3ff0f1a427efb2deb02b092ff8316d58573480260720d767d6ecdd69999d8
+python -m coleman.transports.junit \
+  --cache /tmp/coleman-junit-cache \
+  --output /tmp/coleman-junit-results \
+  --trial source-001 --fetch
+python -m coleman.transports.junit \
+  --cache /tmp/coleman-junit-cache \
+  --output /tmp/coleman-junit-results \
+  --trial source-001
+```
+
+The first call explicitly permits reviewed, size/digest-pinned public GitHub and
+Maven downloads. The second reopens the same committed observations without
+executing those roles again. Acquisition is offline by default; subject execution
+has no network and the producer never pulls an image implicitly.
+
+The JSON summary provides artifact paths, role statuses, pair counts and explicit
+admission/generalization fields. Exit 0 means the collection protocols completed;
+assertion failures remain outcomes. Incomplete collection retains its evidence
+and returns 2. Exceptions remain nonzero failures.
+
+The [complete Java guide](https://github.com/jacksonpradolima/coleman/blob/v4.6.0/docs/junit-source-capture.md)
+explains source/component terms, resource limits and the runtime profile. The
+[controlled-observation guide](https://github.com/jacksonpradolima/coleman/blob/v4.6.0/docs/controlled-faults.md)
+provides an offline SDK example and a complete owned native TCPCI workflow with
+independently checked metrics and learning-checkpoint continuation.
+
+## Recover without inventing success
+
+An immutable start marker precedes each role. Completed packets replay; a started
+but uncommitted role recovers as interrupted, with unavailable streams/counters
+and no fabricated cases. Failed container cleanup leaves that start recoverable.
+A POSIX lock prevents duplicate producers for the same context/trial/output tree.
+Use a new trial ID for a new execution; repeated trials retain their dependence
+group and do not become independent projects or faults.
+
+The collector bounds process time and combined output bytes. Containers are
+non-root and read-only, with explicit input mounts and CPU, memory, PID and
+temporary-storage limits. These guards support trusted-source reproduction.
+
+Resume validates raw protocol bytes, exit status, discovered test IDs and the
+completion trailer. Unavailable streams cannot retain observed process facts;
+observed streams require them. Timeout/prefix claims must agree with their bounds.
+Contradictory negative labels cannot silently erase complete observations.
+Coherent producer attestations still do not authenticate execution truth.
+
+## Compatibility and validation
+
+This is an additive **4.x** release. Existing native results, artifacts, sinks,
+checkpoints and source readers retain their meaning. New contracts require schema
+v1 and reject missing, unknown and future versions. No automatic migration or
+reinterpretation of old results occurs. Harness changes require a reviewed recipe
+update. The domain remains independent of CLI, Docker and MCP imports.
+
+The reviewed implementation passed **2,243 tests** with **95.26% combined
+statement/branch coverage**, including a real paired source reproduction from a
+wheel installed outside the checkout. Versioned golden/round-trip fixtures,
+compatibility, units/missingness, nonfinite values, deterministic identities,
+concurrent publication, interrupted writes, genuine child-process guards and
+checkpoint recovery are covered. All lint/format/type/Pylint/docstring/structural,
+strict documentation and package checks passed. Local-only OpenCodeReview and
+manual review covered every changed file; confirmed findings were reproduced and
+fixed with regressions before integration.
+
+## What remains open
+
+The records retain `admission=not_evaluated` and
+`generalization=insufficient_evidence`. The shared JVM uses lexical test order;
+order independence is not established. Collection clocks are not historical CI.
+The recipe is one direct upstream pair, not a full Defects4J reconstruction.
+Component terms remain separate from COLEMAN's MIT license; recipe-only content
+stays in external caches.
+
+The diversified benchmark program in
+[#261](https://github.com/jacksonpradolima/coleman/issues/261) remains open. Source
+admission, independent projects/faults, all seven diversity regimes, comparable
+baselines, protected chronological evidence and cross-corpus reports remain
+sequential work. Negative and inconclusive results remain valid evidence.
+
+Implemented in [#294](https://github.com/jacksonpradolima/coleman/pull/294) and
+[#295](https://github.com/jacksonpradolima/coleman/pull/295).
+
+[Full changes from 4.5.0](https://github.com/jacksonpradolima/coleman/compare/v4.5.0...v4.6.0).
+
+
+
 ### FILE: docs/releases.md
 
 # Release preparation
@@ -7913,7 +8047,12 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
-[COLEMAN 4.5](releases/4.5.0.md) adds bounded RTPTorrent and LRTS source readers,
+[COLEMAN 4.6](releases/4.6.0.md) adds versioned controlled fault observations,
+a pinned offline JUnit3 source recipe and recoverable raw evidence. Existing
+native TCPCI experiments and learning checkpoints keep their contracts. Controlled
+source reproduction remains separate from benchmark admission.
+
+[COLEMAN 4.5](releases/4.5.0.md) added bounded RTPTorrent and LRTS source readers,
 explicit units/provenance and installed native CI/checkpoint workflows. It retains
 the exact numeric safeguards from 4.4.1, corpus profiles and secure source cache.
 Both external sources remain blocked for protected temporal evaluation.
