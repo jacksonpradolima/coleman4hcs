@@ -419,6 +419,25 @@ def test_empty_report_remains_reported_empty_not_a_complete_passing_suite(tmp_pa
     assert dataset.feedback_scope == "reported_cases_only"
     with pytest.raises(ValueError, match="complete-suite"):
         dataset.require_temporal_evaluation()
+    inconsistent = {**dataset.model_dump(), "reported_empty": False}
+    with pytest.raises(ValueError, match="empty flag"):
+        LRTSDataset.model_validate(inconsistent)
+    report["empty"] = False
+    other, other_cache = materialized(tmp_path / "inconsistent", rows=[row], report=report)
+    with pytest.raises(ValueError, match="empty flag"):
+        convert_lrts_source(other, other_cache)
+
+
+def test_nonempty_report_cannot_claim_to_be_empty_in_source_or_serialized_artifact(tmp_path):
+    spec, cache = materialized(tmp_path)
+    dataset = convert_lrts_source(spec, cache)
+    inconsistent = {**dataset.model_dump(), "reported_empty": True}
+    with pytest.raises(ValueError, match="empty flag"):
+        LRTSDataset.model_validate(inconsistent)
+    report = {**raw_report(), "empty": True}
+    other, other_cache = materialized(tmp_path / "inconsistent", report=report)
+    with pytest.raises(ValueError, match="empty flag"):
+        convert_lrts_source(other, other_cache)
 
 
 def test_unknown_metadata_counts_are_not_filled_from_raw_report_aggregates(tmp_path):

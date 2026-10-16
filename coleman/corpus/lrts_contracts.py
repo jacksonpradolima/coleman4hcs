@@ -332,11 +332,13 @@ class LRTSDataset(VersionedContract):
 
 
 def _report_counts(dataset: LRTSDataset) -> None:
-    """Conserve reported methods while retaining unavailable classifications as unknown."""
+    """Conserve methods, require a consistent Jenkins empty flag and retain unknown classifications."""
     known = Counter(case.outcome for case in dataset.cases)
     declared = (dataset.report_pass_methods, dataset.report_fail_methods, dataset.report_skip_methods)
     if sum(declared) != len(dataset.cases):
         raise ValueError("LRTS declared method counts disagree with reported cases")
+    if dataset.reported_empty != (len(dataset.cases) == 0):
+        raise ValueError("LRTS reported empty flag contradicts reported method count")
     if any(known[label] > count for label, count in zip(("passed", "failed", "not_run"), declared, strict=True)):
         raise ValueError("LRTS known verdicts exceed reported method counts")
 

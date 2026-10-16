@@ -143,6 +143,8 @@ SKIPPED means not run. A null status remains unknown unless the source explicitl
 says skipped. Contradictory skipped/status flags reject. ABORTED/NOT_BUILT and
 other metadata build results remain visible. Neither passing cases nor aggregate
 counters promote an unknown method into a pass or establish complete feedback.
+The Jenkins exported `empty` flag must agree with the reported method count;
+contradictions reject rather than being repaired or published.
 Diagnostic text, plugin actions, age and failed-since hints are not decision features.
 
 Limits are 32 MiB for metadata, 16 MiB for one decoded report, 100,000 physical
