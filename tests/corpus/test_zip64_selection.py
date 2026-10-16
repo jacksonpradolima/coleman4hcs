@@ -4,6 +4,7 @@ import io
 import struct
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
+from importlib.resources import files
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,21 @@ from coleman.corpus.materialization_contracts import PackageMember
 from coleman.corpus.zip64_contracts import Zip64Member, Zip64SelectionSpec
 from coleman.corpus.zip64_selection import consume_zip64_files, materialize_zip64_files, validate_zip64_files
 from tests.corpus.test_source_views import changed, digest, source_spec
+
+
+def test_bundled_real_recipe_retains_frozen_source_member_terms_and_byte_limits():
+    resource = files("coleman.corpus.resources").joinpath("rtptorrent-hikaricp-zip64-selection-v1.json")
+    spec = Zip64SelectionSpec.from_json(resource.read_bytes())
+    assert spec.source.source.sha256 == "sha256:bff52563d75aee2f4bab9693188cdefbfd887dc4bcf63395d49eaff1ecf7b6c1"
+    assert spec.source.source.size_bytes == spec.source.limits.maximum_source_bytes == 5016963482
+    assert spec.source.source.version == "1.1"
+    assert spec.maximum_entries == 2883
+    assert spec.maximum_metadata_bytes == 395312
+    assert spec.selections[0].member.size_bytes == 2825388
+    assert spec.selections[0].package.license == spec.source.license
+    assert spec.source.license.license_id == "CC-BY-4.0"
+    assert spec.source.license.redistribution == "recipe_only"
+    assert Zip64SelectionSpec.from_json(spec.to_json()).fingerprint == spec.fingerprint
 
 
 def owned_zip64(

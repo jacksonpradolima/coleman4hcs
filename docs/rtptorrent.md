@@ -83,9 +83,16 @@ The independently computed raw-member SHA-256 is
 for 2,825,388 decoded bytes. The baseline-member SHA-256 is
 `ad162fbdd9786db59a30b7bc5625fab19cbac9d5b11e47ca6c1d79b46e041fa9`
 for 339,235 decoded bytes. These are **member identities**, not the archive SHA-256.
-Bounded HTTPS ranges, ZIP metadata and member CRC/size/deflate-EOF checks informed
-this research. The complete archive was not verified: interrupted acquisition
-remains partial. No third-party source rows or archive are committed here.
+Initial bounded HTTPS ranges, ZIP metadata and member CRC/size/deflate-EOF checks
+informed this research. On 2026-10-16 complete acquisition verified all
+5,016,963,482 bytes and the provider MD5; complete source SHA-256 is
+`bff52563d75aee2f4bab9693188cdefbfd887dc4bcf63395d49eaff1ecf7b6c1`.
+The new [bounded ZIP64 profile](zip64-source-selection.md) verified actual enclosing
+membership and repeated offline conversion of the raw HikariCP member. Its frozen
+metadata recipe is included in the source revision containing #301; the published
+4.7 wheel does not include that profile. Real Parquet ETL remains #302, and source
+integrity does not supply missing temporal evidence. No third-party source rows
+or archive are committed here.
 
 To reproduce the descriptive counts, obtain the exact 1.1 archive outside Git,
 verify its complete bytes against the provider's size/MD5 and compute its SHA-256,
