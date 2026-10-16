@@ -101,14 +101,25 @@ def role_capture(
     )
 
 
+def _guard_evidence(capture: JunitRoleCapture, size: int, recipe: JunitCaptureRecipe) -> None:
+    """Reject impossible parent-guard claims; coherent bounds still do not authenticate execution truth."""
+    if capture.status == "output_limit" and size != recipe.limits.maximum_output_bytes:
+        raise ValueError("Output-limit capture must retain the complete bounded stream prefix")
+    if capture.status == "timeout" and (
+        capture.producer_elapsed.value is None or capture.producer_elapsed.value < recipe.limits.timeout_seconds * 10**9
+    ):
+        raise ValueError("Timeout capture elapsed must reach the declared parent deadline")
+
+
 def validate_role_bytes(capture: JunitRoleCapture, recipe: JunitCaptureRecipe) -> None:
     """Reparse actual stored streams; typed metadata alone cannot substitute declared cases for raw evidence.
 
     Canonical base64, combined byte limits and successful record/runtime bindings
     are rechecked on resume. Exited process/protocol error statuses must agree
     with the actual exit code and protocol, preventing silent observation loss.
-    Timeout/output-limit statuses remain producer attestations; raw bytes alone
-    cannot establish which parent guard stopped collection.
+    Timeout/output-limit claims require the corresponding elapsed/prefix bounds.
+    They remain producer attestations: coherent facts do not authenticate which
+    parent guard actually stopped collection.
     Schema errors raise ValueError; no files or source processes are accessed.
     """
     capture = JunitRoleCapture.model_validate(capture)
@@ -128,6 +139,7 @@ def validate_role_bytes(capture: JunitRoleCapture, recipe: JunitCaptureRecipe) -
         or len(stdout) + len(stderr) > recipe.limits.maximum_output_bytes
     ):
         raise ValueError("Noncanonical or oversized stored JUnit streams")
+    _guard_evidence(capture, len(stdout) + len(stderr), recipe)
     if capture.status in {"collected", "protocol_error", "process_error"}:
         if capture.exit_code is None:
             raise ValueError("Stored exited role requires an observed exit code")

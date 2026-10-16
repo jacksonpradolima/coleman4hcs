@@ -278,6 +278,21 @@ class JunitRoleCapture(VersionedContract):
                 raise ValueError("Incomplete JUnit captures cannot claim a validated runtime header")
         return self
 
+    @model_validator(mode="after")
+    def _process_facts(self) -> Self:
+        """Bind raw-stream availability to observed process facts, including explicit unavailable counters.
+
+        Missing streams cannot retain a known exit code or measured parent time.
+        Observed streams require both. This does not prove whether an interrupted
+        or failed process started; it only prohibits contradictory saved evidence.
+        """
+        if self.stdout_base64 is None:
+            if self.exit_code is not None or self.producer_elapsed.status != "unavailable":
+                raise ValueError("Unavailable role streams require unknown exit code and unavailable elapsed")
+        elif self.exit_code is None or self.producer_elapsed.status != "observed":
+            raise ValueError("Observed role streams require exit code and observed elapsed")
+        return self
+
 
 class JunitRoleStart(VersionedContract):
     """Immutable pre-execution acknowledgment, never a completed capture or experiment checkpoint.

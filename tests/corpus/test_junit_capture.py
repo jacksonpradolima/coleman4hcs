@@ -391,3 +391,73 @@ def test_checkpoint_cannot_discard_complete_raw_observations_by_changing_status(
     path.write_text(json.dumps(payload))
     with pytest.raises(ValueError):
         capture._load_role(path, spec)
+
+
+@pytest.mark.parametrize("known_exit,known_elapsed", [(True, False), (False, True), (True, True)])
+def test_streamless_checkpoint_cannot_retain_observed_process_facts(tmp_path, known_exit, known_elapsed):
+    spec = recipe()
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    packet = capture.role_capture(
+        spec,
+        digest(b"context"),
+        "owned-trial",
+        "buggy",
+        now,
+        now,
+        ProcessStreams(encoded(records()), b"", 0, 1, "exited"),
+    )
+    payload = packet.model_dump(mode="json")
+    payload.update(status="process_error", stdout_base64=None, stderr_base64=None, header=None, cases=[])
+    if not known_exit:
+        payload["exit_code"] = None
+    if not known_elapsed:
+        payload["producer_elapsed"].update(value=None, status="unavailable")
+    path = tmp_path / "edited-streamless-role.json"
+    path.write_text(json.dumps(payload))
+    with pytest.raises(ValueError):
+        capture._load_role(path, spec)
+
+
+@pytest.mark.parametrize("missing_fact", ["exit_code", "producer_elapsed"])
+def test_observed_streams_cannot_discard_process_facts(tmp_path, missing_fact):
+    spec = recipe()
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    packet = capture.role_capture(
+        spec,
+        digest(b"context"),
+        "owned-trial",
+        "buggy",
+        now,
+        now,
+        ProcessStreams(b"owned process failure", b"", 7, 0, "exited"),
+    )
+    payload = packet.model_dump(mode="json")
+    if missing_fact == "exit_code":
+        payload[missing_fact] = None
+    else:
+        payload[missing_fact].update(value=None, status="unavailable")
+    path = tmp_path / "edited-observed-role.json"
+    path.write_text(json.dumps(payload))
+    with pytest.raises(ValueError):
+        capture._load_role(path, spec)
+
+
+@pytest.mark.parametrize("status", ["timeout", "output_limit"])
+def test_checkpoint_guard_labels_must_agree_with_observed_bounds(tmp_path, status):
+    spec = recipe()
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    packet = capture.role_capture(
+        spec,
+        digest(b"context"),
+        "owned-trial",
+        "buggy",
+        now,
+        now,
+        ProcessStreams(encoded(records()), b"", 0, 0, "exited"),
+    )
+    payload = packet.model_dump(mode="json")
+    payload.update(status=status, header=None, cases=[])
+    path = tmp_path / "edited-guard-role.json"
+    path.write_text(json.dumps(payload))
+    with pytest.raises(ValueError):
+        capture._load_role(path, spec)

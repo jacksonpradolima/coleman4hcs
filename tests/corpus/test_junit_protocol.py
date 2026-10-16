@@ -2,6 +2,7 @@
 
 import base64
 import json
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -9,7 +10,7 @@ import pytest
 
 from coleman.corpus.source_views import SourceViewSpec, source_view_bytes
 from coleman.transports.junit_contracts import JunitCaptureRecipe, JunitCase, JunitRoleCapture, ProducerElapsed
-from coleman.transports.junit_process import ProcessStreams
+from coleman.transports.junit_process import ProcessStreams, collect_process
 from coleman.transports.junit_protocol import parsed_junit_stream, role_capture, validate_role_bytes
 from tests.corpus.test_source_views import changed, digest, source_spec
 
@@ -189,7 +190,13 @@ def test_test_error_pass_and_truncation_remain_distinct(updates, expected):
 def test_incomplete_process_does_not_promote_partial_cases(termination, exit_code, stdout, status):
     now = datetime(2026, 1, 1, tzinfo=UTC)
     spec = recipe()
-    streams = ProcessStreams(stdout, b"raw stderr", exit_code, 1, termination)
+    stderr = b"raw stderr"
+    elapsed = 1
+    if termination == "timeout":
+        elapsed = spec.limits.timeout_seconds * 10**9
+    if termination == "output_limit":
+        stdout = stdout.ljust(spec.limits.maximum_output_bytes - len(stderr), b"x")
+    streams = ProcessStreams(stdout, stderr, exit_code, elapsed, termination)
     packet = role_capture(spec, digest(b"context"), "owned-trial", "buggy", now, now, streams)
     assert packet.status == status
     assert packet.cases == ()
@@ -208,3 +215,21 @@ def test_producer_counter_has_explicit_units_and_missingness():
     ):
         with pytest.raises(ValueError):
             ProducerElapsed.model_validate(data)
+
+
+@pytest.mark.parametrize("termination", ["timeout", "output_limit"])
+def test_actual_child_guard_facts_validate_without_promoting_cases(termination):
+    seconds = 1 if termination == "timeout" else 5
+    spec = recipe()
+    spec = changed(spec, limits=changed(spec.limits, timeout_seconds=seconds, maximum_output_bytes=1024))
+    code = (
+        "import time; time.sleep(10)"
+        if termination == "timeout"
+        else "import sys; sys.stdout.buffer.write(b'x'*100000)"
+    )
+    streams = collect_process((sys.executable, "-I", "-c", code), timeout_seconds=seconds, maximum_output_bytes=1024)
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    packet = role_capture(spec, digest(b"context"), "owned-trial", "buggy", now, now, streams)
+    assert packet.status == termination
+    assert packet.cases == ()
+    validate_role_bytes(packet, spec)

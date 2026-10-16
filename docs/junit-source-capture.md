@@ -133,8 +133,12 @@ trailer. Malformed/partial protocols, timeouts, output limits and process errors
 retain bounded raw evidence without promoting partial cases into assertions.
 On replay, exited process/protocol error labels are rederived from the stored
 exit code and raw protocol; relabeling a valid complete packet cannot silently
-discard its observations. Timeout/output-limit labels remain parent-producer
-attestations because raw streams alone cannot prove which guard fired.
+discard its observations. Unavailable streams require an unknown exit code and
+unavailable parent elapsed counter; observed streams require both observed process
+facts. A timeout must reach its declared parent deadline, and an output-limit
+packet must retain the complete bounded prefix. These checks reject contradictory
+evidence; coherent timeout/output-limit labels remain producer attestations rather
+than authenticated proof of which guard fired.
 Both role packets are separately digest-pinned report members; normalized
 observations reference their diagnostic member digest. An entirely unobserved
 trial has no invented pairs. Negative, reversed and inconclusive comparisons
