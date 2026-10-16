@@ -28,7 +28,7 @@ from coleman.corpus.controlled_contracts import (
     ControlledSpec,
     Label,
 )
-from coleman.corpus.materialization import materialize_source, validate_cache_separation
+from coleman.corpus.materialization import materialize_source, validate_cache_separation, validate_source_storage
 from coleman.corpus.materialization_contracts import MaterializationSpec, PackageMember
 from coleman.corpus.source_views import source_view_bytes
 from coleman.results.domain import decode_json, fingerprint
@@ -450,7 +450,9 @@ def capture_junit_source(
     """Collect one paired source trial with verified inputs, filtered runtime provenance and immutable recovery.
 
     Default acquisition is offline and the public pinned runtime image must
-    already exist locally. No image is pulled and no network is available to the
+    already exist locally. Raw output roots must be physically outside Git
+    worktrees, checked by the shared cache guard before runtime/source access.
+    No image is pulled and no network is available to the
     subject. Concurrent same-trial producers fail before execution. Completed
     roles replay; a started/uncommitted role becomes interrupted/inconclusive,
     requiring a new trial ID for fresh collection. Neither source capture nor
@@ -461,6 +463,7 @@ def capture_junit_source(
     """
     recipe = JunitCaptureRecipe.model_validate(recipe)
     trial_id = TypeAdapter(Label).validate_python(trial_id)
+    validate_source_storage(writer.run_root)
     validate_cache_separation(cache.root, writer.run_root)
     docker = shutil.which("docker")
     if docker is None:

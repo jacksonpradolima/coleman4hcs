@@ -168,7 +168,7 @@ def test_missing_final_marker_duplicates_and_incompatible_case_universe_reject()
 @pytest.mark.parametrize(
     "updates,expected",
     [
-        ({"errors": 1}, "test_error"),
+        ({"errors": 1, "failures": 0}, "test_error"),
         ({"failures": 0}, "passed"),
         ({"diagnostics_truncated": True}, "infrastructure_error"),
     ],
@@ -231,5 +231,22 @@ def test_actual_child_guard_facts_validate_without_promoting_cases(termination):
     now = datetime(2026, 1, 1, tzinfo=UTC)
     packet = role_capture(spec, digest(b"context"), "owned-trial", "buggy", now, now, streams)
     assert packet.status == termination
+    assert packet.cases == ()
+    validate_role_bytes(packet, spec)
+
+
+@pytest.mark.parametrize("failures,errors", [(2, 0), (0, 2), (1, 1), (10000, 10000)])
+def test_terminal_counters_cannot_exceed_one_executed_case(failures, errors):
+    spec = recipe()
+    rows = records()
+    rows[1].update(failures=failures, errors=errors)
+    raw = encoded(rows)
+    with pytest.raises(ValueError, match="terminal counters"):
+        parsed_junit_stream(raw, spec)
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    packet = role_capture(
+        spec, digest(b"context"), "owned-trial", "buggy", now, now, ProcessStreams(raw, b"", 0, 1, "exited")
+    )
+    assert packet.status == "protocol_error"
     assert packet.cases == ()
     validate_role_bytes(packet, spec)

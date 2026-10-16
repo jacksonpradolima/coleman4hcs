@@ -30,10 +30,19 @@ class _CacheFormat(VersionedContract):
     kind: Literal["coleman-source-cache-v1"] = "coleman-source-cache-v1"
 
 
-def _outside_repository(root: Path) -> None:
-    """Reject cache paths physically under a Git worktree marker, without invoking Git or scanning siblings."""
+def validate_source_storage(root: str | Path) -> None:
+    """Reject source-content storage physically inside a Git worktree, without creating files.
+
+    Resolve existing symlink parents and inspect only ancestor Git directory/file
+    markers; no Git process, marker content or sibling tree is read. Cache bytes
+    and raw producer diagnostics need this guard; metadata-only exports retain
+    their existing rules. Invalid roots raise ValueError and filesystem failures
+    propagate. Trusted local parents are required: future Git initialization or
+    concurrent hostile filesystem mutation is outside this preflight's guarantee.
+    """
+    root = Path(root).resolve()
     if any(parent.name == ".git" or (parent / ".git").exists() for parent in (root, *root.parents)):
-        raise ValueError("Source cache must be outside a repository")
+        raise ValueError("Source content storage must be outside a repository")
 
 
 def _verified_chunks(reader: ByteReader, digest: str, size: int) -> Iterator[bytes]:
@@ -73,7 +82,7 @@ class SourceCache:
     def __init__(self, root: str | Path) -> None:
         """Validate the physical root before creating a deterministic version marker; I/O failures propagate."""
         self._root = Path(root).resolve()
-        _outside_repository(self.root)
+        validate_source_storage(self.root)
         self._writer = ArtifactWriter(self.root)
         marker = self._contained("cache-format.json")
         if marker.exists():

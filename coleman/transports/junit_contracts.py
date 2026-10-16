@@ -182,6 +182,13 @@ class JunitCase(VersionedContract):
             raise ValueError("JUnit capture finishes before it starts")
         return self
 
+    @model_validator(mode="after")
+    def _terminal_counters(self) -> Self:
+        """Require at most one terminal failure/error for the single executed JUnit3 case."""
+        if self.failures + self.errors > self.tests_run:
+            raise ValueError("JUnit terminal counters cannot exceed tests_run")
+        return self
+
     @property
     def outcome(self) -> Literal["passed", "assertion_failed", "test_error", "infrastructure_error"]:
         """Classify actual counters; incomplete diagnostics cannot certify a fault reproduction."""

@@ -461,3 +461,32 @@ def test_checkpoint_guard_labels_must_agree_with_observed_bounds(tmp_path, statu
     path.write_text(json.dumps(payload))
     with pytest.raises(ValueError):
         capture._load_role(path, spec)
+
+
+@pytest.mark.parametrize("layout", ["directory", "linked-worktree", "symlink"])
+def test_raw_capture_output_rejects_git_worktrees_before_any_output(tmp_path, monkeypatch, layout):
+    spec, cache, environment = prepared_inputs(tmp_path)
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    marker = repository / ".git"
+    if layout == "linked-worktree":
+        marker.write_text("gitdir: /owned/external/git-metadata\n")
+    else:
+        marker.mkdir()
+    output = repository / "raw-captures"
+    if layout == "symlink":
+        alias = tmp_path / "repository-alias"
+        alias.symlink_to(repository, target_is_directory=True)
+        output = alias / "raw-captures"
+    calls = []
+
+    def run(*args):
+        calls.append(args)
+        return ProcessStreams(encoded(records()), b"Owned raw diagnostic", 0, 1, "exited")
+
+    substitute_docker(monkeypatch, environment, run)
+    writer = ArtifactWriter(output)
+    with pytest.raises(ValueError, match="outside.*repository"):
+        capture.capture_junit_source(spec, cache, writer, "outside-git-trial")
+    assert calls == []
+    assert not output.exists()

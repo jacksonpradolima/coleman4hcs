@@ -40,7 +40,11 @@ TLS and exact entity lengths, and rejects redirects, credentials, queries, parti
 responses and encoded transfers. It uses no ambient authentication or proxy
 configuration. The producer never pulls an image. Once cached, omit `--fetch` for
 offline acquisition; subject execution has no network even during the first run.
-Source-cache and output directories must be separate.
+Source-cache and output directories must be separate and physically outside
+Git worktrees. The producer reuses the cache's shared storage guard to reject
+repository directories, linked-worktree marker files and symlink aliases before
+runtime queries, source acquisition or raw-capture writes. Metadata-only source
+exports retain their existing publication rules.
 
 The JSON summary includes dataset/state paths, role collection statuses, pair
 counts, admission and generalization. Exit 0 means both role protocols completed;
@@ -129,7 +133,9 @@ interrupted observation state. Source acquisition, staging and
 publication failures never certify a completed learning checkpoint.
 
 Successful protocols require the exact discovered test sequence and a final
-trailer. Malformed/partial protocols, timeouts, output limits and process errors
+trailer. Each case declares exactly one run and at most one terminal failure or
+error; contradictory counters cause a protocol error rather than a normalized
+test outcome. Malformed/partial protocols, timeouts, output limits and process errors
 retain bounded raw evidence without promoting partial cases into assertions.
 On replay, exited process/protocol error labels are rederived from the stored
 exit code and raw protocol; relabeling a valid complete packet cannot silently

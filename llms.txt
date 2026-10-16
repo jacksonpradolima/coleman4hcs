@@ -5702,7 +5702,11 @@ TLS and exact entity lengths, and rejects redirects, credentials, queries, parti
 responses and encoded transfers. It uses no ambient authentication or proxy
 configuration. The producer never pulls an image. Once cached, omit `--fetch` for
 offline acquisition; subject execution has no network even during the first run.
-Source-cache and output directories must be separate.
+Source-cache and output directories must be separate and physically outside
+Git worktrees. The producer reuses the cache's shared storage guard to reject
+repository directories, linked-worktree marker files and symlink aliases before
+runtime queries, source acquisition or raw-capture writes. Metadata-only source
+exports retain their existing publication rules.
 
 The JSON summary includes dataset/state paths, role collection statuses, pair
 counts, admission and generalization. Exit 0 means both role protocols completed;
@@ -5791,7 +5795,9 @@ interrupted observation state. Source acquisition, staging and
 publication failures never certify a completed learning checkpoint.
 
 Successful protocols require the exact discovered test sequence and a final
-trailer. Malformed/partial protocols, timeouts, output limits and process errors
+trailer. Each case declares exactly one run and at most one terminal failure or
+error; contradictory counters cause a protocol error rather than a normalized
+test outcome. Malformed/partial protocols, timeouts, output limits and process errors
 retain bounded raw evidence without promoting partial cases into assertions.
 On replay, exited process/protocol error labels are rederived from the stored
 exit code and raw protocol; relabeling a valid complete packet cannot silently
@@ -7983,7 +7989,10 @@ independently checked metrics and learning-checkpoint continuation.
 An immutable start marker precedes each role. Completed packets replay; a started
 but uncommitted role recovers as interrupted, with unavailable streams/counters
 and no fabricated cases. Failed container cleanup leaves that start recoverable.
-A POSIX lock prevents duplicate producers for the same context/trial/output tree.
+Raw-capture output roots are checked outside Git worktrees before source execution,
+using the same guard as the external source cache. Linked-worktree markers and
+symlink aliases cannot bypass that preflight. A POSIX lock prevents duplicate
+producers for the same context/trial/output tree.
 Use a new trial ID for a new execution; repeated trials retain their dependence
 group and do not become independent projects or faults.
 
@@ -7992,7 +8001,8 @@ non-root and read-only, with explicit input mounts and CPU, memory, PID and
 temporary-storage limits. These guards support trusted-source reproduction.
 
 Resume validates raw protocol bytes, exit status, discovered test IDs and the
-completion trailer. Unavailable streams cannot retain observed process facts;
+completion trailer. Single-case terminal counters cannot exceed the one declared
+run. Unavailable streams cannot retain observed process facts;
 observed streams require them. Timeout/prefix claims must agree with their bounds.
 Contradictory negative labels cannot silently erase complete observations.
 Coherent producer attestations still do not authenticate execution truth.
@@ -8005,8 +8015,8 @@ v1 and reject missing, unknown and future versions. No automatic migration or
 reinterpretation of old results occurs. Harness changes require a reviewed recipe
 update. The domain remains independent of CLI, Docker and MCP imports.
 
-The reviewed implementation passed **2,243 tests** with **95.26% combined
-statement/branch coverage**, including a real paired source reproduction from a
+The reviewed implementation passed **2,250 tests** and the **95% combined
+statement/branch coverage gate**, including a real paired source reproduction from a
 wheel installed outside the checkout. Versioned golden/round-trip fixtures,
 compatibility, units/missingness, nonfinite values, deterministic identities,
 concurrent publication, interrupted writes, genuine child-process guards and
