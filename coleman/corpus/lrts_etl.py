@@ -14,12 +14,13 @@ import polars as pl
 from coleman.artifacts import ArtifactWriter
 from coleman.corpus.archive_selection import validate_selected_packages
 from coleman.corpus.lrts import convert_lrts_source
-from coleman.corpus.lrts_contracts import LRTSDataset, LRTSSpec
+from coleman.corpus.lrts_contracts import LRTSCase, LRTSDataset, LRTSSpec, LRTSSuite
 from coleman.corpus.lrts_etl_contracts import ETLFile, ETLMetadataAccounting, LRTSETLReceipt, LRTSETLRecipe
 from coleman.corpus.materialization import SourceCache, validate_cache_separation, validate_source_storage
 from coleman.corpus.materialization_contracts import MaterializationReceipt
 from coleman.results.domain import canonical_json, fingerprint
 
+_SHA256 = "sha256:"
 _OBSERVATIONS = {
     "execution_id": pl.String,
     "replay_name": pl.String,
@@ -141,98 +142,120 @@ def _source_datasets(recipe: LRTSETLRecipe, cache: SourceCache) -> tuple[LRTSDat
     return tuple(result)
 
 
+def _exclusion(case: LRTSCase) -> str | None:
+    """Assign one primary projection exclusion, preserving unknown/not-run before missing duration."""
+    if case.outcome == "not_run":
+        return "not_run"
+    if case.outcome == "unknown":
+        return "unknown_outcome"
+    if case.duration.value is None:
+        return "unavailable_duration"
+    return None
+
+
+def _case_record(
+    dataset: LRTSDataset, suite: LRTSSuite, case: LRTSCase, round_id: int, name: str, execution: str, reason: str | None
+) -> dict[str, object]:
+    """Serialize validated source DTO fields at the analytical table boundary, without coercing absent values."""
+    return {
+        "execution_id": execution,
+        "replay_name": name,
+        "round": round_id,
+        "project": dataset.spec.project,
+        "pull_request": dataset.spec.pull_request,
+        "source_build_id": dataset.spec.build_id,
+        "suite_position": suite.position,
+        "case_position": case.position,
+        "suite_name": suite.name,
+        "suite_id": suite.reported_id,
+        "node_id": suite.node_id,
+        "enclosing_blocks": suite.enclosing_blocks,
+        "enclosing_block_names": suite.enclosing_block_names,
+        "raw_suite_timestamp": suite.raw_timestamp,
+        "class_name": case.class_name,
+        "method_name": case.method_name,
+        "source_status": case.source_status,
+        "outcome": case.outcome,
+        "duration": case.duration.value,
+        "duration_status": case.duration.status,
+        "duration_unit": case.duration.unit,
+        "duration_meaning": case.duration.meaning,
+        "replay_exclusion": reason,
+    }
+
+
+class _ProjectedBuild(NamedTuple):
+    """Internal serialization rows for one build; source DTOs and explicit table schemas remain authoritative."""
+
+    observations: list[dict[str, object]]
+    native: list[dict[str, object]]
+    exclusions: Counter[str]
+
+
+def _build_rows(dataset: LRTSDataset, round_id: int) -> _ProjectedBuild:
+    """Keep source positions/occurrences independent of eligibility, costs and outcomes."""
+    observations: list[dict[str, object]] = []
+    native: list[dict[str, object]] = []
+    exclusions: Counter[str] = Counter()
+    occurrences: Counter[str] = Counter()
+    for suite in dataset.suites:
+        for case in suite.cases:
+            blocks = None if suite.enclosing_block_names is None else list(suite.enclosing_block_names)
+            label = fingerprint(
+                [dataset.spec.project, suite.name, suite.reported_id, blocks, case.class_name, case.method_name]
+            )
+            name = fingerprint(["lrts-label-occurrence-v1", label, occurrences[label]])
+            occurrences[label] += 1
+            execution = case.execution_id(
+                dataset.spec.project, dataset.spec.pull_request, dataset.spec.build_id, suite.position
+            )
+            reason = _exclusion(case)
+            observations.append(_case_record(dataset, suite, case, round_id, name, execution, reason))
+            if reason is not None:
+                exclusions[reason] += 1
+            else:
+                native.append(
+                    {
+                        "BuildId": round_id,
+                        "Name": name,
+                        "Duration": case.duration.value,
+                        "CalcPrio": 0,
+                        "LastRun": "",
+                        "Verdict": int(case.outcome == "failed"),
+                        "SourceExecutionId": execution,
+                    }
+                )
+    return _ProjectedBuild(observations, native, exclusions)
+
+
+def _build_record(dataset: LRTSDataset, round_id: int, eligible: int) -> dict[str, object]:
+    """Serialize source metadata and explicit native eligibility, including entirely excluded rounds."""
+    metadata = dataset.metadata[0]
+    return {
+        "round": round_id,
+        "project": dataset.spec.project,
+        "pull_request": metadata.pull_request,
+        "source_build_id": metadata.build_id,
+        "scheduled_label_epoch_seconds": metadata.measurement("lrts_scheduled_epoch_seconds").value,
+        "outcome_available_at": None,
+        "metadata_json": canonical_json(metadata.model_dump(mode="json")),
+        "source_dataset_sha256": dataset.fingerprint,
+        "replay_cases": eligible,
+        "replay_status": "eligible" if eligible else "no_compatible_reported_cases",
+    }
+
+
 def _tables(recipe: LRTSETLRecipe, cache: SourceCache) -> _Tables:
     """Project validated source DTOs once; dictionaries exist only at the typed Polars boundary."""
     observations, builds, native = [], [], []
     exclusions: Counter[str] = Counter()
     datasets = _source_datasets(recipe, cache)
     for round_id, dataset in enumerate(datasets, 1):
-        eligible_before = len(native)
-        metadata = dataset.metadata[0]
-        builds.append(
-            dict(
-                round=round_id,
-                project=recipe.project,
-                pull_request=metadata.pull_request,
-                source_build_id=metadata.build_id,
-                scheduled_label_epoch_seconds=metadata.measurement("lrts_scheduled_epoch_seconds").value,
-                outcome_available_at=None,
-                metadata_json=canonical_json(metadata.model_dump(mode="json")),
-                source_dataset_sha256=dataset.fingerprint,
-                replay_cases=0,
-                replay_status="no_compatible_reported_cases",
-            )
-        )
-        occurrences: Counter[str] = Counter()
-        for suite in dataset.suites:
-            for case in suite.cases:
-                label = fingerprint(
-                    [
-                        recipe.project,
-                        suite.name,
-                        suite.reported_id,
-                        None if suite.enclosing_block_names is None else list(suite.enclosing_block_names),
-                        case.class_name,
-                        case.method_name,
-                    ]
-                )
-                name = fingerprint(["lrts-label-occurrence-v1", label, occurrences[label]])
-                occurrences[label] += 1
-                execution = case.execution_id(recipe.project, metadata.pull_request, metadata.build_id, suite.position)
-                reason = (
-                    "not_run"
-                    if case.outcome == "not_run"
-                    else "unknown_outcome"
-                    if case.outcome == "unknown"
-                    else "unavailable_duration"
-                    if case.duration.value is None
-                    else None
-                )
-                if reason is not None:
-                    exclusions[reason] += 1
-                observations.append(
-                    dict(
-                        execution_id=execution,
-                        replay_name=name,
-                        round=round_id,
-                        project=recipe.project,
-                        pull_request=metadata.pull_request,
-                        source_build_id=metadata.build_id,
-                        suite_position=suite.position,
-                        case_position=case.position,
-                        suite_name=suite.name,
-                        suite_id=suite.reported_id,
-                        node_id=suite.node_id,
-                        enclosing_blocks=suite.enclosing_blocks,
-                        enclosing_block_names=suite.enclosing_block_names,
-                        raw_suite_timestamp=suite.raw_timestamp,
-                        class_name=case.class_name,
-                        method_name=case.method_name,
-                        source_status=case.source_status,
-                        outcome=case.outcome,
-                        duration=case.duration.value,
-                        duration_status=case.duration.status,
-                        duration_unit=case.duration.unit,
-                        duration_meaning=case.duration.meaning,
-                        replay_exclusion=reason,
-                    )
-                )
-                if reason is None:
-                    native.append(
-                        dict(
-                            BuildId=round_id,
-                            Name=name,
-                            Duration=case.duration.value,
-                            CalcPrio=0,
-                            LastRun="",
-                            Verdict=int(case.outcome == "failed"),
-                            SourceExecutionId=execution,
-                        )
-                    )
-        eligible = len(native) - eligible_before
-        builds[-1].update(
-            replay_cases=eligible, replay_status="eligible" if eligible else "no_compatible_reported_cases"
-        )
+        rows = _build_rows(dataset, round_id)
+        observations.extend(rows.observations)
+        native.extend(rows.native)
+        builds.append(_build_record(dataset, round_id, len(rows.native)))
+        exclusions.update(rows.exclusions)
     frames = (
         pl.DataFrame(observations, schema=_OBSERVATIONS),
         pl.DataFrame(builds, schema=_BUILDS),
@@ -262,7 +285,7 @@ def _output(root: Path, relative: str) -> Path:
 
 def _namespace(recipe: LRTSETLRecipe, producer: str, writer: str) -> str:
     """Separate logical recipe/implementation/writer identities from mutable absolute output locations."""
-    return fingerprint(["lrts-parquet-export-v1", recipe.fingerprint, producer, writer]).removeprefix("sha256:")
+    return fingerprint(["lrts-parquet-export-v1", recipe.fingerprint, producer, writer]).removeprefix(_SHA256)
 
 
 def export_lrts_parquet(recipe: LRTSETLRecipe, cache: SourceCache, writer: ArtifactWriter) -> Path:
@@ -280,6 +303,7 @@ def export_lrts_parquet(recipe: LRTSETLRecipe, cache: SourceCache, writer: Artif
     Invalid source/profile/bytes raise ValueError; I/O errors propagate.
     """
     recipe = LRTSETLRecipe.model_validate(recipe)
+    recipe.require_native_feedback()
     validate_cache_separation(cache.root, writer.run_root)
     validate_source_storage(writer.run_root)
     tables = _tables(recipe, cache)
@@ -303,7 +327,7 @@ def export_lrts_parquet(recipe: LRTSETLRecipe, cache: SourceCache, writer: Artif
         records.append(
             ETLFile(
                 path=relative,
-                sha256="sha256:" + hashlib.sha256(payload).hexdigest(),
+                sha256=_SHA256 + hashlib.sha256(payload).hexdigest(),
                 size_bytes=len(payload),
                 rows=table.height,
             )
@@ -370,7 +394,7 @@ def validate_lrts_etl(receipt: LRTSETLReceipt, cache: SourceCache, root: Path) -
         path = _output(root, item.path)
         with path.open("rb") as stream:
             payload = stream.read(item.size_bytes + 1)
-        if len(payload) != item.size_bytes or "sha256:" + hashlib.sha256(payload).hexdigest() != item.sha256:
+        if len(payload) != item.size_bytes or _SHA256 + hashlib.sha256(payload).hexdigest() != item.sha256:
             raise ValueError("ETL file bytes disagree with completion receipt")
         if not pl.read_parquet(io.BytesIO(payload)).equals(expected[item.path]):
             raise ValueError("ETL Parquet schema/rows disagree with pinned source")

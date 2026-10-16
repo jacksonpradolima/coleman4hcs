@@ -66,6 +66,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run", action="store_true", help="Run/resume the declared post-hoc serial simulation")
     args = parser.parse_args(argv)
     recipe = load_lrts_etl_recipe(args.recipe)
+    recipe.require_native_feedback()
     cache_root, output = args.cache.resolve(), args.output.resolve()
     validate_source_storage(cache_root)
     validate_source_storage(output)

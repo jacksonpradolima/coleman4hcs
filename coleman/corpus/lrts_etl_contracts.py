@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
@@ -16,6 +17,13 @@ from coleman.selection.contracts import Immutable
 Count = Annotated[int, Field(strict=True, ge=0, le=100000)]
 
 
+class LRTSFeedbackModel(StrEnum):
+    """Native detection rewards versus a legacy full-label declaration retained only for reads."""
+
+    NATIVE_RNFAIL = "budget-censored-native-RNFail-zero-nondetection"
+    LEGACY_FULL = "full-reported-labels-after-modeled-round"
+
+
 class LRTSBuildSelection(Immutable):
     """One pinned source report in a declared replay order; build IDs are local to a PR."""
 
@@ -28,8 +36,10 @@ class LRTSETLRecipe(VersionedContract):
     """Freeze selected real reports, metadata and a reproducible post-hoc simulation profile.
 
     Scheduled labels order modeled rounds, not verified outcome availability.
-    Costs are additive reported method seconds; feedback is modeled as complete
-    after each round. No modeled quantity becomes actual CI time/work. Stable
+    Costs are additive reported method seconds. Native RNFail rewards detections
+    within budget; other prioritized cases receive zero nondetection reward,
+    including unscheduled cases. Zero reward does not assert a passing verdict.
+    No modeled quantity becomes actual CI time/work. Stable
     replay names assume matching suite/class/method labels and occurrence order;
     original source execution IDs remain independently preserved. These explicit
     assumptions never admit a source to protected temporal evaluation.
@@ -43,11 +53,20 @@ class LRTSETLRecipe(VersionedContract):
     builds: Annotated[tuple[LRTSBuildSelection, ...], Field(min_length=1, max_length=16)]
     order: Literal["scheduled-label-then-pr-build"] = "scheduled-label-then-pr-build"
     costs: Literal["additive-reported-method-seconds"] = "additive-reported-method-seconds"
-    feedback: Literal["full-reported-labels-after-modeled-round"] = "full-reported-labels-after-modeled-round"
+    feedback: LRTSFeedbackModel
     test_identity: Literal["suite-class-method-label-occurrence-assumption"] = (
         "suite-class-method-label-occurrence-assumption"
     )
     maximum_cases: Annotated[int, Field(strict=True, ge=1, le=50000)] = 50000
+
+    def require_native_feedback(self) -> None:
+        """Reject legacy full-label claims before acquisition/export/execution; never silently relabel artifacts.
+
+        Legacy recipes and analytical Parquet remain readable and verifiable.
+        A corrected recipe requires explicit opt-in and produces a new identity.
+        """
+        if self.feedback is not LRTSFeedbackModel.NATIVE_RNFAIL:
+            raise ValueError("Legacy full-label feedback is read-only; create an explicit native RNFail recipe")
 
     @model_validator(mode="after")
     def _bindings(self) -> Self:
@@ -68,6 +87,8 @@ class LRTSETLRecipe(VersionedContract):
             package = selected[build.archive_member].package
             if build.archive_member != expected or package.archive != "zip" or len(package.members) != 1:
                 raise ValueError("ETL requires a correctly bound one-report nested ZIP")
+            if package.members[0].size_bytes > 16 * 1024**2:
+                raise ValueError("ETL decoded report exceeds 16 MiB")
             if package.members[0].name != f"testReport_build{build.build_id}.json":
                 raise ValueError("ETL decoded report disagrees with source build")
         return self

@@ -253,7 +253,7 @@ def _selection_entries(
     if len(names) != len(set(names)):
         raise ValueError("ZIP selection has duplicate or aliased names")
     files = {info.filename: info for info in entries if not info.is_dir()}
-    if not expected.keys() <= files.keys() or any(
+    if expected.keys() - files.keys() or any(
         files[name].file_size != member.size_bytes for name, member in expected.items()
     ):
         raise ValueError("Selected ZIP members disagree with frozen names/sizes")

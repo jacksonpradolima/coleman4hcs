@@ -25,8 +25,10 @@ def run_lrts_replay(
     """Validate real ETL files and execute/resume through the existing native API/checkpoint.
 
     This is a post-hoc serial simulation: scheduled-label order, additive reported
-    method seconds, full feedback after each modeled round and assumed test-label
-    correspondence. It grants no temporal/corpus admission or policy promotion.
+    method seconds, budget-censored native RNFail detection rewards and assumed
+    test-label correspondence. Unscheduled cases receive zero nondetection reward,
+    not an observed pass. Legacy full-label receipts reject before execution.
+    It grants no temporal/corpus admission or policy promotion.
     The exact ETL receipt is persisted inside the native run and participates in
     run identity. Empty projections reject rather than silently omitting a run.
     Output is external to Git and separate from input/cache. Native exceptions
@@ -39,6 +41,7 @@ def run_lrts_replay(
     if len(payload) > 2 * 1024**2:
         raise ValueError("ETL completion receipt exceeds 2 MiB")
     receipt = LRTSETLReceipt.from_json(payload)
+    receipt.recipe.require_native_feedback()
     root = completion.parent
     validate_lrts_etl(receipt, cache, root)
     if receipt.native_builds == 0:

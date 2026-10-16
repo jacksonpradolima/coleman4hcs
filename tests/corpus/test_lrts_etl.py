@@ -19,7 +19,7 @@ from coleman.corpus.archive_selection import (
 )
 from coleman.corpus.archives import deterministic_zip_bytes
 from coleman.corpus.lrts_etl import export_lrts_parquet, validate_lrts_etl
-from coleman.corpus.lrts_etl_contracts import LRTSETLReceipt, LRTSETLRecipe
+from coleman.corpus.lrts_etl_contracts import LRTSETLReceipt, LRTSETLRecipe, LRTSFeedbackModel
 from coleman.corpus.materialization import SourceCache, materialize_source
 from coleman.transports import lrts_etl as cli
 from tests.corpus.test_lrts import metadata_bytes, metadata_row, raw_report
@@ -76,6 +76,7 @@ def owned_recipe(*, all_skipped=False, transform=lambda value: value, metadata_t
             schema_version=1,
             project="owned-ci",
             history="constructed",
+            feedback=LRTSFeedbackModel.NATIVE_RNFAIL,
             metadata=source_spec("dataset.csv", csv),
             reports=selection,
             builds=builds,
@@ -131,7 +132,7 @@ def test_real_owned_roundtrip_units_exclusions_identity_replay_and_concurrency(t
 def test_recipe_versioned_golden_and_source_order_are_preserved():
     recipe, _, _ = owned_recipe()
     assert LRTSETLRecipe.from_json(recipe.to_json()) == recipe
-    fixture = Path(__file__).with_name("fixtures") / "lrts-etl-owned-recipe-v1.json"
+    fixture = Path(__file__).with_name("fixtures") / "lrts-etl-owned-censored-recipe-v1.json"
     assert recipe.to_json() + "\n" == fixture.read_text()
     assert recipe.reports.source.limits.maximum_archive_entries == 128
     assert recipe.reports.maximum_entries == 4096
@@ -157,8 +158,9 @@ def test_invalid_reported_durations_reject_without_completion(tmp_path, value):
         return report
 
     recipe, cache = prepare(tmp_path, transform=invalid)
+    writer = ArtifactWriter(tmp_path / "output")
     with pytest.raises(ValueError):
-        export_lrts_parquet(recipe, cache, ArtifactWriter(tmp_path / "output"))
+        export_lrts_parquet(recipe, cache, writer)
     assert not list((tmp_path / "output").rglob("complete.json"))
 
 
@@ -195,7 +197,8 @@ def test_native_runner_and_real_checkpoint_continuation(tmp_path):
     assert rows.height == 4
     assert rows["step"].n_unique() == 2
     checkpoints = list((root / "checkpoints").rglob("progress_*.json"))
-    assert checkpoints and all(json.loads(p.read_bytes())["step_committed"] == 2 for p in checkpoints)
+    assert checkpoints
+    assert all(json.loads(p.read_bytes())["step_committed"] == 2 for p in checkpoints)
     manifest = json.loads((root / "manifest.json").read_bytes())
     assert sum(item["type"] == "corpus_etl_receipt" for item in manifest["artifacts"]) == 1
     assert receipt.admission == "blocked_source_evidence"
@@ -245,8 +248,9 @@ def test_changed_source_and_parquet_never_validate_as_complete(tmp_path):
     observed.write_bytes(b"Owned corruption")
     with pytest.raises(ValueError, match="file bytes"):
         validate_lrts_etl(receipt, cache, path.parent)
+    writer = ArtifactWriter(tmp_path / "output")
     with pytest.raises(ValueError):
-        export_lrts_parquet(receipt.recipe, cache, ArtifactWriter(tmp_path / "output"))
+        export_lrts_parquet(receipt.recipe, cache, writer)
 
 
 def test_cli_actual_owned_conversion_and_input_preflight(tmp_path, capsys):
@@ -337,8 +341,9 @@ def test_ambiguous_or_oversized_source_projection_has_no_completion(tmp_path, ki
         recipe = changed(recipe, maximum_cases=5)
     if kind == "order":
         recipe = changed(recipe, builds=tuple(reversed(recipe.builds)))
+    writer = ArtifactWriter(tmp_path / "output")
     with pytest.raises(ValueError):
-        export_lrts_parquet(recipe, cache, ArtifactWriter(tmp_path / "output"))
+        export_lrts_parquet(recipe, cache, writer)
     assert not list((tmp_path / "output").rglob("complete.json"))
 
 
@@ -365,8 +370,13 @@ def test_forged_completion_cannot_validate_against_actual_sources(tmp_path, kind
     else:
         value["excluded_unknown_outcome"] -= 1
         value["excluded_unavailable_duration"] += 1
-    with pytest.raises(ValueError):
-        validate_lrts_etl(LRTSETLReceipt.model_validate(value), cache, path.parent)
+    if kind in {"logical", "source_fingerprint", "exclusions"}:
+        forged = LRTSETLReceipt.model_validate(value)
+        with pytest.raises(ValueError):
+            validate_lrts_etl(forged, cache, path.parent)
+    else:
+        with pytest.raises(ValueError):
+            LRTSETLReceipt.model_validate(value)
 
 
 def test_valid_parquet_with_forged_byte_digest_still_requires_source_correspondence(tmp_path):
@@ -379,8 +389,9 @@ def test_valid_parquet_with_forged_byte_digest_still_requires_source_corresponde
         changed(f, sha256=digest(payload), size_bytes=len(payload)) if f.path == "observations.parquet" else f
         for f in receipt.files
     )
+    forged = changed(receipt, files=records)
     with pytest.raises(ValueError, match="schema/rows"):
-        validate_lrts_etl(changed(receipt, files=records), cache, path.parent)
+        validate_lrts_etl(forged, cache, path.parent)
 
 
 def test_values_can_change_without_changing_logical_source_or_replay_names(tmp_path):
@@ -405,13 +416,14 @@ def test_concrete_output_symlink_and_git_paths_reject_before_content_writes(tmp_
     elsewhere = tmp_path / "elsewhere"
     elsewhere.mkdir()
     (output / "corpus-etl").symlink_to(elsewhere, target_is_directory=True)
+    writer = ArtifactWriter(output)
     with pytest.raises(ValueError, match="trusted output"):
-        export_lrts_parquet(recipe, cache, ArtifactWriter(output))
+        export_lrts_parquet(recipe, cache, writer)
     assert not list(elsewhere.iterdir())
     (output / "corpus-etl").unlink()
     (output / ".git").mkdir()
     with pytest.raises(ValueError, match="outside a repository"):
-        export_lrts_parquet(recipe, cache, ArtifactWriter(output))
+        export_lrts_parquet(recipe, cache, writer)
 
 
 def test_missing_cached_child_rejects_without_repair(tmp_path):
@@ -431,14 +443,14 @@ def test_recipe_oversize_and_public_reader_count_are_bounded(tmp_path):
         cli.load_lrts_etl_recipe(path)
     recipe, _, _ = owned_recipe()
     assert cli._reader(recipe.metadata)
+    missing_size = recipe.metadata.model_copy(
+        update={"source": recipe.metadata.source.model_copy(update={"size_bytes": None})}
+    )
     with pytest.raises(ValueError, match="byte count"):
-        cli._reader(
-            recipe.metadata.model_copy(
-                update={"source": recipe.metadata.source.model_copy(update={"size_bytes": None})}
-            )
-        )
+        cli._reader(missing_size)
+    cache = SourceCache(tmp_path / "cache")
     with pytest.raises(ValueError, match="2 MiB"):
-        run_lrts_replay(path, SourceCache(tmp_path / "cache"), tmp_path / "native")
+        run_lrts_replay(path, cache, tmp_path / "native")
 
 
 def test_versioned_old_parquet_fixtures_validate_in_external_storage(tmp_path):
@@ -447,15 +459,18 @@ def test_versioned_old_parquet_fixtures_validate_in_external_storage(tmp_path):
     root = tmp_path / "legacy"
     shutil.copytree(fixture, root)
     receipt = LRTSETLReceipt.from_json((root / "complete.json").read_bytes())
-    assert receipt.recipe == recipe
+    assert receipt.recipe == changed(recipe, feedback=LRTSFeedbackModel.LEGACY_FULL)
     validate_lrts_etl(receipt, cache, root)
     assert receipt.observed_cases == 10
+    with pytest.raises(ValueError, match="read-only"):
+        run_lrts_replay(root / "complete.json", cache, tmp_path / "native")
 
 
 def test_reproducible_bytes_and_identity_across_external_workspaces(tmp_path):
     a, first, _ = exported(tmp_path / "one")
     b, second, _ = exported(tmp_path / "two")
-    assert first == second and a.read_bytes() == b.read_bytes()
+    assert first == second
+    assert a.read_bytes() == b.read_bytes()
     for f in first.files:
         assert (a.parent / f.path).read_bytes() == (b.parent / f.path).read_bytes()
 
@@ -483,8 +498,10 @@ def test_selected_archive_malformed_metadata_and_payload_reject(tmp_path, kind):
                 continue
             out.writestr(info, original.read(info))
         if kind == "duplicate":
+            entry = original.infolist()[0]
+            duplicate_bytes = original.read(entry)
             with pytest.warns(UserWarning, match="Duplicate name"):
-                out.writestr(original.infolist()[0], original.read(original.infolist()[0]))
+                out.writestr(entry, duplicate_bytes)
         if kind == "symlink":
             link = zipfile.ZipInfo("link")
             link.create_system = 3
@@ -499,8 +516,9 @@ def test_selected_archive_malformed_metadata_and_payload_reject(tmp_path, kind):
         selection = changed(selection, maximum_metadata_bytes=22)
     if kind == "entry_budget":
         selection = changed(selection, maximum_entries=2)
+    cache = SourceCache(tmp_path / "cache")
     with pytest.raises(ValueError):
-        materialize_selected_packages(selection, SourceCache(tmp_path / "cache"), lambda: io.BytesIO(payload))
+        materialize_selected_packages(selection, cache, lambda: io.BytesIO(payload))
 
 
 def test_metadata_accounting_and_selected_entry_budget_are_not_free_editable_claims(tmp_path):
@@ -508,8 +526,9 @@ def test_metadata_accounting_and_selected_entry_budget_are_not_free_editable_cla
     with pytest.raises(ValueError):
         changed(receipt.metadata_accounting, input_rows=100)
     forged = changed(receipt.metadata_accounting, input_rows=100, outside_slice=98)
+    forged_receipt = changed(receipt, metadata_accounting=forged)
     with pytest.raises(ValueError, match="metadata selection"):
-        validate_lrts_etl(changed(receipt, metadata_accounting=forged), cache, path.parent)
+        validate_lrts_etl(forged_receipt, cache, path.parent)
     with pytest.raises(ValueError, match="directory limit"):
         changed(receipt.recipe.reports, maximum_entries=1)
 
@@ -521,7 +540,8 @@ def test_cli_runs_native_and_preserves_manifest_and_round_eligibility(tmp_path, 
     args = ["--recipe", str(file), "--cache", str(cache.root), "--output", str(tmp_path / "cli-output"), "--run"]
     assert cli.main(args) == 0
     summary = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
-    assert summary["native_run_id"] and summary["modeled_rounds"] == 2
+    assert summary["native_run_id"]
+    assert summary["modeled_rounds"] == 2
     receipt = LRTSETLReceipt.from_json(Path(summary["completion"]).read_bytes())
     builds = pl.read_parquet(Path(summary["completion"]).parent / "builds.parquet")
     assert builds["replay_cases"].to_list() == [2, 2]
@@ -558,3 +578,60 @@ def test_fetch_option_does_not_open_any_reader_when_complete_sources_are_cached(
         == 0
     )
     assert json.loads(capsys.readouterr().out)["observed_cases"] == 10
+
+
+def test_feedback_contract_matches_real_budget_censored_rnfail():
+    from coleman.evaluation.napfd import NAPFDVerdictMetric
+    from coleman.reward.rnfail import RNFailReward
+
+    metric = NAPFDVerdictMetric()
+    metric.update_available_time(1.0)
+    cases = [
+        {"Name": "pass", "Duration": 1.0, "Verdict": 0},
+        {"Name": "unscheduled-failure", "Duration": 1.0, "Verdict": 1},
+    ]
+    metric.evaluate(cases)
+    assert metric.unscheduled_testcases == ["unscheduled-failure"]
+    assert RNFailReward().evaluate(metric, ["pass", "unscheduled-failure"]) == [0.0, 0.0]
+    assert cases[1]["Verdict"] == 1
+    recipe, _, _ = owned_recipe()
+    assert recipe.feedback == "budget-censored-native-RNFail-zero-nondetection"
+
+
+def test_oversized_decoded_report_rejects_before_materialization():
+    recipe, _, _ = owned_recipe()
+    value = recipe.model_dump(mode="json")
+    value["reports"]["selections"][0]["package"]["members"][0]["size_bytes"] = 16 * 1024**2 + 1
+    with pytest.raises(ValueError, match="16 MiB"):
+        LRTSETLRecipe.model_validate(value)
+
+
+def test_legacy_recipe_requires_explicit_new_identity_before_export_or_fetch(tmp_path):
+    recipe, _, _ = owned_recipe()
+    legacy = changed(recipe, feedback=LRTSFeedbackModel.LEGACY_FULL)
+    assert legacy.fingerprint != recipe.fingerprint
+    assert LRTSETLRecipe.from_json(legacy.to_json()) == legacy
+    fixture = Path(__file__).with_name("fixtures") / "lrts-etl-owned-recipe-v1.json"
+    assert LRTSETLRecipe.from_json(fixture.read_bytes()) == legacy
+    recipe_path = tmp_path / "legacy.json"
+    recipe_path.write_text(legacy.to_json())
+    cache = SourceCache(tmp_path / "cache")
+    writer = ArtifactWriter(tmp_path / "out")
+    with pytest.raises(ValueError, match="read-only"):
+        export_lrts_parquet(legacy, cache, writer)
+    arguments = ["--recipe", str(recipe_path), "--cache", str(cache.root), "--output", str(tmp_path / "out"), "--fetch"]
+    with pytest.raises(ValueError, match="read-only"):
+        cli.main(arguments)
+    assert not list((tmp_path / "out").rglob("complete.json"))
+
+
+@pytest.mark.parametrize("feedback", [None, "unknown-feedback-model"])
+def test_missing_or_unknown_feedback_never_acquires_an_implicit_meaning(feedback):
+    recipe, _, _ = owned_recipe()
+    value = recipe.model_dump(mode="json")
+    if feedback is None:
+        value.pop("feedback")
+    else:
+        value["feedback"] = feedback
+    with pytest.raises(ValueError):
+        LRTSETLRecipe.model_validate(value)

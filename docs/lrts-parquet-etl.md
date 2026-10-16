@@ -141,7 +141,10 @@ This is explicitly a **post-hoc serial simulation**:
 
 - rounds follow scheduled source labels, not verified completion/availability;
 - costs add reported method seconds, not measured runner occupancy or CI latency;
-- all reported feedback is modeled as available after its round;
+- feedback uses `budget-censored-native-RNFail-zero-nondetection`: detected
+  failures within budget earn reward 1; all other prioritized cases, including
+  unscheduled ones, earn reward 0. Zero reward means nondetection, not an observed
+  pass or a calibrated failure probability. Source verdicts remain unchanged;
 - matching suite/context/class/method labels and occurrence order are an assumed
   correspondence, not verified stable cross-build identities;
 - `CalcPrio=0` is a neutral native input and empty `LastRun` retains unavailable
@@ -154,6 +157,15 @@ protected temporal evaluation remains unavailable. The generated files are usabl
 for inspection and this declared simulation; results cannot establish policy
 superiority, prospective savings or confirmatory cross-corpus generalization.
 Seeds, PRs and repeated executions do not become independent projects/faults.
+
+Legacy receipts declaring `full-reported-labels-after-modeled-round` remain
+readable and their analytical Parquet remains verifiable. New exports, downloads
+and native execution reject that declaration: the existing RNFail learner never
+provided full-label feedback. To opt into the corrected model, explicitly create
+a recipe with `feedback="budget-censored-native-RNFail-zero-nondetection"` and
+export again. This creates a new recipe/export/run identity; retain the old
+receipt unchanged for audit. Missing/unknown feedback declarations reject rather
+than acquiring an implicit meaning. Existing results must not be silently relabeled.
 
 ## Architecture and compatibility
 
