@@ -233,6 +233,19 @@ def test_binary64_precision_nulls_signed_zero_and_clock_meaning_are_preserved(tm
         convert_lrts_source(other, other_cache)
 
 
+@pytest.mark.parametrize("text,expected", [("", None), ("0", 0.0), ("-0.0", 0.0), ("1", 1.0), ("0.1", 0.1)])
+def test_optional_source_seconds_retain_observed_and_unavailable_branches(tmp_path, text, expected):
+    row = {**metadata_row(), "stage_duration_by_suite_sum": text}
+    spec, cache = materialized(tmp_path, rows=[row])
+    observed = convert_lrts_source(spec, cache).metadata[0].measurement("lrts_suite_duration_sum")
+    assert observed.value == expected
+    assert observed.status == ("unavailable" if expected is None else "observed")
+    assert observed.unit == "s"
+    if expected == 0:
+        assert observed.value is not None
+        assert math.copysign(1.0, observed.value) == 1.0
+
+
 @pytest.mark.parametrize(
     "status,skipped,outcome",
     [
@@ -337,6 +350,18 @@ def test_diagnostics_and_plugin_payloads_do_not_become_decision_features(tmp_pat
     assert "owned diagnostic" not in dataset.to_json()
     assert "owned_action" not in dataset.to_json()
     assert dataset.cases[0].outcome == "passed"
+
+
+@pytest.mark.parametrize("location", ["report", "case"])
+def test_fractional_json_actions_are_validated_and_discarded_without_float_projection(tmp_path, location):
+    report = raw_report()
+    target = report if location == "report" else report["suites"][0]["cases"][0]
+    target["testActions"] = [{"ratio": 0.5, "nested": [None, True, "owned", -0.25, 1e-30, 2**80]}]
+    spec, cache = materialized(tmp_path, report=report)
+    dataset = convert_lrts_source(spec, cache)
+    assert "testActions" not in dataset.to_json()
+    assert '"ratio":' not in dataset.to_json()
+    assert tuple(case.outcome for case in dataset.cases) == ("passed", "failed", "not_run", "unknown")
 
 
 @pytest.mark.parametrize(

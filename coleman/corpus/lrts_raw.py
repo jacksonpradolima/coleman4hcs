@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 
-from pydantic import BeforeValidator, Field, JsonValue
+from pydantic import BeforeValidator, Field, StrictBool, StrictInt, StrictStr
 
 from coleman.corpus.lrts_contracts import Integer, Name, Status
 from coleman.results.domain import Identifier
@@ -23,7 +23,18 @@ def _number(value: Any) -> Decimal | int:
 
 Number = Annotated[Decimal, BeforeValidator(_number)]
 Diagnostic = Annotated[str, Field(strict=True, max_length=1024**2)]
-Actions = Annotated[tuple[JsonValue, ...], Field(max_length=128)]
+# The exact JSON decoder produces Decimal for fractional numeric tokens.
+# Ignored plugin actions must preserve that input grammar without float rounding.
+type ActionValue = (
+    dict[StrictStr, ActionValue]
+    | list[ActionValue]
+    | StrictStr
+    | StrictBool
+    | StrictInt
+    | Annotated[Decimal, Field(strict=True, allow_inf_nan=False)]
+    | None
+)
+Actions = Annotated[tuple[ActionValue, ...], Field(max_length=128)]
 
 
 class RawCase(Immutable):

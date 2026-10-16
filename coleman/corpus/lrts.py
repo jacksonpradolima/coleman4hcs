@@ -5,7 +5,6 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
-import math
 from decimal import Decimal, DecimalException
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -36,6 +35,7 @@ _COUNTS = (
     ("num_pass_method", "processed_pass_methods"),
     ("num_fail_method", "processed_fail_methods"),
 )
+_SHA256 = "sha256:"
 
 
 class _MetadataSlice(NamedTuple):
@@ -78,6 +78,16 @@ def _build_id(text: str) -> int:
     return value
 
 
+def _binary64_seconds(value: Decimal | int) -> float:
+    """Project bounded source seconds without changing their decimal numeric value; no rounding or I/O."""
+    if not 0 <= value <= 10**12:
+        raise ValueError("LRTS reported quantity is outside [0,10^12] seconds")
+    observed = float(value)
+    if Decimal(str(observed)) != value:
+        raise ValueError("LRTS source quantity is not canonical finite binary64; rounding is prohibited")
+    return 0.0 if observed == 0 else observed
+
+
 def _measurement(name: str, value: Decimal | int | None) -> Measurement:
     """Preserve canonical source binary64 quantities; reject rounding, underflow and nonfinite values.
 
@@ -85,22 +95,13 @@ def _measurement(name: str, value: Decimal | int | None) -> Measurement:
     literal must round-trip through binary64's canonical spelling before becoming
     a measurement. Null stays explicitly unavailable; genuine zero is canonical.
     """
-    observed = None
-    if value is not None:
-        if not 0 <= value <= 10**12:
-            raise ValueError("LRTS reported quantity is outside [0,10^12] seconds")
-        observed = float(value)
-        if not math.isfinite(observed) or Decimal(str(observed)) != Decimal(value):
-            raise ValueError("LRTS source quantity is not canonical finite binary64; rounding is prohibited")
-        if observed == 0:
-            observed = 0.0
     return Measurement(
         name=name,
-        value=observed,
+        value=None if value is None else _binary64_seconds(value),
         unit="s",
         meaning=MEANINGS[name],
         direction="none",
-        status="unavailable" if observed is None else "observed",
+        status="unavailable" if value is None else "observed",
         minimum=0.0,
     )
 
@@ -191,7 +192,7 @@ def _metadata(spec: LRTSSpec, cache: SourceCache) -> _MetadataSlice:
                 outside += 1
             else:
                 duplicates += _merge_metadata(rows, item)
-    if total != member.size_bytes or "sha256:" + hasher.hexdigest() != member.sha256:
+    if total != member.size_bytes or _SHA256 + hasher.hexdigest() != member.sha256:
         raise ValueError("Parsed LRTS metadata bytes disagree with pinned member")
     if not rows:
         raise ValueError("No LRTS metadata matches the selected project/PR/build")
@@ -218,7 +219,7 @@ def _report(spec: LRTSSpec, cache: SourceCache) -> RawReport:
     path, member = _member(spec, cache, metadata=False)
     with path.open("rb") as stream:
         payload = stream.read(member.size_bytes + 1)
-    if len(payload) != member.size_bytes or "sha256:" + hashlib.sha256(payload).hexdigest() != member.sha256:
+    if len(payload) != member.size_bytes or _SHA256 + hashlib.sha256(payload).hexdigest() != member.sha256:
         raise ValueError("Parsed LRTS report bytes disagree with pinned member")
     try:
         decoded = decode_json(payload, exact_decimals=True)
@@ -304,7 +305,7 @@ def publish_lrts_dataset(dataset: LRTSDataset, cache: SourceCache, writer: Artif
     """
     dataset = LRTSDataset.model_validate(dataset)
     validate_cache_separation(cache.root, writer.run_root)
-    path = writer.run_root / "corpus-lrts" / (dataset.fingerprint.removeprefix("sha256:") + ".json")
+    path = writer.run_root / "corpus-lrts" / (dataset.fingerprint.removeprefix(_SHA256) + ".json")
     if path.is_symlink() or not path.resolve().is_relative_to(writer.run_root.resolve()):
         raise ValueError("Converted LRTS artifacts must remain within their output tree")
     validate_lrts_dataset(dataset, cache)
