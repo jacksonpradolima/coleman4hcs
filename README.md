@@ -15,7 +15,7 @@ and checkpoint. Inspect the inputs, decisions and evidence behind each result.
 
 [**Run real CI data**](#start-with-real-ci-data) · [**Explore benchmarks**](#datasets) ·
 [**Library and CLI**](#quick-start) · [**Documentation**](https://jacksonpradolima.github.io/coleman/) ·
-[**4.7 release**](https://github.com/jacksonpradolima/coleman/releases/tag/v4.7.0) · [**Cite COLEMAN**](#citation)
+[**4.8 release**](https://github.com/jacksonpradolima/coleman/releases/tag/v4.8.0) · [**Cite COLEMAN**](#citation)
 
 ## What you can build with COLEMAN
 
@@ -39,7 +39,7 @@ With Python 3.14+ in an activated environment, install the published wheel and r
 the complete LRTS workflow. Use cache/output directories outside Git:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 python -m coleman.transports.lrts_etl \
   --cache /tmp/coleman-lrts-source-cache \
   --output /tmp/coleman-lrts-data --fetch --run
@@ -64,13 +64,16 @@ RNFail feedback. Source temporal admission remains blocked; this run demonstrate
 a usable data pipeline and simulation. Policy efficacy and prospective savings
 require their own eligible observations and comparisons.
 
-The **4.8 source workflow** adds
-[RTPTorrent → analytical/native Parquet → checkpointed replay](docs/rtptorrent-parquet-etl.md):
-the complete HikariCP raw member contributes **46,995 observations across 1,662
-source jobs**, with an explicit eight-job native preset. The guide covers the
-verified ZIP64 source, resumable operator download, exact units, conserved
-exclusions and replay assumptions. Build the source revision containing #302 to
-use it while the published wheel remains 4.7.
+The same **4.8 wheel** also provides
+[RTPTorrent → analytical/native Parquet → checkpointed replay](docs/rtptorrent-parquet-etl.md).
+Its complete HikariCP raw member preserves **46,995 class executions across 1,662
+source jobs**. The declared eight-job preset projects **18 executions** and
+produces **16 Random/UCB result rows**, with the other **46,977 records** retained
+analytically. The guide includes a resumable download of the approximately 5 GB
+source, full ZIP64 verification and an owned offline example. Method observations
+from LRTS and class observations from RTPTorrent retain their distinct units.
+Both workflows are explicit post-hoc simulations; the admission and comparison
+gates remain visible in the [benchmark readiness table](#datasets).
 
 # Getting started
 
@@ -312,19 +315,19 @@ Each run persists:
 
 Requires Python 3.14 or later in an activated virtual environment. Install the
 wheel published in this repository’s GitHub releases. These examples pin version
-4.7.0 and its published SHA-256. Pip verifies the wheel before installation:
+4.8.0 and its published SHA-256. Pip verifies the wheel before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 ```
 
 Or with optional extras:
 
 ```bash
 # OpenTelemetry SDK
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -500,10 +503,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 ```
 
 ## Querying results
@@ -566,7 +569,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list
@@ -647,7 +650,7 @@ controlled reproductions and empirical benchmark corpora have different roles:
 | **LRTS / Karaf real CI reports** | [Pinned download → analytical/native Parquet → Random/UCB → checkpoint recovery](docs/lrts-parquet-etl.md) | Complete eight-build preset; explicit post-hoc serial simulation. Protected historical admission remains blocked. |
 | **Druid and Retrofit** | Bundled native/contextual Parquet examples, native runner and [descriptive profiles](docs/benchmark-corpus.md#local-profiles-and-the-first-diversity-matrix-44) | Runnable legacy experiments. Source terms, duration units and outcome availability still need corpus admission evidence. |
 | **Dune and its variants** | Bundled native Parquet, WTS/VTS workflows and [variant-aware inventory](docs/benchmark-corpus.md) | Runnable HCS examples. Variants/context files may share executions; broad HCS benchmark admission remains unfinished. |
-| **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | 4.8 source implementation: 46,995 observations / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |
+| **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | Available in 4.8: 46,995 class executions / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |
 | **Apache Commons CLI-13 buggy/fixed pair** | [Pinned source producer](docs/junit-source-capture.md), common 95-test fixture per revision and recoverable raw observations | One controlled Java pair; bundled recipe requires Docker/arm64. Independent of historical CI chronology; full Defects4J integration remains planned. |
 | **Owned CI correctness fixtures** | Two tiny [serial/parallel corpus fixtures](docs/benchmark-corpus.md), validation and native integration examples | Available without network. One constructed family for contract/metric checks; no independent-project diversity. |
 | **Coverage and scenario-allocation microbenchmarks** | [Correctness and performance profiles](docs/decision-benchmarks.md), independent exhaustive references and JSON/Markdown reports | Runnable finite-model benchmarks with runtime/memory observations; separate from empirical CI-policy comparisons. |

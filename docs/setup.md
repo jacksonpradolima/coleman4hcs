@@ -8,7 +8,7 @@ Install this repository's GitHub release wheel, pinned to its published SHA-256.
 Pip verifies the complete wheel against this digest before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 ```
 
 Use the library API or the `coleman` CLI to run experiments:
@@ -98,10 +98,10 @@ coleman run --config experiment.yaml
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 
 # ClickHouse sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 ```
 
 ## Optional observability stack

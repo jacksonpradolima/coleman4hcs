@@ -55,32 +55,33 @@ fixes remain independently shippable.
 
 ## Remaining corpus subtasks
 
-The public #261 umbrella now has native GitHub sub-issues. These are planned
-deliverables; an opened subtask does not establish implementation or admission.
+The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
+4.8; #303–#313 track the remaining work. An opened subtask does not establish
+implementation or admission.
 
 | Stage | Subtasks | Dependency |
 | --- | --- | --- |
-| RTPTorrent source path | [#301 ZIP64 integrity](https://github.com/jacksonpradolima/coleman/issues/301), [#302 real Parquet ETL/replay](https://github.com/jacksonpradolima/coleman/issues/302) | #302 requires #301 |
+| RTPTorrent source path — delivered in 4.8 | [#301 ZIP64 integrity](https://github.com/jacksonpradolima/coleman/issues/301), [#302 real Parquet ETL/replay](https://github.com/jacksonpradolima/coleman/issues/302) | #302 requires #301 |
 | Other source expansion | [#303 LRTS](https://github.com/jacksonpradolima/coleman/issues/303), [#304 Java faults](https://github.com/jacksonpradolima/coleman/issues/304), [#305 non-Java faults](https://github.com/jacksonpradolima/coleman/issues/305), [#306 seeded faults](https://github.com/jacksonpradolima/coleman/issues/306), [#307 HCS](https://github.com/jacksonpradolima/coleman/issues/307), [#308 stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main |
 | Evidence integration | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | #302–#308 |
 | Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
 | Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
 | Final execution/report | [#313 confirmatory corpus](https://github.com/jacksonpradolima/coleman/issues/313) | #309–#312 and the complete parent gates |
 
-Work starts with #301 and #302, one reviewed slice at a time. Compatible source
-deliveries may be collected in a **4.8** integration branch before publication.
+Work started with #301 and #302, one reviewed slice at a time. Their compatible
+source deliveries were collected in a release branch and published together in
+**4.8** through [#316](https://github.com/jacksonpradolima/coleman/pull/316).
 No release number or subtask closure substitutes for an actual source-integrity,
 diversity, temporal-admission or scientific evidence gate.
 
-The **4.8 source integration** now includes #301's reviewed ZIP64 selection and
-complete RTPTorrent archive/member integrity evidence through
-[#314](https://github.com/jacksonpradolima/coleman/pull/314). The implementation for
-#302 adds the [full analytical/native Parquet workflow](rtptorrent-parquet-etl.md),
-an explicit eight-source-job simulation and checkpoint recovery through
-[#315](https://github.com/jacksonpradolima/coleman/pull/315). These compatible
-source deliveries are grouped before publication; the published wheel remains
-4.7 until the integration is reviewed and released. Remaining source admission,
-diversity and confirmatory work continues in #303–#313.
+**4.8.0** delivers #301's reviewed ZIP64 selection and complete RTPTorrent
+archive/member integrity through [#314](https://github.com/jacksonpradolima/coleman/pull/314),
+plus #302's [full analytical/native Parquet workflow](rtptorrent-parquet-etl.md),
+explicit eight-source-job simulation and checkpoint recovery through
+[#315](https://github.com/jacksonpradolima/coleman/pull/315). The signed published
+wheel was exercised outside checkout with the actual source cache, native runs
+and checkpoint continuation. Remaining source admission, diversity and
+confirmatory work continues in #303–#313, beginning with the prepared LRTS expansion.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:

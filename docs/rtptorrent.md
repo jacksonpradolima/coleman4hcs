@@ -1,11 +1,10 @@
 # RTPTorrent: source assessment and bounded class-result conversion
 
 The RTPTorrent adapter in COLEMAN 4.5 converts **raw class-result CSV members**,
-using the existing licensed materialization/cache contract. Install the verified
-4.5 release wheel to run these examples. The source implementation for 4.8 adds
-the complete [real Parquet/replay workflow](rtptorrent-parquet-etl.md).
-RTPTorrent remains blocked from protected
-temporal evaluation.
+using the existing licensed materialization/cache contract. The verified 4.8
+wheel retains this reader and adds the complete
+[real Parquet/replay workflow](rtptorrent-parquet-etl.md).
+RTPTorrent remains blocked from protected temporal evaluation.
 
 An execution is identified by project, job ID, class label and source position.
 Repeated class labels remain separate executions. Job IDs are neither logical
@@ -56,10 +55,10 @@ limit cross-job identity and timing comparisons.
 
 The RTPTorrent ZIP64 end record advertises 2,883 entries and 395,312 central-directory
 bytes. This exceeds the existing v1 materializer's entry ceiling and ZIP64 policy.
-That contract remains unchanged. The source implementation for
+That contract remains unchanged. The implementation delivered in 4.8 through
 [#301](https://github.com/jacksonpradolima/coleman/issues/301) adds a separate
 [bounded ZIP64 selection profile](zip64-source-selection.md), without changing
-legacy recipes. The published 4.7 wheel does not include that profile. A real
+legacy recipes. The profile is available in the published 4.8 wheel. A real
 selection recipe still requires the complete archive SHA-256; relabeling a partial
 archive as an already validated ZIP would bypass the existing contract.
 
@@ -91,9 +90,8 @@ informed this research. On 2026-10-16 complete acquisition verified all
 `bff52563d75aee2f4bab9693188cdefbfd887dc4bcf63395d49eaff1ecf7b6c1`.
 The new [bounded ZIP64 profile](zip64-source-selection.md) verified actual enclosing
 membership and repeated offline conversion of the raw HikariCP member. Its frozen
-metadata recipe is included in the source revision containing #301; the published
-4.7 wheel does not include that profile. The [real Parquet ETL](rtptorrent-parquet-etl.md)
-builds on it in the source implementation for #302, and source
+metadata recipe is included in the published 4.8 wheel. The
+[real Parquet ETL](rtptorrent-parquet-etl.md) builds on that profile, and source
 integrity does not supply missing temporal evidence. No third-party source rows
 or archive are committed here.
 

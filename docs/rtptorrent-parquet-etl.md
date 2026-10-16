@@ -1,26 +1,26 @@
 # Turn RTPTorrent CI history into Parquet and native TCPCI replays
 
-The source implementation for [#302](https://github.com/jacksonpradolima/coleman/issues/302)
-provides a complete HikariCP workflow: verified real archive → full analytical
-history → bounded native-compatible Parquet → Random/UCB → checkpoint recovery.
-It targets **COLEMAN 4.8**; build the source revision containing this page while
-the published release remains 4.7. The 4.7 wheel does not contain this ETL API.
+**COLEMAN 4.8** provides a complete installed-package HikariCP workflow: verified
+real archive → full analytical history → bounded native-compatible Parquet →
+Random/UCB → checkpoint recovery. Delivered in
+[#315](https://github.com/jacksonpradolima/coleman/pull/315) for
+[#302](https://github.com/jacksonpradolima/coleman/issues/302), it uses the
+existing native runner. The 4.7 wheel does not contain this ETL API.
 
 The preset keeps **46,995 source class executions and 1,662 source jobs** in
 analytical Parquet. It projects **18 executions from eight declared jobs** into
 the existing native runner. The other **46,977 executions remain analytically
 available**, with a conserved `outside_jobs` projection reason.
 
-## Build and run outside checkout
+## Install and run outside checkout
 
-Build/install this revision, then work in a separate workspace:
+Use Python 3.14+ and the verified published wheel. No source checkout, Docker or
+MCP SDK is needed for this workflow; the URL pins the actual wheel SHA-256:
 
 ```bash
-uv build --out-dir /tmp/coleman-rtptorrent-dist
 uv venv /tmp/coleman-rtptorrent-env --python 3.14
-uv pip install --python /tmp/coleman-rtptorrent-env/bin/python /tmp/coleman-rtptorrent-dist/*.whl
+uv pip install --python /tmp/coleman-rtptorrent-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 mkdir -p /tmp/coleman-rtptorrent-workspace
-cp examples/rtptorrent-parquet/ci.py /tmp/coleman-rtptorrent-workspace/owned-ci.py
 cd /tmp/coleman-rtptorrent-workspace
 ```
 
@@ -209,11 +209,16 @@ flowchart TD
 
 ## Owned and real installed-package checks
 
-For a network-free complete example, run the `owned-ci.py` copied during setup
-twice with the installed wheel:
+The wheel contains the recipe and owned correctness fixtures. The standalone
+example script is a separate repository file: download the exact release-tagged
+script and verify its SHA-256, then run twice offline with the installed wheel.
+It downloads no foreign dataset:
 
 ```bash
 cd /tmp/coleman-rtptorrent-workspace
+curl --fail --location --output owned-ci.py \
+  https://raw.githubusercontent.com/jacksonpradolima/coleman/v4.8.0/examples/rtptorrent-parquet/ci.py
+/tmp/coleman-rtptorrent-env/bin/python -c 'import hashlib, sys; from pathlib import Path; sys.exit(0 if hashlib.sha256(Path("owned-ci.py").read_bytes()).hexdigest() == "9b7c8dec20124cefe975d99a2c794a838e791000d3a7cc3046cbcbfaa5c4fd04" else "Example SHA-256 mismatch")'
 /tmp/coleman-rtptorrent-env/bin/python owned-ci.py owned /tmp/coleman-rtptorrent-owned-cache
 /tmp/coleman-rtptorrent-env/bin/python owned-ci.py owned /tmp/coleman-rtptorrent-owned-cache
 ```
@@ -232,6 +237,6 @@ COLEMAN_RTPTORRENT_ETL_REAL_CACHE=/tmp/coleman-rtptorrent-source-cache \
 Source pins and data terms are documented in the
 [ZIP64 integrity guide](zip64-source-selection.md) and the
 [RTPTorrent source assessment](rtptorrent.md). The wheel contains metadata recipes
-and owned examples; third-party archive/rows stay outside the repository. Dataset
-terms remain separate from enclosed subject-code rights, and this workflow reads
-reported CI observations rather than executing the archived subject repositories.
+and owned fixtures; standalone example scripts are downloaded separately above.
+Third-party archive/rows stay outside the repository. Dataset terms remain
+separate from enclosed subject-code rights, and this workflow reads reported CI observations rather than executing the archived subject repositories.

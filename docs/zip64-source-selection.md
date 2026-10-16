@@ -1,24 +1,26 @@
 # Bounded ZIP64 selected-file integrity
 
-The implementation for [#301](https://github.com/jacksonpradolima/coleman/issues/301)
-adds an explicit ZIP64 recipe to the existing verified source cache. This page
-describes the source revision containing that implementation; the published 4.7
-wheel does not include this API. The feature verifies selected file membership.
-The [RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md) builds on this
-profile in the source implementation for
-[#302](https://github.com/jacksonpradolima/coleman/issues/302).
+**COLEMAN 4.8** adds an explicit ZIP64 recipe to the existing verified source
+cache through [#314](https://github.com/jacksonpradolima/coleman/pull/314) for
+[#301](https://github.com/jacksonpradolima/coleman/issues/301).
+The feature verifies selected-file membership and supports the
+[real RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md).
+Legacy package-v1 ZIP behavior remains unchanged.
 
 ## Run the owned CI example outside the checkout
 
-Build and install the wheel from this revision, then copy the complete example:
+Install the verified published wheel in Python 3.14+, then download the exact
+release-tagged example and verify its SHA-256. Its two executions are offline
+and need no foreign dataset, Docker or MCP SDK:
 
 ```bash
-uv build --out-dir /tmp/coleman-zip64-dist
 uv venv /tmp/coleman-zip64-env --python 3.14
-uv pip install --python /tmp/coleman-zip64-env/bin/python /tmp/coleman-zip64-dist/*.whl
+uv pip install --python /tmp/coleman-zip64-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 mkdir -p /tmp/coleman-zip64-workspace
-cp examples/zip64-selection/ci.py /tmp/coleman-zip64-workspace/ci.py
 cd /tmp/coleman-zip64-workspace
+curl --fail --location --output ci.py \
+  https://raw.githubusercontent.com/jacksonpradolima/coleman/v4.8.0/examples/zip64-selection/ci.py
+/tmp/coleman-zip64-env/bin/python -c 'import hashlib, sys; from pathlib import Path; sys.exit(0 if hashlib.sha256(Path("ci.py").read_bytes()).hexdigest() == "cf0a610bfa4a620f7620c5b02c5c36c667adaa801839d48a5a6dbd044814cf05" else "Example SHA-256 mismatch")'
 /tmp/coleman-zip64-env/bin/python ci.py selected /tmp/coleman-zip64-cache
 /tmp/coleman-zip64-env/bin/python ci.py selected /tmp/coleman-zip64-cache
 ```
