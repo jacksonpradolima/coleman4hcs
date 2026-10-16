@@ -9,24 +9,23 @@
 [![codecov](https://codecov.io/github/jacksonpradolima/coleman4hcs/branch/main/graph/badge.svg?token=BW04LB0B5Y)](https://codecov.io/github/jacksonpradolima/coleman4hcs)
 
 
-COLEMAN 4.6 connects pinned source revisions to auditable CI test observations.
-[Controlled fault records](docs/controlled-faults.md) preserve the common fixture,
-runtime, explicit units, negative outcomes and diagnostic provenance. The optional
-[pinned JUnit3 recipe](docs/junit-source-capture.md) reproduces a public buggy/fixed
-pair, retains bounded raw evidence and recovers committed observations without
-reexecuting completed roles. Native TCPCI experiments keep their existing runner
-and learning checkpoints.
+COLEMAN 4.7 turns pinned public CI reports into useful Parquet files and runnable
+TCPCI experiments. The [LRTS download-to-Parquet workflow](docs/lrts-parquet-etl.md)
+acquires a real eight-build Karaf slice, preserves 6,876 source observations and
+projects 6,567 compatible executions into native input. Run Random and UCB through
+the existing runner, then resume the same checkpoint without duplicate results.
+Provenance, explicit units, unavailable values and exclusion reasons travel with
+the generated files. Native replay declares its serial simulation and
+budget-censored RNFail feedback assumptions.
 
-The [RTPTorrent](docs/rtptorrent.md) and [LRTS](docs/lrts.md) readers,
+[Controlled fault records](docs/controlled-faults.md), the
+[pinned JUnit3 recipe](docs/junit-source-capture.md),
+[RTPTorrent](docs/rtptorrent.md) and [LRTS](docs/lrts.md) readers,
 [native corpus profiles](docs/benchmark-corpus.md) and
 [verified source cache](docs/corpus-materialization.md) retain their workflows.
-Read the [4.6 release notes](docs/releases/4.6.0.md) for complete examples,
-compatibility and limits. Controlled reproduction is separate from historical CI;
-source admission and the diversified benchmark remain open.
-
-The [LRTS Parquet ETL](docs/lrts-parquet-etl.md) adds a complete real-source workflow:
-download pinned public reports, preserve analytical records, generate native input
-and execute/resume the existing runner under explicit simulation assumptions.
+Read the [4.7 release notes](docs/releases/4.7.0.md) for examples and compatibility.
+Historical source admission, corpus diversity and confirmatory evidence remain
+open work; functional replay does not establish policy superiority.
 
 [Exact resource accounting](docs/resource-replay.md) keeps estimates, reservations,
 actual runner work and overhead distinct. [Frozen shadow evaluation](docs/prospective-shadow.md)
@@ -350,19 +349,19 @@ Each run persists:
 
 Requires Python 3.14 or later in an activated virtual environment. Install the
 wheel published in this repository’s GitHub releases. These examples pin version
-4.6.0 and its published SHA-256. Pip verifies the wheel before installation:
+4.7.0 and its published SHA-256. Pip verifies the wheel before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.6.0/coleman-4.6.0-py3-none-any.whl#sha256=36648e1b778d88d7e3c6d5d6f283b045ab75b3266856e39404fa98158f9f2504"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
 ```
 
 Or with optional extras:
 
 ```bash
 # OpenTelemetry SDK
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.6.0/coleman-4.6.0-py3-none-any.whl#sha256=36648e1b778d88d7e3c6d5d6f283b045ab75b3266856e39404fa98158f9f2504"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.6.0/coleman-4.6.0-py3-none-any.whl#sha256=36648e1b778d88d7e3c6d5d6f283b045ab75b3266856e39404fa98158f9f2504"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -534,10 +533,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.6.0/coleman-4.6.0-py3-none-any.whl#sha256=36648e1b778d88d7e3c6d5d6f283b045ab75b3266856e39404fa98158f9f2504"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
 
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.6.0/coleman-4.6.0-py3-none-any.whl#sha256=36648e1b778d88d7e3c6d5d6f283b045ab75b3266856e39404fa98158f9f2504"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
 ```
 
 ## Querying results
@@ -600,7 +599,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.6.0/coleman-4.6.0-py3-none-any.whl#sha256=36648e1b778d88d7e3c6d5d6f283b045ab75b3266856e39404fa98158f9f2504"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list

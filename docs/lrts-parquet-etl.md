@@ -6,13 +6,10 @@ Parquet, writes a completion/provenance manifest and executes Random and UCB
 through the existing native TCPCI runner. Repeating the command reuses verified
 inputs and resumes the same native checkpoint.
 
-Use Python 3.14+ and a wheel built from a source revision containing this command.
-The published 4.6.0 wheel predates this ETL. From that source checkout:
+Use Python 3.14+ and the published 4.7.0 wheel. Pip verifies its SHA-256:
 
 ```bash
-uv build --wheel
-# Install the wheel just built into your activated experiment environment.
-python -m pip install dist/coleman-*.whl
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
 ```
 
 Choose cache and output directories outside Git. No Docker, optional MCP SDK,
