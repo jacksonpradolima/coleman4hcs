@@ -34,10 +34,12 @@ uncovered.
 
 **4.5.0** publishes the reviewed RTPTorrent and LRTS source-assessment adapters,
 with explicit missing temporal evidence and reproducible admission blockers.
-The reviewed 4.6 integration branch adds [controlled fault observations](controlled-faults.md).
-Its next sequential slice supplies [pinned JUnit3 source capture](junit-source-capture.md)
-with raw evidence, interruption recovery and negative outcomes. This is source
-reproduction, not completed benchmark admission.
+
+**4.6.0** publishes [controlled fault observations](controlled-faults.md) and
+[pinned JUnit3 source capture](junit-source-capture.md), with raw evidence,
+interruption recovery and negative outcomes. The published wheel reproduces the
+Java pair and reopens its committed observations outside the checkout. This is
+source reproduction, not completed benchmark admission.
 Later steps cover admitted real-fault matrices, HCS/variant expansion
 and synthetic stress, comparable baselines/statistics, frozen confirmatory execution
 and the final evidence report. Compatible deliveries continue in later **4.x**

@@ -78,7 +78,7 @@ cd examples/observability
 docker compose up -d
 
 # Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.5.0/coleman-4.5.0-py3-none-any.whl#sha256=4ddd976895ebf1946c30ca6a5cc2207dd90cbfe30ac35b37d849aee442267b02"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.6.0/coleman-4.6.0-py3-none-any.whl#sha256=36648e1b778d88d7e3c6d5d6f283b045ab75b3266856e39404fa98158f9f2504"
 
 # Enable telemetry — use the telemetry/local pack in your run.yaml:
 #   packs:
@@ -98,7 +98,7 @@ coleman run --config run.yaml
 
 ```bash
 docker compose --profile clickhouse up -d
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.5.0/coleman-4.5.0-py3-none-any.whl#sha256=4ddd976895ebf1946c30ca6a5cc2207dd90cbfe30ac35b37d849aee442267b02"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.6.0/coleman-4.6.0-py3-none-any.whl#sha256=36648e1b778d88d7e3c6d5d6f283b045ab75b3266856e39404fa98158f9f2504"
 ```
 
 ## Tear down

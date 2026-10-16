@@ -20,20 +20,20 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.5
+## New in 4.6
 
-Preserve the source evidence behind adaptive CI decisions with the
-[RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) readers. Class/method executions,
-job/stage/node identities, explicit seconds and unavailable observations remain
-distinct. Complete owned examples run through the real native runner and learning
-checkpoint, with independent known-answer checks and deterministic source artifacts.
+Trace [controlled buggy/fixed observations](controlled-faults.md) to pinned source,
+a common fixture, runtime, explicit units and retained diagnostics. The optional
+[offline JUnit3 recipe](junit-source-capture.md) reproduces a public Java pair and
+reopens committed evidence without rerunning completed roles. Negative and
+inconclusive pairs remain visible. A complete owned example uses the native TCPCI
+runner, independent metric checks and learning-checkpoint continuation.
 
-The existing [corpus profiles](benchmark-corpus.md) and
-[pinned source cache](corpus-materialization.md) retain their behavior, including
-offline integrity validation. The [4.4.1 numeric safeguards](releases/4.4.1.md)
-remain in force. External-source temporal evaluation stays blocked by missing
-availability, identity/mapping and complete-suite evidence; all seven required
-diversity regimes remain uncovered.
+The [RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) readers,
+[corpus profiles](benchmark-corpus.md) and [pinned source cache](corpus-materialization.md)
+retain their workflows. Controlled source clocks are not historical CI; source
+admission, the seven required diversity regimes and cross-corpus confirmation
+remain open.
 
 [Exact resource accounting](resource-replay.md) and [frozen shadow evaluation](prospective-shadow.md)
 retain their 4.3 behavior. The included synthetic shadow fixture remains inconclusive.
@@ -44,7 +44,7 @@ The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures a
 visible source-admission gaps; all seven diversity regimes remain uncovered.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
-correctness checks. See the [4.5 release notes](releases/4.5.0.md) for examples,
+correctness checks. See the [4.6 release notes](releases/4.6.0.md) for examples,
 compatibility and limits.
 
 ## Quick Start
@@ -53,7 +53,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.5.0/coleman-4.5.0-py3-none-any.whl#sha256=4ddd976895ebf1946c30ca6a5cc2207dd90cbfe30ac35b37d849aee442267b02"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.6.0/coleman-4.6.0-py3-none-any.whl#sha256=36648e1b778d88d7e3c6d5d6f283b045ab75b3266856e39404fa98158f9f2504"
 coleman run --config my-experiment.yaml
 ```
 
