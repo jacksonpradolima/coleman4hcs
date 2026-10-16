@@ -34,7 +34,10 @@ uncovered.
 
 **4.5.0** publishes the reviewed RTPTorrent and LRTS source-assessment adapters,
 with explicit missing temporal evidence and reproducible admission blockers.
-The next sequential corpus slice adds [controlled fault observations](controlled-faults.md).
+The reviewed 4.6 integration branch adds [controlled fault observations](controlled-faults.md).
+Its next sequential slice supplies [pinned JUnit3 source capture](junit-source-capture.md)
+with raw evidence, interruption recovery and negative outcomes. This is source
+reproduction, not completed benchmark admission.
 Later steps cover admitted real-fault matrices, HCS/variant expansion
 and synthetic stress, comparable baselines/statistics, frozen confirmatory execution
 and the final evidence report. Compatible deliveries continue in later **4.x**

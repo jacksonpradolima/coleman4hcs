@@ -1,0 +1,68 @@
+"""Installed JUnit resources/import boundaries plus an explicitly enabled real offline source reproduction."""
+
+import json
+import os
+import shutil
+import sys
+
+from tests.corpus.test_installed_controlled import ROOT, command
+
+
+def test_installed_producer_resources_domain_boundary_and_optional_real_pair(tmp_path):
+    uv = shutil.which("uv")
+    assert uv is not None
+    env = {k: v for k, v in os.environ.items() if k not in {"PYTHONPATH", "PYTHONHOME"}}
+    env.update({"UV_LINK_MODE": "copy", "UV_NO_PROGRESS": "1"})
+    dist = tmp_path / "dist"
+    command([uv, "build", "--wheel", "--out-dir", str(dist)], ROOT, env)
+    virtual = tmp_path / "installed"
+    command([uv, "venv", str(virtual), "--python", sys.executable], tmp_path, env)
+    python = virtual / "bin/python"
+    command([uv, "pip", "install", "--offline", "--python", str(python), str(next(dist.glob("*.whl")))], tmp_path, env)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    script = """
+import importlib.abc, json, sys
+from collections import Counter
+from pathlib import Path
+class Boundary(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == 'coleman.cli' or fullname.startswith(('coleman.transports','mcp')):
+            raise AssertionError('Source domain imported transport: '+fullname)
+boundary = Boundary()
+sys.meta_path.insert(0, boundary)
+from coleman.corpus.source_views import SourceViewSpec, source_view_bytes
+assert source_view_bytes((('owned.txt',b'owned'),))
+sys.meta_path.remove(boundary)
+from coleman.transports.junit import load_junit_recipe
+from coleman.transports.junit_source import digest, harness_bytes
+recipe = load_junit_recipe()
+assert recipe.harness_sha256 == digest(harness_bytes())
+assert len(recipe.test_ids) == 95
+assert Path(sys.modules['coleman.transports.junit'].__file__).resolve().is_relative_to(Path(sys.prefix))
+proof = {'installed': True, 'tests': len(recipe.test_ids), 'real_source_capture': False}
+if sys.argv[1] != '-':
+    from coleman.artifacts import ArtifactWriter
+    from coleman.corpus import SourceCache
+    from coleman.transports.junit_capture import capture_junit_source
+    cache = SourceCache(sys.argv[1])
+    writer = ArtifactWriter('real-junit-source')
+    first = capture_junit_source(recipe, cache, writer, 'installed-source-001')
+    second = capture_junit_source(recipe, cache, writer, 'installed-source-001')
+    assert first == second
+    assert [item.status for item in first.captures] == ['collected','collected']
+    pairs = dict(Counter(pair.classification for pair in first.dataset.pairs))
+    assert pairs == {'both_pass':92,'both_fail':2,'expected':1}
+    assert len(first.dataset.observations) == 190
+    assert first.dataset.admission == 'not_evaluated'
+    assert first.dataset.generalization == 'insufficient_evidence'
+    proof.update(real_source_capture=True, pairs=pairs, dataset=str(first.dataset_path.resolve()))
+print(json.dumps(proof,sort_keys=True))
+"""
+    source_cache = env.get("COLEMAN_JUNIT_REAL_CACHE", "-")
+    completed = command([str(python), "-c", script, source_cache], outside, env)
+    proof = json.loads(completed.stdout)
+    assert proof["installed"]
+    assert proof["tests"] == 95
+    assert proof["real_source_capture"] == (source_cache != "-")
+    (tmp_path / "installed-junit-proof.json").write_text(json.dumps(proof, indent=2) + "\n")

@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from coleman.corpus.materialization_contracts import ByteReader
 
 # Provider expansion requires an explicitly reviewed public-source integration.
-_PUBLIC_HOSTS = frozenset({"raw.githubusercontent.com"})
+_PUBLIC_HOSTS = frozenset({"raw.githubusercontent.com", "repo.maven.apache.org"})
 
 
 def _public_target(url: str) -> tuple[str, str]:
@@ -74,7 +74,7 @@ def public_https_source(
     """Open a reviewed public source with certificate verification and no ambient authentication/proxy state.
 
     The adapter never follows redirects or requests private/authenticated sources.
-    Only raw.githubusercontent.com is supported in v1. The caller separately
+    Only raw.githubusercontent.com and repo.maven.apache.org are supported. The caller separately
     supplies a licensed, digest-pinned materialization spec. Size is the HTTP
     entity byte count, not packet/TLS/header overhead. Socket inactivity timeouts
     and elapsed checks between reads are not a hard OS deadline for DNS or headers.

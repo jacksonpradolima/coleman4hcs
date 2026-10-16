@@ -12,6 +12,9 @@ fault diversity, baseline comparisons or the cross-corpus benchmark. The registr
 seven required diversity cells remain uncovered. Source assessments for
 [RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) remain separate.
 
+The optional [pinned JUnit3 producer](junit-source-capture.md) now provides a
+reproducible public Java source recipe, with bounded execution and raw-role recovery.
+
 ## Architecture and trust boundary
 
 ```mermaid
