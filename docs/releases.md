@@ -6,9 +6,12 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
-COLEMAN 4.3 groups reviewed exact-resource and frozen-shadow increments.
-The next compatible feature target is **4.4.0**, continuing the public corpus
-program in reviewed vertical slices; compatible corrections use patch versions. Follow the [public roadmap](roadmap.md) in dependency order and keep each PR runnable and independently reviewed.
+[COLEMAN 4.4.0](releases/4.4.0.md) publishes bounded native corpus profiles and
+secure source-package materialization. The public corpus program continues in
+subsequent compatible **4.x** feature releases; compatible corrections use patch
+versions. Follow the [public roadmap](roadmap.md) in dependency order and keep each
+PR runnable and independently reviewed. Publishing a slice does not complete the
+remaining corpus-admission or confirmatory-evidence gates.
 
 A release branch can collect related reviewed PRs when a capability needs several
 vertical slices before publication. Keep it synchronized with security fixes from

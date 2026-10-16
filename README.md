@@ -9,12 +9,18 @@
 [![codecov](https://codecov.io/github/jacksonpradolima/coleman4hcs/branch/main/graph/badge.svg?token=BW04LB0B5Y)](https://codecov.io/github/jacksonpradolima/coleman4hcs)
 
 
-COLEMAN 4.3 makes CI test-prioritization experiments easier to audit.
+COLEMAN 4.4 helps you inspect CI data and reproduce the inputs to your experiments.
+[Native corpus profiles](docs/benchmark-corpus.md)
+expose units, missingness and identity conflicts. [Source materialization](docs/corpus-materialization.md)
+verifies pinned bytes in an external cache and publishes deterministic integrity receipts.
+Read the [4.4 release notes](docs/releases/4.4.0.md) for complete workflows and limits.
+Existing source-admission blockers remain visible; this release does not establish
+cross-corpus effectiveness.
+
 [Exact resource accounting](docs/resource-replay.md) keeps estimates, reservations,
 actual runner work and overhead distinct. [Frozen shadow evaluation](docs/prospective-shadow.md)
-seals recommendations before feedback, preserves source/receipt chronology and
-recovers committed evidence without changing the required test order. Read the
-[4.3 release notes](docs/releases/4.3.0.md) for complete workflows, compatibility and limits.
+seals recommendations before feedback and recovers committed evidence without
+changing the required test order.
 
 [Point-in-time observations](docs/point-in-time-observations.md), the
 [corpus foundation](docs/benchmark-corpus.md), the [application API](docs/application-api.md)
@@ -333,19 +339,19 @@ Each run persists:
 
 Requires Python 3.14 or later in an activated virtual environment. Install the
 wheel published in this repository’s GitHub releases. These examples pin version
-4.3.0 and its published SHA-256. Pip verifies the wheel before installation:
+4.4.0 and its published SHA-256. Pip verifies the wheel before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 ```
 
 Or with optional extras:
 
 ```bash
 # OpenTelemetry SDK
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -517,10 +523,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 ```
 
 ## Querying results
@@ -583,7 +589,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list
