@@ -42,6 +42,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/finite-coverage.md
 - docs/getting-started.md
 - docs/index.md
+- docs/lrts.md
 - docs/observability.md
 - docs/operational-pilot.md
 - docs/point-in-time-observations.md
@@ -54,9 +55,11 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/releases/4.3.0.md
 - docs/releases/4.4.0.md
 - docs/releases/4.4.1.md
+- docs/releases/4.5.0.md
 - docs/releases.md
 - docs/resource-replay.md
 - docs/roadmap.md
+- docs/rtptorrent.md
 - docs/scenario-payoffs.md
 - docs/setup.md
 - docs/workflow.md
@@ -77,15 +80,17 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 [![codecov](https://codecov.io/github/jacksonpradolima/coleman4hcs/branch/main/graph/badge.svg?token=BW04LB0B5Y)](https://codecov.io/github/jacksonpradolima/coleman4hcs)
 
 
-COLEMAN 4.4 helps you inspect CI data and reproduce the inputs to your experiments.
-[Native corpus profiles](docs/benchmark-corpus.md)
-expose units, missingness and identity conflicts. [Source materialization](docs/corpus-materialization.md)
-verifies pinned bytes in an external cache and publishes deterministic integrity receipts.
-Read the [4.4 release notes](docs/releases/4.4.0.md) for complete workflows and limits.
-The [4.4.1 patch](docs/releases/4.4.1.md) strengthens exact numeric validation and
-preserves decimal JSON quantities before validation.
-Existing source-admission blockers remain visible; this release does not establish
-cross-corpus effectiveness.
+COLEMAN 4.5 preserves the evidence behind adaptive CI test prioritization.
+Read [RTPTorrent class executions](docs/rtptorrent.md) and
+[LRTS Jenkins reports](docs/lrts.md) with explicit units, source identities and
+missing observations. Repeated executions stay visible. Reproduce an owned native
+CI workflow twice through the existing runner and learning checkpoint.
+
+[Native corpus profiles](docs/benchmark-corpus.md) expose data-quality limits;
+[source materialization](docs/corpus-materialization.md) verifies pinned bytes in
+an external cache. Read the [4.5 release notes](docs/releases/4.5.0.md) for complete
+examples, compatibility and limits. Missing temporal evidence keeps external-source
+evaluation blocked; this release makes no cross-corpus effectiveness claim.
 
 [Exact resource accounting](docs/resource-replay.md) keeps estimates, reservations,
 actual runner work and overhead distinct. [Frozen shadow evaluation](docs/prospective-shadow.md)
@@ -1849,6 +1854,16 @@ baseline matrices, dependence-aware statistical profiles and confirmatory run/re
 commands remain subsequent slices of #261.
 
 ## Source contract and admission
+
+The [RTPTorrent source assessment](rtptorrent.md) in this source revision adds a
+bounded raw-class reader and an owned isolated native replay. It preserves repeated
+class executions and missing CI clocks; it does not admit an external source or
+change the registry's diversity inventory. This adapter is not in the 4.4 wheel.
+
+The [LRTS source assessment](lrts.md) preserves processed metadata alongside raw
+Jenkins method/suite/node identities. Its bounded owned replay checks native
+compatibility; missing availability, stage mapping and expected-suite evidence
+keep real-source temporal evaluation blocked.
 
 `CorpusManifest` schema v1 binds:
 
@@ -5350,17 +5365,20 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.4
+## New in 4.5
 
-The [4.4.1 patch](releases/4.4.1.md) enforces exact numeric limits before conversion
-and preserves decimal JSON quantities through artifact validation.
+Preserve the source evidence behind adaptive CI decisions with the
+[RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) readers. Class/method executions,
+job/stage/node identities, explicit seconds and unavailable observations remain
+distinct. Complete owned examples run through the real native runner and learning
+checkpoint, with independent known-answer checks and deterministic source artifacts.
 
-Inspect native CI data with [bounded corpus profiles](benchmark-corpus.md):
-units, missing values, logical builds and variant execution groups remain explicit.
-[Materialize pinned source packages](corpus-materialization.md) in an external cache,
-validate their integrity offline and reproduce the owned CI example through its
-native learning checkpoint. All ten existing native registrations remain blocked
-for evaluation; all seven required diversity regimes remain uncovered.
+The existing [corpus profiles](benchmark-corpus.md) and
+[pinned source cache](corpus-materialization.md) retain their behavior, including
+offline integrity validation. The [4.4.1 numeric safeguards](releases/4.4.1.md)
+remain in force. External-source temporal evaluation stays blocked by missing
+availability, identity/mapping and complete-suite evidence; all seven required
+diversity regimes remain uncovered.
 
 [Exact resource accounting](resource-replay.md) and [frozen shadow evaluation](prospective-shadow.md)
 retain their 4.3 behavior. The included synthetic shadow fixture remains inconclusive.
@@ -5371,7 +5389,7 @@ The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures a
 visible source-admission gaps; all seven diversity regimes remain uncovered.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
-correctness checks. See the [4.4 release notes](releases/4.4.0.md) for examples,
+correctness checks. See the [4.5 release notes](releases/4.5.0.md) for examples,
 compatibility and limits.
 
 ## Quick Start
@@ -5399,6 +5417,229 @@ config packs, sweep engine, and determinism contract.
 For deep post-run analytics, see the [Analysis Playbook](analysis-playbook.md).
 For advanced customization and parallel extension contracts, see
 [Extensibility & Parallelism](extensibility.md).
+
+
+
+### FILE: docs/lrts.md
+
+# LRTS: preserve raw method evidence and processed metadata
+
+This source revision adds an offline LRTS source-assessment reader. It joins one
+selected project/PR/build from pinned metadata with a separately pinned raw
+Jenkins JUnit report. It retains raw suites, node/enclosing-block links and every
+method execution, including repeated labels. The published 4.4.x wheels do not
+contain this reader: build and install this source revision for these examples.
+
+**Admission remains blocked.** Scheduled build time is not executor start or
+outcome availability. Processed stage labels are not an automatic mapping to raw
+Jenkins nodes. Reported methods do not establish the complete expected CI suite.
+No inferred clock, stage-name normalization, deduplication or reconstructed
+history enters protected evaluation through this reader.
+
+## Source assessment and snapshot boundaries
+
+This is a focused primary-source compatibility assessment, not a completed
+systematic literature review or an effectiveness experiment. Sources checked on
+2026-10-16 UTC include:
+
+- [The authors' ISSTA 2024 paper](https://doi.org/10.1145/3650212.3680307)
+  ([author PDF](https://shuaiwang516.github.io/pub/longRTS.pdf)). Its evaluation
+  snapshot has 21,255 builds and 57,437 suite runs. All, DeConf and FirstFail are
+  different outcome definitions. The paper uses serial sums when discussing
+  suite durations; those sums are not observed parallel CI latency.
+- [Pinned LRTS repository revision](https://github.com/lrtsuser/LRTS/tree/2c1b68e9b1d4ec6c4f304869e36af2e3168da889).
+  Its metadata CSV still has the paper-sized snapshot, while its README describes
+  a later 32,199-build / 108,366-run collection. These counts must not be pooled.
+- [Original artifact record 12662090](https://zenodo.org/records/12662090):
+  `LRTS-main.zip`, 288,151,681 bytes, provider MD5
+  `be5b2c0c83e46e20453acab18c2a6da7`, independently computed SHA-256
+  `9e3ca483a7ed075cc532364ca5b58cc3651d4a622ec5fd58efdefd945b3853d0`.
+- [Raw-report record 15603448, v3](https://zenodo.org/records/15603448): its
+  `karaf.zip` is 16,571,092 bytes, provider MD5
+  `6f0d45a08644d19594692c11e5508300`, computed SHA-256
+  `d87c5fa06f5b220ca0f719ba4032719396a5da3dd0776994ceaa32cc2fcd5841`.
+  The earlier raw record 15580600 is v2, not this same version declaration.
+
+Both complete downloaded archives passed size/provider-checksum comparison.
+The decoded `LRTS-main/artifact/metadata/dataset.csv` is byte-identical to the
+pinned Git file: 13,698,468 bytes, SHA-256
+`49570f8dca753c385f25346f8aaaded3a841b0e67dabf36fbb67260a79b02987`.
+This correspondence supports reviewing the specific artifact's data terms,
+rather than inferring data rights from the repository's MIT code license.
+The checked Zenodo records declare CC BY 4.0; keep specific terms/version/digest
+evidence and use recipe-only disposition when preparing local converted rows.
+
+The original code artifact has 2,037 ZIP entries; the Karaf raw archive has 1,256.
+Both exceed the existing materializer v1's hard 128-entry ceiling. A real call
+through the published 4.4.1 package rejects the Karaf ZIP with
+`ZIP metadata exceeds declared resource limits`. This reader accepts already
+pinned **decoded plain members**, not those unsupported archive containers.
+Their acquisition/extraction needs a separately reviewed capability or tool;
+relabeling an archive as an already validated ZIP would bypass the contract.
+No archive policy or automatic fetch command is silently widened here.
+
+### A bounded real-source check
+
+The metadata has 620 Karaf builds, all with the processed label `single`.
+All 620 have corresponding paths in the v3 raw archive, which contains another
+106 reports. This establishes path coverage, not equivalence of the snapshots
+or proof that any stage/test observations are independent.
+
+The separately decoded report
+`karaf/PR/PR-1581/testReport_build1.json.zip!testReport_build1.json`
+has 508,512 bytes and SHA-256
+`351f0bc92ad8659b170750eea61091689ae7258fbbd99b4b0f0d3f33be8f935b`.
+The real reader produced:
+
+| Fact | Result |
+| --- | ---: |
+| Metadata rows read | 57,437 |
+| Rows outside the selected build | 57,436 |
+| Selected processed metadata stages | 1 |
+| Raw suites | 228 |
+| Reported method executions | 931 |
+| Repeated class/method labels retained | 4 |
+| Reported passed / failed / skipped methods | 892 / 0 / 39 |
+
+This one descriptive slice is not a large-suite performance study, independent
+verification of whole-build success, or a complete LRTS admission. The metadata
+and raw count/duration declarations match for this pair. A source change must
+still pass the actual correspondence checks; a filename alone proves no join.
+
+The pinned extraction code filters skipped methods, rewrites some class names,
+drops selected duplicates and rounds method sums to three places. Those processed
+class values remain distinct from this reader's raw method outcomes. Retrospective
+flaky labels, full-history outlier filters and FirstFail labels must not silently
+become features available before a decision. Author baseline results are not
+reproduced COLEMAN results.
+
+## Units, clocks and compatibility
+
+```mermaid
+flowchart TD
+    M[Pinned plain metadata and reviewed data terms] --> C[Existing immutable external cache]
+    R[Pinned decoded Jenkins report and reviewed data terms] --> C
+    C --> V[Bounded metadata selection and typed raw report]
+    V --> D[Versioned source slice and explicit exclusion counts]
+    D --> B[Blocked: outcome availability, stage mapping and expected universe]
+    D --> A[Source-correspondence verification and immutable artifact]
+    F[Owned constructed serial fixture] --> N[Existing native runner and checkpoint]
+    N --> K[Independent exact known-answer check]
+```
+
+`LRTSSpec` and `LRTSDataset` require integer `schema_version=1` and recipe
+`lrts-source-assessment-v1`. Missing/legacy/future versions and unknown fields
+reject. There is no automatic migration from native Parquet, RTPTorrent,
+filtered LRTS outcome tables or arbitrary JUnit XML. The exact 23-column paper
+metadata header and Jenkins `hudson.tasks.junit.TestResult` layout are required.
+
+The reader reuses `Measurement` for explicit binary64 projections and units.
+All five metadata quantities remain separate: truncated build execution seconds,
+truncated scheduled Unix-epoch seconds, reported JUnit duration, suite-duration
+sum and processed-class-duration sum. No sum is labeled physical runner occupancy
+or parallel elapsed savings. Numeric literals must round-trip through canonical
+binary64 spelling; nonfinite, negative, underflowed or overprecise values reject.
+Genuine signed zero canonicalizes to zero; blank metadata quantities and JSON
+null durations retain `value=null`, `status=unavailable` and their declared units.
+Null counters remain unavailable integers, never zero. Unsupported not-applicable
+encodings reject instead of being invented.
+
+The original `ts_duration`, `passcount`, `failcount` and `skipcount` columns are
+build-report aggregates repeated across processed stage rows. They are checked
+against the one selected build report. Processed stage sums and `num_*` counts
+retain their own scope and may differ across stages. This check establishes no
+mapping from processed stages to raw suite/node identities.
+
+[Jenkins Run documentation](https://javadoc.jenkins.io/hudson/model/Run.html)
+distinguishes scheduled time from executor start after queueing. The pinned LRTS
+code truncates scheduled milliseconds and execution duration to seconds. Adding
+those fields cannot certify completion when queue delay is unknown. The source's
+`build_date` is also an uninterpreted producer label; its generating code used a
+local-time conversion. Raw suite timestamp strings, node IDs and enclosing links
+are retained without assigning them outcome-availability semantics.
+
+Source execution identity includes project, PR, build, suite position, method
+position and class/method labels. It is stable for the same declared source
+executions, not a cross-build logical test mapping. Metadata sorts by processed
+stage ID for serialization; raw arrays retain their positions. Identical selected
+metadata duplicates have explicit exclusion counts; conflicts reject. Repeated
+raw method labels remain separate executions and never become independent faults.
+Only the selected build's numeric metadata is interpreted. Other physical rows
+are counted as outside the selection after shape/identity checks, not certified
+as fully validated observations.
+
+PASSED/FIXED mean reported pass; FAILED/REGRESSION mean reported failure;
+SKIPPED means not run. A null status remains unknown unless the source explicitly
+says skipped. Contradictory skipped/status flags reject. ABORTED/NOT_BUILT and
+other metadata build results remain visible. Neither passing cases nor aggregate
+counters promote an unknown method into a pass or establish complete feedback.
+The Jenkins exported `empty` flag must agree with the reported method count;
+contradictions reject rather than being repaired or published.
+Diagnostic text, plugin actions, age and failed-since hints are not decision features.
+
+Limits are 32 MiB for metadata, 16 MiB for one decoded report, 100,000 physical
+metadata rows, 16 KiB per CSV line, 1,024 characters per CSV field, 64 characters
+per numeric CSV literal, 64 selected metadata stages, 5,000 raw suites and 50,000
+reported methods. Limits may be lowered in the frozen spec where exposed.
+These are bounded inputs, not an OS memory/CPU sandbox or global cache quota.
+
+## Complete owned CI example
+
+Build/install this source revision in an activated Python 3.14+ environment.
+Copy the complete [owned CI example](https://github.com/jacksonpradolima/coleman/blob/main/examples/lrts/ci.py)
+to `ci.py` outside the checkout. It authors both sources, uses the real cache and
+reader, projects only its declared complete serial fixture to native Parquet,
+runs Random/RNFail, checks independent exact references and reopens the learning
+checkpoint. It downloads no third-party data and creates no observed CI timeline.
+
+```bash
+python ci.py owned-ci /absolute/path/outside-git/lrts-cache
+python ci.py owned-ci /absolute/path/outside-git/lrts-cache
+```
+
+The two calls retain one native result row and the same converted artifact.
+With that same copied `ci.py`, this complete SDK example also works outside Git:
+
+```python
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from ci import owned_dataset
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus import SourceCache
+from coleman.corpus.lrts import convert_lrts_source, publish_lrts_dataset, validate_lrts_dataset
+
+with TemporaryDirectory() as temporary:
+    root = Path(temporary)
+    cache = SourceCache(root / "external-cache")
+    owned, _ = owned_dataset(cache)
+    dataset = convert_lrts_source(owned.spec, cache)
+    assert len(dataset.cases) == 3
+    validate_lrts_dataset(dataset, cache)
+    artifact = publish_lrts_dataset(dataset, cache, ArtifactWriter(root / "exports"))
+    assert artifact.exists()
+    try:
+        dataset.require_temporal_evaluation()
+    except ValueError as error:
+        print(error)  # Expected: source availability/stage/universe evidence is missing.
+    else:
+        raise AssertionError("A source-assessment slice entered protected evaluation")
+```
+
+The copied helper and MIT terms apply only to newly authored fixtures. For real
+sources, construct `LRTSSpec` from separately verified permitted metadata/report
+receipts and the explicit original report label; never reuse an owned fixture's
+license for downloaded data. The cache remains outside Git and physically
+separate from outputs. Converted recipe-only rows stay local.
+
+`validate_lrts_dataset` recomputes from the actual pinned bytes; JSON reads alone
+only check model invariants. Immutable publication reuses existing concurrent
+retry, conflict and interrupted-write behavior, without writing a learning
+checkpoint or marking an experiment complete. Filesystem durability/process-kill
+temporary-file limits remain those of the artifact writer. The registry and its
+seven uncovered diversity regimes are unchanged. Controlled faults, stress cases,
+comparable baselines, protected confirmation and modern-CI feasibility remain
+subsequent work under [#261](https://github.com/jacksonpradolima/coleman/issues/261).
 
 
 
@@ -7137,6 +7378,126 @@ performance claim.
 
 
 
+### FILE: docs/releases/4.5.0.md
+
+# COLEMAN 4.5 — Keep the evidence behind your CI decisions
+
+Adaptive test prioritization starts with knowing what the data actually records.
+COLEMAN 4.5 adds offline readers for RTPTorrent class executions and LRTS Jenkins
+reports, preserving the source identities, units and missing observations that
+can disappear in a convenient flat table.
+
+You can inspect and reproduce a source conversion, publish its immutable
+provenance artifact and exercise the native TCPCI runner through checkpoint
+continuation. Source integrity and scientific admission stay separate.
+
+## Preserve executions before learning from them
+
+The RTPTorrent reader retains project/job/class/position identity, including
+repeated class executions. Reported seconds, assertion failures, errors and skips
+keep distinct meanings. Filtered published baseline tables cannot silently replace
+the full raw layout or remove successful jobs from the evidence.
+
+The LRTS reader pairs pinned processed metadata with a separately pinned raw
+Jenkins report. Project, PR, build, stage, suite, node and method observations
+remain explicit. Repeated methods stay separate; unknown outcomes and unavailable
+durations remain visible. Scheduled timestamps, execution duration and processed
+duration sums never become invented completion clocks or parallel savings.
+
+Both readers use existing source caches and deterministic artifacts. Actual
+parsed bytes are checked against their frozen digests. Identical concurrent
+publication converges; conflicting or interrupted writes cannot publish a falsely
+completed source artifact. No third-party dataset rows are bundled.
+
+## Reproduce a complete native CI slice
+
+Install the verified Python 3.14+ wheel attached to this release. Copy either
+complete owned example to `ci.py` in a separate workspace:
+
+- [RTPTorrent format and isolated job](https://github.com/jacksonpradolima/coleman/blob/v4.5.0/examples/rtptorrent/ci.py)
+- [LRTS format and isolated suite](https://github.com/jacksonpradolima/coleman/blob/v4.5.0/examples/lrts/ci.py)
+
+Choose a cache outside Git and separate from the output tree, then run twice:
+
+```bash
+python ci.py owned-ci /absolute/path/to/external-source-cache
+python ci.py owned-ci /absolute/path/to/external-source-cache
+```
+
+Each example authors a small fixture, uses the actual materializer and source
+reader, runs Random/RNFail and checks persisted metrics against an independent
+exact reference. Reopening the existing learning checkpoint preserves one native
+result row and the same converted source artifact. These are constructed serial
+checks, with no claim of observed CI history or independent project evidence.
+
+The [RTPTorrent guide](https://github.com/jacksonpradolima/coleman/blob/v4.5.0/docs/rtptorrent.md)
+and [LRTS guide](https://github.com/jacksonpradolima/coleman/blob/v4.5.0/docs/lrts.md)
+include complete SDK workflows, source versions/digests, field meanings,
+architecture diagrams, resource limits and explicit compatibility decisions.
+
+## What the source assessment established
+
+One pinned RTPTorrent HikariCP member converts to 46,995 class executions across
+1,662 jobs, retaining 23,302 repeated-class executions. Its published baseline
+slice has different coverage. The entire multi-gigabyte archive remains
+unverified; member checks do not prove container integrity.
+
+The complete original LRTS artifact and Karaf v3 archive passed size and provider
+checksum verification, with computed SHA-256. Original artifact metadata matches
+the pinned Git CSV byte for byte. One checked metadata/report pair preserves
+228 suites and 931 methods, including four repeated labels. Specific data terms
+were reviewed separately from the repository's code license.
+
+These are bounded descriptive checks, not cross-corpus policy comparisons or
+large-suite performance claims. Neither source is admitted to protected temporal
+evaluation: outcome-availability clocks, logical mappings and complete expected
+suite evidence remain unresolved. The registry's seven required diversity gaps
+stay visible. A reader returning records is not evidence of generalization.
+
+## Compatibility and limits
+
+This additive 4.x release reuses the runner, results, sinks, checkpoints and
+materialization contracts. Existing native and domain artifacts retain their
+meaning. New source slices require schema v1; unknown versions and incompatible
+layouts reject. There is no automatic migration from native results, filtered
+baseline tables or arbitrary JUnit XML.
+
+RTPTorrent preserves exact declared class seconds. LRTS preserves explicitly
+declared binary64 source projections and rejects silent rounding, underflow,
+negative/nonfinite durations and incompatible units. Zero and unavailable remain
+different; valid negative values in unrelated signed contracts retain support.
+
+Whole-archive fetching is not added. The existing materializer's ZIP64 policy and
+hard 128-entry ceiling remain in force; real source containers exceed them.
+Supported conversion starts from separately pinned permitted decoded members.
+Inputs are bounded per operation, without an OS sandbox or global cache quota.
+Recipe-only rows must remain local. The base package needs no MCP or transport
+dependency for these readers.
+
+## Validation and next steps
+
+The reviewed implementation passed **2,107 tests** with **95.40% combined
+statement/branch coverage**, including installed base-wheel workflows outside the
+checkout. Lint, formatting, both type checkers, Pylint, docstring and structural
+gates, strict documentation and package builds passed. Local-only OpenCodeReview
+and manual exclusions covered every changed file. Confirmed review findings were
+reproduced and fixed with regressions before integration; source/identity/unit,
+serialization, corruption, interruption, concurrent publication and recovery
+checks accompany the readers.
+
+The diversified benchmark program in
+[#261](https://github.com/jacksonpradolima/coleman/issues/261) remains open.
+Controlled real-fault corpora, variant expansion, synthetic stress, comparable
+baselines/statistics, modern-CI feasibility, frozen confirmation and cross-corpus
+reports remain sequential work. Negative and inconclusive results remain valid.
+
+Implemented in [#290](https://github.com/jacksonpradolima/coleman/pull/290) and
+[#291](https://github.com/jacksonpradolima/coleman/pull/291).
+
+[Full changes from 4.4.1](https://github.com/jacksonpradolima/coleman/compare/v4.4.1...v4.5.0).
+
+
+
 ### FILE: docs/releases.md
 
 # Release preparation
@@ -7478,6 +7839,245 @@ includes installed-package examples and independent correctness evidence; passes
 local review and repository checks; and receives PR review before integration.
 No source admission, performance result, prospective observation, independence
 assumption or commercial value is inferred from a planned feature.
+
+
+
+### FILE: docs/rtptorrent.md
+
+# RTPTorrent: source assessment and bounded class-result conversion
+
+The RTPTorrent adapter in this source revision converts **raw class-result CSV
+members**, using the existing licensed materialization/cache contract. The published
+4.4.x wheels do not include this adapter; build and install this source revision to
+run these examples. It does not admit RTPTorrent to protected temporal evaluation.
+
+An execution is identified by project, job ID, class label and source position.
+Repeated class labels remain separate executions. Job IDs are neither logical
+build IDs nor timestamps. No commit date, synthetic clock or sum of durations is
+substituted for outcome availability.
+
+## Research questions and source decisions
+
+The source audit asks which exact bytes and terms can be pinned, what an observation
+means, whether feedback was available before a decision, and which evidence a
+baseline table actually retains. It uses the original paper, artifact README and
+actual bounded member inspection. This is a focused source-admission assessment,
+not a completed systematic literature review or an effectiveness study.
+
+Primary sources checked on 2026-10-15/16 UTC:
+
+- [RTPTorrent 1.1](https://zenodo.org/records/4046180), DOI
+  `10.5281/zenodo.4046180`, and its archive README. The provider advertises
+  `rtp-torrent-v11.zip`, 5,016,963,482 bytes, MD5
+  `1f7fa822b0cf155bd007a94d1a24a336`, and CC BY 4.0 metadata.
+- [The authors' MSR 2020 paper](https://doi.org/10.1145/3379597.3387458)
+  describes the historical Java/Travis corpus and its limitations. The README
+  defines class-level duration in seconds and separate method failure/error/skip
+  counts, and warns against using concurrent sibling jobs as prior feedback.
+- [TravisTorrent's archive notice](https://testroots.github.io/travistorrent-site/page_access/)
+  directs users to [Figshare record 19314170](https://doi.org/10.6084/m9.figshare.19314170)
+  and states that raw-log access ended in 2022. The checked record is version 1;
+  `final-2017-01-25.csv.gz` has 264,607,174 bytes and provider MD5
+  `5d359345fecf0bf47be6edb10b5aae58`.
+- [TravisTorrent field documentation](https://testroots.github.io/travistorrent-site/page_dataformat/)
+  describes its trigger timestamp. The inspected 66-column CSV header contains
+  no explicit completion field. Matching coverage and full dump integrity remain
+  unverified. [Travis API documentation](https://docs.travis-ci.com/api/#builds)
+  distinguishes start/completion and warns that restarted build duration need
+  not equal their difference. These fields cannot silently create outcome times.
+
+The original paper names `travistorrent_8_2_2017.csv` as its metadata join table.
+The inspected Figshare dump is `final-2017-01-25.csv.gz`. Their equivalence and
+join coverage have not been verified; the accessible snapshot cannot silently
+substitute for the one cited in the paper.
+
+The paper also reports 17 negative durations caused by test-runner defects and
+notes that clock resolution produces reported zeros. This adapter rejects
+negative duration rows rather than repairing them or treating them as unavailable.
+A valid reported zero remains zero; it does not prove that execution consumed no
+physical time. Changing logging, platforms, components and hardware further
+limit cross-job identity and timing comparisons.
+
+The RTPTorrent ZIP64 end record advertises 2,883 entries and 395,312 central-directory
+bytes. This exceeds the existing v1 materializer's entry ceiling and ZIP64 policy.
+That contract remains unchanged. A future complete-archive recipe needs an explicit,
+reviewed capability extension; relabeling an archive as an already validated ZIP
+would bypass the existing contract.
+
+### Observed source discrepancy
+
+The following **single-project descriptive check** inspected the HikariCP raw
+member and its published `untreated` baseline member. It did not pool projects or
+estimate independent observations:
+
+| Source member under `rtp-torrent/brettwooldridge@HikariCP/` | Rows | Jobs | Jobs without reported class failures/errors |
+| --- | ---: | ---: | ---: |
+| `brettwooldridge@HikariCP.csv` | 46,995 | 1,662 | 1,530 |
+| `baseline/HikariCP@untreated.csv` | 4,611 | 125 | 0 |
+
+The raw member has 23,693 distinct job/class pairs but 46,995 distinct
+job/class/position keys. Collapsing by class would lose executions. The published
+baseline is a filtered slice; it cannot stand in for the complete raw history or
+establish a zero-failure regime. Counts of source rows without reported failures
+are not independent verification that the entire CI job passed.
+
+The independently computed raw-member SHA-256 is
+`0ebc3dd28d09227f6aa56698b76c7a217d034aa83318ffc5a75ff8d2d0632687`
+for 2,825,388 decoded bytes. The baseline-member SHA-256 is
+`ad162fbdd9786db59a30b7bc5625fab19cbac9d5b11e47ca6c1d79b46e041fa9`
+for 339,235 decoded bytes. These are **member identities**, not the archive SHA-256.
+Bounded HTTPS ranges, ZIP metadata and member CRC/size/deflate-EOF checks informed
+this research. The complete archive was not verified: interrupted acquisition
+remains partial. No third-party source rows or archive are committed here.
+
+To reproduce the descriptive counts, obtain the exact 1.1 archive outside Git,
+verify its complete bytes against the provider's size/MD5 and compute its SHA-256,
+then export the named members with a separately reviewed ZIP64-capable tool. Pin
+each decoded member before conversion. Compare raw row counts, distinct job IDs,
+distinct job/class and job/class/position keys, and group-level absence of positive
+failure/error counts. Do not treat a partial archive or range checksum as proof
+of the entire container. Complete archive acquisition/validation is still an
+outstanding reproducibility step, not a passing COLEMAN fetch recipe.
+
+**Admission decision: blocked.** The raw layout supplies no event/completion clock
+or complete build/job mapping, and repeated class labels lack a disambiguating
+module/configuration dimension. A frozen completion/mapping source and explicit
+identity/outcome rules are needed before temporal baselines or confirmation. This
+is a documented compatibility limit, not a claim that the corpus is permanently
+unusable. The registry and all seven uncovered diversity regimes remain unchanged.
+
+## Contract and compatibility
+
+```mermaid
+flowchart TD
+    S[Explicit source bytes and reviewed terms] --> M[Existing pinned materialization]
+    M --> C[External immutable source cache]
+    C --> R[Bounded raw class-result reader]
+    R --> D[Versioned execution dataset and provenance]
+    D --> B[Temporal evaluation blocked: clocks and mapping missing]
+    D --> A[Source-correspondence check and immutable local artifact]
+    F[Owned constructed fixture only] --> I[Isolated serial native projection]
+    I --> N[Existing runner and learning checkpoint]
+    N --> K[Independent known-answer check]
+```
+
+`RTPTorrentSpec` and `RTPTorrentDataset` require integer `schema_version=1` and the
+`rtptorrent-class-results-v1` recipe. Missing, legacy, extra-field and future
+contracts reject; there is no implicit migration from native Parquet, baseline
+CSV, source cards or materialization receipts. Existing artifacts retain their
+meaning. `validate_rtptorrent_dataset` recomputes conversion from verified cache
+bytes; reading a JSON artifact alone checks invariants, not source correspondence.
+
+The accepted header is exactly:
+
+```text
+travisJobId,testName,index,duration,count,failures,errors,skipped
+```
+
+| Input | Meaning and behavior |
+| --- | --- |
+| `duration=0` | Observed zero reported class seconds |
+| Empty duration | Null with explicit `duration_status=unavailable`, never zero |
+| Negative, nonfinite or more than twelve fractional places | Reject conversion |
+| Failure/error count greater than zero | Reported failed class; not a unique fault |
+| Complete zero failure/error counts with executed methods | Reported passed class |
+| All methods skipped or total count zero | Not run; not a pass |
+| Incomplete counts without a known failure | Unknown; not a pass |
+| Exact repeated execution row | Explicit duplicate exclusion; conserved input count |
+| Same project/job/class/position with different values | Reject conflicting identity |
+| Repeated class at different positions | Retain separate executions |
+
+Durations use `s` with meaning `rtptorrent-reported-class-elapsed-v1`. They are not
+observed runner work or parallel elapsed CI savings. Counts are nonnegative
+integers; known failing/error/skipped counts cannot exceed the total. No unique
+fault, calibrated probability, flakiness or independence is inferred.
+The frozen spec retains duration units even for null values. Non-null duration
+quantities require `duration_status=observed`; this source layout supplies no
+not-applicable duration encoding, so that status rejects rather than being invented.
+
+Limits are 16 MiB per selected member, at most 50,000 physical data rows, 16 KiB
+per physical line and 1,024 characters per field. Duration literals have a
+separate 64-character ceiling before Decimal construction. Lower row/line limits may be
+frozen in the spec. UTF-8 comma-separated single-line records are required;
+multiline quoted labels, malformed records and filtered baseline headers reject.
+These are bounded input dimensions, not an operating-system memory sandbox.
+
+## Complete owned example
+
+Build a wheel from this revision and install it in an activated Python 3.14+
+environment. Run this example outside the checkout. The license below applies
+only to this newly authored fixture; never reuse it for downloaded data.
+
+```python
+import hashlib
+import io
+from tempfile import TemporaryDirectory
+from pathlib import Path
+
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus import MaterializationSpec, SourceCache, load_registry, materialize_source
+from coleman.corpus.rtptorrent import convert_rtptorrent_source, publish_rtptorrent_dataset
+from coleman.corpus.rtptorrent_contracts import RTPTorrentSpec
+
+payload = (
+    b"travisJobId,testName,index,duration,count,failures,errors,skipped\n"
+    b"101,owned.Test,0,0,1,0,0,0\n"
+    b"101,owned.Test,1,2,1,1,0,0\n"
+)
+digest = "sha256:" + hashlib.sha256(payload).hexdigest()
+package = MaterializationSpec.model_validate({
+    "schema_version": 1,
+    "package_id": "owned-rtptorrent-format",
+    "archive": "raw",
+    "source": {
+        "uri": "urn:coleman:owned:rtptorrent-format",
+        "version": "1.1",
+        "citation": "Repository-authored format-compatible CI fixture",
+        "sha256": digest, "size_bytes": len(payload), "availability": "not_verified",
+    },
+    "license": load_registry().card("ci-serial-boundary-v1").manifest.license,
+    "members": [{"name": "classes.csv", "sha256": digest, "size_bytes": len(payload)}],
+})
+with TemporaryDirectory() as temporary:
+    root = Path(temporary)
+    cache = SourceCache(root / "external-cache")
+    receipt = materialize_source(package, cache, lambda: io.BytesIO(payload))
+    spec = RTPTorrentSpec(schema_version=1, materialization=receipt,
+                         member="classes.csv", project="owned/ci", history="constructed")
+    dataset = convert_rtptorrent_source(spec, cache)
+    assert len(dataset.executions) == 2 and dataset.repeated_class_executions == 1
+    artifact = publish_rtptorrent_dataset(dataset, cache, ArtifactWriter(root / "exports"))
+    assert artifact.exists()
+    try:
+        dataset.require_temporal_evaluation()
+    except ValueError as error:
+        print(error)  # Expected: no source clock or logical-build mapping.
+    else:
+        raise AssertionError("A clockless source entered temporal evaluation")
+```
+
+For native execution, copy the [complete owned CI example](https://github.com/jacksonpradolima/coleman/blob/main/examples/rtptorrent/ci.py)
+outside the checkout and run:
+
+```bash
+python ci.py owned-ci /absolute/path/outside-git/rtptorrent-cache
+python ci.py owned-ci /absolute/path/outside-git/rtptorrent-cache
+```
+
+It materializes and converts an owned format-compatible fixture, preserves the
+reported green/repeated-class and unknown jobs, and projects only one complete,
+unique-class **constructed isolated serial job** to native Parquet. Random/RNFail
+run through the existing runner. Independent exact references check its native
+metrics, and reopening the learning checkpoint preserves one result row. This
+example uses no cross-job learning and claims no observed CI timeline or savings.
+
+Converted JSON contains source rows: keep recipe-only data local, outside public
+commits and mirrors. The publisher validates exact cached source correspondence,
+cache/output separation and output containment before immutable publication.
+Identical concurrent retries converge; interrupted writes produce no completed
+JSON. Process-kill temporary-file and filesystem durability limits are inherited
+from the existing artifact writer. No separate experiment framework, learning
+checkpoint, CLI dependency, MCP dependency or automatic download is introduced.
 
 
 
