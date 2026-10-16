@@ -33,7 +33,7 @@ def _bind_metadata(infos: tuple[zipfile.ZipInfo, ...], records: tuple[Zip64Recor
             info.file_size,
             info.header_offset,
         )
-        if info.orig_filename != info.filename or actual != record:
+        if info.orig_filename != info.filename or actual != record.info_identity:
             raise ValueError("ZIP64 standard-reader metadata disagrees with actual central bytes")
 
 

@@ -14,7 +14,11 @@ _SENTINEL = 0xFFFFFFFF
 
 
 class Zip64Record(NamedTuple):
-    """Validated central metadata; sizes/offset are unsigned byte counts and CRC is CRC-32."""
+    """Validated central metadata; sizes/offset are bytes and CRC is CRC-32.
+
+    offset_only_zip64 preserves actual sentinel origin, including wide offsets
+    resolving to small values; it cannot be inferred from resolved byte counts.
+    """
 
     name: str
     version: int
@@ -24,6 +28,21 @@ class Zip64Record(NamedTuple):
     compressed: int
     decoded: int
     offset: int
+    offset_only_zip64: bool
+
+    @property
+    def info_identity(self) -> tuple[str, int, int, int, int, int, int, int]:
+        """Return the eight resolved ZipInfo fields, excluding the independently retained sentinel origin."""
+        return (
+            self.name,
+            self.version,
+            self.flags,
+            self.method,
+            self.crc,
+            self.compressed,
+            self.decoded,
+            self.offset,
+        )
 
 
 class Zip64Directory(NamedTuple):
@@ -122,9 +141,10 @@ def _central_record(stream: BinaryIO, available: int) -> tuple[Zip64Record, int]
         raise ValueError("ZIP64 central extra metadata is truncated")
     if _SENTINEL in (decoded, compressed) and version != 45:
         raise ValueError("ZIP64 central size sentinel requires extraction version45")
+    offset_only_zip64 = offset == _SENTINEL and _SENTINEL not in (decoded, compressed)
     decoded, compressed, offset = _sizes(extra, (decoded, compressed, offset))
     stream.seek(comment_bytes, 1)
-    record = Zip64Record(name, version, flags, method, crc, compressed, decoded, offset)
+    record = Zip64Record(name, version, flags, method, crc, compressed, decoded, offset, offset_only_zip64)
     _entry_policy(record, attributes)
     return record, consumed
 
@@ -204,7 +224,9 @@ def _local_identity(header: _LocalHeader, record: Zip64Record) -> None:
     """Require supported local compression/flags/version; offset-only ZIP64 can elevate central version."""
     if header.version not in (10, 20, 45) or (header.flags, header.method) != (record.flags, record.method):
         raise ValueError("ZIP64 local flags/method/version disagree")
-    if header.version > record.version or (record.version != 45 and header.version != record.version):
+    if header.version != record.version and not (
+        record.version == 45 and record.offset_only_zip64 and header.version < record.version
+    ):
         raise ValueError("ZIP64 local extraction version disagrees")
     if header.method == 8 and header.version < 20:
         raise ValueError("ZIP64 local deflate requires extraction version20 or later")

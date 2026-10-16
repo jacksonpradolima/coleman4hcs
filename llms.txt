@@ -9995,8 +9995,11 @@ compression preference, and offset-only ZIP64 central metadata may retain legacy
 extraction version 1.0/2.0. Bits 1/2 have no defined compression meaning for stored
 payloads in the specification; only the observed bit 1 is accepted here. Local and
 central flags still must agree exactly; size sentinels still require version 4.5
-and both local size fields. Offset-only metadata still requires the exact wide
-offset and ZIP64 end records. Legacy profiles keep rejecting these forms.
+and both local size fields. A lower local version is accepted against central
+version 4.5 only when the actual central offset was sentinel-backed and neither
+central size used a sentinel. Resolving that wide offset to a small value does
+not erase its origin. Offset-only metadata still requires the exact wide offset
+and ZIP64 end records. Legacy profiles keep rejecting these forms.
 This is not a general ZIP extractor.
 Unselected payloads are not decoded or CRC-certified. Their local/central header
 identities and physical bounds are checked; the entire enclosing byte stream is

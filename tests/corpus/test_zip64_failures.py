@@ -196,6 +196,51 @@ def test_offset_only_central_version_does_not_allow_deflate_with_local_version10
         materialize_zip64_files(spec, cache, lambda: io.BytesIO(raw))
 
 
+def offset_backed_entry(*, wide_size=False):
+    """Construct an actual ZIP64 offset extension resolving to zero, with a legacy local data header."""
+    raw = owned_zip64(force_zip64=False)
+    central = raw.index(b"PK\x01\x02")
+    name_bytes = struct.unpack_from("<H", raw, central + 28)[0]
+    values = (len(b"owned CI records\n"), 0) if wide_size else (0,)
+    extra = struct.pack("<HH" + "Q" * len(values), 1, len(values) * 8, *values)
+    raw = mutated(raw, central + 6, "<H", 45)
+    raw = mutated(raw, central + 30, "<H", len(extra))
+    raw = mutated(raw, central + 42, "<I", 0xFFFFFFFF)
+    if wide_size:
+        raw = mutated(raw, central + 24, "<I", 0xFFFFFFFF)
+    position = central + 46 + name_bytes
+    raw = raw[:position] + extra + raw[position:]
+    for offset in (-58, -34):
+        original = struct.unpack_from("<Q", raw, len(raw) + offset)[0]
+        raw = mutated(raw, len(raw) + offset, "<Q", original + len(extra))
+    return raw
+
+
+def test_ordinary_central45_does_not_certify_mismatched_legacy_local_header(tmp_path):
+    raw = owned_zip64(force_zip64=False)
+    raw = mutated(raw, raw.index(b"PK\x01\x02") + 6, "<H", 45)
+    spec = recipe(raw)
+    cache = SourceCache(tmp_path / "cache")
+    with pytest.raises(ValueError, match="version"):
+        materialize_zip64_files(spec, cache, lambda: io.BytesIO(raw))
+
+
+def test_size_and_offset_sentinels_do_not_grant_offset_only_version_exception(tmp_path):
+    raw = offset_backed_entry(wide_size=True)
+    spec = recipe(raw)
+    cache = SourceCache(tmp_path / "cache")
+    with pytest.raises(ValueError, match="version"):
+        materialize_zip64_files(spec, cache, lambda: io.BytesIO(raw))
+
+
+def test_offset_sentinel_origin_is_preserved_even_when_resolved_offset_is_zero(tmp_path):
+    raw = offset_backed_entry()
+    spec = recipe(raw)
+    cache = SourceCache(tmp_path / "cache")
+    assert materialize_zip64_files(spec, cache, lambda: io.BytesIO(raw))
+    validate_zip64_files(spec, cache)
+
+
 def test_source_digest_failure_precedes_any_structural_inspection(tmp_path):
     raw = owned_zip64()
     cache = SourceCache(tmp_path / "cache")
