@@ -76,7 +76,6 @@ def role_capture(
     Incomplete pairs therefore remain visible in generic controlled results.
     The producer timer includes container/compile overhead and is not a test cost.
     """
-    status = "collected"
     header = None
     cases: tuple[JunitCase, ...] = ()
     if streams.termination != "exited":

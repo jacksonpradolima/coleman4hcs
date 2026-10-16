@@ -266,10 +266,16 @@ class JunitRoleCapture(VersionedContract):
             ids = tuple(item.test_id for item in self.cases)
             if len(ids) != len(set(ids)) or set(ids) != set(self.header.test_ids):
                 raise ValueError("Collected JUnit cases disagree with declared runtime discovery")
-        elif self.cases:
-            raise ValueError("Incomplete JUnit captures cannot promote partial/invalid streams into observations")
-        elif self.header is not None:
-            raise ValueError("Incomplete JUnit captures cannot claim a validated runtime header")
+        return self
+
+    @model_validator(mode="after")
+    def _incomplete(self) -> Self:
+        """Keep incomplete raw packets separate from validated case/runtime observations."""
+        if self.status != "collected":
+            if self.cases:
+                raise ValueError("Incomplete JUnit captures cannot promote partial/invalid streams into observations")
+            if self.header is not None:
+                raise ValueError("Incomplete JUnit captures cannot claim a validated runtime header")
         return self
 
 
