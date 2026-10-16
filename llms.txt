@@ -61,6 +61,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/releases/4.5.0.md
 - docs/releases/4.6.0.md
 - docs/releases/4.7.0.md
+- docs/releases/4.8.0.md
 - docs/releases.md
 - docs/resource-replay.md
 - docs/roadmap.md
@@ -8481,6 +8482,90 @@ functional execution evidence, not completed corpus admission.
 
 
 
+### FILE: docs/releases/4.8.0.md
+
+# COLEMAN 4.8 — Real CI history, reproducible test prioritization runs
+
+Turn a pinned RTPTorrent archive into inspectable Parquet and checkpointed TCPCI experiments with
+the runner you already use. This release connects verified source acquisition, complete analytical
+history and a bounded native replay in one documented workflow.
+
+## What you can do
+
+- **Prepare real RTPTorrent CI observations.** The HikariCP preset preserves 46,995 class executions
+  across 1,662 source jobs in analytical Parquet, with exact reported seconds, original execution
+  identities and explicit missing values.
+- **Run and resume Random/UCB experiments.** An explicit eight-job preset projects 18 compatible
+  executions into the existing native API. Two policies produce 16 result rows across eight modeled
+  rounds; retrying resumes committed checkpoints without duplicating results.
+- **Inspect every exclusion.** The other 46,977 executions remain analytical records. Source,
+  projection and duplicate counts must reconcile, so a smaller native slice never erases the
+  original history.
+- **Verify what you downloaded.** A separate bounded ZIP64 profile verifies the full approximately 5
+  GB source, selected-member membership and decoded hashes. Resumable operator downloads and an
+  external cache keep large data out of the repository and wheel.
+- **Reproduce artifacts deliberately.** Versioned recipes bind source terms, hashes, assumptions,
+  actual producer code and Parquet writer version. Immutable tables precede the completion receipt;
+  interruption, concurrent retries and unknown versions have explicit behavior.
+
+The release also corrects Linux memory accounting for application workers: a large parent process
+can no longer make a small worker appear over its RSS limit. The guard measures the worker
+executable's kernel high-water mark, retains existing admission limits and fails closed when
+measurement is unavailable. Real Linux regressions cover both native/coverage execution and actual
+low-cap refusal.
+
+## Try it
+
+Use Python **3.14+** and install the verified 4.8 wheel from the release assets. After downloading
+the pinned archive to an external workspace:
+
+```bash
+python -m coleman.transports.rtptorrent_etl \
+  --archive /external/rtp-torrent-v11.zip \
+  --cache /external/coleman-cache --output /external/coleman-data --run
+
+# Once cached, verify and resume offline.
+python -m coleman.transports.rtptorrent_etl \
+  --cache /external/coleman-cache --output /external/coleman-data --run
+```
+
+See the [RTPTorrent Parquet and replay
+guide](https://jacksonpradolima.github.io/coleman/rtptorrent-parquet-etl/) for installation, source
+download, offline replay and the typed API. A small repository-authored example exercises the same
+complete path without downloading foreign data. The existing [LRTS
+workflow](https://jacksonpradolima.github.io/coleman/lrts-parquet-etl/) remains available.
+
+## Evidence you can inspect
+
+The installed-package workflow runs outside checkout against the real source cache, validates
+Parquet, executes the actual native runner twice and checks committed checkpoint recovery. Local
+regression coverage includes serialization/goldens, unknown versions, incompatible units,
+zero/null/unknown/not-run semantics, source-order metamorphism, duplicate conservation, concurrent
+exports, interrupted writes, forged provenance and import boundaries. Complete local review and CI
+evidence are linked from the implementation PRs.
+
+## Scope and compatibility
+
+This delivery supports **post-hoc source-job serial simulation**. Numeric job labels are not
+verified chronology; reported class seconds are not parallel CI wall-clock savings; repeated seeds
+are not independent observations. Protected temporal admission remains blocked by missing source
+clocks and logical build/job mapping. The broader diversified corpus and confirmatory comparisons in
+#261 remain ongoing.
+
+Existing ZIP recipes, raw readers, native Parquet, LRTS exports and checkpoints retain their
+semantics. No historical artifact is silently migrated. New receipts require explicit
+schema/producer/writer compatibility. Source data terms remain separate from enclosed subject-code
+rights, and the workflow does not execute archived subject repositories.
+
+Implementation and review: [ZIP64 source integrity
+(#314)](https://github.com/jacksonpradolima/coleman/pull/314), [real Parquet and native replay
+(#315)](https://github.com/jacksonpradolima/coleman/pull/315). The complete local suite passed
+**2,542 tests with 95.31% coverage**, with the Linux-only regression separately exercised in Linux
+and an installed wheel. [Full
+changes](https://github.com/jacksonpradolima/coleman/compare/v4.7.0...v4.8.0).
+
+
+
 ### FILE: docs/releases.md
 
 # Release preparation
@@ -8490,6 +8575,12 @@ selection and evidence. Generic decision contracts support that product; a relea
 should explain the value to CI users before listing internal implementation work.
 
 ## Versioning and integration
+
+The reviewed **4.8 source integration** combines bounded ZIP64 source integrity
+and the [complete RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md),
+including a Linux worker memory-accounting correction. Its
+[reviewed release description](releases/4.8.0.md) is ready for automatic publication
+after the release integration PR passes. The published wheel remains 4.7 until then.
 
 The published [COLEMAN 4.7](releases/4.7.0.md) release adds a real
 [LRTS download-to-Parquet workflow](lrts-parquet-etl.md), including analytical
@@ -8840,7 +8931,8 @@ The **4.8 source integration** now includes #301's reviewed ZIP64 selection and
 complete RTPTorrent archive/member integrity evidence through
 [#314](https://github.com/jacksonpradolima/coleman/pull/314). The implementation for
 #302 adds the [full analytical/native Parquet workflow](rtptorrent-parquet-etl.md),
-an explicit eight-source-job simulation and checkpoint recovery. These compatible
+an explicit eight-source-job simulation and checkpoint recovery through
+[#315](https://github.com/jacksonpradolima/coleman/pull/315). These compatible
 source deliveries are grouped before publication; the published wheel remains
 4.7 until the integration is reviewed and released. Remaining source admission,
 diversity and confirmatory work continues in #303–#313.

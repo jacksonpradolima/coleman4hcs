@@ -6,6 +6,12 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
+The reviewed **4.8 source integration** combines bounded ZIP64 source integrity
+and the [complete RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md),
+including a Linux worker memory-accounting correction. Its
+[reviewed release description](releases/4.8.0.md) is ready for automatic publication
+after the release integration PR passes. The published wheel remains 4.7 until then.
+
 The published [COLEMAN 4.7](releases/4.7.0.md) release adds a real
 [LRTS download-to-Parquet workflow](lrts-parquet-etl.md), including analytical
 tables, explicit native simulation input and actual runner/checkpoint recovery.
