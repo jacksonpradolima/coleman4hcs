@@ -150,7 +150,8 @@ quantities require `duration_status=observed`; this source layout supplies no
 not-applicable duration encoding, so that status rejects rather than being invented.
 
 Limits are 16 MiB per selected member, at most 50,000 physical data rows, 16 KiB
-per physical line and 1,024 characters per field. Lower row/line limits may be
+per physical line and 1,024 characters per field. Duration literals have a
+separate 64-character ceiling before Decimal construction. Lower row/line limits may be
 frozen in the spec. UTF-8 comma-separated single-line records are required;
 multiline quoted labels, malformed records and filtered baseline headers reject.
 These are bounded input dimensions, not an operating-system memory sandbox.

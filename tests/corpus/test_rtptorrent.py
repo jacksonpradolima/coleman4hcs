@@ -143,6 +143,17 @@ def test_ascii_decimal_spellings_preserve_reported_seconds(tmp_path, duration):
     assert observed.semantics == REPORTED_SECONDS
 
 
+def test_duration_literal_limit_is_distinct_from_numeric_value(tmp_path):
+    allowed, cache = materialized(tmp_path / "allowed", HEADER + "101,owned.Test,0," + "0" * 64 + ",1,0,0,0\n")
+    dataset = convert_rtptorrent_source(allowed, cache)
+    duration = dataset.job(101)[0].duration
+    assert duration is not None
+    assert duration.value == 0
+    oversized, other = materialized(tmp_path / "oversized", HEADER + "101,owned.Test,0," + "0" * 65 + ",1,0,0,0\n")
+    with pytest.raises(ValueError, match="duration"):
+        convert_rtptorrent_source(oversized, other)
+
+
 @pytest.mark.parametrize("counts", ["1,2,0,0", "1,0,1,1", "-1,0,0,0", "1.0,0,0,0", "01,0,0,0", "1,true,0,0"])
 def test_invalid_method_counts_reject_without_repair(tmp_path, counts):
     spec, cache = materialized(tmp_path, HEADER + f"101,owned.Test,0,1,{counts}\n")

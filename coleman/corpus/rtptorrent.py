@@ -26,11 +26,22 @@ def _integer(text: str, *, optional: bool = False) -> int | None:
     return int(text)
 
 
+def _decimal_literal(text: str) -> bool:
+    """Check ASCII decimal syntax with separate, unambiguous mantissa and exponent matches."""
+    coefficient, separator, exponent = text.lower().partition("e")
+    mantissa = re.fullmatch(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)", coefficient, flags=re.ASCII)
+    return mantissa is not None and (not separator or re.fullmatch(r"[+-]?\d+", exponent, flags=re.ASCII) is not None)
+
+
 def _duration(text: str) -> Quantity | None:
-    """Parse finite reported seconds exactly; empty is unavailable, never observed zero."""
+    """Parse finite reported seconds exactly; empty is unavailable, never observed zero.
+
+    At most 64 ASCII characters reach Decimal construction. Malformed, nonfinite,
+    negative and overprecision literals raise ValueError; no file is written.
+    """
     if not text:
         return None
-    if len(text) > 64 or re.fullmatch(r"[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?", text, flags=re.ASCII) is None:
+    if len(text) > 64 or not _decimal_literal(text):
         raise ValueError("Invalid or overlong duration")
     try:
         value = Decimal(text)
