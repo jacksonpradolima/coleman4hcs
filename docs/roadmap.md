@@ -72,6 +72,15 @@ deliveries may be collected in a **4.8** integration branch before publication.
 No release number or subtask closure substitutes for an actual source-integrity,
 diversity, temporal-admission or scientific evidence gate.
 
+The **4.8 source integration** now includes #301's reviewed ZIP64 selection and
+complete RTPTorrent archive/member integrity evidence through
+[#314](https://github.com/jacksonpradolima/coleman/pull/314). The implementation for
+#302 adds the [full analytical/native Parquet workflow](rtptorrent-parquet-etl.md),
+an explicit eight-source-job simulation and checkpoint recovery. These compatible
+source deliveries are grouped before publication; the published wheel remains
+4.7 until the integration is reviewed and released. Remaining source admission,
+diversity and confirmatory work continues in #303–#313.
+
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:
 

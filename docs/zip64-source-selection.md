@@ -4,7 +4,8 @@ The implementation for [#301](https://github.com/jacksonpradolima/coleman/issues
 adds an explicit ZIP64 recipe to the existing verified source cache. This page
 describes the source revision containing that implementation; the published 4.7
 wheel does not include this API. The feature verifies selected file membership.
-The real RTPTorrent download-to-Parquet preset is separate work in
+The [RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md) builds on this
+profile in the source implementation for
 [#302](https://github.com/jacksonpradolima/coleman/issues/302).
 
 ## Run the owned CI example outside the checkout
@@ -192,8 +193,9 @@ csv_path = cache.member_path(receipts[0], "hikaricp-class-results.csv")
 assert csv_path.stat().st_size == 2825388
 ```
 
-This is real source acquisition and selected-member validation. Real analytical/
-native Parquet and a declared replay bridge are the separate #302 deliverable.
+This is real source acquisition and selected-member validation. The
+[Parquet workflow](rtptorrent-parquet-etl.md) adds complete analytical history,
+a bounded native projection and a declared replay bridge in #302.
 Protected temporal evaluation remains blocked by missing source clocks and
 logical build/job mapping. A fresh installed-wheel regression can additionally
 reverify the real source cache without network:

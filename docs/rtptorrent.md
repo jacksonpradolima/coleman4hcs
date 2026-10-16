@@ -2,7 +2,9 @@
 
 The RTPTorrent adapter in COLEMAN 4.5 converts **raw class-result CSV members**,
 using the existing licensed materialization/cache contract. Install the verified
-4.5 release wheel to run these examples. RTPTorrent remains blocked from protected
+4.5 release wheel to run these examples. The source implementation for 4.8 adds
+the complete [real Parquet/replay workflow](rtptorrent-parquet-etl.md).
+RTPTorrent remains blocked from protected
 temporal evaluation.
 
 An execution is identified by project, job ID, class label and source position.
@@ -90,7 +92,8 @@ informed this research. On 2026-10-16 complete acquisition verified all
 The new [bounded ZIP64 profile](zip64-source-selection.md) verified actual enclosing
 membership and repeated offline conversion of the raw HikariCP member. Its frozen
 metadata recipe is included in the source revision containing #301; the published
-4.7 wheel does not include that profile. Real Parquet ETL remains #302, and source
+4.7 wheel does not include that profile. The [real Parquet ETL](rtptorrent-parquet-etl.md)
+builds on it in the source implementation for #302, and source
 integrity does not supply missing temporal evidence. No third-party source rows
 or archive are committed here.
 
