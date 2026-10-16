@@ -76,12 +76,18 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 [![codecov](https://codecov.io/github/jacksonpradolima/coleman4hcs/branch/main/graph/badge.svg?token=BW04LB0B5Y)](https://codecov.io/github/jacksonpradolima/coleman4hcs)
 
 
-COLEMAN 4.3 makes CI test-prioritization experiments easier to audit.
+COLEMAN 4.4 helps you inspect CI data and reproduce the inputs to your experiments.
+[Native corpus profiles](docs/benchmark-corpus.md)
+expose units, missingness and identity conflicts. [Source materialization](docs/corpus-materialization.md)
+verifies pinned bytes in an external cache and publishes deterministic integrity receipts.
+Read the [4.4 release notes](docs/releases/4.4.0.md) for complete workflows and limits.
+Existing source-admission blockers remain visible; this release does not establish
+cross-corpus effectiveness.
+
 [Exact resource accounting](docs/resource-replay.md) keeps estimates, reservations,
 actual runner work and overhead distinct. [Frozen shadow evaluation](docs/prospective-shadow.md)
-seals recommendations before feedback, preserves source/receipt chronology and
-recovers committed evidence without changing the required test order. Read the
-[4.3 release notes](docs/releases/4.3.0.md) for complete workflows, compatibility and limits.
+seals recommendations before feedback and recovers committed evidence without
+changing the required test order.
 
 [Point-in-time observations](docs/point-in-time-observations.md), the
 [corpus foundation](docs/benchmark-corpus.md), the [application API](docs/application-api.md)
@@ -400,19 +406,19 @@ Each run persists:
 
 Requires Python 3.14 or later in an activated virtual environment. Install the
 wheel published in this repository’s GitHub releases. These examples pin version
-4.3.0 and its published SHA-256. Pip verifies the wheel before installation:
+4.4.0 and its published SHA-256. Pip verifies the wheel before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 ```
 
 Or with optional extras:
 
 ```bash
 # OpenTelemetry SDK
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -584,10 +590,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 ```
 
 ## Querying results
@@ -650,7 +656,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list
@@ -1473,13 +1479,13 @@ an LLM decision algorithm, or a hosted service.
 Use Python 3.14 or later on Linux or macOS in an activated virtual environment:
 
 ```bash
-python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e'
+python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2'
 ```
 
 For optional tools, install the same GitHub wheel with its extra:
 
 ```bash
-python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e'
+python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2'
 ```
 
 Use this repository's release assets and verify their published digest and
@@ -5341,14 +5347,17 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.3
+## New in 4.4
 
-Audit CI budgets with [exact resource accounting](resource-replay.md): estimates,
-reservations, actual runner work, release and overhead remain separate. Run
-[frozen shadow evaluation](prospective-shadow.md) through the native runner,
-sealing recommendations before feedback and recovering committed evidence after
-interruption. Required tests keep their full base order. The included one-day
-synthetic fixture remains inconclusive against its seven-day evidence requirement.
+Inspect native CI data with [bounded corpus profiles](benchmark-corpus.md):
+units, missing values, logical builds and variant execution groups remain explicit.
+[Materialize pinned source packages](corpus-materialization.md) in an external cache,
+validate their integrity offline and reproduce the owned CI example through its
+native learning checkpoint. All ten existing native registrations remain blocked
+for evaluation; all seven required diversity regimes remain uncovered.
+
+[Exact resource accounting](resource-replay.md) and [frozen shadow evaluation](prospective-shadow.md)
+retain their 4.3 behavior. The included synthetic shadow fixture remains inconclusive.
 
 [Point-in-time observations](point-in-time-observations.md) preserve what each
 decision knew, including late/corrected outcomes and conservative freshness.
@@ -5356,7 +5365,7 @@ The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures a
 visible source-admission gaps; all seven diversity regimes remain uncovered.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
-correctness checks. See the [4.3 release notes](releases/4.3.0.md) for examples,
+correctness checks. See the [4.4 release notes](releases/4.4.0.md) for examples,
 compatibility and limits.
 
 ## Quick Start
@@ -5365,7 +5374,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 coleman run --config my-experiment.yaml
 ```
 
@@ -5469,7 +5478,7 @@ cd examples/observability
 docker compose up -d
 
 # Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 
 # Enable telemetry — use the telemetry/local pack in your run.yaml:
 #   packs:
@@ -5489,7 +5498,7 @@ coleman run --config run.yaml
 
 ```bash
 docker compose --profile clickhouse up -d
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 ```
 
 ## Tear down
@@ -5950,9 +5959,9 @@ revalidates an already supplied owned history without I/O.
 
 ## Real native TCPCI and recovery
 
-Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.3.0/examples/point-in-time/ci.py)
+Copy [`ci.py`](https://github.com/jacksonpradolima/coleman/blob/v4.4.0/examples/point-in-time/ci.py)
 outside the checkout and run `python ci.py native-observation-demo` from the
-installed 4.3 wheel or source build. It fits owned historical quantities at a frozen
+installed 4.4 wheel or source build. It fits owned historical quantities at a frozen
 training cutoff before decisions, then runs three constructed native CI copies using
 `run_with_extension`, native Parquet results, RNFail and existing checkpoints.
 
@@ -6024,7 +6033,7 @@ research conclusions. It reuses [point-in-time observations](point-in-time-obser
 [resource accounting](resource-replay.md), [domain records](domain-results.md),
 immutable artifacts and native runner/checkpoint interfaces.
 
-Available from COLEMAN 4.3. Build this revision or use the verified 4.3 release
+Available from COLEMAN 4.3. Build this revision or use the verified 4.4 release
 wheel for these examples; the 4.2 wheel does not contain this module. No credentials,
 hosted service, external CI trigger or optional MCP package is needed.
 
@@ -7063,9 +7072,12 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
-COLEMAN 4.3 groups reviewed exact-resource and frozen-shadow increments.
-The next compatible feature target is **4.4.0**, continuing the public corpus
-program in reviewed vertical slices; compatible corrections use patch versions. Follow the [public roadmap](roadmap.md) in dependency order and keep each PR runnable and independently reviewed.
+[COLEMAN 4.4.0](releases/4.4.0.md) publishes bounded native corpus profiles and
+secure source-package materialization. The public corpus program continues in
+subsequent compatible **4.x** feature releases; compatible corrections use patch
+versions. Follow the [public roadmap](roadmap.md) in dependency order and keep each
+PR runnable and independently reviewed. Publishing a slice does not complete the
+remaining corpus-admission or confirmatory-evidence gates.
 
 A release branch can collect related reviewed PRs when a capability needs several
 vertical slices before publication. Keep it synchronized with security fixes from
@@ -7117,7 +7129,7 @@ notes file rather than replacing it with an unverified marketing claim.
 occupied work, release and overhead. It reuses the native runner, frozen
 [CI pilot](operational-pilot.md), [temporal evaluation](protected-evaluation.md),
 [domain records](domain-results.md), immutable artifacts and native checkpoints.
-Available from COLEMAN 4.3. Build this revision or use the verified 4.3 release
+Available from COLEMAN 4.3. Build this revision or use the verified 4.4 release
 wheel for these examples; the 4.2 wheel does not contain this module.
 
 ## Complete accounting example
@@ -7726,7 +7738,7 @@ Install this repository's GitHub release wheel, pinned to its published SHA-256.
 Pip verifies the complete wheel against this digest before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 ```
 
 Use the library API or the `coleman` CLI to run experiments:
@@ -7816,10 +7828,10 @@ coleman run --config experiment.yaml
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 
 # ClickHouse sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 ```
 
 ## Optional observability stack

@@ -20,14 +20,17 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.3
+## New in 4.4
 
-Audit CI budgets with [exact resource accounting](resource-replay.md): estimates,
-reservations, actual runner work, release and overhead remain separate. Run
-[frozen shadow evaluation](prospective-shadow.md) through the native runner,
-sealing recommendations before feedback and recovering committed evidence after
-interruption. Required tests keep their full base order. The included one-day
-synthetic fixture remains inconclusive against its seven-day evidence requirement.
+Inspect native CI data with [bounded corpus profiles](benchmark-corpus.md):
+units, missing values, logical builds and variant execution groups remain explicit.
+[Materialize pinned source packages](corpus-materialization.md) in an external cache,
+validate their integrity offline and reproduce the owned CI example through its
+native learning checkpoint. All ten existing native registrations remain blocked
+for evaluation; all seven required diversity regimes remain uncovered.
+
+[Exact resource accounting](resource-replay.md) and [frozen shadow evaluation](prospective-shadow.md)
+retain their 4.3 behavior. The included synthetic shadow fixture remains inconclusive.
 
 [Point-in-time observations](point-in-time-observations.md) preserve what each
 decision knew, including late/corrected outcomes and conservative freshness.
@@ -35,7 +38,7 @@ The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures a
 visible source-admission gaps; all seven diversity regimes remain uncovered.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
-correctness checks. See the [4.3 release notes](releases/4.3.0.md) for examples,
+correctness checks. See the [4.4 release notes](releases/4.4.0.md) for examples,
 compatibility and limits.
 
 ## Quick Start
@@ -44,7 +47,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.3.0/coleman-4.3.0-py3-none-any.whl#sha256=1e324fd6d9e82e4ab84ca17cc38d814fd407fcb1ed7e04ab6826a5dea356739e"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
 coleman run --config my-experiment.yaml
 ```
 
