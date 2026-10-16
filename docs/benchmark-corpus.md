@@ -61,6 +61,11 @@ bounded raw-class reader and an owned isolated native replay. It preserves repea
 class executions and missing CI clocks; it does not admit an external source or
 change the registry's diversity inventory. This adapter is not in the 4.4 wheel.
 
+The [LRTS source assessment](lrts.md) preserves processed metadata alongside raw
+Jenkins method/suite/node identities. Its bounded owned replay checks native
+compatibility; missing availability, stage mapping and expected-suite evidence
+keep real-source temporal evaluation blocked.
+
 `CorpusManifest` schema v1 binds:
 
 - source URI/version/citation, SHA-256, byte count and verified local availability;
