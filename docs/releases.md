@@ -6,8 +6,10 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
-[COLEMAN 4.4.1](releases/4.4.1.md) corrects exact numeric validation while retaining
-the bounded corpus profiles and secure source materialization delivered in 4.4.0.
+[COLEMAN 4.5](releases/4.5.0.md) adds bounded RTPTorrent and LRTS source readers,
+explicit units/provenance and installed native CI/checkpoint workflows. It retains
+the exact numeric safeguards from 4.4.1, corpus profiles and secure source cache.
+Both external sources remain blocked for protected temporal evaluation.
 The public corpus program continues in subsequent compatible **4.x** feature releases; compatible corrections use patch
 versions. Follow the [public roadmap](roadmap.md) in dependency order and keep each
 PR runnable and independently reviewed. Publishing a slice does not complete the

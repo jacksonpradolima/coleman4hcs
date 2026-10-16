@@ -1,9 +1,9 @@
 # RTPTorrent: source assessment and bounded class-result conversion
 
-The RTPTorrent adapter in this source revision converts **raw class-result CSV
-members**, using the existing licensed materialization/cache contract. The published
-4.4.x wheels do not include this adapter; build and install this source revision to
-run these examples. It does not admit RTPTorrent to protected temporal evaluation.
+The RTPTorrent adapter in COLEMAN 4.5 converts **raw class-result CSV members**,
+using the existing licensed materialization/cache contract. Install the verified
+4.5 release wheel to run these examples. RTPTorrent remains blocked from protected
+temporal evaluation.
 
 An execution is identified by project, job ID, class label and source position.
 Repeated class labels remain separate executions. Job IDs are neither logical
@@ -158,8 +158,8 @@ These are bounded input dimensions, not an operating-system memory sandbox.
 
 ## Complete owned example
 
-Build a wheel from this revision and install it in an activated Python 3.14+
-environment. Run this example outside the checkout. The license below applies
+Install the verified 4.5 release wheel in an activated Python 3.14+ environment.
+Run this example outside the checkout. The license below applies
 only to this newly authored fixture; never reuse it for downloaded data.
 
 ```python
