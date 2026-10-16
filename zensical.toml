@@ -24,6 +24,7 @@ nav = [
   { "Scenario Payoff Allocation" = "scenario-payoffs.md" },
   { "CI Benchmark Corpus Foundation" = "benchmark-corpus.md" },
   { "Verified Corpus Materialization" = "corpus-materialization.md" },
+  { "Bounded ZIP64 Source Selection" = "zip64-source-selection.md" },
   { "RTPTorrent Source Assessment" = "rtptorrent.md" },
   { "LRTS Source Assessment" = "lrts.md" },
   { "LRTS Download, Parquet & Replay" = "lrts-parquet-etl.md" },
