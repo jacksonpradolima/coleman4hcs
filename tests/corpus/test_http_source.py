@@ -51,7 +51,7 @@ def connection(monkeypatch, reply):
     return client, constructor
 
 
-@pytest.mark.parametrize("host", ["raw.githubusercontent.com", "repo.maven.apache.org"])
+@pytest.mark.parametrize("host", ["raw.githubusercontent.com", "repo.maven.apache.org", "zenodo.org"])
 def test_approved_origin_uses_verified_tls_no_ambient_headers_and_closes(monkeypatch, host):
     reply = response()
     client, constructor = connection(monkeypatch, reply)

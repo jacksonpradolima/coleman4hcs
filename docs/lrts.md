@@ -6,6 +6,11 @@ Jenkins JUnit report. It retains raw suites, node/enclosing-block links and ever
 method execution, including repeated labels. Install the verified 4.5 release
 wheel to run these examples.
 
+For the real-source download-to-Parquet workflow, use
+[LRTS download, conversion and native replay](lrts-parquet-etl.md). It preserves
+these admission limits while providing actual analytical/native files and an
+explicitly modeled serial simulation.
+
 **Admission remains blocked.** Scheduled build time is not executor start or
 outcome availability. Processed stage labels are not an automatic mapping to raw
 Jenkins nodes. Reported methods do not establish the complete expected CI suite.

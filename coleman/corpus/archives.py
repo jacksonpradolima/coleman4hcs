@@ -57,7 +57,7 @@ def deterministic_zip_bytes(
     return buffer.getvalue()
 
 
-def _zip_footer(path: Path, spec: MaterializationSpec) -> int:
+def _zip_footer(path: Path, maximum_entries: int, maximum_metadata_bytes: int) -> int:
     """Bound central-directory bytes/entries before ZipFile allocates its metadata structures.
 
     V1 rejects multi-disk, ZIP64, missing/trailing EOCD and metadata beyond declared
@@ -80,7 +80,7 @@ def _zip_footer(path: Path, spec: MaterializationSpec) -> int:
         raise ValueError("ZIP64 is unsupported by this recipe")
     if offset + 22 + comment != len(tail):
         raise ValueError("ZIP has inconsistent end record or trailing bytes")
-    if count > spec.limits.maximum_archive_entries or metadata_size > spec.limits.maximum_zip_metadata_bytes:
+    if count > maximum_entries or metadata_size > maximum_metadata_bytes:
         raise ValueError("ZIP metadata exceeds declared resource limits")
     if metadata_offset + metadata_size != size - len(tail) + offset:
         raise ValueError("ZIP central-directory offsets are inconsistent")
@@ -206,7 +206,7 @@ def consume_zip_members(
     Zip/CRC/I/O failures propagate as ValueError/OSError. All archive/member input
     handles close on successful consumption or any callback/decoder exception.
     """
-    directory_offset = _zip_footer(path, spec)
+    directory_offset = _zip_footer(path, spec.limits.maximum_archive_entries, spec.limits.maximum_zip_metadata_bytes)
     try:
         with zipfile.ZipFile(path) as archive:
             entries = _zip_entries(archive, spec)
@@ -226,3 +226,73 @@ def consume_zip_members(
                         consume(members[info.filename], stream)
     except (zipfile.BadZipFile, RuntimeError, zlib.error) as exc:
         raise ValueError("Invalid or unsupported ZIP source package") from exc
+
+
+def _selection_profile(members: tuple[PackageMember, ...], maximum_entries: int, maximum_metadata_bytes: int) -> None:
+    """Check independent selection ceilings before any metadata allocation or byte decoding."""
+    if (
+        type(maximum_entries) is not int
+        or not 1 <= maximum_entries <= 4096
+        or type(maximum_metadata_bytes) is not int
+        or not 22 <= maximum_metadata_bytes <= 2 * 1024**2
+        or not 1 <= len(members) <= 128
+        or len({member.name for member in members}) != len(members)
+        or sum(member.size_bytes for member in members) > 64 * 1024**2
+    ):
+        raise ValueError("Invalid bounded ZIP selection profile")
+
+
+def _selection_entries(
+    archive: zipfile.ZipFile, expected: dict[str, PackageMember], maximum_entries: int
+) -> tuple[zipfile.ZipInfo, ...]:
+    """Inspect every entry and bind the selected subset without certifying unselected payloads."""
+    entries = tuple(archive.infolist())
+    if len(entries) > maximum_entries:
+        raise ValueError("ZIP selection exceeds entry limit")
+    names = [_entry_name(info) for info in entries]
+    if len(names) != len(set(names)):
+        raise ValueError("ZIP selection has duplicate or aliased names")
+    files = {info.filename: info for info in entries if not info.is_dir()}
+    if expected.keys() - files.keys() or any(
+        files[name].file_size != member.size_bytes for name, member in expected.items()
+    ):
+        raise ValueError("Selected ZIP members disagree with frozen names/sizes")
+    return entries
+
+
+def consume_selected_zip_members(
+    path: Path,
+    members: tuple[PackageMember, ...],
+    consume: Callable[[PackageMember, ByteReader], None],
+    *,
+    maximum_entries: int,
+    maximum_metadata_bytes: int,
+) -> None:
+    """Inspect a bounded non-ZIP64 container and decode only explicitly pinned regular members.
+
+    This separate selection profile supports up to 4096 directory entries and
+    2 MiB metadata, with at most 128 selected members totaling 64 MiB. Existing
+    complete-package v1 limits/semantics remain unchanged. All names, types and
+    local headers are validated, including unselected entries; their payloads
+    are not decoded or certified. The caller must verify the complete enclosing
+    source digest first and checksum each selected stream before publication.
+    No archive path becomes a filesystem output. Invalid bounds, aliases,
+    traversal, ZIP64, links, CRC/deflate errors raise ValueError; I/O propagates.
+    """
+    _selection_profile(members, maximum_entries, maximum_metadata_bytes)
+    directory = _zip_footer(path, maximum_entries, maximum_metadata_bytes)
+    expected = {member.name: member for member in members}
+    try:
+        with zipfile.ZipFile(path) as archive:
+            entries = _selection_entries(archive, expected, maximum_entries)
+            files = {info.filename: info for info in entries if not info.is_dir()}
+            boundaries = entry_boundaries(entries, directory)
+            offsets = {info.filename: local_data_offset(path, info, boundaries[info.header_offset]) for info in entries}
+            for name, member in sorted(expected.items()):
+                info = files[name]
+                if info.compress_type == zipfile.ZIP_DEFLATED:
+                    _validate_deflate(path, info, offsets[name])
+                with archive.open(info) as stream:
+                    consume(member, stream)
+    except (zipfile.BadZipFile, RuntimeError, zlib.error) as exc:
+        raise ValueError("Invalid or unsupported selected ZIP source") from exc

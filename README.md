@@ -24,6 +24,10 @@ Read the [4.6 release notes](docs/releases/4.6.0.md) for complete examples,
 compatibility and limits. Controlled reproduction is separate from historical CI;
 source admission and the diversified benchmark remain open.
 
+The [LRTS Parquet ETL](docs/lrts-parquet-etl.md) adds a complete real-source workflow:
+download pinned public reports, preserve analytical records, generate native input
+and execute/resume the existing runner under explicit simulation assumptions.
+
 [Exact resource accounting](docs/resource-replay.md) keeps estimates, reservations,
 actual runner work and overhead distinct. [Frozen shadow evaluation](docs/prospective-shadow.md)
 seals recommendations before feedback and recovers committed evidence without
