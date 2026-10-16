@@ -40,6 +40,12 @@ with explicit missing temporal evidence and reproducible admission blockers.
 interruption recovery and negative outcomes. The published wheel reproduces the
 Java pair and reopens its committed observations outside the checkout. This is
 source reproduction, not completed benchmark admission.
+
+The next sequential #261 slice closes the [real LRTS ETL](lrts-parquet-etl.md):
+explicit download, pinned nested-member conversion, analytical/native Parquet,
+conserved exclusions and actual native replay/checkpoint continuation. Native
+execution declares its post-hoc serial assumptions; protected historical
+admission and cross-corpus confirmation remain separate unfinished gates.
 Later steps cover admitted real-fault matrices, HCS/variant expansion
 and synthetic stress, comparable baselines/statistics, frozen confirmatory execution
 and the final evidence report. Compatible deliveries continue in later **4.x**

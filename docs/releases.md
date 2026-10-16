@@ -6,6 +6,11 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
+The next compatible [COLEMAN 4.7](releases/4.7.0.md) delivery adds a real
+[LRTS download-to-Parquet workflow](lrts-parquet-etl.md), including analytical
+tables, explicit native simulation input and actual runner/checkpoint recovery.
+Its source-admission and confirmatory-evidence limits remain explicit.
+
 [COLEMAN 4.6](releases/4.6.0.md) adds versioned controlled fault observations,
 a pinned offline JUnit3 source recipe and recoverable raw evidence. Existing
 native TCPCI experiments and learning checkpoints keep their contracts. Controlled

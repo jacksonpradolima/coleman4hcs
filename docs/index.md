@@ -35,6 +35,10 @@ retain their workflows. Controlled source clocks are not historical CI; source
 admission, the seven required diversity regimes and cross-corpus confirmation
 remain open.
 
+For a complete real-source workflow, see [LRTS download, Parquet and native replay](lrts-parquet-etl.md).
+It produces actual data files and resumes native experiments while retaining the
+source's evidence limits and the projection's explicit simulation assumptions.
+
 [Exact resource accounting](resource-replay.md) and [frozen shadow evaluation](prospective-shadow.md)
 retain their 4.3 behavior. The included synthetic shadow fixture remains inconclusive.
 
