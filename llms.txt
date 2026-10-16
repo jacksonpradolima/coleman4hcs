@@ -33,6 +33,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/benchmark-corpus.md
 - docs/code-cost.md
 - docs/configuration.md
+- docs/controlled-faults.md
 - docs/corpus-materialization.md
 - docs/decision-benchmarks.md
 - docs/decisions/001-point-in-time-observations.md
@@ -42,6 +43,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/finite-coverage.md
 - docs/getting-started.md
 - docs/index.md
+- docs/junit-source-capture.md
 - docs/lrts.md
 - docs/observability.md
 - docs/operational-pilot.md
@@ -56,6 +58,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/releases/4.4.0.md
 - docs/releases/4.4.1.md
 - docs/releases/4.5.0.md
+- docs/releases/4.6.0.md
 - docs/releases.md
 - docs/resource-replay.md
 - docs/roadmap.md
@@ -2174,6 +2177,15 @@ flowchart LR
 ```
 
 
+The next [controlled fault observation adapter](controlled-faults.md) retains
+same-test buggy/fixed comparisons, exact elapsed-counter units and negative or
+inconclusive outcomes. It verifies producer bytes through the existing source
+cache and publishes through the same artifact writer. It does not grant source
+admission or convert collection clocks into historical CI chronology. Direct
+upstream Java/Python reproductions are documented separately from the owned
+synthetic installed example; required diversity cells remain uncovered.
+
+
 
 ### FILE: docs/code-cost.md
 
@@ -3086,6 +3098,232 @@ coleman validate --config my-experiment.yaml
 # Validate and write the resolved spec
 coleman validate --config my-experiment.yaml --resolve resolved.json
 ```
+
+
+
+### FILE: docs/controlled-faults.md
+
+# Controlled real-fault observations
+
+Controlled buggy/fixed pairs answer a narrow question: does the same selected
+assertion fail against one source revision and pass against the corrected revision
+under the declared execution conditions? COLEMAN can retain that evidence,
+including unexpected and inconclusive results, without presenting a reconstructed
+sequence as historical CI.
+
+This source slice of [#261](https://github.com/jacksonpradolima/coleman/issues/261)
+adds an offline typed observation adapter. It does not complete source admission,
+fault diversity, baseline comparisons or the cross-corpus benchmark. The registry's
+seven required diversity cells remain uncovered. Source assessments for
+[RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) remain separate.
+
+The optional [pinned JUnit3 producer](junit-source-capture.md) now provides a
+reproducible public Java source recipe, with bounded execution and raw-role recovery.
+
+## Architecture and trust boundary
+
+```mermaid
+flowchart LR
+    producer[External subject execution] --> report[Pinned producer observation report]
+    inputs[Reviewed source / fixture / harness inputs] --> cache[Existing external source cache]
+    report --> cache
+    context[Frozen controlled context] --> adapter[Offline typed conversion]
+    cache --> adapter
+    adapter --> pairs[Expected / unexpected / inconclusive pairs]
+    adapter --> writer[Existing immutable artifact writer]
+    writer --> manifest[Native run artifact manifest]
+```
+
+The core reads and verifies cached bytes. It never starts a subject process,
+container, compiler, CLI or network transport. A receipt proves byte correspondence,
+not that a producer executed those bytes. Runtime and command descriptions remain
+producer attestations. Review and execution of external subjects belong outside
+this adapter, with their own component terms and resource limits.
+
+`ControlledContext` freezes project, curated fault label, language, fault origin,
+source revisions, fixture revision, dependence group, declared test IDs, input
+receipts and runtime conditions. Exactly one buggy source, fixed source, common
+test fixture and harness input is required. Dependency inputs are separate. Source
+versions must match the declared revisions. Input names and test IDs are unique;
+permuting those declarations preserves context identity. Opaque source archives
+can be cached as raw packages; this adds no TAR or ZIP64 extraction capability.
+
+`ControlledReport` binds observations to the context fingerprint. Each observation
+has a trial ID, role, test ID, explicit outcome, capture instants, nullable diagnostic
+digest and monotonic elapsed counter. A non-null diagnostic digest must match a
+separate regular member of the validated report package; absent references reject.
+Diagnostics are not predecision features. Capture instants are collection clocks, not
+historical event or feature availability. No observed CI chronology is inferred.
+
+Execution identity hashes the context and `(trial_id, test_id, role)`, excluding
+outcomes and capture values. A retry of the same collection retains its trial ID;
+a genuinely new execution gets a new trial ID. Both remain in the same declared
+dependence group. These IDs do not establish independent bugs or projects.
+
+## Outcomes, units and missingness
+
+| Buggy observation | Fixed observation | Comparison |
+| --- | --- | --- |
+| Assertion failed | Passed | Expected |
+| Passed | Passed | Both pass |
+| Assertion failed | Assertion failed | Both fail |
+| Passed | Assertion failed | Reversed |
+| Missing role, test error, skipped, timeout, cancellation, infrastructure error or unavailable | Any | Inconclusive |
+
+The same inconclusive rule applies when the fixed role has a non-assertion outcome.
+Only actual test/trial groups are compared. An empty report has no comparisons;
+missing observations are never fabricated. Unexpected and inconclusive results
+are valid evidence and remain in the dataset.
+
+Elapsed values are strict nonnegative integer **nanoseconds**, at most `2**63-1`,
+with meaning `observed-test-harness-monotonic-elapsed-v1`. Zero is observed. Null
+requires `unavailable` or `not_applicable`; an observed null or absent-state zero
+rejects. Negative, fractional, boolean, nonfinite and incompatible-unit values
+reject. Counter resolution establishes no physical measurement accuracy.
+
+Elapsed harness time includes whatever that harness times. It is not independently
+removable runner work, shared setup cost, queue delay or developer-visible CI
+latency. It must not be substituted for native scheduling costs. This contract
+does not claim that all negative numbers are invalid in other result families;
+negative signed measurements remain governed by their existing contracts.
+
+## Installed package workflow
+
+Build and install the working branch's wheel in a separate environment. The
+released 4.5 wheel predates this adapter. From the checkout:
+
+```bash
+wheel_dir=$(mktemp -d /tmp/coleman-controlled-wheel.XXXXXX)
+uv build --wheel --out-dir "$wheel_dir"
+uv venv /tmp/coleman-controlled-installed --python 3.14
+uv pip install --python /tmp/coleman-controlled-installed/bin/python "$wheel_dir"/*.whl
+mkdir -p /tmp/coleman-controlled-workspace
+cp examples/controlled_faults/ci.py /tmp/coleman-controlled-workspace/ci.py
+cd /tmp/coleman-controlled-workspace
+/tmp/coleman-controlled-installed/bin/python ci.py owned-ci /tmp/coleman-controlled-source-cache
+```
+
+The example's pairs are **newly authored synthetic schema fixtures**, not external
+real faults or measured executions. Their constructed capture instants and
+unavailable elapsed counters are explicit. A separate complete owned serial CI
+fixture runs real native Random/RNFail with budget 7 seconds, independently checked
+NAPFD/APFDc and a second call through the learning checkpoint. No counter from the
+controlled observations is projected into that serial fixture's costs.
+
+Re-running the command preserves the controlled artifact and committed native
+result. The output includes the frozen `spec`, converted `dataset`, classifications
+(`expected`, `inconclusive`), native directory and explicit insufficient-evidence
+status. This demonstrates integration and recovery, not external effectiveness.
+
+The following complete SDK example reopens that specification offline. It runs
+from the same external workspace and requires no CLI or MCP imports:
+
+```python
+from pathlib import Path
+
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus import SourceCache
+from coleman.corpus.controlled import convert_controlled_source, publish_controlled_dataset
+from coleman.corpus.controlled_contracts import ControlledSpec
+
+cache = SourceCache("/tmp/coleman-controlled-source-cache")
+spec = ControlledSpec.from_json(Path("owned-ci/controlled-spec.json").read_bytes())
+dataset = convert_controlled_source(spec, cache)
+assert [pair.classification for pair in dataset.pairs] == ["expected", "inconclusive"]
+path = publish_controlled_dataset(dataset, cache, ArtifactWriter("offline-assessment"))
+assert dataset.admission == "not_evaluated"
+assert dataset.history == "constructed"
+print(path)
+```
+
+For another cache location, replace the SDK path with the same location supplied
+to `ci.py`. Input/report materializations use the existing reviewed-license,
+source-digest, bounded-byte and offline validation contracts. Reports have an
+8-MiB ceiling and at most 20,000 physical observations; contexts permit at most
+10,000 test IDs and 64 input packages. Every report is checked against the bytes
+actually parsed, including EOF size/digest, after cache validation.
+
+## Compatibility, duplication and publication
+
+All new interchange models require integer `schema_version: 1`, reject unknown
+fields, and reject missing, legacy and future versions. Existing native results,
+source manifests, checkpoints and historical artifacts keep their existing
+meaning. No migration or automatic reinterpretation occurs. A future converter
+must declare any migration separately and preserve original bytes.
+
+Conversion conserves physical rows: `input_rows = observations + duplicates_excluded`.
+Identical role/test/trial repeats are counted and excluded; conflicting repetitions
+reject. Output observations are sorted by logical key. Permuting physical report
+rows preserves normalized observations but changes the pinned source report bytes
+and therefore the complete artifact fingerprint. This is deliberate provenance,
+not an input-order-dependent policy comparison.
+
+Publication re-converts the actual cache before writing one
+`corpus-controlled/<fingerprint>.json` artifact. Identical concurrent publication
+is idempotent through the existing immutable writer. Partial work is never a
+completed experiment or learning checkpoint. A failed publication can be retried;
+recipe-only content must remain local. Artifact metadata alone does not establish
+source integrity, execution truth, scientific admission or independence.
+
+## Primary-source investigation and fresh local evidence
+
+The [Defects4J paper](https://homes.cs.washington.edu/~mernst/pubs/bug-database-issta2014.pdf)
+and [pinned documentation](https://github.com/rjust/defects4j/tree/8c16da8230843cdc918eaf4ddb449637f02b83c6)
+describe isolated buggy/fixed subjects, including reconstructed revisions.
+The current documentation requires Java 11 and `America/Los_Angeles`; its current
+corpus differs from the paper's original snapshot. Framework MIT terms do not
+license every subject or dependency. Broad initialization downloads unrelated
+repositories and tools; it was not used for the bounded case below.
+
+The [BugsInPy paper](https://arxiv.org/html/2401.15481v1) describes selected real
+source revisions and common exposing tests, with manual isolation review. A later
+[independent reproduction study](https://mir.cs.illinois.edu/~marinov/publications/AguilarETAL23ReproducingBugsInPy.pdf)
+demonstrates why declared metadata is insufficient: dependency installation and
+runtime selection can prevent paired reproduction, and both-pass/both-fail
+outcomes must remain visible. Its corpus snapshot and results are that study's
+observations, not COLEMAN measurements.
+
+At BugsInPy revision `11c5f1eea954a42132cfd06bf257766a7963e0fd`, no verified
+framework license was found. The existing [upstream license question](https://github.com/soarsmu/BugsInPy/issues/94)
+remains unresolved. The paper's license and a subject's license do not clear that
+framework. No BugsInPy framework code or data is admitted by this increment.
+
+Two **direct upstream** selected-test pairs were freshly executed on 2026-10-16:
+
+| Subject | Buggy revision | Fixed / common test revision | Observed result |
+| --- | --- | --- | --- |
+| Apache Commons CLI, CLI-13 | `8f46f467a33ace44ccd9f394910940b6c48a3827` | `b0e1b80b6d4a10a9c9f46539bc4c7a3cce55886e` | One assertion failure / one pass; zero errors or skips |
+| Black, process-pool fallback | `26c9465a22c732ab1e17b0dec578fa3432e9b558` | `c0a7582e3d4cc8bec3b7f5a6c52b36880dcb57d7` | One assertion failure / one pass; zero errors or skips |
+
+Commons CLI used the [official Apache fixed commit](https://github.com/apache/commons-cli/commit/b0e1b80b6d4a10a9c9f46539bc4c7a3cce55886e),
+Git-verified source blobs and its Apache-2.0 LICENSE/NOTICE,
+common fixed-revision `BugCLI13Test.testCLI13`, Commons Lang 2.1 and JUnit 3.8.1
+(Maven Central bytes and checksums). It compiled directly with Java 11.0.32.1,
+linux/arm64 Temurin manifest
+`sha256:e4b3ff0f1a427efb2deb02b092ff8316d58573480260720d767d6ecdd69999d8`.
+This was a direct source-pair experiment, not the complete Defects4J reconstruction
+or a full original-suite reproduction. JUnit's component terms are CPL-1.0;
+Commons Lang retains its own Apache terms.
+
+Black used the [official upstream fallback fix](https://github.com/psf/black/commit/c0a7582e3d4cc8bec3b7f5a6c52b36880dcb57d7),
+MIT source notices, CPython 3.8.3 and 16 pinned offline wheels.
+The common fixed-revision
+`BlackTestCase.test_works_in_mono_process_only_environment` explicitly injects
+`ProcessPoolExecutor` initialization `OSError`. Both roles use the same declared
+derived SCM version label `controlled-upstream-source-v1`. The linux/amd64 image
+manifest `sha256:13af390c7ababf48b675e151c354de224f2ae6ec17ee08fe04ad3df8d0736501`
+was emulated on an arm64 host. Its elapsed counters are not native performance
+measurements. This direct upstream experiment does not resolve BugsInPy licensing.
+
+Both used read-only subject/fixture/harness mounts, execution without network,
+non-root UID, bounded memory/CPU/processes and per-case timeout. All source/dependency
+bytes and raw observations remain outside Git. No third-party test code or rows
+are bundled. These are two selected functional reproductions, not a randomized
+sample, full corpus admission, fault-localization matrix, historical CI evidence
+or an algorithm comparison. The typed reader does not independently certify this
+external execution. A distributable pinned producer recipe, component-by-component
+admission dossier and broader fresh test/fault matrix remain necessary before
+claiming that the Java/non-Java diversity criteria are satisfied.
 
 
 
@@ -5420,6 +5658,198 @@ For advanced customization and parallel extension contracts, see
 
 
 
+### FILE: docs/junit-source-capture.md
+
+# Reproduce a pinned Java fault pair
+
+COLEMAN's optional JUnit3 producer collects source evidence before benchmark
+admission. Its packaged Apache Commons CLI recipe compiles two pinned upstream
+revisions against the same fixed-tree test fixture and records all 95 discovered
+tests. It reuses the existing source cache, controlled-observation contracts and
+immutable artifact writer. Native TCPCI experiments still use the existing runner.
+
+The recipe contains integrity metadata only. Subject sources, dependencies,
+container images and raw captures remain outside the repository. It does not
+execute Defects4J or claim its complete reconstruction protocol. The generic
+[controlled domain](controlled-faults.md) imports no Docker, CLI or MCP adapter.
+
+## Prepare and run
+
+Build and install this branch's wheel as shown in the controlled-observation guide.
+The released 4.5 wheel predates this producer. The bundled preset requires POSIX,
+Docker, an arm64 host and arm64 Docker engine. It pins Temurin `11.0.32.1` and
+`America/Los_Angeles`. Other platforms require a separately reviewed recipe;
+changing a platform label does not validate a different image.
+
+Prepare the public image explicitly:
+
+```bash
+docker pull --platform linux/arm64 eclipse-temurin@sha256:e4b3ff0f1a427efb2deb02b092ff8316d58573480260720d767d6ecdd69999d8
+```
+
+From an external workspace, using the installed environment:
+
+```bash
+python -m coleman.transports.junit \
+  --cache /tmp/coleman-junit-cache \
+  --output /tmp/coleman-junit-results \
+  --trial source-001 --fetch
+```
+
+`--fetch` permits only the individually pinned public source/JAR downloads from
+`raw.githubusercontent.com` and `repo.maven.apache.org`. The HTTPS adapter verifies
+TLS and exact entity lengths, and rejects redirects, credentials, queries, partial
+responses and encoded transfers. It uses no ambient authentication or proxy
+configuration. The producer never pulls an image. Once cached, omit `--fetch` for
+offline acquisition; subject execution has no network even during the first run.
+Source-cache and output directories must be separate and physically outside
+Git worktrees. The producer reuses the cache's shared storage guard to reject
+repository directories, linked-worktree marker files and symlink aliases. Provided
+output roots are checked before runtime queries/source acquisition; concrete cache
+blob, capture-session and staging paths are rechecked before content writes.
+Staged members cannot introduce case-insensitive `.git` path components. The system
+temporary directory must also be outside Git for source staging. Metadata-only
+exports retain their existing publication rules.
+
+The JSON summary includes dataset/state paths, role collection statuses, pair
+counts, admission and generalization. Exit 0 means both role protocols completed;
+assertion failures remain recorded outcomes. Incomplete collection publishes its
+evidence and returns 2. Validation, infrastructure or publication exceptions exit
+nonzero. Neither exit status certifies benchmark admission or algorithm efficacy.
+
+To supply another frozen recipe, add `--recipe /absolute/path/recipe.json`.
+Recipes are bounded to 2 MiB, require schema version 1 and pin the installed
+COLEMAN-authored harness. Missing, future or unknown versions reject. Updating the
+harness requires an explicit reviewed recipe update, never silent migration.
+Existing native results, learning checkpoints and older source artifacts retain
+their meaning and require no migration.
+
+## What the recipe freezes
+
+The [buggy revision](https://github.com/apache/commons-cli/tree/8f46f467a33ace44ccd9f394910940b6c48a3827)
+and [fixed revision](https://github.com/apache/commons-cli/tree/b0e1b80b6d4a10a9c9f46539bc4c7a3cce55886e)
+are the selected public CLI-13 pair. Each production view includes all `src/java`
+blobs plus `LICENSE.txt` and `NOTICE.txt`; the common fixture includes all fixed-tree
+`src/test` blobs plus those notices. Every raw file and derived ZIP is separately
+size/digest pinned. The deterministic ZIP fixes member order, epoch, regular-file
+permissions and stored bytes; it is a COLEMAN-derived view, not upstream archive
+bytes. Its contract permits at most 128 homogeneous-license members, 8 MiB per
+file, 16 MiB decoded total and 32 MiB output. It adds no TAR or ZIP64 support.
+
+The dependencies are Commons Lang 2.1 and JUnit 3.8.1. Apache subject and Commons
+Lang Apache-2.0 terms remain separate from JUnit's CPL-1.0 terms. The version-specific
+[JUnit POM](https://repo.maven.apache.org/maven2/junit/junit/3.8.1/junit-3.8.1.pom)
+declares CPL-1.0; the recipe records the reviewed [full terms](https://opensource.org/license/CPL-1.0).
+Commons Lang's terms digest identifies `META-INF/LICENSE.txt` inside its independently
+pinned JAR; its `NOTICE.txt` is retained. The COLEMAN MIT license does not replace
+these terms. The recipe-only policy keeps foreign content in the external cache.
+
+```mermaid
+flowchart LR
+    recipe[Pinned Java source recipe] --> raw[Reviewed raw source and dependency cache]
+    raw --> views[Deterministic source views]
+    views --> producer[Optional bounded Docker producer]
+    harness[Packaged COLEMAN JUnit3 harness] --> producer
+    producer --> packets[Versioned raw role packets and start markers]
+    packets --> report[Controlled report plus diagnostic members]
+    report --> domain[Existing offline controlled conversion]
+    domain --> artifact[Immutable controlled artifact]
+```
+
+Each role uses a fresh non-root, read-only container, four explicit read-only
+input mounts, no network, no added capabilities, no privilege escalation, two
+CPUs, 64 PIDs, a 128-MiB temporary filesystem and a 1-GiB memory default. The
+parent bounds collection to 60 seconds and 1 MiB combined stdout/stderr by default;
+recipes may select only the contract's bounded ranges. These guards support
+trusted public-source reproduction; they are not a hostile-code security sandbox.
+
+Diagnostic packaging has its own explicit budget: each complete role packet is
+bounded to 16 MiB, the normalized report remains bounded to 8 MiB, and the decoded
+envelope total is at most 40 MiB. The shared deterministic ZIP encoder preserves
+stored bytes and existing ZIP64/entry policies; source-view limits remain
+8 MiB per file and 16 MiB total. This accommodates the permitted 4-MiB output
+profile without dropping raw streams or parsed diagnostics. Before acquisition
+or execution, the producer computes a conservative normalized-report size bound
+from declared test/trial labels and maximal field sizes. Unsupported combinations
+reject before a source trial can create unpublishable completed role checkpoints.
+The sizing records are never published as observations.
+
+The filtered runtime receipt retains host/Python/package versions, Docker
+client/server architecture and versions, kernel and target image config digest
+and size. It excludes credentials, context names, unrelated containers, image
+tags and hostnames. Actual producer module bytes, recipe and harness are input
+receipts, so modified implementation bytes change context identity.
+
+## Evidence and recovery
+
+A fresh local execution collected 190 observations: 92 same-test pairs passed in
+both revisions, two failed in both and CLI-13 failed then passed. The two other
+failures (`BugsTest::test19383`, `BugsTest::test27635`) remain visible. No causal
+explanation or extra unique-fault count is inferred. These are observations of
+this runtime and fixture, not a promise that every future run has the same result.
+
+Each case runs in the role's shared JVM in lexical test-ID order, including JUnit
+setup/teardown. Independence from test order has not been established. Its strict
+integer monotonic nanoseconds mean harness elapsed time, never removable runner
+cost or wall-clock CI savings. Zero is observed; unavailable counters are null.
+The separate parent timer includes startup and compilation. UTC capture instants
+are explicitly quantized by the producer to microseconds; higher-precision input
+strings reject rather than silently truncate. No collection clock becomes
+historical CI chronology or a predecision feature.
+
+An immutable start marker precedes each role execution. A completed raw packet
+replays without executing that role again. A start marker without a committed
+packet recovers as `interrupted`: streams and counters remain unavailable, no
+partial cases are promoted. Use a new trial ID for a fresh execution. Both trials
+remain in the same dependence group. A POSIX advisory lock rejects concurrent
+producers for the same context/trial; a process crash releases it. Cleanup targets
+only the producer's deterministic container name. A cleanup failure propagates
+without committing a role packet; the next call retries cleanup and retains the
+interrupted observation state. Source acquisition, staging and
+publication failures never certify a completed learning checkpoint.
+
+Successful protocols require the exact discovered test sequence and a final
+trailer. Discovery loads excluded classes without initializing them. Output from
+test-class initializers and constructors is retained in the role's bounded raw
+stderr, separately from protocol stdout and per-case diagnostics/timing. Discovery
+errors restore the original streams and fail collection without inventing cases.
+Each case declares exactly one run and at most one terminal failure or
+error; contradictory counters cause a protocol error rather than a normalized
+test outcome. Malformed/partial protocols, timeouts, output limits and process errors
+retain bounded raw evidence without promoting partial cases into assertions.
+On replay, exited process/protocol error labels are rederived from the stored
+exit code and raw protocol; relabeling a valid complete packet cannot silently
+discard its observations. Unavailable streams require an unknown exit code and
+unavailable parent elapsed counter; observed streams require both observed process
+facts. A timeout must reach its declared parent deadline, and an output-limit
+packet must retain the complete bounded prefix. These checks reject contradictory
+evidence; coherent timeout/output-limit labels remain producer attestations rather
+than authenticated proof of which guard fired.
+Both role packets are separately digest-pinned report members; normalized
+observations reference their diagnostic member digest. An entirely unobserved
+trial has no invented pairs. Negative, reversed and inconclusive comparisons
+remain valid. All outputs retain `not_evaluated` and `insufficient_evidence`.
+
+## Validate the installed flow
+
+The normal suite exercises owned fixtures without external downloads. To repeat
+the actual source flow from a wheel installed outside the checkout, first populate
+the source cache with the command above and prepare the pinned image, then run:
+
+```bash
+COLEMAN_JUNIT_REAL_CACHE=/tmp/coleman-junit-cache \
+  uv run pytest tests/corpus/test_installed_junit.py --no-cov -q
+```
+
+This explicit source reproduction checks all 190 observations and the observed
+pair counts, then repeats the same trial to verify byte-identical recovery. It
+mocks no source compiler, JVM, cache, converter or artifact writer. It establishes
+functional reproduction only. Chronological benchmark admission, additional
+languages/faults, independent observations, fair baselines and all seven diversity
+regimes remain work in [#261](https://github.com/jacksonpradolima/coleman/issues/261).
+
+
+
 ### FILE: docs/lrts.md
 
 # LRTS: preserve raw method evidence and processed metadata
@@ -7498,6 +7928,146 @@ Implemented in [#290](https://github.com/jacksonpradolima/coleman/pull/290) and
 
 
 
+### FILE: docs/releases/4.6.0.md
+
+# COLEMAN 4.6 — Reproducible fault evidence for CI
+
+A CI prioritization decision needs evidence you can inspect and reproduce.
+COLEMAN 4.6 connects pinned buggy/fixed source revisions to versioned test
+observations, retained diagnostics and immutable artifacts. You can rerun a
+controlled fault recipe, recover interrupted collection and keep unexpected
+outcomes visible before considering a source for a benchmark.
+
+This release brings together the reviewed controlled-observation foundation and
+an optional Java/JUnit3 producer. The existing TCPCI runner continues to execute
+learning experiments, write results and resume its own checkpoints.
+
+## From a source revision to an auditable result
+
+The new controlled records retain the project, curated fault label, common test
+fixture, source revisions, runtime, component receipts and actual producer bytes.
+Each observation has a stable logical identity, explicit outcome and integer
+monotonic nanoseconds. Zero, unavailable and not applicable keep distinct meanings.
+Parent-process timing and per-test harness timing have separate semantics.
+Neither becomes an invented CI completion time or removable scheduling cost.
+
+Same-test comparisons preserve expected, both-pass, both-fail, reversed and
+inconclusive outcomes. Missing observations stay missing. Diagnostic digests bind
+to separately verified report members; schemas, source bytes and duplicate
+identities are validated before immutable publication.
+
+The bundled Apache Commons CLI-13 recipe pins both public source revisions, a
+common fixed-tree fixture, component dependencies, the COLEMAN-authored harness
+and a platform-specific Temurin image. Individually pinned files form bounded,
+deterministic source views. Foreign source code and datasets are not bundled in
+the package or mirrored into the repository.
+
+A real installed-wheel execution collected **190 observations across 95 tests per
+revision**: 92 pairs passed in both revisions, two failed in both and one failed
+then passed. The two additional failures remain in the evidence. These are
+functional reproduction results for this declared runtime and fixture, not an
+independent-fault count or a policy-performance comparison.
+
+## Try the pinned recipe
+
+Use Python 3.14+, a local arm64 Docker engine and an external workspace. Install
+the wheel attached to this release and explicitly prepare its public image:
+
+```bash
+python -m pip install https://github.com/jacksonpradolima/coleman/releases/download/v4.6.0/coleman-4.6.0-py3-none-any.whl
+docker pull --platform linux/arm64 eclipse-temurin@sha256:e4b3ff0f1a427efb2deb02b092ff8316d58573480260720d767d6ecdd69999d8
+python -m coleman.transports.junit \
+  --cache /tmp/coleman-junit-cache \
+  --output /tmp/coleman-junit-results \
+  --trial source-001 --fetch
+python -m coleman.transports.junit \
+  --cache /tmp/coleman-junit-cache \
+  --output /tmp/coleman-junit-results \
+  --trial source-001
+```
+
+The first call explicitly permits reviewed, size/digest-pinned public GitHub and
+Maven downloads. The second reopens the same committed observations without
+executing those roles again. Acquisition is offline by default; subject execution
+has no network and the producer never pulls an image implicitly.
+
+The JSON summary provides artifact paths, role statuses, pair counts and explicit
+admission/generalization fields. Exit 0 means the collection protocols completed;
+assertion failures remain outcomes. Incomplete collection retains its evidence
+and returns 2. Exceptions remain nonzero failures.
+
+The [complete Java guide](https://github.com/jacksonpradolima/coleman/blob/v4.6.0/docs/junit-source-capture.md)
+explains source/component terms, resource limits and the runtime profile. The
+[controlled-observation guide](https://github.com/jacksonpradolima/coleman/blob/v4.6.0/docs/controlled-faults.md)
+provides an offline SDK example and a complete owned native TCPCI workflow with
+independently checked metrics and learning-checkpoint continuation.
+
+## Recover without inventing success
+
+An immutable start marker precedes each role. Completed packets replay; a started
+but uncommitted role recovers as interrupted, with unavailable streams/counters
+and no fabricated cases. Failed container cleanup leaves that start recoverable.
+Raw output roots, concrete cache/session paths and source staging destinations
+are checked outside Git worktrees with one shared storage guard. Linked-worktree
+markers, symlink aliases and staged Git-marker names are covered. A POSIX lock prevents duplicate
+producers for the same context/trial/output tree.
+Use a new trial ID for a new execution; repeated trials retain their dependence
+group and do not become independent projects or faults.
+
+The collector bounds process time and combined output bytes. Containers are
+non-root and read-only, with explicit input mounts and CPU, memory, PID and
+temporary-storage limits. These guards support trusted-source reproduction.
+
+Resume validates raw protocol bytes, exit status, discovered test IDs and the
+completion trailer. Single-case terminal counters cannot exceed the one declared
+run. Unavailable streams cannot retain observed process facts;
+observed streams require them. Timeout/prefix claims must agree with their bounds.
+Contradictory negative labels cannot silently erase complete observations.
+Diagnostic envelopes use a separate bounded profile, preserving complete raw
+packets for the supported 4-MiB output limit. Oversized normalized-report
+configurations reject before source execution; source-view limits stay unchanged.
+Coherent producer attestations still do not authenticate execution truth.
+
+## Compatibility and validation
+
+This is an additive **4.x** release. Existing native results, artifacts, sinks,
+checkpoints and source readers retain their meaning. New contracts require schema
+v1 and reject missing, unknown and future versions. No automatic migration or
+reinterpretation of old results occurs. Harness changes require a reviewed recipe
+update. The domain remains independent of CLI, Docker and MCP imports.
+
+The reviewed implementation passed **2,270 tests** and the **95% combined
+statement/branch coverage gate**, including a real paired source reproduction from a
+wheel installed outside the checkout. Versioned golden/round-trip fixtures,
+compatibility, units/missingness, nonfinite values, deterministic identities,
+concurrent publication, interrupted writes, genuine child-process guards and
+checkpoint recovery are covered. All lint/format/type/Pylint/docstring/structural,
+strict documentation and package checks passed. Local-only OpenCodeReview and
+manual review covered every changed file; confirmed findings were reproduced and
+fixed with regressions before integration.
+
+## What remains open
+
+The records retain `admission=not_evaluated` and
+`generalization=insufficient_evidence`. The shared JVM uses lexical test order;
+order independence is not established. Collection clocks are not historical CI.
+The recipe is one direct upstream pair, not a full Defects4J reconstruction.
+Component terms remain separate from COLEMAN's MIT license; recipe-only content
+stays in external caches.
+
+The diversified benchmark program in
+[#261](https://github.com/jacksonpradolima/coleman/issues/261) remains open. Source
+admission, independent projects/faults, all seven diversity regimes, comparable
+baselines, protected chronological evidence and cross-corpus reports remain
+sequential work. Negative and inconclusive results remain valid evidence.
+
+Implemented in [#294](https://github.com/jacksonpradolima/coleman/pull/294) and
+[#295](https://github.com/jacksonpradolima/coleman/pull/295).
+
+[Full changes from 4.5.0](https://github.com/jacksonpradolima/coleman/compare/v4.5.0...v4.6.0).
+
+
+
 ### FILE: docs/releases.md
 
 # Release preparation
@@ -7508,7 +8078,12 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
-[COLEMAN 4.5](releases/4.5.0.md) adds bounded RTPTorrent and LRTS source readers,
+[COLEMAN 4.6](releases/4.6.0.md) adds versioned controlled fault observations,
+a pinned offline JUnit3 source recipe and recoverable raw evidence. Existing
+native TCPCI experiments and learning checkpoints keep their contracts. Controlled
+source reproduction remains separate from benchmark admission.
+
+[COLEMAN 4.5](releases/4.5.0.md) added bounded RTPTorrent and LRTS source readers,
 explicit units/provenance and installed native CI/checkpoint workflows. It retains
 the exact numeric safeguards from 4.4.1, corpus profiles and secure source cache.
 Both external sources remain blocked for protected temporal evaluation.
@@ -7803,8 +8378,13 @@ reuse the existing runner/artifacts/checkpoints. All ten existing native registr
 retain their admission blockers; all seven required diversity regimes remain
 uncovered.
 
-The next sequential corpus slice is the version-pinned RTPTorrent adapter and
-baseline slice. Later steps cover LRTS, controlled real faults, HCS/variant expansion
+**4.5.0** publishes the reviewed RTPTorrent and LRTS source-assessment adapters,
+with explicit missing temporal evidence and reproducible admission blockers.
+The reviewed 4.6 integration branch adds [controlled fault observations](controlled-faults.md).
+Its next sequential slice supplies [pinned JUnit3 source capture](junit-source-capture.md)
+with raw evidence, interruption recovery and negative outcomes. This is source
+reproduction, not completed benchmark admission.
+Later steps cover admitted real-fault matrices, HCS/variant expansion
 and synthetic stress, comparable baselines/statistics, frozen confirmatory execution
 and the final evidence report. Compatible deliveries continue in later **4.x**
 releases. #261 stays open until its admission, diversity, execution and evidence

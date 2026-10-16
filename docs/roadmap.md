@@ -32,8 +32,13 @@ reuse the existing runner/artifacts/checkpoints. All ten existing native registr
 retain their admission blockers; all seven required diversity regimes remain
 uncovered.
 
-The next sequential corpus slice is the version-pinned RTPTorrent adapter and
-baseline slice. Later steps cover LRTS, controlled real faults, HCS/variant expansion
+**4.5.0** publishes the reviewed RTPTorrent and LRTS source-assessment adapters,
+with explicit missing temporal evidence and reproducible admission blockers.
+The reviewed 4.6 integration branch adds [controlled fault observations](controlled-faults.md).
+Its next sequential slice supplies [pinned JUnit3 source capture](junit-source-capture.md)
+with raw evidence, interruption recovery and negative outcomes. This is source
+reproduction, not completed benchmark admission.
+Later steps cover admitted real-fault matrices, HCS/variant expansion
 and synthetic stress, comparable baselines/statistics, frozen confirmatory execution
 and the final evidence report. Compatible deliveries continue in later **4.x**
 releases. #261 stays open until its admission, diversity, execution and evidence

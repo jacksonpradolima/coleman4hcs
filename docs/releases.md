@@ -6,7 +6,12 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
-[COLEMAN 4.5](releases/4.5.0.md) adds bounded RTPTorrent and LRTS source readers,
+[COLEMAN 4.6](releases/4.6.0.md) adds versioned controlled fault observations,
+a pinned offline JUnit3 source recipe and recoverable raw evidence. Existing
+native TCPCI experiments and learning checkpoints keep their contracts. Controlled
+source reproduction remains separate from benchmark admission.
+
+[COLEMAN 4.5](releases/4.5.0.md) added bounded RTPTorrent and LRTS source readers,
 explicit units/provenance and installed native CI/checkpoint workflows. It retains
 the exact numeric safeguards from 4.4.1, corpus profiles and secure source cache.
 Both external sources remain blocked for protected temporal evaluation.

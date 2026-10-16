@@ -33,6 +33,7 @@ from coleman.corpus.materialization import (
     publish_materialization,
     validate_cache_separation,
     validate_materialization,
+    validate_source_storage,
 )
 from coleman.corpus.materialization_contracts import (
     MaterializationLimits,
@@ -112,4 +113,5 @@ __all__ = [
     "validate_fixture_source",
     "validate_cache_separation",
     "validate_materialization",
+    "validate_source_storage",
 ]

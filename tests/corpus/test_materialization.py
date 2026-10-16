@@ -1116,3 +1116,21 @@ def test_embedded_zip64_ending_rejects_before_standard_reader_metadata_override(
     with pytest.raises(ValueError, match="ZIP64 end locator"):
         materialize_source(spec, cache, lambda: reader(bytes(payload)))
     assert not list(tmp_path.rglob("corpus-materializations/*.json"))
+
+
+@pytest.mark.parametrize("marker_kind", ["directory", "file"])
+def test_raw_blob_namespace_cannot_be_a_nested_git_worktree(tmp_path, marker_kind):
+    cache = SourceCache(tmp_path / "cache")
+    directory = cache.root / "blobs"
+    directory.mkdir()
+    marker = directory / ".git"
+    if marker_kind == "directory":
+        marker.mkdir()
+    else:
+        marker.write_text("gitdir: /owned/external/git-metadata\n")
+    payload = b"Owned source storage fixture"
+    pin = "sha256:" + hashlib.sha256(payload).hexdigest()
+    reader = io.BytesIO(payload)
+    with pytest.raises(ValueError, match="outside.*repository"):
+        cache.store_blob(pin, len(payload), reader)
+    assert not (directory / pin.removeprefix("sha256:")).exists()
