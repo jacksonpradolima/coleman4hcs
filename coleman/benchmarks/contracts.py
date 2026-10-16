@@ -22,6 +22,18 @@ def _bounded_reference(value: Fraction) -> Fraction:
     return value
 
 
+def _decimal_reference(value: Decimal) -> Decimal | Fraction:
+    """Reject nonfinite or oversized Decimal references before Fraction expands their exponent."""
+    if not value.is_finite():
+        raise ValueError("Exact reference decimal must be finite")
+    if not value:
+        return Fraction(0)
+    parts = value.as_tuple()
+    if len(parts.digits) > 512 or abs(int(parts.exponent)) > 512:
+        raise ValueError("Exact reference decimal exceeds bounded coefficient/exponent")
+    return value
+
+
 def _exact_rational(value):
     """Bound exact-reference parsing before Fraction can expand compact decimal exponents.
 
@@ -39,13 +51,8 @@ def _exact_rational(value):
         if "e" in value.lower():
             value = Decimal(value, context=Context(traps=[]))
     if isinstance(value, Decimal):
-        if not value.is_finite():
-            raise ValueError("Exact reference decimal must be finite")
-        if not value:
-            return Fraction(0)
-        if len(value.as_tuple().digits) > 512 or abs(int(value.as_tuple().exponent)) > 512:
-            raise ValueError("Exact reference decimal exceeds bounded coefficient/exponent")
-    elif isinstance(value, int):
+        return _decimal_reference(value)
+    if isinstance(value, int):
         if value.bit_length() > 4096:
             raise ValueError("Exact reference integer exceeds 4096 bits")
     elif isinstance(value, Fraction):

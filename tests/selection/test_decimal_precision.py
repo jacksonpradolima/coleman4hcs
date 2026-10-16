@@ -47,12 +47,14 @@ def test_declared_boundary_trailing_zeros_and_valid_signed_values_are_preserved(
 @pytest.mark.parametrize("text", ["0e-999999999", "-0e999999999"])
 def test_zero_remains_zero_without_expanding_exponents(text):
     model = Quantity.model_validate({"value": text, "semantics": UNITS})
-    assert model.value == 0 and model.model_dump(mode="json")["value"] == "0"
+    assert model.value == 0
+    assert model.model_dump(mode="json")["value"] == "0"
 
 
 def test_allocation_probabilities_and_application_overrides_are_guarded():
+    probability = TypeAdapter(Probability)
     with pytest.raises(ValueError):
-        TypeAdapter(Probability).validate_python("1e-999999999")
+        probability.validate_python("1e-999999999")
     with pytest.raises(ValueError):
         Parameters.model_validate({"budget": "1e-999999999"})
     with pytest.raises(ValueError):
@@ -77,15 +79,17 @@ def test_precision_is_independent_of_decimal_context_without_mutating_it():
                 Quantity.model_validate({"value": "1e-50", "semantics": UNITS})
             model = Quantity.model_validate({"value": "1.123456789012", "semantics": UNITS})
             results.append(model.model_dump(mode="json"))
-            assert context.prec == precision and context.Emin == minimum_exponent
+            assert context.prec == precision
+            assert context.Emin == minimum_exponent
             assert not any(context.flags.values())
     assert results[0] == results[1]
 
 
 @pytest.mark.parametrize("places", [-1, True])
 def test_invalid_precision_configuration_is_rejected(places):
+    value = Decimal(1)
     with pytest.raises(ValueError):
-        validate_decimal_places(Decimal(1), places=places)
+        validate_decimal_places(value, places=places)
 
 
 @pytest.mark.parametrize("value", [Decimal("NaN"), Decimal("Infinity"), Decimal("-Infinity")])
@@ -114,8 +118,10 @@ def test_versioned_reader_checks_original_numeric_literal_before_underflow():
         '{"schema_version":1,"binary":0.1,"quantity":{"value":"0.125","semantics":{"unit":"s","meaning":"ci-work"}}}'
     )
     assert numeric.quantity.value == Decimal("0.125")
-    assert type(numeric.binary) is float and numeric.binary == 0.1
-    assert numeric.to_json() == quoted.to_json() and numeric.fingerprint == quoted.fingerprint
+    assert type(numeric.binary) is float
+    assert numeric.binary == 0.1
+    assert numeric.to_json() == quoted.to_json()
+    assert numeric.fingerprint == quoted.fingerprint
     assert type(decode_json("0.125")) is float
     assert decode_json("0.125", exact_decimals=True) == Decimal("0.125")
     with pytest.raises(ValueError, match="Duplicate"):
