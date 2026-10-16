@@ -16,8 +16,9 @@ from tests.corpus.test_zip64_selection import mutated, owned_zip64, recipe
 
 @pytest.mark.parametrize("value", [None, -1, float("nan"), float("inf"), True, 1.5])
 def test_byte_count_never_conflates_null_negative_or_nonfinite_with_zero(value):
+    empty_digest = digest(b"")
     with pytest.raises(ValueError):
-        Zip64Member(name="empty.csv", sha256=digest(b""), size_bytes=value)
+        Zip64Member(name="empty.csv", sha256=empty_digest, size_bytes=value)
 
 
 def test_real_empty_selected_file_roundtrip(tmp_path):
@@ -70,8 +71,10 @@ def test_other_stored_flags_remain_unsupported(tmp_path, flags):
     raw = owned_zip64(compression=zipfile.ZIP_STORED)
     raw = mutated(raw, 6, "<H", flags)
     raw = mutated(raw, raw.index(b"PK\x01\x02") + 8, "<H", flags)
+    spec = recipe(raw)
+    cache = SourceCache(tmp_path / "cache")
     with pytest.raises(ValueError, match="flags"):
-        materialize_zip64_files(recipe(raw), SourceCache(tmp_path / "cache"), lambda: io.BytesIO(raw))
+        materialize_zip64_files(spec, cache, lambda: io.BytesIO(raw))
 
 
 def test_legacy_materializer_still_rejects_stored_preference_bit(tmp_path):
@@ -84,8 +87,9 @@ def test_legacy_materializer_still_rejects_stored_preference_bit(tmp_path):
     spec = source_spec(
         "legacy-stored", raw, "zip", [{"name": "results.csv", "sha256": digest(b"owned"), "size_bytes": 5}]
     )
+    cache = SourceCache(tmp_path / "cache")
     with pytest.raises(ValueError, match="unsupported member metadata"):
-        materialize_source(spec, SourceCache(tmp_path / "cache"), lambda: io.BytesIO(raw))
+        materialize_source(spec, cache, lambda: io.BytesIO(raw))
 
 
 @pytest.mark.parametrize("field", [20, 24])
@@ -94,8 +98,10 @@ def test_only_offset_sentinels_can_retain_legacy_central_versions(tmp_path, fiel
     central = raw.index(b"PK\x01\x02")
     raw = mutated(raw, central + 6, "<H", 20)
     raw = mutated(raw, central + field, "<I", 0xFFFFFFFF)
+    spec = recipe(raw)
+    cache = SourceCache(tmp_path / "cache")
     with pytest.raises(ValueError, match="size sentinel"):
-        materialize_zip64_files(recipe(raw), SourceCache(tmp_path / "cache"), lambda: io.BytesIO(raw))
+        materialize_zip64_files(spec, cache, lambda: io.BytesIO(raw))
 
 
 @pytest.mark.parametrize(
@@ -135,15 +141,18 @@ def test_local_zip64_extra_metadata_is_bound_to_central_sizes(tmp_path, offset, 
     start = 30 + struct.unpack_from("<H", raw, 26)[0]
     raw = mutated(raw, start + offset, "<H" if offset < 4 else "<Q", value)
     spec = recipe(raw)
+    cache = SourceCache(tmp_path / "cache")
     with pytest.raises(ValueError):
-        materialize_zip64_files(spec, SourceCache(tmp_path / "cache"), lambda: io.BytesIO(raw))
+        materialize_zip64_files(spec, cache, lambda: io.BytesIO(raw))
 
 
 def test_descriptor_crc_disagreement_rejects(tmp_path):
     raw = owned_zip64(descriptor=True)
     raw = mutated(raw, raw.index(b"PK\x07\x08") + 4, "<I", 0)
+    spec = recipe(raw)
+    cache = SourceCache(tmp_path / "cache")
     with pytest.raises(ValueError, match="descriptor"):
-        materialize_zip64_files(recipe(raw), SourceCache(tmp_path / "cache"), lambda: io.BytesIO(raw))
+        materialize_zip64_files(spec, cache, lambda: io.BytesIO(raw))
 
 
 @pytest.mark.parametrize("force_zip64", [False, True])
@@ -171,23 +180,28 @@ def test_local_zip64_extra_requires_both_size_fields(tmp_path):
     for offset in (-50, -34):
         original = struct.unpack_from("<Q", raw, len(raw) + offset)[0]
         raw = mutated(raw, len(raw) + offset, "<Q", original - 8)
+    spec = recipe(raw)
+    cache = SourceCache(tmp_path / "cache")
     with pytest.raises(ValueError, match="both"):
-        materialize_zip64_files(recipe(raw), SourceCache(tmp_path / "cache"), lambda: io.BytesIO(raw))
+        materialize_zip64_files(spec, cache, lambda: io.BytesIO(raw))
 
 
 def test_offset_only_central_version_does_not_allow_deflate_with_local_version10(tmp_path):
     raw = owned_zip64(force_zip64=False)
     raw = mutated(raw, 4, "<H", 10)
     raw = mutated(raw, raw.index(b"PK\x01\x02") + 6, "<H", 45)
+    spec = recipe(raw)
+    cache = SourceCache(tmp_path / "cache")
     with pytest.raises(ValueError, match="version"):
-        materialize_zip64_files(recipe(raw), SourceCache(tmp_path / "cache"), lambda: io.BytesIO(raw))
+        materialize_zip64_files(spec, cache, lambda: io.BytesIO(raw))
 
 
 def test_source_digest_failure_precedes_any_structural_inspection(tmp_path):
     raw = owned_zip64()
     cache = SourceCache(tmp_path / "cache")
+    spec = recipe(raw)
     with pytest.raises(ValueError):
-        materialize_zip64_files(recipe(raw), cache, lambda: io.BytesIO(b"X" + raw[1:]))
+        materialize_zip64_files(spec, cache, lambda: io.BytesIO(b"X" + raw[1:]))
     assert not list((cache.root / "blobs").iterdir())
 
 

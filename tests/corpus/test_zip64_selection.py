@@ -112,13 +112,15 @@ def test_both_methods_and_descriptor_widths_are_real(tmp_path, descriptor, compr
     ],
 )
 def test_new_name_grammar_rejects_unsafe_portable_names(name):
+    empty_digest = digest(b"")
     with pytest.raises(ValueError):
-        Zip64Member(name=name, sha256=digest(b""), size_bytes=0)
+        Zip64Member(name=name, sha256=empty_digest, size_bytes=0)
 
 
 def test_new_grammar_never_changes_old_package_contract():
+    empty_digest = digest(b"")
     with pytest.raises(ValueError):
-        PackageMember(name="owner@project/results.csv", sha256=digest(b""), size_bytes=0)
+        PackageMember(name="owner@project/results.csv", sha256=empty_digest, size_bytes=0)
     assert Zip64Member(name="owner@project/results.csv", sha256=digest(b""), size_bytes=0).size_bytes == 0
 
 
