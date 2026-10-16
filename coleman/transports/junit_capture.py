@@ -158,10 +158,12 @@ def _member_bytes(cache: SourceCache, receipt: MaterializationReceipt, name: str
 
 def _stage_view(cache: SourceCache, receipt: MaterializationReceipt, root: Path) -> None:
     """Stage only declared regular-file bytes in a fresh private temporary tree, never extracting arbitrary paths."""
+    validate_source_storage(root)
     root.mkdir(mode=0o755)
     root.chmod(0o755)
     for member in receipt.spec.members:
         path = _contained(root, root / member.name)
+        validate_source_storage(path)
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
         for directory in (path.parent, *path.parent.parents):
             if directory == root.parent:
@@ -478,6 +480,7 @@ def capture_junit_source(
             "sha256:"
         )
         state = _contained(writer.run_root, writer.run_root / "junit-captures" / session)
+        validate_source_storage(state)
         with _single_producer(state):
             writer.write_immutable(state / "context.json", prepared.context.to_json() + "\n")
             captures = tuple(

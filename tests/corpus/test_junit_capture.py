@@ -490,3 +490,59 @@ def test_raw_capture_output_rejects_git_worktrees_before_any_output(tmp_path, mo
         capture.capture_junit_source(spec, cache, writer, "outside-git-trial")
     assert calls == []
     assert not output.exists()
+
+
+@pytest.mark.parametrize("marker_kind", ["directory", "file"])
+def test_nested_capture_worktree_rejects_before_role_writes(tmp_path, monkeypatch, marker_kind):
+    spec, cache, environment = prepared_inputs(tmp_path)
+    output = tmp_path / "external-output"
+    namespace = output / "junit-captures"
+    namespace.mkdir(parents=True)
+    marker = namespace / ".git"
+    if marker_kind == "directory":
+        marker.mkdir()
+    else:
+        marker.write_text("gitdir: /owned/external/git-metadata\n")
+    calls = []
+
+    def run(*args):
+        calls.append(args)
+        return ProcessStreams(encoded(records()), b"Owned raw diagnostic", 0, 1, "exited")
+
+    substitute_docker(monkeypatch, environment, run)
+    writer = ArtifactWriter(output)
+    with pytest.raises(ValueError, match="outside.*repository"):
+        capture.capture_junit_source(spec, cache, writer, "nested-worktree-trial")
+    assert calls == []
+    assert not list(namespace.glob("*/context.json"))
+    assert not (output / "corpus-controlled").exists()
+
+
+def test_source_staging_rejects_git_selected_as_system_temporary_directory(tmp_path, monkeypatch):
+    spec, cache, environment = prepared_inputs(tmp_path)
+    repository = tmp_path / "repository"
+    (repository / ".git").mkdir(parents=True)
+    monkeypatch.setattr(capture.tempfile, "tempdir", str(repository))
+    monkeypatch.setattr(capture.shutil, "which", lambda _: "/owned/docker")
+    monkeypatch.setattr(capture, "_runtime_environment", lambda *args: environment)
+
+    def collect(*args, **kwargs):
+        pytest.fail("Raw source staging must reject before container execution")
+
+    monkeypatch.setattr(capture, "collect_process", collect)
+    writer = ArtifactWriter(tmp_path / "external-output")
+    with pytest.raises(ValueError, match="outside.*repository"):
+        capture.capture_junit_source(spec, cache, writer, "git-temporary-trial")
+    assert [path.name for path in repository.iterdir()] == [".git"]
+    assert not (writer.run_root / "corpus-controlled").exists()
+
+
+@pytest.mark.parametrize("name", [".git", ".GIT", "nested/.Git/config"])
+def test_source_staging_cannot_introduce_git_markers(tmp_path, name):
+    cache = SourceCache(tmp_path / "cache")
+    receipt = owned_package(cache, name, b"Owned Git marker fixture", "owned-v1")
+    root = tmp_path / "stage"
+    with pytest.raises(ValueError, match="outside.*repository"):
+        capture._stage_view(cache, receipt, root)
+    assert not list(root.rglob("config"))
+    assert not (root / name).exists()

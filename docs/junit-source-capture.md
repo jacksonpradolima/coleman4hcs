@@ -42,8 +42,11 @@ configuration. The producer never pulls an image. Once cached, omit `--fetch` fo
 offline acquisition; subject execution has no network even during the first run.
 Source-cache and output directories must be separate and physically outside
 Git worktrees. The producer reuses the cache's shared storage guard to reject
-repository directories, linked-worktree marker files and symlink aliases before
-runtime queries, source acquisition or raw-capture writes. Metadata-only source
+repository directories, linked-worktree marker files and symlink aliases. Provided
+output roots are checked before runtime queries/source acquisition; concrete cache
+blob, capture-session and staging paths are rechecked before content writes.
+Staged members cannot introduce case-insensitive `.git` path components. The system
+temporary directory must also be outside Git for source staging. Metadata-only
 exports retain their existing publication rules.
 
 The JSON summary includes dataset/state paths, role collection statuses, pair
