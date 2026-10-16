@@ -131,6 +131,10 @@ publication failures never certify a completed learning checkpoint.
 Successful protocols require the exact discovered test sequence and a final
 trailer. Malformed/partial protocols, timeouts, output limits and process errors
 retain bounded raw evidence without promoting partial cases into assertions.
+On replay, exited process/protocol error labels are rederived from the stored
+exit code and raw protocol; relabeling a valid complete packet cannot silently
+discard its observations. Timeout/output-limit labels remain parent-producer
+attestations because raw streams alone cannot prove which guard fired.
 Both role packets are separately digest-pinned report members; normalized
 observations reference their diagnostic member digest. An entirely unobserved
 trial has no invented pairs. Negative, reversed and inconclusive comparisons

@@ -3,6 +3,7 @@
 import io
 import json
 from collections import Counter
+from datetime import UTC, datetime
 
 import pytest
 
@@ -48,8 +49,9 @@ def test_offline_inputs_bind_actual_implementation_and_reject_changed_harness(tm
     wrong = changed(spec, harness_sha256=digest(b"another harness"))
     with pytest.raises(ValueError, match="harness disagrees"):
         prepare_junit_inputs(wrong, cache, environment)
+    invalid_fetch = json.loads("1")
     with pytest.raises(ValueError, match="boolean"):
-        prepare_junit_inputs(spec, cache, environment, fetch=json.loads("1"))
+        prepare_junit_inputs(spec, cache, environment, fetch=invalid_fetch)
 
 
 def test_paired_collection_checkpoint_replay_actual_core_and_cli(tmp_path, monkeypatch, capsys):
@@ -237,8 +239,9 @@ def test_cleanup_is_scoped_and_does_not_hide_daemon_failure(monkeypatch):
 def test_missing_runtime_rejects_before_collection(tmp_path, monkeypatch):
     spec, cache, _ = prepared_inputs(tmp_path)
     monkeypatch.setattr(capture.shutil, "which", lambda _: None)
+    writer = ArtifactWriter(tmp_path / "results")
     with pytest.raises(OSError, match="local Docker"):
-        capture.capture_junit_source(spec, cache, ArtifactWriter(tmp_path / "results"), "owned-trial")
+        capture.capture_junit_source(spec, cache, writer, "owned-trial")
 
 
 def test_bounded_recipe_and_checkpoint_reads(tmp_path):
@@ -319,9 +322,13 @@ def test_actual_role_command_stages_only_declared_inputs_and_guards(tmp_path, mo
     assert calls[0][1]["maximum_output_bytes"] == spec.limits.maximum_output_bytes
 
 
-def test_role_precision_and_unknown_schema_reject_before_truncation():
+@pytest.mark.parametrize(
+    "instant",
+    ["2026-01-01T00:00:00.123456789Z", "٢٠٢٦-01-01T00:00:00Z", "2026-01-01T00:00:00+00:00"],
+)
+def test_role_precision_and_unknown_schema_reject_before_truncation(instant):
     row = records()[1]
-    row["capture_started_at"] = "2026-01-01T00:00:00.123456789Z"
+    row["capture_started_at"] = instant
     from coleman.transports.junit_contracts import JunitCase
 
     with pytest.raises(ValueError, match="six fractional digits"):
@@ -363,3 +370,24 @@ def test_cleanup_failure_leaves_recoverable_start_without_committing_a_role(tmp_
     assert len(executions) == 2
     assert [item.status for item in recovered.captures] == ["interrupted", "collected"]
     assert recovered.dataset.pairs[0].classification == "inconclusive"
+
+
+@pytest.mark.parametrize("status", ["protocol_error", "process_error"])
+def test_checkpoint_cannot_discard_complete_raw_observations_by_changing_status(tmp_path, status):
+    spec = recipe()
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    packet = capture.role_capture(
+        spec,
+        digest(b"context"),
+        "owned-trial",
+        "buggy",
+        now,
+        now,
+        ProcessStreams(encoded(records()), b"", 0, 1, "exited"),
+    )
+    payload = packet.model_dump(mode="json")
+    payload.update(status=status, header=None, cases=[])
+    path = tmp_path / "edited-role.json"
+    path.write_text(json.dumps(payload))
+    with pytest.raises(ValueError):
+        capture._load_role(path, spec)

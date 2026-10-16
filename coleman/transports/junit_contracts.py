@@ -32,7 +32,7 @@ def _capture_instant(value):
     """Reject sub-microsecond or ambiguous string instants before Python datetime could truncate them."""
     if (
         isinstance(value, str)
-        and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?Z", value) is None
+        and re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z", value, flags=re.ASCII) is None
     ):
         raise ValueError("JUnit capture instants require UTC Z and at most six fractional digits")
     if not isinstance(value, str | datetime):
@@ -268,6 +268,8 @@ class JunitRoleCapture(VersionedContract):
                 raise ValueError("Collected JUnit cases disagree with declared runtime discovery")
         elif self.cases:
             raise ValueError("Incomplete JUnit captures cannot promote partial/invalid streams into observations")
+        elif self.header is not None:
+            raise ValueError("Incomplete JUnit captures cannot claim a validated runtime header")
         return self
 
 

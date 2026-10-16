@@ -50,6 +50,8 @@ from coleman.transports.junit_source import (
     prepare_junit_inputs,
 )
 
+_JAVA_SUFFIX = ".java"
+
 
 def _contained(root: Path, path: Path) -> Path:
     """Require a cooperative trusted-local output path; no symlink or resolved parent escape is adopted."""
@@ -179,7 +181,9 @@ def _mount(source: Path, target: str) -> str:
 def _source_arguments(receipt: MaterializationReceipt, prefix: str, target: str) -> str:
     """Return quoted javac argument-file entries; safe materialization names cannot contain quotes/control syntax."""
     names = [
-        item.name for item in receipt.spec.members if item.name.startswith(prefix + "/") and item.name.endswith(".java")
+        item.name
+        for item in receipt.spec.members
+        if item.name.startswith(prefix + "/") and item.name.endswith(_JAVA_SUFFIX)
     ]
     return "".join(f'"{target}/{name}"\n' for name in sorted(names))
 
@@ -214,9 +218,9 @@ def _run_role(
             _source_arguments(prepared.fixture, recipe.fixture_prefix, "/fixture")
         )
         classes = [
-            item.name.removeprefix(recipe.fixture_prefix + "/").removesuffix(".java").replace("/", ".")
+            item.name.removeprefix(recipe.fixture_prefix + "/").removesuffix(_JAVA_SUFFIX).replace("/", ".")
             for item in prepared.fixture.spec.members
-            if item.name.startswith(recipe.fixture_prefix + "/") and item.name.endswith(".java")
+            if item.name.startswith(recipe.fixture_prefix + "/") and item.name.endswith(_JAVA_SUFFIX)
         ]
         (harness / "classes.txt").write_text("\n".join(sorted(classes)) + "\n")
         for path in harness.iterdir():

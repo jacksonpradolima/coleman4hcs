@@ -47,6 +47,19 @@ def parsed_junit_stream(payload: bytes, recipe: JunitCaptureRecipe) -> tuple[Jun
     return header, cases
 
 
+def _completed_protocol(
+    payload: bytes, exit_code: int, recipe: JunitCaptureRecipe
+) -> tuple[str, JunitHeader | None, tuple[JunitCase, ...]]:
+    """Derive an exited process's status and cases from the actual code/bytes, including negative evidence."""
+    if exit_code != 0:
+        return "process_error", None, ()
+    try:
+        header, cases = parsed_junit_stream(payload, recipe)
+    except (ValueError, RecursionError):
+        return "protocol_error", None, ()
+    return "collected", header, cases
+
+
 def role_capture(
     recipe: JunitCaptureRecipe,
     context_fingerprint: str,
@@ -68,13 +81,8 @@ def role_capture(
     cases: tuple[JunitCase, ...] = ()
     if streams.termination != "exited":
         status = streams.termination
-    elif streams.exit_code != 0:
-        status = "process_error"
     else:
-        try:
-            header, cases = parsed_junit_stream(streams.stdout, recipe)
-        except (ValueError, RecursionError):
-            status = "protocol_error"
+        status, header, cases = _completed_protocol(streams.stdout, streams.exit_code, recipe)
     return JunitRoleCapture.model_validate(
         {
             "schema_version": 1,
@@ -98,7 +106,10 @@ def validate_role_bytes(capture: JunitRoleCapture, recipe: JunitCaptureRecipe) -
     """Reparse actual stored streams; typed metadata alone cannot substitute declared cases for raw evidence.
 
     Canonical base64, combined byte limits and successful record/runtime bindings
-    are rechecked on resume. Non-collected packets must not claim case records.
+    are rechecked on resume. Exited process/protocol error statuses must agree
+    with the actual exit code and protocol, preventing silent observation loss.
+    Timeout/output-limit statuses remain producer attestations; raw bytes alone
+    cannot establish which parent guard stopped collection.
     Schema errors raise ValueError; no files or source processes are accessed.
     """
     capture = JunitRoleCapture.model_validate(capture)
@@ -118,7 +129,9 @@ def validate_role_bytes(capture: JunitRoleCapture, recipe: JunitCaptureRecipe) -
         or len(stdout) + len(stderr) > recipe.limits.maximum_output_bytes
     ):
         raise ValueError("Noncanonical or oversized stored JUnit streams")
-    if capture.status == "collected":
-        header, cases = parsed_junit_stream(stdout, recipe)
-        if (capture.header, capture.cases) != (header, cases):
-            raise ValueError("Stored JUnit observations disagree with raw streams")
+    if capture.status in {"collected", "protocol_error", "process_error"}:
+        if capture.exit_code is None:
+            raise ValueError("Stored exited role requires an observed exit code")
+        expected = _completed_protocol(stdout, capture.exit_code, recipe)
+        if (capture.status, capture.header, capture.cases) != expected:
+            raise ValueError("Stored JUnit status or observations disagree with raw streams and exit code")
