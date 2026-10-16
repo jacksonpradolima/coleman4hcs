@@ -268,14 +268,21 @@ def _run_role(
             _cleanup(base, container_name)
 
 
+class _CleanupError(OSError):
+    """Leave a start marker recoverable when producer-owned container cleanup cannot be confirmed."""
+
+
 def _cleanup(base: tuple[str, ...], name: str) -> None:
     """Remove only this deterministic producer-owned container name; an absent container is normal."""
-    result = collect_process(base + ("rm", "-f", name), timeout_seconds=15, maximum_output_bytes=65536)
+    try:
+        result = collect_process(base + ("rm", "-f", name), timeout_seconds=15, maximum_output_bytes=65536)
+    except OSError as exc:
+        raise _CleanupError("Producer-owned container cleanup failed before acknowledgment") from exc
     absent = result.stderr.decode("utf-8", errors="replace").strip() == (
         "Error response from daemon: No such container: " + name
     )
     if result.termination != "exited" or (result.exit_code != 0 and not absent):
-        raise OSError("Producer-owned container cleanup failed; recover its deterministic context/trial role")
+        raise _CleanupError("Producer-owned container cleanup failed; recover its deterministic context/trial role")
 
 
 def _load_role(path: Path, recipe: JunitCaptureRecipe) -> JunitRoleCapture:
@@ -350,6 +357,8 @@ def _capture_role(
         writer.write_immutable(marker, started.to_json() + "\n")
         try:
             streams = _run_role(base, recipe, prepared, cache, role, container_name)
+        except _CleanupError:
+            raise
         except OSError as exc:
             capture = JunitRoleCapture.model_validate(
                 {

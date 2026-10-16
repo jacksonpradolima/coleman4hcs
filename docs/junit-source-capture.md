@@ -123,7 +123,9 @@ packet recovers as `interrupted`: streams and counters remain unavailable, no
 partial cases are promoted. Use a new trial ID for a fresh execution. Both trials
 remain in the same dependence group. A POSIX advisory lock rejects concurrent
 producers for the same context/trial; a process crash releases it. Cleanup targets
-only the producer's deterministic container name. Source acquisition, staging and
+only the producer's deterministic container name. A cleanup failure propagates
+without committing a role packet; the next call retries cleanup and retains the
+interrupted observation state. Source acquisition, staging and
 publication failures never certify a completed learning checkpoint.
 
 Successful protocols require the exact discovered test sequence and a final

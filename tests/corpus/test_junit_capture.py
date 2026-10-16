@@ -330,3 +330,36 @@ def test_role_precision_and_unknown_schema_reject_before_truncation():
     row["schema_version"] = 2
     with pytest.raises(ValueError, match="version"):
         JunitCase.model_validate(row)
+
+
+@pytest.mark.parametrize("launch_error", [False, True])
+def test_cleanup_failure_leaves_recoverable_start_without_committing_a_role(tmp_path, monkeypatch, launch_error):
+    spec, cache, environment = prepared_inputs(tmp_path)
+    monkeypatch.setattr(capture.shutil, "which", lambda _: "/owned/docker")
+    monkeypatch.setattr(capture, "_runtime_environment", lambda *args: environment)
+    executions = []
+    fail_cleanup = True
+
+    def collect(args, **kwargs):
+        if "run" in args:
+            executions.append(args)
+            return ProcessStreams(encoded(records()), b"", 0, 1, "exited")
+        if fail_cleanup:
+            if launch_error:
+                raise OSError("Owned cleanup process could not start")
+            return ProcessStreams(b"", b"owned daemon unavailable during cleanup", 1, 1, "exited")
+        return ProcessStreams(b"", b"", 0, 1, "exited")
+
+    monkeypatch.setattr(capture, "collect_process", collect)
+    writer = ArtifactWriter(tmp_path / "results")
+    with pytest.raises(OSError, match="cleanup failed"):
+        capture.capture_junit_source(spec, cache, writer, "cleanup-trial")
+    assert len(executions) == 1
+    assert not list(writer.run_root.glob("junit-captures/*/buggy.json"))
+    assert not list(writer.run_root.glob("corpus-controlled/*.json"))
+    assert len(list(writer.run_root.glob("junit-captures/*/buggy.started.json"))) == 1
+    fail_cleanup = False
+    recovered = capture.capture_junit_source(spec, cache, writer, "cleanup-trial")
+    assert len(executions) == 2
+    assert [item.status for item in recovered.captures] == ["interrupted", "collected"]
+    assert recovered.dataset.pairs[0].classification == "inconclusive"
