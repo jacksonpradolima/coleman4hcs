@@ -94,7 +94,7 @@ and checkpoint. Inspect the inputs, decisions and evidence behind each result.
 
 [**Run real CI data**](#start-with-real-ci-data) · [**Explore benchmarks**](#datasets) ·
 [**Library and CLI**](#quick-start) · [**Documentation**](https://jacksonpradolima.github.io/coleman/) ·
-[**4.7 release**](https://github.com/jacksonpradolima/coleman/releases/tag/v4.7.0) · [**Cite COLEMAN**](#citation)
+[**4.8 release**](https://github.com/jacksonpradolima/coleman/releases/tag/v4.8.0) · [**Cite COLEMAN**](#citation)
 
 ## What you can build with COLEMAN
 
@@ -118,7 +118,7 @@ With Python 3.14+ in an activated environment, install the published wheel and r
 the complete LRTS workflow. Use cache/output directories outside Git:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 python -m coleman.transports.lrts_etl \
   --cache /tmp/coleman-lrts-source-cache \
   --output /tmp/coleman-lrts-data --fetch --run
@@ -143,13 +143,16 @@ RNFail feedback. Source temporal admission remains blocked; this run demonstrate
 a usable data pipeline and simulation. Policy efficacy and prospective savings
 require their own eligible observations and comparisons.
 
-The **4.8 source workflow** adds
-[RTPTorrent → analytical/native Parquet → checkpointed replay](docs/rtptorrent-parquet-etl.md):
-the complete HikariCP raw member contributes **46,995 observations across 1,662
-source jobs**, with an explicit eight-job native preset. The guide covers the
-verified ZIP64 source, resumable operator download, exact units, conserved
-exclusions and replay assumptions. Build the source revision containing #302 to
-use it while the published wheel remains 4.7.
+The same **4.8 wheel** also provides
+[RTPTorrent → analytical/native Parquet → checkpointed replay](docs/rtptorrent-parquet-etl.md).
+Its complete HikariCP raw member preserves **46,995 class executions across 1,662
+source jobs**. The declared eight-job preset projects **18 executions** and
+produces **16 Random/UCB result rows**, with the other **46,977 records** retained
+analytically. The guide includes a resumable download of the approximately 5 GB
+source, full ZIP64 verification and an owned offline example. Method observations
+from LRTS and class observations from RTPTorrent retain their distinct units.
+Both workflows are explicit post-hoc simulations; the admission and comparison
+gates remain visible in the [benchmark readiness table](#datasets).
 
 # Getting started
 
@@ -391,19 +394,19 @@ Each run persists:
 
 Requires Python 3.14 or later in an activated virtual environment. Install the
 wheel published in this repository’s GitHub releases. These examples pin version
-4.7.0 and its published SHA-256. Pip verifies the wheel before installation:
+4.8.0 and its published SHA-256. Pip verifies the wheel before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 ```
 
 Or with optional extras:
 
 ```bash
 # OpenTelemetry SDK
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -579,10 +582,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 ```
 
 ## Querying results
@@ -645,7 +648,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list
@@ -726,7 +729,7 @@ controlled reproductions and empirical benchmark corpora have different roles:
 | **LRTS / Karaf real CI reports** | [Pinned download → analytical/native Parquet → Random/UCB → checkpoint recovery](docs/lrts-parquet-etl.md) | Complete eight-build preset; explicit post-hoc serial simulation. Protected historical admission remains blocked. |
 | **Druid and Retrofit** | Bundled native/contextual Parquet examples, native runner and [descriptive profiles](docs/benchmark-corpus.md#local-profiles-and-the-first-diversity-matrix-44) | Runnable legacy experiments. Source terms, duration units and outcome availability still need corpus admission evidence. |
 | **Dune and its variants** | Bundled native Parquet, WTS/VTS workflows and [variant-aware inventory](docs/benchmark-corpus.md) | Runnable HCS examples. Variants/context files may share executions; broad HCS benchmark admission remains unfinished. |
-| **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | 4.8 source implementation: 46,995 observations / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |
+| **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | Available in 4.8: 46,995 class executions / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |
 | **Apache Commons CLI-13 buggy/fixed pair** | [Pinned source producer](docs/junit-source-capture.md), common 95-test fixture per revision and recoverable raw observations | One controlled Java pair; bundled recipe requires Docker/arm64. Independent of historical CI chronology; full Defects4J integration remains planned. |
 | **Owned CI correctness fixtures** | Two tiny [serial/parallel corpus fixtures](docs/benchmark-corpus.md), validation and native integration examples | Available without network. One constructed family for contract/metric checks; no independent-project diversity. |
 | **Coverage and scenario-allocation microbenchmarks** | [Correctness and performance profiles](docs/decision-benchmarks.md), independent exhaustive references and JSON/Markdown reports | Runnable finite-model benchmarks with runtime/memory observations; separate from empirical CI-policy comparisons. |
@@ -1578,13 +1581,13 @@ an LLM decision algorithm, or a hosted service.
 Use Python 3.14 or later on Linux or macOS in an activated virtual environment:
 
 ```bash
-python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8'
+python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75'
 ```
 
 For optional tools, install the same GitHub wheel with its extra:
 
 ```bash
-python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8'
+python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75'
 ```
 
 Use this repository's release assets and verify their published digest and
@@ -1916,7 +1919,7 @@ follows from passing these checks.
 
 ## Installed commands
 
-Install the wheel attached to [COLEMAN 4.7](https://github.com/jacksonpradolima/coleman/releases/tag/v4.7.0)
+Install the wheel attached to [COLEMAN 4.8](https://github.com/jacksonpradolima/coleman/releases/tag/v4.8.0)
 in a Python 3.14+ environment, or build a development wheel from the reviewed source.
 Copy examples to a directory outside the checkout. Once installed, these local
 operations need no optional dependency, provider subscription, credential or
@@ -3427,7 +3430,7 @@ COLEMAN **4.4** adds bounded, restartable acquisition and offline integrity
 validation for explicitly licensed, pinned raw files and ZIP packages as part of
 [#261](https://github.com/jacksonpradolima/coleman/issues/261). It reuses the existing
 immutable artifact writer and native runner/checkpoints. Install the wheel attached
-to [COLEMAN 4.7](https://github.com/jacksonpradolima/coleman/releases/tag/v4.7.0)
+to [COLEMAN 4.8](https://github.com/jacksonpradolima/coleman/releases/tag/v4.8.0)
 in Python 3.14 or newer; 4.3 and earlier wheels retain their previous commands.
 
 A successful materialization means **source integrity only**. It does not admit a
@@ -5695,20 +5698,23 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.7
+## New in 4.8
 
-[Download real LRTS reports, convert them to Parquet and run native TCPCI](lrts-parquet-etl.md).
-The pinned eight-build Karaf slice preserves 6,876 source observations and
-6,567 compatible native executions, with explicit exclusions, units and
-provenance. Random/UCB replay and checkpoint recovery use the existing runner.
-The receipt declares serial simulation and budget-censored RNFail feedback;
-source admission and confirmatory evidence remain open.
+[Turn real RTPTorrent CI history into Parquet and native TCPCI replays](rtptorrent-parquet-etl.md).
+The published wheel verifies the complete ZIP64 source, preserves **46,995 class
+executions / 1,662 source jobs**, and projects 18 executions from eight declared
+jobs into Random/UCB replay with the existing checkpoints. All exclusions, units
+and source/producer/file identities remain inspectable.
 
-The **4.8 source implementation** adds the
-[real RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md): verified
-ZIP64 source, complete HikariCP analytical history, an explicit eight-job native
-projection and shared native checkpoint recovery. The published 4.7 wheel retains
-the LRTS path above; build the revision containing #302 for RTPTorrent ETL.
+The [LRTS download-to-Parquet workflow](lrts-parquet-etl.md) remains available in
+the same wheel: eight Karaf builds, 6,876 method observations, 6,567 compatible
+native executions and 309 not-run exclusions. Each workflow produces 16 result
+rows and resumes without duplicating committed rounds. Their post-hoc serial
+and budget-censored feedback assumptions do not establish observed chronology,
+policy efficacy or prospective savings. Source admission and confirmation remain open.
+
+The release also corrects Linux worker memory accounting while retaining its
+limits and historical general telemetry. See the [4.8 release notes](releases/4.8.0.md).
 
 [Controlled observations](controlled-faults.md), the
 [pinned JUnit3 source recipe](junit-source-capture.md),
@@ -5725,7 +5731,7 @@ The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures a
 visible source-admission gaps; all seven diversity regimes remain uncovered.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
-correctness checks. See the [4.7 release notes](releases/4.7.0.md) for examples,
+correctness checks. See the [4.8 release notes](releases/4.8.0.md) for examples,
 compatibility and limits.
 
 ## Quick Start
@@ -5734,7 +5740,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 coleman run --config my-experiment.yaml
 ```
 
@@ -5958,10 +5964,10 @@ Parquet, writes a completion/provenance manifest and executes Random and UCB
 through the existing native TCPCI runner. Repeating the command reuses verified
 inputs and resumes the same native checkpoint.
 
-Use Python 3.14+ and the published 4.7.0 wheel. Pip verifies its SHA-256:
+Use Python 3.14+ and the published 4.8.0 wheel. Pip verifies its SHA-256:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 ```
 
 Choose cache and output directories outside Git. No Docker, optional MCP SDK,
@@ -6475,7 +6481,7 @@ cd examples/observability
 docker compose up -d
 
 # Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 
 # Enable telemetry — use the telemetry/local pack in your run.yaml:
 #   packs:
@@ -6495,7 +6501,7 @@ coleman run --config run.yaml
 
 ```bash
 docker compose --profile clickhouse up -d
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 ```
 
 ## Tear down
@@ -8576,13 +8582,13 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
-The reviewed **4.8 source integration** combines bounded ZIP64 source integrity
-and the [complete RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md),
-including a Linux worker memory-accounting correction. Its
-[reviewed release description](releases/4.8.0.md) is ready for automatic publication
-after the release integration PR passes. The published wheel remains 4.7 until then.
+The published [COLEMAN 4.8](releases/4.8.0.md) release combines bounded ZIP64
+source integrity and the [complete RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md),
+including the Linux worker memory-accounting correction. The verified wheel,
+source archive, Sigstore bundles, SBOM and synchronized lock are available in
+[the release assets](https://github.com/jacksonpradolima/coleman/releases/tag/v4.8.0).
 
-The published [COLEMAN 4.7](releases/4.7.0.md) release adds a real
+[COLEMAN 4.7](releases/4.7.0.md) introduced the real
 [LRTS download-to-Parquet workflow](lrts-parquet-etl.md), including analytical
 tables, explicit native simulation input and actual runner/checkpoint recovery.
 Its source-admission and confirmatory-evidence limits remain explicit.
@@ -8910,32 +8916,33 @@ fixes remain independently shippable.
 
 ## Remaining corpus subtasks
 
-The public #261 umbrella now has native GitHub sub-issues. These are planned
-deliverables; an opened subtask does not establish implementation or admission.
+The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
+4.8; #303–#313 track the remaining work. An opened subtask does not establish
+implementation or admission.
 
 | Stage | Subtasks | Dependency |
 | --- | --- | --- |
-| RTPTorrent source path | [#301 ZIP64 integrity](https://github.com/jacksonpradolima/coleman/issues/301), [#302 real Parquet ETL/replay](https://github.com/jacksonpradolima/coleman/issues/302) | #302 requires #301 |
+| RTPTorrent source path — delivered in 4.8 | [#301 ZIP64 integrity](https://github.com/jacksonpradolima/coleman/issues/301), [#302 real Parquet ETL/replay](https://github.com/jacksonpradolima/coleman/issues/302) | #302 requires #301 |
 | Other source expansion | [#303 LRTS](https://github.com/jacksonpradolima/coleman/issues/303), [#304 Java faults](https://github.com/jacksonpradolima/coleman/issues/304), [#305 non-Java faults](https://github.com/jacksonpradolima/coleman/issues/305), [#306 seeded faults](https://github.com/jacksonpradolima/coleman/issues/306), [#307 HCS](https://github.com/jacksonpradolima/coleman/issues/307), [#308 stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main |
 | Evidence integration | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | #302–#308 |
 | Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
 | Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
 | Final execution/report | [#313 confirmatory corpus](https://github.com/jacksonpradolima/coleman/issues/313) | #309–#312 and the complete parent gates |
 
-Work starts with #301 and #302, one reviewed slice at a time. Compatible source
-deliveries may be collected in a **4.8** integration branch before publication.
+Work started with #301 and #302, one reviewed slice at a time. Their compatible
+source deliveries were collected in a release branch and published together in
+**4.8** through [#316](https://github.com/jacksonpradolima/coleman/pull/316).
 No release number or subtask closure substitutes for an actual source-integrity,
 diversity, temporal-admission or scientific evidence gate.
 
-The **4.8 source integration** now includes #301's reviewed ZIP64 selection and
-complete RTPTorrent archive/member integrity evidence through
-[#314](https://github.com/jacksonpradolima/coleman/pull/314). The implementation for
-#302 adds the [full analytical/native Parquet workflow](rtptorrent-parquet-etl.md),
-an explicit eight-source-job simulation and checkpoint recovery through
-[#315](https://github.com/jacksonpradolima/coleman/pull/315). These compatible
-source deliveries are grouped before publication; the published wheel remains
-4.7 until the integration is reviewed and released. Remaining source admission,
-diversity and confirmatory work continues in #303–#313.
+**4.8.0** delivers #301's reviewed ZIP64 selection and complete RTPTorrent
+archive/member integrity through [#314](https://github.com/jacksonpradolima/coleman/pull/314),
+plus #302's [full analytical/native Parquet workflow](rtptorrent-parquet-etl.md),
+explicit eight-source-job simulation and checkpoint recovery through
+[#315](https://github.com/jacksonpradolima/coleman/pull/315). The signed published
+wheel was exercised outside checkout with the actual source cache, native runs
+and checkpoint continuation. Remaining source admission, diversity and
+confirmatory work continues in #303–#313, beginning with the prepared LRTS expansion.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:
@@ -8974,27 +8981,27 @@ assumption or commercial value is inferred from a planned feature.
 
 # Turn RTPTorrent CI history into Parquet and native TCPCI replays
 
-The source implementation for [#302](https://github.com/jacksonpradolima/coleman/issues/302)
-provides a complete HikariCP workflow: verified real archive → full analytical
-history → bounded native-compatible Parquet → Random/UCB → checkpoint recovery.
-It targets **COLEMAN 4.8**; build the source revision containing this page while
-the published release remains 4.7. The 4.7 wheel does not contain this ETL API.
+**COLEMAN 4.8** provides a complete installed-package HikariCP workflow: verified
+real archive → full analytical history → bounded native-compatible Parquet →
+Random/UCB → checkpoint recovery. Delivered in
+[#315](https://github.com/jacksonpradolima/coleman/pull/315) for
+[#302](https://github.com/jacksonpradolima/coleman/issues/302), it uses the
+existing native runner. The 4.7 wheel does not contain this ETL API.
 
 The preset keeps **46,995 source class executions and 1,662 source jobs** in
 analytical Parquet. It projects **18 executions from eight declared jobs** into
 the existing native runner. The other **46,977 executions remain analytically
 available**, with a conserved `outside_jobs` projection reason.
 
-## Build and run outside checkout
+## Install and run outside checkout
 
-Build/install this revision, then work in a separate workspace:
+Use Python 3.14+ and the verified published wheel. No source checkout, Docker or
+MCP SDK is needed for this workflow; the URL pins the actual wheel SHA-256:
 
 ```bash
-uv build --out-dir /tmp/coleman-rtptorrent-dist
 uv venv /tmp/coleman-rtptorrent-env --python 3.14
-uv pip install --python /tmp/coleman-rtptorrent-env/bin/python /tmp/coleman-rtptorrent-dist/*.whl
+uv pip install --python /tmp/coleman-rtptorrent-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 mkdir -p /tmp/coleman-rtptorrent-workspace
-cp examples/rtptorrent-parquet/ci.py /tmp/coleman-rtptorrent-workspace/owned-ci.py
 cd /tmp/coleman-rtptorrent-workspace
 ```
 
@@ -9183,11 +9190,16 @@ flowchart TD
 
 ## Owned and real installed-package checks
 
-For a network-free complete example, run the `owned-ci.py` copied during setup
-twice with the installed wheel:
+The wheel contains the recipe and owned correctness fixtures. The standalone
+example script is a separate repository file: download the exact release-tagged
+script and verify its SHA-256, then run twice offline with the installed wheel.
+It downloads no foreign dataset:
 
 ```bash
 cd /tmp/coleman-rtptorrent-workspace
+curl --fail --location --output owned-ci.py \
+  https://raw.githubusercontent.com/jacksonpradolima/coleman/v4.8.0/examples/rtptorrent-parquet/ci.py
+/tmp/coleman-rtptorrent-env/bin/python -c 'import hashlib, sys; from pathlib import Path; sys.exit(0 if hashlib.sha256(Path("owned-ci.py").read_bytes()).hexdigest() == "9b7c8dec20124cefe975d99a2c794a838e791000d3a7cc3046cbcbfaa5c4fd04" else "Example SHA-256 mismatch")'
 /tmp/coleman-rtptorrent-env/bin/python owned-ci.py owned /tmp/coleman-rtptorrent-owned-cache
 /tmp/coleman-rtptorrent-env/bin/python owned-ci.py owned /tmp/coleman-rtptorrent-owned-cache
 ```
@@ -9206,9 +9218,9 @@ COLEMAN_RTPTORRENT_ETL_REAL_CACHE=/tmp/coleman-rtptorrent-source-cache \
 Source pins and data terms are documented in the
 [ZIP64 integrity guide](zip64-source-selection.md) and the
 [RTPTorrent source assessment](rtptorrent.md). The wheel contains metadata recipes
-and owned examples; third-party archive/rows stay outside the repository. Dataset
-terms remain separate from enclosed subject-code rights, and this workflow reads
-reported CI observations rather than executing the archived subject repositories.
+and owned fixtures; standalone example scripts are downloaded separately above.
+Third-party archive/rows stay outside the repository. Dataset terms remain
+separate from enclosed subject-code rights, and this workflow reads reported CI observations rather than executing the archived subject repositories.
 
 
 
@@ -9217,11 +9229,10 @@ reported CI observations rather than executing the archived subject repositories
 # RTPTorrent: source assessment and bounded class-result conversion
 
 The RTPTorrent adapter in COLEMAN 4.5 converts **raw class-result CSV members**,
-using the existing licensed materialization/cache contract. Install the verified
-4.5 release wheel to run these examples. The source implementation for 4.8 adds
-the complete [real Parquet/replay workflow](rtptorrent-parquet-etl.md).
-RTPTorrent remains blocked from protected
-temporal evaluation.
+using the existing licensed materialization/cache contract. The verified 4.8
+wheel retains this reader and adds the complete
+[real Parquet/replay workflow](rtptorrent-parquet-etl.md).
+RTPTorrent remains blocked from protected temporal evaluation.
 
 An execution is identified by project, job ID, class label and source position.
 Repeated class labels remain separate executions. Job IDs are neither logical
@@ -9272,10 +9283,10 @@ limit cross-job identity and timing comparisons.
 
 The RTPTorrent ZIP64 end record advertises 2,883 entries and 395,312 central-directory
 bytes. This exceeds the existing v1 materializer's entry ceiling and ZIP64 policy.
-That contract remains unchanged. The source implementation for
+That contract remains unchanged. The implementation delivered in 4.8 through
 [#301](https://github.com/jacksonpradolima/coleman/issues/301) adds a separate
 [bounded ZIP64 selection profile](zip64-source-selection.md), without changing
-legacy recipes. The published 4.7 wheel does not include that profile. A real
+legacy recipes. The profile is available in the published 4.8 wheel. A real
 selection recipe still requires the complete archive SHA-256; relabeling a partial
 archive as an already validated ZIP would bypass the existing contract.
 
@@ -9307,9 +9318,8 @@ informed this research. On 2026-10-16 complete acquisition verified all
 `bff52563d75aee2f4bab9693188cdefbfd887dc4bcf63395d49eaff1ecf7b6c1`.
 The new [bounded ZIP64 profile](zip64-source-selection.md) verified actual enclosing
 membership and repeated offline conversion of the raw HikariCP member. Its frozen
-metadata recipe is included in the source revision containing #301; the published
-4.7 wheel does not include that profile. The [real Parquet ETL](rtptorrent-parquet-etl.md)
-builds on it in the source implementation for #302, and source
+metadata recipe is included in the published 4.8 wheel. The
+[real Parquet ETL](rtptorrent-parquet-etl.md) builds on that profile, and source
 integrity does not supply missing temporal evidence. No third-party source rows
 or archive are committed here.
 
@@ -9796,7 +9806,7 @@ Install this repository's GitHub release wheel, pinned to its published SHA-256.
 Pip verifies the complete wheel against this digest before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 ```
 
 Use the library API or the `coleman` CLI to run experiments:
@@ -9886,10 +9896,10 @@ coleman run --config experiment.yaml
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 
 # ClickHouse sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 ```
 
 ## Optional observability stack
@@ -10287,25 +10297,27 @@ ORDER BY avg_napfd DESC;
 
 # Bounded ZIP64 selected-file integrity
 
-The implementation for [#301](https://github.com/jacksonpradolima/coleman/issues/301)
-adds an explicit ZIP64 recipe to the existing verified source cache. This page
-describes the source revision containing that implementation; the published 4.7
-wheel does not include this API. The feature verifies selected file membership.
-The [RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md) builds on this
-profile in the source implementation for
-[#302](https://github.com/jacksonpradolima/coleman/issues/302).
+**COLEMAN 4.8** adds an explicit ZIP64 recipe to the existing verified source
+cache through [#314](https://github.com/jacksonpradolima/coleman/pull/314) for
+[#301](https://github.com/jacksonpradolima/coleman/issues/301).
+The feature verifies selected-file membership and supports the
+[real RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md).
+Legacy package-v1 ZIP behavior remains unchanged.
 
 ## Run the owned CI example outside the checkout
 
-Build and install the wheel from this revision, then copy the complete example:
+Install the verified published wheel in Python 3.14+, then download the exact
+release-tagged example and verify its SHA-256. Its two executions are offline
+and need no foreign dataset, Docker or MCP SDK:
 
 ```bash
-uv build --out-dir /tmp/coleman-zip64-dist
 uv venv /tmp/coleman-zip64-env --python 3.14
-uv pip install --python /tmp/coleman-zip64-env/bin/python /tmp/coleman-zip64-dist/*.whl
+uv pip install --python /tmp/coleman-zip64-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 mkdir -p /tmp/coleman-zip64-workspace
-cp examples/zip64-selection/ci.py /tmp/coleman-zip64-workspace/ci.py
 cd /tmp/coleman-zip64-workspace
+curl --fail --location --output ci.py \
+  https://raw.githubusercontent.com/jacksonpradolima/coleman/v4.8.0/examples/zip64-selection/ci.py
+/tmp/coleman-zip64-env/bin/python -c 'import hashlib, sys; from pathlib import Path; sys.exit(0 if hashlib.sha256(Path("ci.py").read_bytes()).hexdigest() == "cf0a610bfa4a620f7620c5b02c5c36c667adaa801839d48a5a6dbd044814cf05" else "Example SHA-256 mismatch")'
 /tmp/coleman-zip64-env/bin/python ci.py selected /tmp/coleman-zip64-cache
 /tmp/coleman-zip64-env/bin/python ci.py selected /tmp/coleman-zip64-cache
 ```

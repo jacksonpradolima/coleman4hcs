@@ -4,7 +4,7 @@ COLEMAN **4.4** adds bounded, restartable acquisition and offline integrity
 validation for explicitly licensed, pinned raw files and ZIP packages as part of
 [#261](https://github.com/jacksonpradolima/coleman/issues/261). It reuses the existing
 immutable artifact writer and native runner/checkpoints. Install the wheel attached
-to [COLEMAN 4.7](https://github.com/jacksonpradolima/coleman/releases/tag/v4.7.0)
+to [COLEMAN 4.8](https://github.com/jacksonpradolima/coleman/releases/tag/v4.8.0)
 in Python 3.14 or newer; 4.3 and earlier wheels retain their previous commands.
 
 A successful materialization means **source integrity only**. It does not admit a

@@ -20,20 +20,23 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.7
+## New in 4.8
 
-[Download real LRTS reports, convert them to Parquet and run native TCPCI](lrts-parquet-etl.md).
-The pinned eight-build Karaf slice preserves 6,876 source observations and
-6,567 compatible native executions, with explicit exclusions, units and
-provenance. Random/UCB replay and checkpoint recovery use the existing runner.
-The receipt declares serial simulation and budget-censored RNFail feedback;
-source admission and confirmatory evidence remain open.
+[Turn real RTPTorrent CI history into Parquet and native TCPCI replays](rtptorrent-parquet-etl.md).
+The published wheel verifies the complete ZIP64 source, preserves **46,995 class
+executions / 1,662 source jobs**, and projects 18 executions from eight declared
+jobs into Random/UCB replay with the existing checkpoints. All exclusions, units
+and source/producer/file identities remain inspectable.
 
-The **4.8 source implementation** adds the
-[real RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md): verified
-ZIP64 source, complete HikariCP analytical history, an explicit eight-job native
-projection and shared native checkpoint recovery. The published 4.7 wheel retains
-the LRTS path above; build the revision containing #302 for RTPTorrent ETL.
+The [LRTS download-to-Parquet workflow](lrts-parquet-etl.md) remains available in
+the same wheel: eight Karaf builds, 6,876 method observations, 6,567 compatible
+native executions and 309 not-run exclusions. Each workflow produces 16 result
+rows and resumes without duplicating committed rounds. Their post-hoc serial
+and budget-censored feedback assumptions do not establish observed chronology,
+policy efficacy or prospective savings. Source admission and confirmation remain open.
+
+The release also corrects Linux worker memory accounting while retaining its
+limits and historical general telemetry. See the [4.8 release notes](releases/4.8.0.md).
 
 [Controlled observations](controlled-faults.md), the
 [pinned JUnit3 source recipe](junit-source-capture.md),
@@ -50,7 +53,7 @@ The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures a
 visible source-admission gaps; all seven diversity regimes remain uncovered.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
-correctness checks. See the [4.7 release notes](releases/4.7.0.md) for examples,
+correctness checks. See the [4.8 release notes](releases/4.8.0.md) for examples,
 compatibility and limits.
 
 ## Quick Start
@@ -59,7 +62,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 coleman run --config my-experiment.yaml
 ```
 

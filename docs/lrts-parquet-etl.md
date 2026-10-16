@@ -6,10 +6,10 @@ Parquet, writes a completion/provenance manifest and executes Random and UCB
 through the existing native TCPCI runner. Repeating the command reuses verified
 inputs and resumes the same native checkpoint.
 
-Use Python 3.14+ and the published 4.7.0 wheel. Pip verifies its SHA-256:
+Use Python 3.14+ and the published 4.8.0 wheel. Pip verifies its SHA-256:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.7.0/coleman-4.7.0-py3-none-any.whl#sha256=c4e4fcef290ead80ece18cfe0c6bfe31b1da8b6be4516c137709b0509acd4ad8"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
 ```
 
 Choose cache and output directories outside Git. No Docker, optional MCP SDK,
