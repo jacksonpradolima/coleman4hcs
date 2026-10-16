@@ -1,10 +1,10 @@
 # LRTS: preserve raw method evidence and processed metadata
 
-This source revision adds an offline LRTS source-assessment reader. It joins one
+COLEMAN 4.5 includes an offline LRTS source-assessment reader. It joins one
 selected project/PR/build from pinned metadata with a separately pinned raw
 Jenkins JUnit report. It retains raw suites, node/enclosing-block links and every
-method execution, including repeated labels. The published 4.4.x wheels do not
-contain this reader: build and install this source revision for these examples.
+method execution, including repeated labels. Install the verified 4.5 release
+wheel to run these examples.
 
 **Admission remains blocked.** Scheduled build time is not executor start or
 outcome availability. Processed stage labels are not an automatic mapping to raw
@@ -161,7 +161,7 @@ These are bounded inputs, not an OS memory/CPU sandbox or global cache quota.
 
 ## Complete owned CI example
 
-Build/install this source revision in an activated Python 3.14+ environment.
+Install the verified 4.5 release wheel in an activated Python 3.14+ environment.
 Copy the complete [owned CI example](https://github.com/jacksonpradolima/coleman/blob/main/examples/lrts/ci.py)
 to `ci.py` outside the checkout. It authors both sources, uses the real cache and
 reader, projects only its declared complete serial fixture to native Parquet,

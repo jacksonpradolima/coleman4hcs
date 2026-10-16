@@ -56,10 +56,10 @@ commands remain subsequent slices of #261.
 
 ## Source contract and admission
 
-The [RTPTorrent source assessment](rtptorrent.md) in this source revision adds a
+The [RTPTorrent source assessment](rtptorrent.md) in COLEMAN 4.5 adds a
 bounded raw-class reader and an owned isolated native replay. It preserves repeated
 class executions and missing CI clocks; it does not admit an external source or
-change the registry's diversity inventory. This adapter is not in the 4.4 wheel.
+change the registry's diversity inventory.
 
 The [LRTS source assessment](lrts.md) preserves processed metadata alongside raw
 Jenkins method/suite/node identities. Its bounded owned replay checks native
