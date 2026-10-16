@@ -65,7 +65,7 @@ class Limits(Immutable):
     """Requested caps, reduced by server policy; elapsed seconds include queue time.
 
     Work is native solver examinations or native experiment build/agent executions.
-    Memory is estimated solver working bytes plus sampled worker peak RSS, not a
+    Memory is estimated solver working bytes plus sampled own-executable worker peak RSS, not a
     hard allocation sandbox. Output includes all worker files and portable JSON.
     """
 

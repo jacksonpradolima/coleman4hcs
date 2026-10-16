@@ -467,9 +467,9 @@ def test_completion_deadline_rechecked_after_work_file_cleanup(tmp_path):
 
 def test_resource_checks_before_work_and_atomic_last_publication(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    # Control only the test process's sticky historical RSS; subprocess integration
+    # Control only this in-process guard's RSS observation; subprocess integration
     # tests above exercise the real resource sampler and native runner unchanged.
-    monkeypatch.setattr("coleman.telemetry.resources._get_peak_rss_mib", lambda: 1.0)
+    monkeypatch.setattr("coleman.application.worker._worker_peak_rss_mib", lambda: 1.0)
     item = WorkItem(configuration=default_registry()[0], limits=Limits())
     (tmp_path / "request.json").write_text(item.model_dump_json())
     main()
@@ -493,10 +493,10 @@ def test_resource_guard_unknown_rss_and_real_output_boundaries(tmp_path, monkeyp
     limits = Limits()
     small_output = Limits(max_output_bytes=1024)
     monkeypatch.setattr(worker.os, "_exit", stopped)
-    monkeypatch.setattr("coleman.telemetry.resources._get_peak_rss_mib", lambda: None)
+    monkeypatch.setattr("coleman.application.worker._worker_peak_rss_mib", lambda: None)
     with pytest.raises(SystemExit, match="74"):
         _check_resources(limits)
-    monkeypatch.setattr("coleman.telemetry.resources._get_peak_rss_mib", lambda: 1.0)
+    monkeypatch.setattr("coleman.application.worker._worker_peak_rss_mib", lambda: 1.0)
     (tmp_path / "run").mkdir()
     (tmp_path / "run/data").write_bytes(b"x" * 1025)
     with pytest.raises(SystemExit, match="74"):
