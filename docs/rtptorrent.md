@@ -54,9 +54,12 @@ limit cross-job identity and timing comparisons.
 
 The RTPTorrent ZIP64 end record advertises 2,883 entries and 395,312 central-directory
 bytes. This exceeds the existing v1 materializer's entry ceiling and ZIP64 policy.
-That contract remains unchanged. A future complete-archive recipe needs an explicit,
-reviewed capability extension; relabeling an archive as an already validated ZIP
-would bypass the existing contract.
+That contract remains unchanged. The source implementation for
+[#301](https://github.com/jacksonpradolima/coleman/issues/301) adds a separate
+[bounded ZIP64 selection profile](zip64-source-selection.md), without changing
+legacy recipes. The published 4.7 wheel does not include that profile. A real
+selection recipe still requires the complete archive SHA-256; relabeling a partial
+archive as an already validated ZIP would bypass the existing contract.
 
 ### Observed source discrepancy
 
