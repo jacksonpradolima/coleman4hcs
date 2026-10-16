@@ -550,16 +550,31 @@ def test_resource_bounds_and_filtered_layout_rejection(tmp_path):
 
 
 def test_metadata_order_json_key_order_and_numeric_spelling_preserve_execution_identity(tmp_path):
-    a, cache = materialized(tmp_path / "a", rows=[metadata_row(), {**metadata_row(), "stage_id": "other-stage"}])
+    other_stage = {
+        **metadata_row(),
+        "stage_id": "other-stage",
+        "stage_duration_by_suite_sum": "0",
+        "test_suite_duration_s": "0",
+        "num_pass_class": "0",
+        "num_fail_class": "0",
+        "num_trans_class": "0",
+        "num_pass_method": "0",
+        "num_fail_method": "0",
+    }
+    a, cache = materialized(tmp_path / "a", rows=[metadata_row(), other_stage])
     report = json.dumps(raw_report(), indent=2).encode()
     b, other_cache = materialized(
         tmp_path / "b",
-        rows=[{**metadata_row(), "stage_id": "other-stage"}, {**metadata_row(), "ts_duration": "2.5000"}],
+        rows=[other_stage, {**metadata_row(), "ts_duration": "2.5000"}],
         report_payload=report,
     )
     first = convert_lrts_source(a, cache)
     second = convert_lrts_source(b, other_cache)
     assert first.metadata == second.metadata
+    assert tuple(row.processed_fail_methods for row in first.metadata) == (0, 1)
+    assert tuple(row.measurement("lrts_suite_duration_sum").value for row in first.metadata) == (0, 2.5)
+    assert tuple(row.reported_pass_methods for row in first.metadata) == (2, 2)
+    assert tuple(row.measurement("lrts_report_duration").value for row in first.metadata) == (2.5, 2.5)
     assert first.suites == second.suites
     assert first.fingerprint != second.fingerprint
 

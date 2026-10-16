@@ -120,6 +120,12 @@ null durations retain `value=null`, `status=unavailable` and their declared unit
 Null counters remain unavailable integers, never zero. Unsupported not-applicable
 encodings reject instead of being invented.
 
+The original `ts_duration`, `passcount`, `failcount` and `skipcount` columns are
+build-report aggregates repeated across processed stage rows. They are checked
+against the one selected build report. Processed stage sums and `num_*` counts
+retain their own scope and may differ across stages. This check establishes no
+mapping from processed stages to raw suite/node identities.
+
 [Jenkins Run documentation](https://javadoc.jenkins.io/hudson/model/Run.html)
 distinguishes scheduled time from executor start after queueing. The pinned LRTS
 code truncates scheduled milliseconds and execution duration to seconds. Adding

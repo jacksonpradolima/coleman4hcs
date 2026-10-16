@@ -9,15 +9,17 @@
 [![codecov](https://codecov.io/github/jacksonpradolima/coleman4hcs/branch/main/graph/badge.svg?token=BW04LB0B5Y)](https://codecov.io/github/jacksonpradolima/coleman4hcs)
 
 
-COLEMAN 4.4 helps you inspect CI data and reproduce the inputs to your experiments.
-[Native corpus profiles](docs/benchmark-corpus.md)
-expose units, missingness and identity conflicts. [Source materialization](docs/corpus-materialization.md)
-verifies pinned bytes in an external cache and publishes deterministic integrity receipts.
-Read the [4.4 release notes](docs/releases/4.4.0.md) for complete workflows and limits.
-The [4.4.1 patch](docs/releases/4.4.1.md) strengthens exact numeric validation and
-preserves decimal JSON quantities before validation.
-Existing source-admission blockers remain visible; this release does not establish
-cross-corpus effectiveness.
+COLEMAN 4.5 preserves the evidence behind adaptive CI test prioritization.
+Read [RTPTorrent class executions](docs/rtptorrent.md) and
+[LRTS Jenkins reports](docs/lrts.md) with explicit units, source identities and
+missing observations. Repeated executions stay visible. Reproduce an owned native
+CI workflow twice through the existing runner and learning checkpoint.
+
+[Native corpus profiles](docs/benchmark-corpus.md) expose data-quality limits;
+[source materialization](docs/corpus-materialization.md) verifies pinned bytes in
+an external cache. Read the [4.5 release notes](docs/releases/4.5.0.md) for complete
+examples, compatibility and limits. Missing temporal evidence keeps external-source
+evaluation blocked; this release makes no cross-corpus effectiveness claim.
 
 [Exact resource accounting](docs/resource-replay.md) keeps estimates, reservations,
 actual runner work and overhead distinct. [Frozen shadow evaluation](docs/prospective-shadow.md)

@@ -20,17 +20,20 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.4
+## New in 4.5
 
-The [4.4.1 patch](releases/4.4.1.md) enforces exact numeric limits before conversion
-and preserves decimal JSON quantities through artifact validation.
+Preserve the source evidence behind adaptive CI decisions with the
+[RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) readers. Class/method executions,
+job/stage/node identities, explicit seconds and unavailable observations remain
+distinct. Complete owned examples run through the real native runner and learning
+checkpoint, with independent known-answer checks and deterministic source artifacts.
 
-Inspect native CI data with [bounded corpus profiles](benchmark-corpus.md):
-units, missing values, logical builds and variant execution groups remain explicit.
-[Materialize pinned source packages](corpus-materialization.md) in an external cache,
-validate their integrity offline and reproduce the owned CI example through its
-native learning checkpoint. All ten existing native registrations remain blocked
-for evaluation; all seven required diversity regimes remain uncovered.
+The existing [corpus profiles](benchmark-corpus.md) and
+[pinned source cache](corpus-materialization.md) retain their behavior, including
+offline integrity validation. The [4.4.1 numeric safeguards](releases/4.4.1.md)
+remain in force. External-source temporal evaluation stays blocked by missing
+availability, identity/mapping and complete-suite evidence; all seven required
+diversity regimes remain uncovered.
 
 [Exact resource accounting](resource-replay.md) and [frozen shadow evaluation](prospective-shadow.md)
 retain their 4.3 behavior. The included synthetic shadow fixture remains inconclusive.
@@ -41,7 +44,7 @@ The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures a
 visible source-admission gaps; all seven diversity regimes remain uncovered.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
-correctness checks. See the [4.4 release notes](releases/4.4.0.md) for examples,
+correctness checks. See the [4.5 release notes](releases/4.5.0.md) for examples,
 compatibility and limits.
 
 ## Quick Start

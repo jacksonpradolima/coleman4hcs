@@ -55,6 +55,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/releases/4.3.0.md
 - docs/releases/4.4.0.md
 - docs/releases/4.4.1.md
+- docs/releases/4.5.0.md
 - docs/releases.md
 - docs/resource-replay.md
 - docs/roadmap.md
@@ -79,15 +80,17 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 [![codecov](https://codecov.io/github/jacksonpradolima/coleman4hcs/branch/main/graph/badge.svg?token=BW04LB0B5Y)](https://codecov.io/github/jacksonpradolima/coleman4hcs)
 
 
-COLEMAN 4.4 helps you inspect CI data and reproduce the inputs to your experiments.
-[Native corpus profiles](docs/benchmark-corpus.md)
-expose units, missingness and identity conflicts. [Source materialization](docs/corpus-materialization.md)
-verifies pinned bytes in an external cache and publishes deterministic integrity receipts.
-Read the [4.4 release notes](docs/releases/4.4.0.md) for complete workflows and limits.
-The [4.4.1 patch](docs/releases/4.4.1.md) strengthens exact numeric validation and
-preserves decimal JSON quantities before validation.
-Existing source-admission blockers remain visible; this release does not establish
-cross-corpus effectiveness.
+COLEMAN 4.5 preserves the evidence behind adaptive CI test prioritization.
+Read [RTPTorrent class executions](docs/rtptorrent.md) and
+[LRTS Jenkins reports](docs/lrts.md) with explicit units, source identities and
+missing observations. Repeated executions stay visible. Reproduce an owned native
+CI workflow twice through the existing runner and learning checkpoint.
+
+[Native corpus profiles](docs/benchmark-corpus.md) expose data-quality limits;
+[source materialization](docs/corpus-materialization.md) verifies pinned bytes in
+an external cache. Read the [4.5 release notes](docs/releases/4.5.0.md) for complete
+examples, compatibility and limits. Missing temporal evidence keeps external-source
+evaluation blocked; this release makes no cross-corpus effectiveness claim.
 
 [Exact resource accounting](docs/resource-replay.md) keeps estimates, reservations,
 actual runner work and overhead distinct. [Frozen shadow evaluation](docs/prospective-shadow.md)
@@ -5362,17 +5365,20 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.4
+## New in 4.5
 
-The [4.4.1 patch](releases/4.4.1.md) enforces exact numeric limits before conversion
-and preserves decimal JSON quantities through artifact validation.
+Preserve the source evidence behind adaptive CI decisions with the
+[RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) readers. Class/method executions,
+job/stage/node identities, explicit seconds and unavailable observations remain
+distinct. Complete owned examples run through the real native runner and learning
+checkpoint, with independent known-answer checks and deterministic source artifacts.
 
-Inspect native CI data with [bounded corpus profiles](benchmark-corpus.md):
-units, missing values, logical builds and variant execution groups remain explicit.
-[Materialize pinned source packages](corpus-materialization.md) in an external cache,
-validate their integrity offline and reproduce the owned CI example through its
-native learning checkpoint. All ten existing native registrations remain blocked
-for evaluation; all seven required diversity regimes remain uncovered.
+The existing [corpus profiles](benchmark-corpus.md) and
+[pinned source cache](corpus-materialization.md) retain their behavior, including
+offline integrity validation. The [4.4.1 numeric safeguards](releases/4.4.1.md)
+remain in force. External-source temporal evaluation stays blocked by missing
+availability, identity/mapping and complete-suite evidence; all seven required
+diversity regimes remain uncovered.
 
 [Exact resource accounting](resource-replay.md) and [frozen shadow evaluation](prospective-shadow.md)
 retain their 4.3 behavior. The included synthetic shadow fixture remains inconclusive.
@@ -5383,7 +5389,7 @@ The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures a
 visible source-admission gaps; all seven diversity regimes remain uncovered.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
-correctness checks. See the [4.4 release notes](releases/4.4.0.md) for examples,
+correctness checks. See the [4.5 release notes](releases/4.5.0.md) for examples,
 compatibility and limits.
 
 ## Quick Start
@@ -5537,6 +5543,12 @@ Genuine signed zero canonicalizes to zero; blank metadata quantities and JSON
 null durations retain `value=null`, `status=unavailable` and their declared units.
 Null counters remain unavailable integers, never zero. Unsupported not-applicable
 encodings reject instead of being invented.
+
+The original `ts_duration`, `passcount`, `failcount` and `skipcount` columns are
+build-report aggregates repeated across processed stage rows. They are checked
+against the one selected build report. Processed stage sums and `num_*` counts
+retain their own scope and may differ across stages. This check establishes no
+mapping from processed stages to raw suite/node identities.
 
 [Jenkins Run documentation](https://javadoc.jenkins.io/hudson/model/Run.html)
 distinguishes scheduled time from executor start after queueing. The pinned LRTS
@@ -7363,6 +7375,126 @@ continues separately. This patch adds no source admission or cross-corpus
 performance claim.
 
 [Full changes from 4.4.0](https://github.com/jacksonpradolima/coleman/compare/v4.4.0...v4.4.1).
+
+
+
+### FILE: docs/releases/4.5.0.md
+
+# COLEMAN 4.5 — Keep the evidence behind your CI decisions
+
+Adaptive test prioritization starts with knowing what the data actually records.
+COLEMAN 4.5 adds offline readers for RTPTorrent class executions and LRTS Jenkins
+reports, preserving the source identities, units and missing observations that
+can disappear in a convenient flat table.
+
+You can inspect and reproduce a source conversion, publish its immutable
+provenance artifact and exercise the native TCPCI runner through checkpoint
+continuation. Source integrity and scientific admission stay separate.
+
+## Preserve executions before learning from them
+
+The RTPTorrent reader retains project/job/class/position identity, including
+repeated class executions. Reported seconds, assertion failures, errors and skips
+keep distinct meanings. Filtered published baseline tables cannot silently replace
+the full raw layout or remove successful jobs from the evidence.
+
+The LRTS reader pairs pinned processed metadata with a separately pinned raw
+Jenkins report. Project, PR, build, stage, suite, node and method observations
+remain explicit. Repeated methods stay separate; unknown outcomes and unavailable
+durations remain visible. Scheduled timestamps, execution duration and processed
+duration sums never become invented completion clocks or parallel savings.
+
+Both readers use existing source caches and deterministic artifacts. Actual
+parsed bytes are checked against their frozen digests. Identical concurrent
+publication converges; conflicting or interrupted writes cannot publish a falsely
+completed source artifact. No third-party dataset rows are bundled.
+
+## Reproduce a complete native CI slice
+
+Install the verified Python 3.14+ wheel attached to this release. Copy either
+complete owned example to `ci.py` in a separate workspace:
+
+- [RTPTorrent format and isolated job](https://github.com/jacksonpradolima/coleman/blob/v4.5.0/examples/rtptorrent/ci.py)
+- [LRTS format and isolated suite](https://github.com/jacksonpradolima/coleman/blob/v4.5.0/examples/lrts/ci.py)
+
+Choose a cache outside Git and separate from the output tree, then run twice:
+
+```bash
+python ci.py owned-ci /absolute/path/to/external-source-cache
+python ci.py owned-ci /absolute/path/to/external-source-cache
+```
+
+Each example authors a small fixture, uses the actual materializer and source
+reader, runs Random/RNFail and checks persisted metrics against an independent
+exact reference. Reopening the existing learning checkpoint preserves one native
+result row and the same converted source artifact. These are constructed serial
+checks, with no claim of observed CI history or independent project evidence.
+
+The [RTPTorrent guide](https://github.com/jacksonpradolima/coleman/blob/v4.5.0/docs/rtptorrent.md)
+and [LRTS guide](https://github.com/jacksonpradolima/coleman/blob/v4.5.0/docs/lrts.md)
+include complete SDK workflows, source versions/digests, field meanings,
+architecture diagrams, resource limits and explicit compatibility decisions.
+
+## What the source assessment established
+
+One pinned RTPTorrent HikariCP member converts to 46,995 class executions across
+1,662 jobs, retaining 23,302 repeated-class executions. Its published baseline
+slice has different coverage. The entire multi-gigabyte archive remains
+unverified; member checks do not prove container integrity.
+
+The complete original LRTS artifact and Karaf v3 archive passed size and provider
+checksum verification, with computed SHA-256. Original artifact metadata matches
+the pinned Git CSV byte for byte. One checked metadata/report pair preserves
+228 suites and 931 methods, including four repeated labels. Specific data terms
+were reviewed separately from the repository's code license.
+
+These are bounded descriptive checks, not cross-corpus policy comparisons or
+large-suite performance claims. Neither source is admitted to protected temporal
+evaluation: outcome-availability clocks, logical mappings and complete expected
+suite evidence remain unresolved. The registry's seven required diversity gaps
+stay visible. A reader returning records is not evidence of generalization.
+
+## Compatibility and limits
+
+This additive 4.x release reuses the runner, results, sinks, checkpoints and
+materialization contracts. Existing native and domain artifacts retain their
+meaning. New source slices require schema v1; unknown versions and incompatible
+layouts reject. There is no automatic migration from native results, filtered
+baseline tables or arbitrary JUnit XML.
+
+RTPTorrent preserves exact declared class seconds. LRTS preserves explicitly
+declared binary64 source projections and rejects silent rounding, underflow,
+negative/nonfinite durations and incompatible units. Zero and unavailable remain
+different; valid negative values in unrelated signed contracts retain support.
+
+Whole-archive fetching is not added. The existing materializer's ZIP64 policy and
+hard 128-entry ceiling remain in force; real source containers exceed them.
+Supported conversion starts from separately pinned permitted decoded members.
+Inputs are bounded per operation, without an OS sandbox or global cache quota.
+Recipe-only rows must remain local. The base package needs no MCP or transport
+dependency for these readers.
+
+## Validation and next steps
+
+The reviewed implementation passed **2,107 tests** with **95.40% combined
+statement/branch coverage**, including installed base-wheel workflows outside the
+checkout. Lint, formatting, both type checkers, Pylint, docstring and structural
+gates, strict documentation and package builds passed. Local-only OpenCodeReview
+and manual exclusions covered every changed file. Confirmed review findings were
+reproduced and fixed with regressions before integration; source/identity/unit,
+serialization, corruption, interruption, concurrent publication and recovery
+checks accompany the readers.
+
+The diversified benchmark program in
+[#261](https://github.com/jacksonpradolima/coleman/issues/261) remains open.
+Controlled real-fault corpora, variant expansion, synthetic stress, comparable
+baselines/statistics, modern-CI feasibility, frozen confirmation and cross-corpus
+reports remain sequential work. Negative and inconclusive results remain valid.
+
+Implemented in [#290](https://github.com/jacksonpradolima/coleman/pull/290) and
+[#291](https://github.com/jacksonpradolima/coleman/pull/291).
+
+[Full changes from 4.4.1](https://github.com/jacksonpradolima/coleman/compare/v4.4.1...v4.5.0).
 
 
 
