@@ -51,13 +51,14 @@ def connection(monkeypatch, reply):
     return client, constructor
 
 
-def test_approved_origin_uses_verified_tls_no_ambient_headers_and_closes(monkeypatch):
+@pytest.mark.parametrize("host", ["raw.githubusercontent.com", "repo.maven.apache.org"])
+def test_approved_origin_uses_verified_tls_no_ambient_headers_and_closes(monkeypatch, host):
     reply = response()
     client, constructor = connection(monkeypatch, reply)
-    with corpus_http.public_https_source("https://raw.githubusercontent.com/owner/ci/pinned/data", 3) as source:
+    with corpus_http.public_https_source(f"https://{host}/owner/ci/pinned/data", 3) as source:
         assert source.read(3) == b"abc"
     args, kwargs = constructor.call_args
-    assert args == ("raw.githubusercontent.com",)
+    assert args == (host,)
     assert kwargs["context"].check_hostname
     assert kwargs["context"].verify_mode == corpus_http.ssl.CERT_REQUIRED
     request = client.request.call_args
