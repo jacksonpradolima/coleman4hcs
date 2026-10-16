@@ -56,6 +56,11 @@ commands remain subsequent slices of #261.
 
 ## Source contract and admission
 
+The [RTPTorrent source assessment](rtptorrent.md) in this source revision adds a
+bounded raw-class reader and an owned isolated native replay. It preserves repeated
+class executions and missing CI clocks; it does not admit an external source or
+change the registry's diversity inventory. This adapter is not in the 4.4 wheel.
+
 `CorpusManifest` schema v1 binds:
 
 - source URI/version/citation, SHA-256, byte count and verified local availability;
