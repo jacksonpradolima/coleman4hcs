@@ -373,3 +373,12 @@ flowchart LR
   M --> R[Visible blocked sources and missing diversity cells]
   V --> R
 ```
+
+
+The next [controlled fault observation adapter](controlled-faults.md) retains
+same-test buggy/fixed comparisons, exact elapsed-counter units and negative or
+inconclusive outcomes. It verifies producer bytes through the existing source
+cache and publishes through the same artifact writer. It does not grant source
+admission or convert collection clocks into historical CI chronology. Direct
+upstream Java/Python reproductions are documented separately from the owned
+synthetic installed example; required diversity cells remain uncovered.
