@@ -28,8 +28,13 @@ class VersionedContract(BaseModel):
 
     @classmethod
     def from_json(cls, payload: str | bytes) -> Self:
-        """Reject duplicate keys and unsupported versions, without migrating artifacts."""
-        return cls.model_validate(decode_json(payload))
+        """Preserve numeric decimal literals and reject duplicate keys/unknown versions without migration.
+
+        Decimal-valued fields retain exact JSON quantities before precision checks;
+        binary64 fields still explicitly project to floats through their typed
+        models. Canonical decimal strings and valid existing artifacts are unchanged.
+        """
+        return cls.model_validate(decode_json(payload, exact_decimals=True))
 
     @property
     def fingerprint(self) -> str:

@@ -9,12 +9,18 @@ from decimal import Decimal
 from pathlib import PurePosixPath
 from typing import Annotated, Literal, Self
 
-from pydantic import Field, field_serializer, model_validator
+from pydantic import AfterValidator, Field, WrapValidator, field_serializer, model_validator
 
 from coleman.allocation.results import AllocationResult
 from coleman.results.domain import Fingerprint, Finite, decode_json
 from coleman.results.versioned import VersionedContract
-from coleman.selection.contracts import Immutable, UnitSemantics, decimal_text
+from coleman.selection.contracts import (
+    Immutable,
+    UnitSemantics,
+    decimal_text,
+    validate_decimal_places,
+    validate_decimal_schema,
+)
 from coleman.selection.results import CoverageResult
 
 SafeId = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$", strict=True)]
@@ -118,7 +124,15 @@ class Discovery(ApplicationContract):
 class Parameters(Immutable):
     """Explicit v1 override: coverage budget in the registered cost unit; no arbitrary keys."""
 
-    budget: Annotated[Decimal, Field(ge=0, le=1000000000000, max_digits=25, decimal_places=12)] | None = None
+    budget: (
+        Annotated[
+            Decimal,
+            Field(ge=0, le=1000000000000, max_digits=25, decimal_places=12),
+            AfterValidator(validate_decimal_places),
+            WrapValidator(validate_decimal_schema),
+        ]
+        | None
+    ) = None
 
     @field_serializer("budget")
     def _budget(self, value: Decimal | None) -> str | None:

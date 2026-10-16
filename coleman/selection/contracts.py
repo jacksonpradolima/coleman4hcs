@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import Annotated, Literal, Self
+from decimal import MAX_EMAX, MIN_EMIN, ROUND_HALF_EVEN, Context, Decimal, localcontext
+from typing import Annotated, Any, Literal, Self, cast
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidatorFunctionWrapHandler,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from coleman.results.domain import Fingerprint, Identifier
 from coleman.results.versioned import VersionedContract
@@ -44,6 +52,46 @@ def decimal_text(value: Decimal) -> str:
     return text.rstrip("0").rstrip(".") if "." in text else text
 
 
+def validate_decimal_places(value: Decimal, *, places: int = 12) -> Decimal:
+    """Enforce effective fractional precision without rounding or expanding compact exponents.
+
+    Decimal-context underflow must not make a nonzero out-of-contract value
+    appear to have zero fractional places. Trailing coefficient zeros do not
+    add precision; signed zero remains valid. Finite Decimal input is returned
+    unchanged. Invalid precision/nonfinite values raise ValueError, with no
+    powers, rational denominators, file access or context mutation.
+    """
+    if type(places) is not int or places < 0:
+        raise ValueError("Decimal places must be a nonnegative integer")
+    if not value.is_finite():
+        raise ValueError("Decimal quantity must be finite")
+    if not value:
+        return value
+    parts = value.as_tuple()
+    trailing = 0
+    for digit in reversed(parts.digits):
+        if digit:
+            break
+        trailing += 1
+    if int(parts.exponent) + trailing < -places:
+        raise ValueError(f"Quantity exceeds {places} decimal places")
+    return value
+
+
+def validate_decimal_schema(value: Any, handler: ValidatorFunctionWrapHandler) -> Decimal:
+    """Run declared Decimal field constraints in a deterministic local context.
+
+    The 110-digit validation context covers current input/output fields and uses
+    the backend's widest exponent range. Ambient precision, traps and flags are
+    never modified. Exact place checks still validate the original returned
+    Decimal: context normalization cannot certify fractional precision.
+    Pydantic validation errors propagate; this helper performs no I/O.
+    """
+    context = Context(prec=110, Emin=MIN_EMIN, Emax=MAX_EMAX, rounding=ROUND_HALF_EVEN, traps=[])
+    with localcontext(context):
+        return cast(Decimal, handler(value))
+
+
 class Immutable(BaseModel):
     """Strict immutable nested input; unchecked instances are revalidated at boundaries."""
 
@@ -69,10 +117,18 @@ class Quantity(Immutable):
     value: Annotated[Decimal, Field(ge=0, le=Decimal("1e24"), max_digits=37, decimal_places=12)]
     semantics: UnitSemantics
 
-    @field_validator("value")
+    @field_validator("value", mode="wrap")
     @classmethod
-    def _zero(cls, value: Decimal) -> Decimal:
-        """Normalize signed decimal zero before projection, identity and serialization."""
+    def _zero(cls, value: Any, handler: ValidatorFunctionWrapHandler) -> Decimal:
+        """Enforce the field's declared precision without context rounding, then canonicalize zero."""
+        value = validate_decimal_schema(value, handler)
+        # Pydantic exposes this mapping through a descriptor that Pylint cannot infer.
+        limits = (
+            getattr(item, "decimal_places", None)
+            for item in cls.model_fields["value"].metadata  # pylint: disable=unsubscriptable-object
+        )
+        places = next((limit for limit in limits if isinstance(limit, int)), 12)
+        validate_decimal_places(value, places=places)
         return value if value else Decimal(0)
 
     @field_serializer("value")

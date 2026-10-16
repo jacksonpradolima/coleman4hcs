@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Annotated, Any, Literal, Self
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -78,11 +79,13 @@ def canonical_json(payload: Any) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
 
 
-def decode_json(payload: str | bytes) -> Any:
+def decode_json(payload: str | bytes, *, exact_decimals: bool = False) -> Any:
     """Parse JSON without silently overwriting duplicate object keys.
 
-    Syntax/duplicate-key failures raise ``ValueError``. Callers validate schema,
-    types and finite numeric constraints after decoding; no files are accessed.
+    Syntax/duplicate-key failures raise ``ValueError``. Exact mode preserves
+    numeric decimal literals until typed validation, avoiding binary64 underflow
+    or rounding in decimal contracts. The default preserves the existing
+    binary64 domain-record reader. No files are accessed.
     """
 
     def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -94,7 +97,7 @@ def decode_json(payload: str | bytes) -> Any:
             result[key] = value
         return result
 
-    return json.loads(payload, object_pairs_hook=unique_object)
+    return json.loads(payload, object_pairs_hook=unique_object, parse_float=Decimal if exact_decimals else float)
 
 
 def fingerprint(payload: Any) -> str:
