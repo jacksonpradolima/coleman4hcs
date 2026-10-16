@@ -51,12 +51,14 @@ summary = json.loads(Path('owned-summary.json').read_bytes())
 completion = Path(summary['completion'])
 receipt = RTPTorrentETLReceipt.from_json(completion.read_bytes())
 validate_rtptorrent_etl(receipt, SourceCache(CACHE_ROOT), completion.parent)
-assert receipt.observed_executions == 8 and receipt.replay_executions == 4
+assert receipt.observed_executions == 8
+assert receipt.replay_executions == 4
 assert receipt.excluded_outside_jobs == receipt.excluded_not_run == 1
 assert receipt.excluded_unknown_outcome == receipt.excluded_unavailable_duration == 1
 native = Path(summary['native_artifacts'])
 rows = pl.read_parquet(str(native / 'results/**/*.parquet'), hive_partitioning=True)
-assert rows.height == 4 and rows['step'].n_unique() == 2
+assert rows.height == 4
+assert rows['step'].n_unique() == 2
 assert all(json.loads(p.read_bytes())['step_committed'] == 2 for p in (native / 'checkpoints').rglob('progress_*.json'))
 resource = files('coleman.corpus.resources').joinpath('rtptorrent-hikaricp-first-eight-v1.json')
 recipe = RTPTorrentETLRecipe.from_json(resource.read_bytes())
@@ -71,7 +73,8 @@ if real:
     validate_rtptorrent_etl(real_receipt, cache, first.parent)
     assert real_receipt.input_rows == real_receipt.observed_executions == 46995
     assert real_receipt.source_jobs == 1662
-    assert real_receipt.replay_executions == 18 and real_receipt.native_rounds == 8
+    assert real_receipt.replay_executions == 18
+    assert real_receipt.native_rounds == 8
     assert real_receipt.excluded_outside_jobs == 46977
     assert real_receipt.admission == 'blocked_missing_temporal_evidence'
     sys.meta_path.remove(boundary)
@@ -81,9 +84,11 @@ if real:
     assert before.run_id == after.run_id
     real_root = Path(after.artifacts_dir)
     rows = pl.read_parquet(str(real_root / 'results/**/*.parquet'), hive_partitioning=True)
-    assert rows.height == 16 and rows['step'].n_unique() == 8
+    assert rows.height == 16
+    assert rows['step'].n_unique() == 8
     checkpoints = list((real_root / 'checkpoints').rglob('progress_*.json'))
-    assert checkpoints and all(json.loads(p.read_bytes())['step_committed'] == 8 for p in checkpoints)
+    assert checkpoints
+    assert all(json.loads(p.read_bytes())['step_committed'] == 8 for p in checkpoints)
 print(json.dumps({'installed': True, 'real_source': bool(real), 'native_rows': rows.height,
                   'evidence': receipt.evidence, 'admission': receipt.admission}, sort_keys=True))
 """.replace("CACHE_ROOT", repr(str(tmp_path / "cache"))).replace(
@@ -93,5 +98,6 @@ print(json.dumps({'installed': True, 'real_source': bool(real), 'native_rows': r
     (outside / "owned-summary.json").write_text(json.dumps(outcomes[0]))
     result = command([str(python), str(script)], outside, env)
     proof = json.loads(result.stdout.strip().splitlines()[-1])
-    assert proof["installed"] and proof["real_source"] == bool(os.environ.get("COLEMAN_RTPTORRENT_ETL_REAL_CACHE"))
+    assert proof["installed"]
+    assert proof["real_source"] == bool(os.environ.get("COLEMAN_RTPTORRENT_ETL_REAL_CACHE"))
     assert proof["native_rows"] == (16 if proof["real_source"] else 4)

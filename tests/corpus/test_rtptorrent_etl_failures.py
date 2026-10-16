@@ -154,7 +154,8 @@ def test_duplicates_and_source_order_change_provenance_not_logical_execution_ide
     third, duplicates, _ = exported(tmp_path / "third", rows=ROWS + (ROWS[0],))
     assert original.logical_rows_sha256 == reordered.logical_rows_sha256 == duplicates.logical_rows_sha256
     assert len({record.source_dataset_sha256 for record in (original, reordered, duplicates)}) == 3
-    assert duplicates.input_rows == 9 and duplicates.duplicate_rows_excluded == 1
+    assert duplicates.input_rows == 9
+    assert duplicates.duplicate_rows_excluded == 1
     assert duplicates.observed_executions == original.observed_executions == 8
     left = pl.read_parquet(first.parent / "observations.parquet")
     assert left.equals(pl.read_parquet(second.parent / "observations.parquet"))
@@ -236,7 +237,8 @@ def test_missing_corrupt_or_self_signed_parquet_never_verifies(tmp_path, case):
 def test_entirely_excluded_rounds_stay_analytical_and_cannot_run(tmp_path):
     rows = ("101,owned.Skip,0,0,1,0,0,1\n", "102,owned.Unknown,0,,,,,\n")
     path, receipt, cache = exported(tmp_path, rows=rows)
-    assert receipt.observed_executions == 2 and receipt.replay_executions == receipt.native_rounds == 0
+    assert receipt.observed_executions == 2
+    assert receipt.replay_executions == receipt.native_rounds == 0
     assert pl.read_parquet(path.parent / "jobs.parquet")["replay_status"].to_list() == [
         "no_compatible_reported_cases",
         "no_compatible_reported_cases",
@@ -343,7 +345,8 @@ def test_cli_native_execution_and_bounded_recipe_loader(tmp_path, capsys):
     ]
     assert cli.main(args) == 0
     summary = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
-    assert summary["modeled_rounds"] == 2 and summary["replay_executions"] == 4
+    assert summary["modeled_rounds"] == 2
+    assert summary["replay_executions"] == 4
     root = Path(summary["native_artifacts"])
     assert pl.read_parquet(str(root / "results/**/*.parquet"), hive_partitioning=True).height == 4
     assert cli.load_rtptorrent_etl_recipe().conversion.history == "observed"

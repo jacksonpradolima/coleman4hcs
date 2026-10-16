@@ -95,14 +95,16 @@ def test_actual_parquet_source_identity_units_conservation_and_idempotence(tmp_p
     assert receipt.replay_executions == 4
     assert receipt.excluded_outside_jobs == receipt.excluded_not_run == 1
     assert receipt.excluded_unknown_outcome == receipt.excluded_unavailable_duration == 1
-    assert receipt.source_jobs == 3 and receipt.native_rounds == 2
+    assert receipt.source_jobs == 3
+    assert receipt.native_rounds == 2
     rows = pl.read_parquet(path.parent / "observations.parquet")
     assert rows["execution_id"].n_unique() == 8
     assert rows["duration_decimal"].null_count() == 2
     assert rows["duration_decimal"].to_list().count("0") == 3
     assert rows["duration_unit"].unique().to_list() == ["s"]
     native = pl.read_parquet(path.parent / "datasets/owned-rtptorrent/features-engineered.parquet")
-    assert native["Name"].n_unique() == 2 and native["SourceExecutionId"].n_unique() == 4
+    assert native["Name"].n_unique() == 2
+    assert native["SourceExecutionId"].n_unique() == 4
     assert native["Duration"].to_list() == [0, 2.5, 1, 3]
     jobs = pl.read_parquet(path.parent / "jobs.parquet")
     assert jobs["job_id"].to_list() == [101, 102, 999]
@@ -124,7 +126,8 @@ def test_native_api_checkpoint_recovery_and_independent_two_job_reference(tmp_pa
     assert second.artifacts_dir is not None
     root = Path(second.artifacts_dir)
     rows = pl.read_parquet(str(root / "results/**/*.parquet"), hive_partitioning=True)
-    assert rows.height == 4 and rows["step"].n_unique() == 2
+    assert rows.height == 4
+    assert rows["step"].n_unique() == 2
     names = tuple(fingerprint([recipe.test_identity, "owned/ci", "owned.Repeated", n]) for n in (0, 1))
     for row in rows.iter_rows(named=True):
         values = ("0", "2.5") if row["step"] == 1 else ("1", "3")
@@ -147,11 +150,14 @@ def test_native_api_checkpoint_recovery_and_independent_two_job_reference(tmp_pa
             tuple(json.loads(row["prioritization_order_top_k"])),
             Quantity(value=sum(map(Decimal, values), Decimal(0)), semantics=SECONDS),
         )
-        assert row["detected"] == 1 and row["missed"] == 0
-        assert reference.napfd.value is not None and reference.apfdc.value is not None
+        assert row["detected"] == 1
+        assert row["missed"] == 0
+        assert reference.napfd.value is not None
+        assert reference.apfdc.value is not None
         assert math.isclose(row["fitness"], float(reference.napfd.value), rel_tol=0, abs_tol=1e-12)
         assert math.isclose(row["cost"], float(reference.apfdc.value), rel_tol=0, abs_tol=1e-12)
     checkpoints = list((root / "checkpoints").rglob("progress_*.json"))
-    assert checkpoints and all(json.loads(path.read_bytes())["step_committed"] == 2 for path in checkpoints)
+    assert checkpoints
+    assert all(json.loads(path.read_bytes())["step_committed"] == 2 for path in checkpoints)
     manifest = json.loads((root / "manifest.json").read_bytes())
     assert any(item["type"] == "corpus_etl_receipt" for item in manifest["artifacts"])

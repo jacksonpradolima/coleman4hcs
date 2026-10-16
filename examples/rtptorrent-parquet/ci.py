@@ -16,6 +16,8 @@ from coleman.corpus import load_registry, validate_cache_separation
 from coleman.corpus.rtptorrent_etl_contracts import RTPTorrentETLRecipe
 from coleman.transports.rtptorrent_etl import main as convert_and_run
 
+_ARCHIVE_NAME = "owned-history.zip"
+
 
 def digest(data):
     """Hash complete owned bytes; no provider checksum or external source is involved."""
@@ -76,7 +78,7 @@ def owned_recipe():
             "schema_version": 1,
             "source": {
                 "schema_version": 1,
-                "source": package("owned-history.zip", source),
+                "source": package(_ARCHIVE_NAME, source),
                 "selections": [
                     {
                         "member": {"name": logical, "sha256": digest(content), "size_bytes": len(content)},
@@ -109,13 +111,13 @@ def main(output, cache):
     recipe, source = owned_recipe()
     writer = ArtifactWriter(root)
     writer.write_immutable(root / "recipe.json", recipe.to_json() + "\n")
-    writer.write_immutable_stream(root / "owned-history.zip", (source,), maximum_bytes=len(source))
+    writer.write_immutable_stream(root / _ARCHIVE_NAME, (source,), maximum_bytes=len(source))
     return convert_and_run(
         [
             "--recipe",
             str(root / "recipe.json"),
             "--archive",
-            str(root / "owned-history.zip"),
+            str(root / _ARCHIVE_NAME),
             "--cache",
             cache,
             "--output",
