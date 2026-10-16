@@ -26,6 +26,7 @@ nav = [
   { "Verified Corpus Materialization" = "corpus-materialization.md" },
   { "Bounded ZIP64 Source Selection" = "zip64-source-selection.md" },
   { "RTPTorrent Source Assessment" = "rtptorrent.md" },
+  { "RTPTorrent Parquet & Replay" = "rtptorrent-parquet-etl.md" },
   { "LRTS Source Assessment" = "lrts.md" },
   { "LRTS Download, Parquet & Replay" = "lrts-parquet-etl.md" },
   { "Controlled Fault Observations" = "controlled-faults.md" },
