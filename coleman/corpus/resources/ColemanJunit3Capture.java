@@ -72,7 +72,7 @@ public final class ColemanJunit3Capture {
     private static List<TestCase> discover(List<String> excluded) throws Exception {
         List<TestCase> cases = new ArrayList<>();
         for (String name : Files.readAllLines(Paths.get("/harness/classes.txt"), StandardCharsets.UTF_8)) {
-            Class<?> type = Class.forName(name);
+            Class<?> type = Class.forName(name, false, ColemanJunit3Capture.class.getClassLoader());
             if (!TestCase.class.isAssignableFrom(type) || Modifier.isAbstract(type.getModifiers())) {
                 excluded.add(name);
                 continue;
@@ -119,12 +119,24 @@ public final class ColemanJunit3Capture {
         }
     }
 
-    /** Emit one header, every lexical shared-JVM case and a completion trailer as UTF-8 JSON lines. */
+    /**
+     * Emit UTF-8 protocol lines only on the original stdout. Discovery can initialize
+     * test classes and invoke constructors; their output is retained on bounded raw
+     * stderr, outside case timing/diagnostics. Excluded classes are not initialized.
+     * Discovery errors propagate after restoring streams and produce no complete protocol.
+     */
     public static void main(String[] args) throws Exception {
         PrintStream output = System.out;
         PrintStream error = System.err;
         List<String> excluded = new ArrayList<>();
-        List<TestCase> cases = discover(excluded);
+        List<TestCase> cases;
+        try {
+            System.setOut(error);
+            cases = discover(excluded);
+        } finally {
+            System.setOut(output);
+            System.setErr(error);
+        }
         List<String> identities = new ArrayList<>();
         for (TestCase test : cases) identities.add(identity(test));
         output.println("{\"schema_version\":1,\"record_type\":\"header\",\"java_version\":"

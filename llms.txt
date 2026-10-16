@@ -5809,7 +5809,11 @@ interrupted observation state. Source acquisition, staging and
 publication failures never certify a completed learning checkpoint.
 
 Successful protocols require the exact discovered test sequence and a final
-trailer. Each case declares exactly one run and at most one terminal failure or
+trailer. Discovery loads excluded classes without initializing them. Output from
+test-class initializers and constructors is retained in the role's bounded raw
+stderr, separately from protocol stdout and per-case diagnostics/timing. Discovery
+errors restore the original streams and fail collection without inventing cases.
+Each case declares exactly one run and at most one terminal failure or
 error; contradictory counters cause a protocol error rather than a normalized
 test outcome. Malformed/partial protocols, timeouts, output limits and process errors
 retain bounded raw evidence without promoting partial cases into assertions.
@@ -8032,7 +8036,7 @@ v1 and reject missing, unknown and future versions. No automatic migration or
 reinterpretation of old results occurs. Harness changes require a reviewed recipe
 update. The domain remains independent of CLI, Docker and MCP imports.
 
-The reviewed implementation passed **2,268 tests** and the **95% combined
+The reviewed implementation passed **2,270 tests** and the **95% combined
 statement/branch coverage gate**, including a real paired source reproduction from a
 wheel installed outside the checkout. Versioned golden/round-trip fixtures,
 compatibility, units/missingness, nonfinite values, deterministic identities,

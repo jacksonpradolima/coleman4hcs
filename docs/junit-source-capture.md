@@ -147,7 +147,11 @@ interrupted observation state. Source acquisition, staging and
 publication failures never certify a completed learning checkpoint.
 
 Successful protocols require the exact discovered test sequence and a final
-trailer. Each case declares exactly one run and at most one terminal failure or
+trailer. Discovery loads excluded classes without initializing them. Output from
+test-class initializers and constructors is retained in the role's bounded raw
+stderr, separately from protocol stdout and per-case diagnostics/timing. Discovery
+errors restore the original streams and fail collection without inventing cases.
+Each case declares exactly one run and at most one terminal failure or
 error; contradictory counters cause a protocol error rather than a normalized
 test outcome. Malformed/partial protocols, timeouts, output limits and process errors
 retain bounded raw evidence without promoting partial cases into assertions.
