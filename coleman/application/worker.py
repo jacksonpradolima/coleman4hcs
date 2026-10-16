@@ -25,11 +25,37 @@ class WorkItem(Immutable):
     limits: Limits
 
 
-def _check_resources(limits: Limits) -> None:
-    """Refuse unknown/over-limit peak RSS or worker artifact bytes synchronously."""
-    from coleman.telemetry.resources import ProcessResourceTracker
+def _worker_peak_rss_mib() -> float | None:
+    """Measure this executable's peak RSS in MiB; missing/malformed observations return None.
 
-    peak = ProcessResourceTracker().sample().peak_rss_mib
+    Linux getrusage can retain the parent's resident footprint before exec. The
+    kernel's VmHWM belongs to the current executable's address space instead.
+    Other platforms retain the existing resource sampler. This private guard
+    does not change general telemetry readings or reinterpret stored artifacts.
+    Reads local kernel metadata only; unavailable measurement fails closed in
+    _check_resources, without increasing the admitted memory limit.
+    """
+    if sys.platform != "linux":
+        from coleman.telemetry.resources import ProcessResourceTracker
+
+        return ProcessResourceTracker().sample().peak_rss_mib
+    try:
+        with Path("/proc/self/status").open(encoding="ascii") as status:
+            for line in status:
+                if line.startswith("VmHWM:"):
+                    fields = line.split()
+                    if len(fields) != 3 or fields[2] != "kB":
+                        return None
+                    value = int(fields[1])
+                    return value / 1024 if value >= 0 else None
+    except (OSError, ValueError):
+        return None
+    return None
+
+
+def _check_resources(limits: Limits) -> None:
+    """Refuse unknown/over-limit own-executable peak RSS or worker artifact bytes synchronously."""
+    peak = _worker_peak_rss_mib()
     try:
         refused = peak is None or peak * 1048576 > limits.max_memory_bytes or _output_exceeds(limits.max_output_bytes)
     except OSError:

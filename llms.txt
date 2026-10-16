@@ -61,13 +61,16 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/releases/4.5.0.md
 - docs/releases/4.6.0.md
 - docs/releases/4.7.0.md
+- docs/releases/4.8.0.md
 - docs/releases.md
 - docs/resource-replay.md
 - docs/roadmap.md
+- docs/rtptorrent-parquet-etl.md
 - docs/rtptorrent.md
 - docs/scenario-payoffs.md
 - docs/setup.md
 - docs/workflow.md
+- docs/zip64-source-selection.md
 
 ## Consolidated Documentation
 
@@ -139,6 +142,14 @@ The replay declares serial costs, assumed label correspondence and budget-censor
 RNFail feedback. Source temporal admission remains blocked; this run demonstrates
 a usable data pipeline and simulation. Policy efficacy and prospective savings
 require their own eligible observations and comparisons.
+
+The **4.8 source workflow** adds
+[RTPTorrent → analytical/native Parquet → checkpointed replay](docs/rtptorrent-parquet-etl.md):
+the complete HikariCP raw member contributes **46,995 observations across 1,662
+source jobs**, with an explicit eight-job native preset. The guide covers the
+verified ZIP64 source, resumable operator download, exact units, conserved
+exclusions and replay assumptions. Build the source revision containing #302 to
+use it while the published wheel remains 4.7.
 
 # Getting started
 
@@ -715,7 +726,7 @@ controlled reproductions and empirical benchmark corpora have different roles:
 | **LRTS / Karaf real CI reports** | [Pinned download → analytical/native Parquet → Random/UCB → checkpoint recovery](docs/lrts-parquet-etl.md) | Complete eight-build preset; explicit post-hoc serial simulation. Protected historical admission remains blocked. |
 | **Druid and Retrofit** | Bundled native/contextual Parquet examples, native runner and [descriptive profiles](docs/benchmark-corpus.md#local-profiles-and-the-first-diversity-matrix-44) | Runnable legacy experiments. Source terms, duration units and outcome availability still need corpus admission evidence. |
 | **Dune and its variants** | Bundled native Parquet, WTS/VTS workflows and [variant-aware inventory](docs/benchmark-corpus.md) | Runnable HCS examples. Variants/context files may share executions; broad HCS benchmark admission remains unfinished. |
-| **RTPTorrent** | [Bounded raw-class reader, source assessment and owned native replay example](docs/rtptorrent.md) | Reader/example available; a turnkey real-source fetch-to-Parquet preset and protected temporal admission are still missing. |
+| **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | 4.8 source implementation: 46,995 observations / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |
 | **Apache Commons CLI-13 buggy/fixed pair** | [Pinned source producer](docs/junit-source-capture.md), common 95-test fixture per revision and recoverable raw observations | One controlled Java pair; bundled recipe requires Docker/arm64. Independent of historical CI chronology; full Defects4J integration remains planned. |
 | **Owned CI correctness fixtures** | Two tiny [serial/parallel corpus fixtures](docs/benchmark-corpus.md), validation and native integration examples | Available without network. One constructed family for contract/metric checks; no independent-project diversity. |
 | **Coverage and scenario-allocation microbenchmarks** | [Correctness and performance profiles](docs/decision-benchmarks.md), independent exhaustive references and JSON/Markdown reports | Runnable finite-model benchmarks with runtime/memory observations; separate from empirical CI-policy comparisons. |
@@ -805,7 +816,8 @@ what kind of information can be used!
 flowchart TD
     A[YAML config + packs: run.yaml] --> B[coleman CLI / library API]
     R[Pinned LRTS reports + metadata] --> S[Verified external source cache]
-    S --> T[Explicit serial-simulation ETL]
+    V[Pinned RTPTorrent ZIP64 + raw class history] --> S
+    S --> T[Source-specific typed ETL and explicit serial model]
     T --> U[Analytical Parquet + completion provenance]
     T --> C["Native Parquet / legacy CSV; variant input for HCS"]
     C --> D[Scenario Provider]
@@ -1765,7 +1777,11 @@ Admission reserves each job's maximum output until expiry and sums admitted
 worker memory before starting processes. Registry snapshots are bounded to 32
 configurations of 1.5 MiB each. Parent/interpreter overhead, input snapshots,
 protocol frames and temporary serialization buffers add bounded local overhead
-outside worker RSS. Worker RSS and native-file output are checked before/after
+outside worker RSS. Linux worker peak RSS uses the current executable's kernel
+`VmHWM`, because `getrusage` can include the parent's footprint before `exec`.
+Other platforms retain the existing sampler; historical general telemetry and
+stored artifacts keep their existing meaning. The memory ceiling is unchanged.
+Worker RSS and native-file output are checked before/after
 calculation and sampled every 20 ms; transient overshoot is possible. Unsupported
 RSS measurement fails closed. This is a guard for trusted local native code,
 not a hard memory allocator or hostile-code sandbox. The underlying SDK stdio
@@ -5688,6 +5704,12 @@ provenance. Random/UCB replay and checkpoint recovery use the existing runner.
 The receipt declares serial simulation and budget-censored RNFail feedback;
 source admission and confirmatory evidence remain open.
 
+The **4.8 source implementation** adds the
+[real RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md): verified
+ZIP64 source, complete HikariCP analytical history, an explicit eight-job native
+projection and shared native checkpoint recovery. The published 4.7 wheel retains
+the LRTS path above; build the revision containing #302 for RTPTorrent ETL.
+
 [Controlled observations](controlled-faults.md), the
 [pinned JUnit3 source recipe](junit-source-capture.md),
 [RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) readers,
@@ -8460,6 +8482,90 @@ functional execution evidence, not completed corpus admission.
 
 
 
+### FILE: docs/releases/4.8.0.md
+
+# COLEMAN 4.8 — Real CI history, reproducible test prioritization runs
+
+Turn a pinned RTPTorrent archive into inspectable Parquet and checkpointed TCPCI experiments with
+the runner you already use. This release connects verified source acquisition, complete analytical
+history and a bounded native replay in one documented workflow.
+
+## What you can do
+
+- **Prepare real RTPTorrent CI observations.** The HikariCP preset preserves 46,995 class executions
+  across 1,662 source jobs in analytical Parquet, with exact reported seconds, original execution
+  identities and explicit missing values.
+- **Run and resume Random/UCB experiments.** An explicit eight-job preset projects 18 compatible
+  executions into the existing native API. Two policies produce 16 result rows across eight modeled
+  rounds; retrying resumes committed checkpoints without duplicating results.
+- **Inspect every exclusion.** The other 46,977 executions remain analytical records. Source,
+  projection and duplicate counts must reconcile, so a smaller native slice never erases the
+  original history.
+- **Verify what you downloaded.** A separate bounded ZIP64 profile verifies the full approximately 5
+  GB source, selected-member membership and decoded hashes. Resumable operator downloads and an
+  external cache keep large data out of the repository and wheel.
+- **Reproduce artifacts deliberately.** Versioned recipes bind source terms, hashes, assumptions,
+  actual producer code and Parquet writer version. Immutable tables precede the completion receipt;
+  interruption, concurrent retries and unknown versions have explicit behavior.
+
+The release also corrects Linux memory accounting for application workers: a large parent process
+can no longer make a small worker appear over its RSS limit. The guard measures the worker
+executable's kernel high-water mark, retains existing admission limits and fails closed when
+measurement is unavailable. Real Linux regressions cover both native/coverage execution and actual
+low-cap refusal.
+
+## Try it
+
+Use Python **3.14+** and install the verified 4.8 wheel from the release assets. After downloading
+the pinned archive to an external workspace:
+
+```bash
+python -m coleman.transports.rtptorrent_etl \
+  --archive /external/rtp-torrent-v11.zip \
+  --cache /external/coleman-cache --output /external/coleman-data --run
+
+# Once cached, verify and resume offline.
+python -m coleman.transports.rtptorrent_etl \
+  --cache /external/coleman-cache --output /external/coleman-data --run
+```
+
+See the [RTPTorrent Parquet and replay
+guide](https://jacksonpradolima.github.io/coleman/rtptorrent-parquet-etl/) for installation, source
+download, offline replay and the typed API. A small repository-authored example exercises the same
+complete path without downloading foreign data. The existing [LRTS
+workflow](https://jacksonpradolima.github.io/coleman/lrts-parquet-etl/) remains available.
+
+## Evidence you can inspect
+
+The installed-package workflow runs outside checkout against the real source cache, validates
+Parquet, executes the actual native runner twice and checks committed checkpoint recovery. Local
+regression coverage includes serialization/goldens, unknown versions, incompatible units,
+zero/null/unknown/not-run semantics, source-order metamorphism, duplicate conservation, concurrent
+exports, interrupted writes, forged provenance and import boundaries. Complete local review and CI
+evidence are linked from the implementation PRs.
+
+## Scope and compatibility
+
+This delivery supports **post-hoc source-job serial simulation**. Numeric job labels are not
+verified chronology; reported class seconds are not parallel CI wall-clock savings; repeated seeds
+are not independent observations. Protected temporal admission remains blocked by missing source
+clocks and logical build/job mapping. The broader diversified corpus and confirmatory comparisons in
+#261 remain ongoing.
+
+Existing ZIP recipes, raw readers, native Parquet, LRTS exports and checkpoints retain their
+semantics. No historical artifact is silently migrated. New receipts require explicit
+schema/producer/writer compatibility. Source data terms remain separate from enclosed subject-code
+rights, and the workflow does not execute archived subject repositories.
+
+Implementation and review: [ZIP64 source integrity
+(#314)](https://github.com/jacksonpradolima/coleman/pull/314), [real Parquet and native replay
+(#315)](https://github.com/jacksonpradolima/coleman/pull/315). The complete local suite passed
+**2,542 tests with 95.31% coverage**, with the Linux-only regression separately exercised in Linux
+and an installed wheel. [Full
+changes](https://github.com/jacksonpradolima/coleman/compare/v4.7.0...v4.8.0).
+
+
+
 ### FILE: docs/releases.md
 
 # Release preparation
@@ -8469,6 +8575,12 @@ selection and evidence. Generic decision contracts support that product; a relea
 should explain the value to CI users before listing internal implementation work.
 
 ## Versioning and integration
+
+The reviewed **4.8 source integration** combines bounded ZIP64 source integrity
+and the [complete RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md),
+including a Linux worker memory-accounting correction. Its
+[reviewed release description](releases/4.8.0.md) is ready for automatic publication
+after the release integration PR passes. The published wheel remains 4.7 until then.
 
 The published [COLEMAN 4.7](releases/4.7.0.md) release adds a real
 [LRTS download-to-Parquet workflow](lrts-parquet-etl.md), including analytical
@@ -8796,6 +8908,35 @@ releases. #261 stays open until its admission, diversity, execution and evidence
 gates pass. Inaccessible or unlicensed sources remain visible blockers. Security
 fixes remain independently shippable.
 
+## Remaining corpus subtasks
+
+The public #261 umbrella now has native GitHub sub-issues. These are planned
+deliverables; an opened subtask does not establish implementation or admission.
+
+| Stage | Subtasks | Dependency |
+| --- | --- | --- |
+| RTPTorrent source path | [#301 ZIP64 integrity](https://github.com/jacksonpradolima/coleman/issues/301), [#302 real Parquet ETL/replay](https://github.com/jacksonpradolima/coleman/issues/302) | #302 requires #301 |
+| Other source expansion | [#303 LRTS](https://github.com/jacksonpradolima/coleman/issues/303), [#304 Java faults](https://github.com/jacksonpradolima/coleman/issues/304), [#305 non-Java faults](https://github.com/jacksonpradolima/coleman/issues/305), [#306 seeded faults](https://github.com/jacksonpradolima/coleman/issues/306), [#307 HCS](https://github.com/jacksonpradolima/coleman/issues/307), [#308 stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main |
+| Evidence integration | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | #302–#308 |
+| Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
+| Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
+| Final execution/report | [#313 confirmatory corpus](https://github.com/jacksonpradolima/coleman/issues/313) | #309–#312 and the complete parent gates |
+
+Work starts with #301 and #302, one reviewed slice at a time. Compatible source
+deliveries may be collected in a **4.8** integration branch before publication.
+No release number or subtask closure substitutes for an actual source-integrity,
+diversity, temporal-admission or scientific evidence gate.
+
+The **4.8 source integration** now includes #301's reviewed ZIP64 selection and
+complete RTPTorrent archive/member integrity evidence through
+[#314](https://github.com/jacksonpradolima/coleman/pull/314). The implementation for
+#302 adds the [full analytical/native Parquet workflow](rtptorrent-parquet-etl.md),
+an explicit eight-source-job simulation and checkpoint recovery through
+[#315](https://github.com/jacksonpradolima/coleman/pull/315). These compatible
+source deliveries are grouped before publication; the published wheel remains
+4.7 until the integration is reviewed and released. Remaining source admission,
+diversity and confirmatory work continues in #303–#313.
+
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:
 
@@ -8829,13 +8970,257 @@ assumption or commercial value is inferred from a planned feature.
 
 
 
+### FILE: docs/rtptorrent-parquet-etl.md
+
+# Turn RTPTorrent CI history into Parquet and native TCPCI replays
+
+The source implementation for [#302](https://github.com/jacksonpradolima/coleman/issues/302)
+provides a complete HikariCP workflow: verified real archive → full analytical
+history → bounded native-compatible Parquet → Random/UCB → checkpoint recovery.
+It targets **COLEMAN 4.8**; build the source revision containing this page while
+the published release remains 4.7. The 4.7 wheel does not contain this ETL API.
+
+The preset keeps **46,995 source class executions and 1,662 source jobs** in
+analytical Parquet. It projects **18 executions from eight declared jobs** into
+the existing native runner. The other **46,977 executions remain analytically
+available**, with a conserved `outside_jobs` projection reason.
+
+## Build and run outside checkout
+
+Build/install this revision, then work in a separate workspace:
+
+```bash
+uv build --out-dir /tmp/coleman-rtptorrent-dist
+uv venv /tmp/coleman-rtptorrent-env --python 3.14
+uv pip install --python /tmp/coleman-rtptorrent-env/bin/python /tmp/coleman-rtptorrent-dist/*.whl
+mkdir -p /tmp/coleman-rtptorrent-workspace
+cp examples/rtptorrent-parquet/ci.py /tmp/coleman-rtptorrent-workspace/owned-ci.py
+cd /tmp/coleman-rtptorrent-workspace
+```
+
+Download the pinned public archive explicitly. The command supports resuming a
+partial operator download; the ETL verifies the complete SHA-256 before parsing:
+
+```bash
+curl --fail --retry 3 --continue-at - --max-time 21600 \
+  --output rtp-torrent-v11.zip \
+  https://zenodo.org/records/4046180/files/rtp-torrent-v11.zip
+
+/tmp/coleman-rtptorrent-env/bin/python -m coleman.transports.rtptorrent_etl \
+  --archive rtp-torrent-v11.zip \
+  --cache /tmp/coleman-rtptorrent-source-cache \
+  --output /tmp/coleman-rtptorrent-data --run > summary.json
+```
+
+`--archive` verifies the supplied file even when the expected source is already
+cached. Cache and output must be separate and outside Git. Concrete Parquet and
+completion destinations are checked before archive acquisition. Source URIs in
+the typed recipe are descriptive; the domain opens no URL. The existing small-
+source HTTP adapter retains its 300-second cap. The explicit download step keeps
+this approximately 5 GB transfer outside that adapter and can resume separately.
+
+Once the cache is populated, repeat the whole conversion/replay **offline**:
+
+```bash
+/tmp/coleman-rtptorrent-env/bin/python -m coleman.transports.rtptorrent_etl \
+  --cache /tmp/coleman-rtptorrent-source-cache \
+  --output /tmp/coleman-rtptorrent-data --run > resumed-summary.json
+```
+
+The two invocations return the same completion and native run identity. Existing
+immutable tables are verified and committed checkpoints are reopened. With the
+default two policies and eight modeled rounds, the persisted native result has
+**16 rows**, including after continuation. Source verification scans the large
+archive again; account for that I/O when planning preprocessing.
+
+The summary contains `completion`, `observations`, `jobs`, `datasets_dir`,
+`native_artifacts`, conserved counts and the evidence labels. Native logs go to
+stderr so a fresh CLI process can write its JSON summary to stdout. An ETL
+completion certifies its three data files; native execution is a subsequent step
+with the existing runner's own checkpoint/completion behavior.
+
+## What the files preserve
+
+| File | Scope and semantics |
+| --- | --- |
+| `observations.parquet` | Every canonical raw project/job/class/source-position execution; exact decimal duration text, observed/unavailable status, seconds and reported-class meaning; nullable method count/failures/errors/skipped; class outcome and one primary projection exclusion |
+| `jobs.parquet` | All 1,662 source job labels, source/eligible counts, selected modeled round and status; unavailable logical build ID, event clock and outcome-availability clock remain null |
+| `datasets/rtptorrent-hikaricp/features-engineered.parquet` | The 18 eligible records using existing native `BuildId`, `Name`, `Duration`, `CalcPrio`, `LastRun`, `Verdict` and `SourceExecutionId` fields |
+| `complete.json` | Last-written versioned recipe/producer/writer provenance, physical file hashes/sizes/row counts, canonical row digest and complete exclusion accounting |
+
+Source `duration` values are **reported class elapsed seconds**, as documented by
+the existing [raw-class reader](rtptorrent.md). Analytical `duration_decimal`
+retains their exact normalized decimal value as text. Native `Duration` explicitly
+projects eligible values to binary64 seconds. An observed zero stays zero; null
+with `duration_status=unavailable` stays unavailable. Unknown/not-run outcomes
+remain distinct from passes. Failure/error/skipped method counters remain
+separate; native verdicts count failing **class executions**, not unique faults.
+
+The physical CSV accounting is:
+
+```text
+input_rows = observed_executions + duplicate_rows_excluded
+observed_executions = replay_executions + excluded_outside_jobs
+                    + excluded_not_run + excluded_unknown_outcome
+                    + excluded_unavailable_duration
+```
+
+Exact repeated source rows are explicitly counted/excluded; conflicting duplicate
+execution keys reject. Repeated classes at distinct positions remain separate.
+For selected jobs, not-run precedes unknown outcome, which precedes unavailable
+duration as the primary exclusion. Outside-slice records retain their full raw
+values and the `outside_jobs` reason; their raw outcome is still inspectable.
+
+## Explicit replay assumptions
+
+The frozen preset selects the first eight numeric job labels with at least two
+raw class executions. This criterion uses record cardinality and labels, without
+filtering on failures. Selected labels are:
+
+```text
+13471129, 13474093, 13476365, 13476403,
+13476405, 13476407, 13505429, 13505431
+```
+
+Numeric order is an explicit **post-hoc simulation order**. Source job IDs remain
+original labels. Native `BuildId` is a local modeled round; it does not assert an
+observed logical CI build or join concurrent jobs. No commit/build number,
+duration sum or source order becomes an observed clock.
+
+The native model adds reported class seconds serially. It assumes correspondence
+between the same class label and its within-job occurrence ordinal across jobs.
+Source project/job/class/position execution IDs remain independently preserved and
+joinable through `SourceExecutionId`. Occurrences are assigned before eligibility,
+so changing an outcome or missing duration cannot rename later occurrences.
+
+The receipt requires
+`budget-censored-native-RNFail-zero-nondetection`: detections within budget receive
+the existing native reward; other prioritized entries receive zero nondetection
+reward, including unscheduled classes. Zero nondetection does not establish a
+passing class or full-label feedback. The default run uses Random and UCB,
+budget ratio 0.5, seed 42 and one execution per policy. Seed repetitions do not
+create independent observations.
+
+Evidence is `posthoc-source-job-serial-simulation`, admission is
+`blocked_missing_temporal_evidence`, and generalization is `insufficient_evidence`.
+Use this delivery to prepare and reproduce modeled CI experiments. Protected
+temporal evaluation needs verified event/outcome clocks and logical build/job
+mapping. The source-admission and confirmatory gates in
+[#261](https://github.com/jacksonpradolima/coleman/issues/261) remain open.
+
+## Typed API and a custom bounded slice
+
+The transport loads a metadata-only preset, and the domain exports/verifies it:
+
+```python
+from importlib.resources import files
+from pathlib import Path
+
+from coleman.application.corpus import run_rtptorrent_replay
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus import SourceCache
+from coleman.corpus.rtptorrent_etl import export_rtptorrent_parquet, validate_rtptorrent_etl
+from coleman.corpus.rtptorrent_etl_contracts import RTPTorrentETLReceipt, RTPTorrentETLRecipe
+
+resource = files("coleman.corpus.resources").joinpath("rtptorrent-hikaricp-first-eight-v1.json")
+recipe = RTPTorrentETLRecipe.from_json(resource.read_bytes())
+cache = SourceCache("/tmp/coleman-rtptorrent-source-cache")
+completion = export_rtptorrent_parquet(recipe, cache, ArtifactWriter("/tmp/coleman-rtptorrent-data"))
+receipt = RTPTorrentETLReceipt.from_json(completion.read_bytes())
+validate_rtptorrent_etl(receipt, cache, completion.parent)
+result = run_rtptorrent_replay(completion, cache, Path("/tmp/coleman-rtptorrent-native"))
+assert result.run_id
+```
+
+For a different reviewed slice, construct an explicit `RTPTorrentETLRecipe` using
+one `Zip64SelectionSpec`, its exactly matching existing `RTPTorrentSpec`, a safe
+single-component `dataset_id`, at most 16 distinct ascending job labels and the
+required feedback declaration. All source observations remain analytical. Unknown
+job labels reject. The existing raw-reader limits remain 16 MiB decoded CSV,
+50,000 physical rows and 16 KiB per physical line; inputs beyond them reject
+without truncation. The published filtered `untreated` baseline is a separate
+input and cannot replace the complete raw history.
+
+## Identity, compatibility and recovery
+
+Recipe and completion require integer `schema_version=1` and recipe
+`rtptorrent-parquet-source-job-replay-v1`. Missing/future schemas and unknown
+assumptions reject. There is no automatic conversion of old native Parquet, LRTS
+completions or standalone RTPTorrent datasets into this contract. Existing readers
+remain available for those artifacts; create a consciously reviewed new recipe.
+
+The export namespace binds the complete recipe, actual conversion implementation
+digest and Polars writer version. Fixed uncompressed Parquet settings bind physical
+bytes; `logical_rows_sha256` separately identifies canonical rows. Validation
+recomputes actual source membership, conversion, counts and expected physical
+bytes. It avoids decoding caller-provided Parquet to certify it. Unknown producer
+or writer versions require their recorded implementation and reject certification
+under a different one. Metadata-only reading remains distinct from verification.
+
+All three files are immutable before `complete.json` is published last. An
+interrupted write may retain individual verified files; retry converges through
+the existing writer. Concurrent identical exports converge on the same completion.
+Missing/corrupt files or false source/count/provenance claims reject without repair.
+Empty native projections remain valid analytical exports and native execution
+rejects them explicitly. Trusted local parents and existing filesystem durability
+limits apply. No second runner, learning checkpoint or network implementation is
+introduced.
+
+```mermaid
+flowchart TD
+    A[Explicit resumed download or existing cache] --> B[Existing SourceCache and bounded ZIP64 profile]
+    B --> C[Whole-source and selected-member SHA-256]
+    C --> D[Existing complete RTPTorrent raw-class reader]
+    D --> E[Typed source-job projection and conserved exclusions]
+    E --> F[All observations and jobs in analytical Parquet]
+    E --> G[Bounded native-compatible class-execution Parquet]
+    F --> H[Immutable last-written ETL completion]
+    G --> H
+    H --> I[Shared application bridge and existing RunSpec API]
+    I --> J[Native Random and UCB with existing checkpoints]
+    J --> K[Results plus copied provenance receipt and manifest]
+```
+
+## Owned and real installed-package checks
+
+For a network-free complete example, run the `owned-ci.py` copied during setup
+twice with the installed wheel:
+
+```bash
+cd /tmp/coleman-rtptorrent-workspace
+/tmp/coleman-rtptorrent-env/bin/python owned-ci.py owned /tmp/coleman-rtptorrent-owned-cache
+/tmp/coleman-rtptorrent-env/bin/python owned-ci.py owned /tmp/coleman-rtptorrent-owned-cache
+```
+
+That example preserves eight constructed records, projects four, accounts for
+outside/not-run/unknown/unavailable exclusions, and resumes two native rounds with
+four result rows. The test suite compares the two-job native NAPFD/APFDc results
+with the existing independent exact tiny oracle under the explicit serial model.
+The fresh base-wheel regression also exercises the actual real cache when enabled:
+
+```bash
+COLEMAN_RTPTORRENT_ETL_REAL_CACHE=/tmp/coleman-rtptorrent-source-cache \
+  uv run pytest tests/corpus/test_installed_rtptorrent_etl.py --no-cov -q
+```
+
+Source pins and data terms are documented in the
+[ZIP64 integrity guide](zip64-source-selection.md) and the
+[RTPTorrent source assessment](rtptorrent.md). The wheel contains metadata recipes
+and owned examples; third-party archive/rows stay outside the repository. Dataset
+terms remain separate from enclosed subject-code rights, and this workflow reads
+reported CI observations rather than executing the archived subject repositories.
+
+
+
 ### FILE: docs/rtptorrent.md
 
 # RTPTorrent: source assessment and bounded class-result conversion
 
 The RTPTorrent adapter in COLEMAN 4.5 converts **raw class-result CSV members**,
 using the existing licensed materialization/cache contract. Install the verified
-4.5 release wheel to run these examples. RTPTorrent remains blocked from protected
+4.5 release wheel to run these examples. The source implementation for 4.8 adds
+the complete [real Parquet/replay workflow](rtptorrent-parquet-etl.md).
+RTPTorrent remains blocked from protected
 temporal evaluation.
 
 An execution is identified by project, job ID, class label and source position.
@@ -8887,9 +9272,12 @@ limit cross-job identity and timing comparisons.
 
 The RTPTorrent ZIP64 end record advertises 2,883 entries and 395,312 central-directory
 bytes. This exceeds the existing v1 materializer's entry ceiling and ZIP64 policy.
-That contract remains unchanged. A future complete-archive recipe needs an explicit,
-reviewed capability extension; relabeling an archive as an already validated ZIP
-would bypass the existing contract.
+That contract remains unchanged. The source implementation for
+[#301](https://github.com/jacksonpradolima/coleman/issues/301) adds a separate
+[bounded ZIP64 selection profile](zip64-source-selection.md), without changing
+legacy recipes. The published 4.7 wheel does not include that profile. A real
+selection recipe still requires the complete archive SHA-256; relabeling a partial
+archive as an already validated ZIP would bypass the existing contract.
 
 ### Observed source discrepancy
 
@@ -8913,9 +9301,17 @@ The independently computed raw-member SHA-256 is
 for 2,825,388 decoded bytes. The baseline-member SHA-256 is
 `ad162fbdd9786db59a30b7bc5625fab19cbac9d5b11e47ca6c1d79b46e041fa9`
 for 339,235 decoded bytes. These are **member identities**, not the archive SHA-256.
-Bounded HTTPS ranges, ZIP metadata and member CRC/size/deflate-EOF checks informed
-this research. The complete archive was not verified: interrupted acquisition
-remains partial. No third-party source rows or archive are committed here.
+Initial bounded HTTPS ranges, ZIP metadata and member CRC/size/deflate-EOF checks
+informed this research. On 2026-10-16 complete acquisition verified all
+5,016,963,482 bytes and the provider MD5; complete source SHA-256 is
+`bff52563d75aee2f4bab9693188cdefbfd887dc4bcf63395d49eaff1ecf7b6c1`.
+The new [bounded ZIP64 profile](zip64-source-selection.md) verified actual enclosing
+membership and repeated offline conversion of the raw HikariCP member. Its frozen
+metadata recipe is included in the source revision containing #301; the published
+4.7 wheel does not include that profile. The [real Parquet ETL](rtptorrent-parquet-etl.md)
+builds on it in the source implementation for #302, and source
+integrity does not supply missing temporal evidence. No third-party source rows
+or archive are committed here.
 
 To reproduce the descriptive counts, obtain the exact 1.1 archive outside Git,
 verify its complete bytes against the provider's size/MD5 and compute its SHA-256,
@@ -9884,6 +10280,217 @@ ORDER BY avg_napfd DESC;
     ```bash
     marimo edit docs/workflow.py
     ```
+
+
+
+### FILE: docs/zip64-source-selection.md
+
+# Bounded ZIP64 selected-file integrity
+
+The implementation for [#301](https://github.com/jacksonpradolima/coleman/issues/301)
+adds an explicit ZIP64 recipe to the existing verified source cache. This page
+describes the source revision containing that implementation; the published 4.7
+wheel does not include this API. The feature verifies selected file membership.
+The [RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md) builds on this
+profile in the source implementation for
+[#302](https://github.com/jacksonpradolima/coleman/issues/302).
+
+## Run the owned CI example outside the checkout
+
+Build and install the wheel from this revision, then copy the complete example:
+
+```bash
+uv build --out-dir /tmp/coleman-zip64-dist
+uv venv /tmp/coleman-zip64-env --python 3.14
+uv pip install --python /tmp/coleman-zip64-env/bin/python /tmp/coleman-zip64-dist/*.whl
+mkdir -p /tmp/coleman-zip64-workspace
+cp examples/zip64-selection/ci.py /tmp/coleman-zip64-workspace/ci.py
+cd /tmp/coleman-zip64-workspace
+/tmp/coleman-zip64-env/bin/python ci.py selected /tmp/coleman-zip64-cache
+/tmp/coleman-zip64-env/bin/python ci.py selected /tmp/coleman-zip64-cache
+```
+
+The example creates actual ZIP64 local-size and end records around a tiny owned
+CI correctness fixture, including an `owned@ci/serial.json` logical member name.
+It verifies the enclosing SHA-256, all archive header identities, selected decoded
+SHA-256/size and actual deflate EOF/CRC. It persists the canonical recipe and raw
+child receipt only after the selection succeeds. Both invocations converge on the
+same bytes and identities. This fixture establishes functional correctness, not
+independent observations or evidence of production savings.
+
+Reopen the same verified selection from that workspace without a reader or network:
+
+```python
+from pathlib import Path
+
+from coleman.corpus import SourceCache
+from coleman.corpus.zip64_contracts import Zip64SelectionSpec
+from coleman.corpus.zip64_selection import materialize_zip64_files, validate_zip64_files
+
+spec = Zip64SelectionSpec.from_json(Path("selected/selection.json").read_bytes())
+cache = SourceCache("/tmp/coleman-zip64-cache")
+validate_zip64_files(spec, cache)
+receipts = materialize_zip64_files(spec, cache)
+assert cache.member_path(receipts[0], "serial.json").is_file()
+```
+
+The installed-package regression test also consumes the actual selected fixture
+with the native TCPCI runner, compares NAPFD/APFDc with the existing independent
+tiny oracle, and reopens committed checkpoints. No ZIP64 parser, materializer or
+native runner is mocked in that workflow.
+
+## Contract and bounds
+
+`Zip64SelectionSpec` requires integer `schema_version=1` and recipe
+`bounded-zip64-file-selection-v1`. Missing, future and unknown versions reject.
+Canonical JSON and fingerprints include the complete source, member pins, reviewed
+data terms and explicit limits. Selections sort by logical member name; changing
+archive bytes changes enclosing identity even when selected child bytes agree.
+
+| Quantity | Meaning and hard limit |
+| --- | --- |
+| Enclosing source | Complete raw archive bytes; at most 8 GiB, with explicit source/member/total limits above the existing smaller defaults |
+| Directory | At most 4,096 entries and 2 MiB metadata, checked before allocating standard-library ZIP objects |
+| Selection | 1–128 distinct regular files; at most 64 MiB decoded bytes per file and in total |
+| Paths | Portable ASCII logical names, up to 1,024 characters, with safe `@` labels; never filesystem extraction paths |
+| Framing | Single disk, fixed ZIP64 end payload, stored or deflated members, reviewed local/central sizes and offsets, signed or unsigned data descriptors |
+
+All byte counts are strict nonnegative integers. Zero is a valid empty selected
+file when its SHA-256 and actual bytes agree; null, negative and non-integer byte
+counts reject. An unavailable source is an acquisition failure, not a zero-byte
+source. Versions, offsets, flags, CRC and exact sentinel-dependent ZIP64 extras
+must agree. Duplicate/aliased names, links, special entries, traversal, prefixes,
+encryption, unsupported compression and malformed metadata reject.
+
+ZIP structures follow the [PKWARE ZIP specification](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT),
+with the deliberately narrower profile above and two explicitly reviewed producer
+forms observed in RTPTorrent: stored entries may retain bit 1 as an inert
+compression preference, and offset-only ZIP64 central metadata may retain legacy
+extraction version 1.0/2.0. Bits 1/2 have no defined compression meaning for stored
+payloads in the specification; only the observed bit 1 is accepted here. Local and
+central flags still must agree exactly; size sentinels still require version 4.5
+and both local size fields. A lower local version is accepted against central
+version 4.5 only when the actual central offset was sentinel-backed and neither
+central size used a sentinel. Resolving that wide offset to a small value does
+not erase its origin. Offset-only metadata still requires the exact wide offset
+and ZIP64 end records. Legacy profiles keep rejecting these forms.
+This is not a general ZIP extractor.
+Unselected payloads are not decoded or CRC-certified. Their local/central header
+identities and physical bounds are checked; the entire enclosing byte stream is
+still covered by its frozen source SHA-256.
+
+## Provenance, failures and compatibility
+
+```mermaid
+flowchart TD
+    A[Explicit reader + frozen opaque source recipe] --> B[Existing raw materializer and external SourceCache]
+    B --> C[Verify complete enclosing SHA-256 and size]
+    C --> D[Bound ZIP64 footer and central metadata]
+    D --> E[Check every central and local header identity]
+    E --> F[Decode only selected files; verify EOF, CRC, SHA-256 and byte count]
+    F --> G[Existing immutable raw child cache and receipts]
+    G --> H[Retain full ZIP64 recipe with all child receipts]
+    H --> I[Separate parser, ETL and scientific admission]
+```
+
+The enclosing raw source and every child use the existing `MaterializationSpec`.
+Selected archive names bind to explicit portable raw-file aliases. Child bytes,
+data terms and version must match their enclosing selection. Data redistribution
+terms do not assert rights to execute or redistribute enclosed subject code.
+Source URIs are descriptive; the core opens no URL and imports no CLI/MCP or HTTP
+transport. Readers are explicit, synchronous and caller-owned.
+
+An interrupted acquisition never publishes a partial blob. A later child failure
+may leave individually verified earlier blobs, but the operation returns no
+completed selection. Retrying revalidates actual membership even for cached
+children and converges through existing immutable writes. There is no new group
+completion marker or learning checkpoint: callers retain the full recipe with all
+returned receipts. A raw child receipt alone does not prove enclosing membership.
+`validate_zip64_files` verifies source, membership and cached children without
+repair or network; missing/corrupt bytes reject. Complete validation scans the
+large source again, so account for that I/O cost.
+
+Metadata/format/hash/CRC failures raise `ValueError`; filesystem/reader failures
+propagate. Cache parents must be trusted and immutable during verification.
+Existing ArtifactWriter local-filesystem durability limits apply; this is neither
+a hostile-filesystem sandbox nor a global cache/disk quota.
+
+Existing package-v1 and selected-member-v1 recipes retain their ZIP64 and `@`
+rejections. No old recipe or receipt is silently migrated or reinterpreted.
+Construct and review a separate ZIP64 recipe with full source/member pins; old
+native Parquet, result records and checkpoints remain readable as before.
+
+## External source evidence
+
+The [RTPTorrent assessment](rtptorrent.md) records the provider metadata and
+separately verified HikariCP member bytes. Complete acquisition on 2026-10-16
+verified all **5,016,963,482 source bytes**, provider MD5
+`1f7fa822b0cf155bd007a94d1a24a336`, and complete source SHA-256:
+
+```text
+bff52563d75aee2f4bab9693188cdefbfd887dc4bcf63395d49eaff1ecf7b6c1
+```
+
+The actual materializer then checked all 2,883 central/local records, decoded the
+pinned HikariCP member, reverified offline and repeated idempotently. The existing
+raw-class reader converted **46,995 observations across 1,662 source jobs**,
+retaining 23,302 repeated class executions and 1,530 jobs without reported class
+failures/errors. These are descriptive source counts, not independent projects,
+verified full-job passes or temporal admission. No third-party rows/code are
+bundled in the wheel or repository.
+
+The wheel includes only the reviewed metadata recipe
+`rtptorrent-hikaricp-zip64-selection-v1.json`. It pins the complete archive,
+2,825,388 decoded member bytes and the data-record CC BY 4.0 terms. The conservative
+`recipe_only` redistribution declaration does not relicense enclosed subject code.
+The data record and [specific license text](https://creativecommons.org/licenses/by/4.0/legalcode.txt)
+remain the terms evidence; selected data conversion is separate from permission
+to execute a subject repository.
+
+For an actual source acquisition, work outside checkout with the installed wheel:
+
+```bash
+cd /tmp/coleman-zip64-workspace
+curl --fail --retry 3 --continue-at - --max-time 21600 \
+  --output rtp-torrent-v11.zip \
+  https://zenodo.org/records/4046180/files/rtp-torrent-v11.zip
+```
+
+This explicit operator download can resume on retry; it is not a cache completion
+receipt. The following core operation verifies the full frozen source SHA-256
+before accepting any member. Existing small-source HTTP adapter budgets remain
+unchanged. Keep the approximately 5 GB archive and cache outside Git and separate
+from published outputs.
+
+```python
+from importlib.resources import files
+from pathlib import Path
+
+from coleman.corpus import SourceCache
+from coleman.corpus.zip64_contracts import Zip64SelectionSpec
+from coleman.corpus.zip64_selection import materialize_zip64_files, validate_zip64_files
+
+resource = files("coleman.corpus.resources").joinpath("rtptorrent-hikaricp-zip64-selection-v1.json")
+spec = Zip64SelectionSpec.from_json(resource.read_bytes())
+cache = SourceCache("/tmp/coleman-rtptorrent-source-cache")
+receipts = materialize_zip64_files(spec, cache, lambda: Path("rtp-torrent-v11.zip").open("rb"))
+validate_zip64_files(spec, cache)
+assert materialize_zip64_files(spec, cache) == receipts
+csv_path = cache.member_path(receipts[0], "hikaricp-class-results.csv")
+assert csv_path.stat().st_size == 2825388
+```
+
+This is real source acquisition and selected-member validation. The
+[Parquet workflow](rtptorrent-parquet-etl.md) adds complete analytical history,
+a bounded native projection and a declared replay bridge in #302.
+Protected temporal evaluation remains blocked by missing source clocks and
+logical build/job mapping. A fresh installed-wheel regression can additionally
+reverify the real source cache without network:
+
+```bash
+COLEMAN_RTPTORRENT_ZIP64_REAL_CACHE=/tmp/coleman-rtptorrent-source-cache \
+  uv run pytest tests/corpus/test_installed_zip64.py --no-cov -q
+```
 
 
 

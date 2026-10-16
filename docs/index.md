@@ -29,6 +29,12 @@ provenance. Random/UCB replay and checkpoint recovery use the existing runner.
 The receipt declares serial simulation and budget-censored RNFail feedback;
 source admission and confirmatory evidence remain open.
 
+The **4.8 source implementation** adds the
+[real RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md): verified
+ZIP64 source, complete HikariCP analytical history, an explicit eight-job native
+projection and shared native checkpoint recovery. The published 4.7 wheel retains
+the LRTS path above; build the revision containing #302 for RTPTorrent ETL.
+
 [Controlled observations](controlled-faults.md), the
 [pinned JUnit3 source recipe](junit-source-capture.md),
 [RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) readers,

@@ -209,7 +209,11 @@ Admission reserves each job's maximum output until expiry and sums admitted
 worker memory before starting processes. Registry snapshots are bounded to 32
 configurations of 1.5 MiB each. Parent/interpreter overhead, input snapshots,
 protocol frames and temporary serialization buffers add bounded local overhead
-outside worker RSS. Worker RSS and native-file output are checked before/after
+outside worker RSS. Linux worker peak RSS uses the current executable's kernel
+`VmHWM`, because `getrusage` can include the parent's footprint before `exec`.
+Other platforms retain the existing sampler; historical general telemetry and
+stored artifacts keep their existing meaning. The memory ceiling is unchanged.
+Worker RSS and native-file output are checked before/after
 calculation and sampled every 20 ms; transient overshoot is possible. Unsupported
 RSS measurement fails closed. This is a guard for trusted local native code,
 not a hard memory allocator or hostile-code sandbox. The underlying SDK stdio

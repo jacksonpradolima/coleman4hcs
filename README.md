@@ -64,6 +64,14 @@ RNFail feedback. Source temporal admission remains blocked; this run demonstrate
 a usable data pipeline and simulation. Policy efficacy and prospective savings
 require their own eligible observations and comparisons.
 
+The **4.8 source workflow** adds
+[RTPTorrent → analytical/native Parquet → checkpointed replay](docs/rtptorrent-parquet-etl.md):
+the complete HikariCP raw member contributes **46,995 observations across 1,662
+source jobs**, with an explicit eight-job native preset. The guide covers the
+verified ZIP64 source, resumable operator download, exact units, conserved
+exclusions and replay assumptions. Build the source revision containing #302 to
+use it while the published wheel remains 4.7.
+
 # Getting started
 
 - [Coleman](#coleman)
@@ -639,7 +647,7 @@ controlled reproductions and empirical benchmark corpora have different roles:
 | **LRTS / Karaf real CI reports** | [Pinned download → analytical/native Parquet → Random/UCB → checkpoint recovery](docs/lrts-parquet-etl.md) | Complete eight-build preset; explicit post-hoc serial simulation. Protected historical admission remains blocked. |
 | **Druid and Retrofit** | Bundled native/contextual Parquet examples, native runner and [descriptive profiles](docs/benchmark-corpus.md#local-profiles-and-the-first-diversity-matrix-44) | Runnable legacy experiments. Source terms, duration units and outcome availability still need corpus admission evidence. |
 | **Dune and its variants** | Bundled native Parquet, WTS/VTS workflows and [variant-aware inventory](docs/benchmark-corpus.md) | Runnable HCS examples. Variants/context files may share executions; broad HCS benchmark admission remains unfinished. |
-| **RTPTorrent** | [Bounded raw-class reader, source assessment and owned native replay example](docs/rtptorrent.md) | Reader/example available; a turnkey real-source fetch-to-Parquet preset and protected temporal admission are still missing. |
+| **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | 4.8 source implementation: 46,995 observations / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |
 | **Apache Commons CLI-13 buggy/fixed pair** | [Pinned source producer](docs/junit-source-capture.md), common 95-test fixture per revision and recoverable raw observations | One controlled Java pair; bundled recipe requires Docker/arm64. Independent of historical CI chronology; full Defects4J integration remains planned. |
 | **Owned CI correctness fixtures** | Two tiny [serial/parallel corpus fixtures](docs/benchmark-corpus.md), validation and native integration examples | Available without network. One constructed family for contract/metric checks; no independent-project diversity. |
 | **Coverage and scenario-allocation microbenchmarks** | [Correctness and performance profiles](docs/decision-benchmarks.md), independent exhaustive references and JSON/Markdown reports | Runnable finite-model benchmarks with runtime/memory observations; separate from empirical CI-policy comparisons. |
@@ -729,7 +737,8 @@ what kind of information can be used!
 flowchart TD
     A[YAML config + packs: run.yaml] --> B[coleman CLI / library API]
     R[Pinned LRTS reports + metadata] --> S[Verified external source cache]
-    S --> T[Explicit serial-simulation ETL]
+    V[Pinned RTPTorrent ZIP64 + raw class history] --> S
+    S --> T[Source-specific typed ETL and explicit serial model]
     T --> U[Analytical Parquet + completion provenance]
     T --> C["Native Parquet / legacy CSV; variant input for HCS"]
     C --> D[Scenario Provider]
