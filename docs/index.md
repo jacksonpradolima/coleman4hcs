@@ -22,6 +22,9 @@ environments.
 
 ## New in 4.4
 
+The [4.4.1 patch](releases/4.4.1.md) enforces exact numeric limits before conversion
+and preserves decimal JSON quantities through artifact validation.
+
 Inspect native CI data with [bounded corpus profiles](benchmark-corpus.md):
 units, missing values, logical builds and variant execution groups remain explicit.
 [Materialize pinned source packages](corpus-materialization.md) in an external cache,
@@ -47,7 +50,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.4.0/coleman-4.4.0-py3-none-any.whl#sha256=3fbe800a78f974e7247ddf15999f240d090db591c53dbd3db22b1e9a62d2fbf2"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.4.1/coleman-4.4.1-py3-none-any.whl#sha256=b9a92801448dd8cd04ce70e02d068b43a3a8817e57e6694bf47e5c0f9a79ae4e"
 coleman run --config my-experiment.yaml
 ```
 
