@@ -139,7 +139,8 @@ class ControlledObservation(Immutable):
     Trial IDs identify actual executions, not independent faults. Capture instants
     are collection clocks, never historical CI events or verified feature clocks.
     A timeout can have elapsed ticks; it cannot become an assertion failure. Raw
-    diagnostics remain in the pinned evidence package, outside decision features.
+    diagnostics remain in separate pinned report-package members, outside decision
+    features. A non-null digest must match such a member during conversion.
     """
 
     trial_id: Label
@@ -245,6 +246,25 @@ class ControlledDataset(VersionedContract):
         if any(item.test_id not in test_ids for item in self.observations):
             raise ValueError("Controlled observation test outside declared universe")
         object.__setattr__(self, "observations", tuple(sorted(self.observations, key=lambda item: item.logical_key)))
+        return self
+
+    @model_validator(mode="after")
+    def _diagnostics(self) -> Self:
+        """Bind optional diagnostic digests to separate declared report members on conversion and every read.
+
+        This pure check validates declared membership only. Conversion/publication
+        separately verifies actual package/member bytes through the source cache.
+        """
+        diagnostic_digests = {
+            item.sha256
+            for item in self.spec.report_materialization.spec.members
+            if item.name != self.spec.report_member
+        }
+        if any(
+            item.diagnostics_sha256 is not None and item.diagnostics_sha256 not in diagnostic_digests
+            for item in self.observations
+        ):
+            raise ValueError("Controlled diagnostic digest must reference a validated report package member")
         return self
 
     @property

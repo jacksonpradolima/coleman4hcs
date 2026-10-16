@@ -3,6 +3,7 @@
 import hashlib
 import io
 import json
+import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
@@ -359,3 +360,71 @@ def test_unchecked_dataset_and_unsafe_publication_cannot_bypass_validation(tmp_p
     with pytest.raises(ValueError, match="within their output tree"):
         publish_controlled_dataset(result, cache, writer)
     assert not list(outside.iterdir())
+
+
+def test_unpinned_diagnostic_digest_rejects(tmp_path):
+    cache = SourceCache(tmp_path / "cache")
+    ctx = context(cache)
+    spec = source(cache, (changed(observation(), diagnostics_sha256=digest(b"absent diagnostics")),), ctx)
+    with pytest.raises(ValueError, match="diagnostic digest"):
+        convert_controlled_source(spec, cache)
+
+
+def diagnostic_source(cache, diagnostic_digest=None):
+    """Own a pinned report/diagnostic package, independent of raw-format or real subject code."""
+    ctx = context(cache)
+    diagnostic = b"Owned assertion diagnostic. No foreign trace.\n"
+    observed = changed(
+        observation(), diagnostics_sha256=digest(diagnostic) if diagnostic_digest is None else diagnostic_digest
+    )
+    report = ControlledReport(schema_version=1, context_fingerprint=ctx.fingerprint, observations=(observed,))
+    payload = report.to_json().encode()
+    buffer = io.BytesIO()
+    entries = {"report.json": payload, "diagnostics.log": diagnostic}
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for name, data in entries.items():
+            archive.writestr(zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0)), data)
+    packaged = buffer.getvalue()
+    base = materialized(cache, "diagnostic-envelope", packaged)
+    spec = changed(
+        base.spec,
+        archive="zip",
+        members=tuple(
+            {"name": name, "sha256": digest(data), "size_bytes": len(data)} for name, data in entries.items()
+        ),
+    )
+    receipt = materialize_source(spec, cache, lambda: io.BytesIO(packaged))
+    return ControlledSpec(schema_version=1, context=ctx, report_materialization=receipt, report_member="report.json")
+
+
+def test_packaged_diagnostics_validate_roundtrip_publication_and_tampering(tmp_path):
+    cache = SourceCache(tmp_path / "cache")
+    spec = diagnostic_source(cache)
+    result = convert_controlled_source(spec, cache)
+    assert result.observations[0].diagnostics_sha256 is not None
+    assert ControlledDataset.from_json(result.to_json()) == result
+    writer = ArtifactWriter(tmp_path / "out")
+    assert publish_controlled_dataset(result, cache, writer).exists()
+    path = cache.member_path(spec.report_materialization, "diagnostics.log")
+    path.write_bytes(b"changed diagnostics")
+    with pytest.raises(ValueError):
+        validate_controlled_dataset(result, cache)
+
+
+def test_cached_context_input_does_not_substitute_for_report_diagnostics(tmp_path):
+    cache = SourceCache(tmp_path / "cache")
+    ctx = context(cache)
+    other_digest = ctx.inputs[0].materialization.spec.members[0].sha256
+    spec = diagnostic_source(cache, other_digest)
+    with pytest.raises(ValueError, match="diagnostic digest"):
+        convert_controlled_source(spec, cache)
+
+
+def test_diagnostic_binding_is_also_enforced_on_dataset_reads(tmp_path):
+    cache = SourceCache(tmp_path / "cache")
+    result = convert_controlled_source(diagnostic_source(cache), cache)
+    payload = json.loads(result.to_json())
+    payload["observations"][0]["diagnostics_sha256"] = digest(b"not in evidence package")
+    encoded = json.dumps(payload)
+    with pytest.raises(ValueError, match="diagnostic digest"):
+        ControlledDataset.from_json(encoded)

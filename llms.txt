@@ -3145,8 +3145,9 @@ can be cached as raw packages; this adds no TAR or ZIP64 extraction capability.
 
 `ControlledReport` binds observations to the context fingerprint. Each observation
 has a trial ID, role, test ID, explicit outcome, capture instants, nullable diagnostic
-digest and monotonic elapsed counter. Diagnostics stay in pinned source evidence;
-they are not predecision features. Capture instants are collection clocks, not
+digest and monotonic elapsed counter. A non-null diagnostic digest must match a
+separate regular member of the validated report package; absent references reject.
+Diagnostics are not predecision features. Capture instants are collection clocks, not
 historical event or feature availability. No observed CI chronology is inferred.
 
 Execution identity hashes the context and `(trial_id, test_id, role)`, excluding
