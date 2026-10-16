@@ -107,12 +107,40 @@ def test_zero_unavailable_and_signed_zero_are_distinct(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "duration", ["-1", "NaN", "nan", "Infinity", "-Infinity", "1e-13", "1e-999999999", "1000000000001", " 1"]
+    "duration",
+    [
+        "-1",
+        "NaN",
+        "nan",
+        "Infinity",
+        "-Infinity",
+        "1e-13",
+        "1e-999999999",
+        "1000000000001",
+        " 1",
+        "١",
+        "1e١",
+        "1_0",
+        "1e",
+        "1..2",
+        ".",
+        "1e0e0",
+    ],
 )
 def test_invalid_duration_never_becomes_zero_or_unavailable(tmp_path, duration):
     spec, cache = materialized(tmp_path, HEADER + f"101,owned.Test,0,{duration},1,0,0,0\n")
     with pytest.raises(ValueError):
         convert_rtptorrent_source(spec, cache)
+
+
+@pytest.mark.parametrize("duration", ["1", "1.", "1.25", ".25", "+0.25", "-0", "1e0", "1E+0", "1e-12", "0001.2500"])
+def test_ascii_decimal_spellings_preserve_reported_seconds(tmp_path, duration):
+    spec, cache = materialized(tmp_path, HEADER + f"101,owned.Test,0,{duration},1,0,0,0\n")
+    dataset = convert_rtptorrent_source(spec, cache)
+    observed = dataset.job(101)[0].duration
+    assert observed is not None
+    assert observed.value == Decimal(duration)
+    assert observed.semantics == REPORTED_SECONDS
 
 
 @pytest.mark.parametrize("counts", ["1,2,0,0", "1,0,1,1", "-1,0,0,0", "1.0,0,0,0", "01,0,0,0", "1,true,0,0"])

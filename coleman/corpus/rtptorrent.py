@@ -21,7 +21,7 @@ def _integer(text: str, *, optional: bool = False) -> int | None:
     """Parse canonical nonnegative ASCII integer counts/labels, preserving empty optional values."""
     if not text and optional:
         return None
-    if re.fullmatch(r"0|[1-9][0-9]{0,18}", text) is None:
+    if re.fullmatch(r"0|[1-9]\d{0,18}", text, flags=re.ASCII) is None:
         raise ValueError("Expected a canonical nonnegative ASCII integer")
     return int(text)
 
@@ -30,7 +30,7 @@ def _duration(text: str) -> Quantity | None:
     """Parse finite reported seconds exactly; empty is unavailable, never observed zero."""
     if not text:
         return None
-    if len(text) > 64 or re.fullmatch(r"[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?", text) is None:
+    if len(text) > 64 or re.fullmatch(r"[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?", text, flags=re.ASCII) is None:
         raise ValueError("Invalid or overlong duration")
     try:
         value = Decimal(text)

@@ -68,8 +68,8 @@ def owned_source():
     return spec, payload, fixture
 
 
-def main(output, cache_directory):
-    """Materialize/convert owned data, isolate one known-answer job, run and reopen its native checkpoint."""
+def _output_root(output, cache_directory):
+    """Resolve owned output containment and external-cache separation before any publication."""
     workspace = Path.cwd().resolve()
     root = (workspace / output).resolve()
     if not root.is_relative_to(workspace):
@@ -79,6 +79,12 @@ def main(output, cache_directory):
         if path.is_symlink() or not path.resolve().is_relative_to(root):
             raise ValueError("Owned output descendants must remain inside the output tree")
     validate_cache_separation(cache_directory, root)
+    return root
+
+
+def main(output, cache_directory):
+    """Materialize/convert owned data, isolate one known-answer job, run and reopen its native checkpoint."""
+    root = _output_root(output, cache_directory)
     materialization, payload, fixture = owned_source()
     cache = SourceCache(cache_directory)
     receipt = materialize_source(materialization, cache, lambda: io.BytesIO(payload))
