@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+from datetime import UTC, datetime
 from functools import partial
 from importlib.resources import files
 from typing import NamedTuple
@@ -16,10 +17,18 @@ from coleman.corpus import (
     SourceCache,
     load_registry,
 )
-from coleman.corpus.controlled_contracts import ControlledContext, ControlledInput, ControlledRuntime
+from coleman.corpus.controlled_contracts import (
+    ControlledContext,
+    ControlledElapsed,
+    ControlledInput,
+    ControlledObservation,
+    ControlledReport,
+    ControlledRuntime,
+)
 from coleman.corpus.materialization import ReaderFactory, materialize_source, validate_materialization
 from coleman.corpus.materialization_contracts import PackageMember
 from coleman.corpus.source_views import materialize_source_view
+from coleman.results.domain import canonical_json
 from coleman.transports.corpus_http import public_https_source
 from coleman.transports.junit_contracts import JunitCaptureRecipe
 
@@ -98,6 +107,44 @@ class PreparedJunitInputs(NamedTuple):
     fixture: MaterializationReceipt
     dependencies: tuple[MaterializationReceipt, ...]
     harness: bytes
+
+
+def validate_junit_report_budget(recipe: JunitCaptureRecipe, trial_id: str) -> None:
+    """Reject a declared complete trial whose conservative normalized report cannot fit the core's byte limit.
+
+    Only sizing records are constructed, never stored or presented as observations.
+    Actual trial/test labels, maximal integer ticks, longest outcomes and UTC
+    instants bound the same DTO serializer used at publication. This pure check
+    raises ValueError before acquisition/execution for unsupported combinations;
+    per-field test/label maxima alone do not guarantee a complete report fits.
+    """
+    instant = datetime.max.replace(tzinfo=UTC)
+    placeholder = "sha256:" + "f" * 64
+    empty = ControlledReport(
+        schema_version=1,
+        context_fingerprint=placeholder,
+        observations=(),
+    )
+    total = len(empty.to_json().encode())
+    count = 0
+    for role in ("buggy", "fixed"):
+        for test_id in recipe.test_ids:
+            observation = ControlledObservation(
+                trial_id=trial_id,
+                role=role,
+                test_id=test_id,
+                outcome="infrastructure_error",
+                elapsed=ControlledElapsed(value=2**63 - 1, status="observed"),
+                capture_started_at=instant,
+                capture_finished_at=instant,
+                diagnostics_sha256=placeholder,
+            )
+            total += len(canonical_json(observation.model_dump(mode="json")).encode()) + bool(count)
+            count += 1
+            if total > ControlledReport.MAXIMUM_BYTES:
+                raise ValueError(
+                    "Declared normalized report exceeds its 8 MiB budget; shorten trial labels or declare fewer tests"
+                )
 
 
 def prepare_junit_inputs(

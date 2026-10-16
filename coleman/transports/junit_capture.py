@@ -19,6 +19,7 @@ from pydantic import TypeAdapter
 
 from coleman.artifacts import ArtifactWriter
 from coleman.corpus import MaterializationReceipt, SourceCache
+from coleman.corpus.archives import deterministic_zip_bytes
 from coleman.corpus.controlled import convert_controlled_source, publish_controlled_dataset
 from coleman.corpus.controlled_contracts import (
     ControlledDataset,
@@ -30,7 +31,6 @@ from coleman.corpus.controlled_contracts import (
 )
 from coleman.corpus.materialization import materialize_source, validate_cache_separation, validate_source_storage
 from coleman.corpus.materialization_contracts import MaterializationSpec, PackageMember
-from coleman.corpus.source_views import source_view_bytes
 from coleman.results.domain import decode_json, fingerprint
 from coleman.transports.junit_contracts import (
     JunitCaptureRecipe,
@@ -48,6 +48,7 @@ from coleman.transports.junit_source import (
     java_commands,
     owned_package,
     prepare_junit_inputs,
+    validate_junit_report_budget,
 )
 
 _JAVA_SUFFIX = ".java"
@@ -294,8 +295,8 @@ def _cleanup(base: tuple[str, ...], name: str) -> None:
 def _load_role(path: Path, recipe: JunitCaptureRecipe) -> JunitRoleCapture:
     """Read a bounded role checkpoint and revalidate its actual raw stream/case correspondence offline."""
     with path.open("rb") as stream:
-        payload = stream.read(16 * 1024**2 + 1)
-    if len(payload) > 16 * 1024**2:
+        payload = stream.read(JunitRoleCapture.MAXIMUM_BYTES + 1)
+    if len(payload) > JunitRoleCapture.MAXIMUM_BYTES:
         raise ValueError("JUnit role checkpoint exceeds 16 MiB")
     capture = JunitRoleCapture.from_json(payload)
     validate_role_bytes(capture, recipe)
@@ -427,7 +428,11 @@ def _publish_capture(
         schema_version=1, context_fingerprint=prepared.context.fingerprint, observations=observations
     )
     entries += (("report.json", report.to_json().encode()),)
-    payload = source_view_bytes(entries)
+    payload = deterministic_zip_bytes(
+        entries,
+        maximum_member_bytes=JunitRoleCapture.MAXIMUM_BYTES,
+        maximum_total_bytes=2 * JunitRoleCapture.MAXIMUM_BYTES + ControlledReport.MAXIMUM_BYTES,
+    )
     owner = owned_package(cache, "capture-envelope.zip", payload, recipe.recipe)
     spec = MaterializationSpec.model_validate(
         {
@@ -467,6 +472,7 @@ def capture_junit_source(
     trial_id = TypeAdapter(Label).validate_python(trial_id)
     validate_source_storage(writer.run_root)
     validate_cache_separation(cache.root, writer.run_root)
+    validate_junit_report_budget(recipe, trial_id)
     docker = shutil.which("docker")
     if docker is None:
         raise OSError("JUnit capture requires the documented local Docker runtime")

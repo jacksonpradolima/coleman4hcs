@@ -33,6 +33,16 @@ boundary = Boundary()
 sys.meta_path.insert(0, boundary)
 from coleman.corpus.source_views import SourceViewSpec, source_view_bytes
 assert source_view_bytes((('owned.txt',b'owned'),))
+from coleman.corpus.archives import deterministic_zip_bytes
+import io, zipfile
+large = b'x'*(8*1024**2+1)
+entries = (('diagnostic.json',large),)
+try: source_view_bytes(entries)
+except ValueError: pass
+else: raise AssertionError('Installed source-view limits were widened')
+envelope = deterministic_zip_bytes(entries,maximum_member_bytes=16*1024**2,maximum_total_bytes=40*1024**2)
+with zipfile.ZipFile(io.BytesIO(envelope)) as archive:
+    assert archive.read('diagnostic.json') == large
 sys.meta_path.remove(boundary)
 from coleman.transports.junit import load_junit_recipe
 from coleman.transports.junit_source import digest, harness_bytes

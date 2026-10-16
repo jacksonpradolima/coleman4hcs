@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal, Self
+from typing import Annotated, ClassVar, Literal, Self
 
 from pydantic import Field, model_validator
 
@@ -177,6 +177,8 @@ class ControlledReport(VersionedContract):
     Missing, legacy and future schema versions reject without migration.
     """
 
+    MAXIMUM_BYTES: ClassVar[int] = 8 * 1024**2
+
     context_fingerprint: Fingerprint
     observations: Annotated[tuple[ControlledObservation, ...], Field(max_length=20000)]
 
@@ -192,7 +194,7 @@ class ControlledSpec(VersionedContract):
     def _member(self) -> Self:
         """Require exactly one declared report member with an uncompressed 8-MiB ceiling."""
         members = [item for item in self.report_materialization.spec.members if item.name == self.report_member]
-        if len(members) != 1 or members[0].size_bytes > 8 * 1024**2:
+        if len(members) != 1 or members[0].size_bytes > ControlledReport.MAXIMUM_BYTES:
             raise ValueError("Controlled report member missing or exceeds 8 MiB")
         return self
 

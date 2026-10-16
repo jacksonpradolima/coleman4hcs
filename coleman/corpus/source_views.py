@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import io
-import stat
-import zipfile
 from collections.abc import Callable
 from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
+from coleman.corpus.archives import deterministic_zip_bytes
 from coleman.corpus.materialization import ReaderFactory, SourceCache, materialize_source, validate_materialization
 from coleman.corpus.materialization_contracts import MaterializationReceipt, MaterializationSpec
 from coleman.results.versioned import VersionedContract
@@ -74,29 +73,7 @@ def source_view_bytes(entries: tuple[tuple[str, bytes], ...]) -> bytes:
     and unsafe names raise ValueError/TypeError. No files or network are accessed.
     This format is COLEMAN's ZIP recipe, not a claim about upstream archive bytes.
     """
-    from coleman.corpus.materialization_contracts import safe_member_name
-
-    if not 1 <= len(entries) <= 128 or len({name for name, _ in entries}) != len(entries):
-        raise ValueError("Source view requires 1..128 uniquely named files")
-    total = 0
-    for name, payload in entries:
-        safe_member_name(name)
-        if not isinstance(payload, bytes):
-            raise TypeError("Source view payload must be bytes")
-        total += len(payload)
-        if len(payload) > 8 * 1024**2 or total > 16 * 1024**2:
-            raise ValueError("Source view payload exceeds decoded-byte bounds")
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w", allowZip64=False) as archive:
-        for name, payload in sorted(entries):
-            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
-            info.create_system = 3
-            info.create_version = 20
-            info.extract_version = 20
-            info.compress_type = zipfile.ZIP_STORED
-            info.external_attr = (stat.S_IFREG | 0o644) << 16
-            archive.writestr(info, payload)
-    return buffer.getvalue()
+    return deterministic_zip_bytes(entries, maximum_member_bytes=8 * 1024**2, maximum_total_bytes=16 * 1024**2)
 
 
 def materialize_source_view(

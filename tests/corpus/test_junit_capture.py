@@ -546,3 +546,47 @@ def test_source_staging_cannot_introduce_git_markers(tmp_path, name):
         capture._stage_view(cache, receipt, root)
     assert not list(root.rglob("config"))
     assert not (root / name).exists()
+
+
+def test_four_mib_diagnostics_publish_and_replay_complete_large_role_packets(tmp_path, monkeypatch):
+    spec, cache, environment = prepared_inputs(tmp_path)
+    ids = tuple(sorted(f"owned.CheckCase::test_ci_{index}" for index in range(64)))
+    spec = changed(spec, test_ids=ids, limits=changed(spec.limits, maximum_output_bytes=4 * 1024**2))
+    original = records()
+    rows = [{**original[0], "test_ids": ids}]
+    rows.extend({**original[1], "test_id": name, "diagnostics": "x" * 64000} for name in ids)
+    rows.append({**original[-1], "case_count": len(ids)})
+    raw = encoded(rows)
+    assert len(raw) <= spec.limits.maximum_output_bytes
+    calls = []
+
+    def run(*args):
+        calls.append(args[-2])
+        return ProcessStreams(raw, b"", 0, 1, "exited")
+
+    substitute_docker(monkeypatch, environment, run)
+    writer = ArtifactWriter(tmp_path / "results")
+    first = capture.capture_junit_source(spec, cache, writer, "large-diagnostics-trial")
+    assert len(first.dataset.observations) == 128
+    assert (first.state_directory / "buggy.json").stat().st_size > 8 * 1024**2
+    assert (first.state_directory / "fixed.json").stat().st_size > 8 * 1024**2
+    source_size = first.dataset.spec.report_materialization.spec.source.size_bytes
+    assert source_size is not None
+    assert source_size > 16 * 1024**2
+    assert capture.capture_junit_source(spec, cache, writer, "large-diagnostics-trial") == first
+    assert calls == ["buggy", "fixed"]
+
+
+def test_declared_report_budget_rejects_before_any_source_execution(tmp_path, monkeypatch):
+    spec, cache, environment = prepared_inputs(tmp_path)
+    ids = tuple(sorted(f"owned.CheckCase::test_ci_{index}" for index in range(7000)))
+    spec = changed(spec, test_ids=ids, limits=changed(spec.limits, maximum_output_bytes=4 * 1024**2))
+
+    def run(*args):
+        pytest.fail("Oversized normalized report must reject before source execution")
+
+    substitute_docker(monkeypatch, environment, run)
+    writer = ArtifactWriter(tmp_path / "results")
+    with pytest.raises(ValueError, match="normalized report"):
+        capture.capture_junit_source(spec, cache, writer, "t" * 1024)
+    assert not writer.run_root.exists()

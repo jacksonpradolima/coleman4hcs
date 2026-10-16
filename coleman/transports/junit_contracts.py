@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import Annotated, Literal, Self
+from typing import Annotated, ClassVar, Literal, Self
 
 from pydantic import BeforeValidator, Field, model_validator
 
@@ -236,6 +236,8 @@ class JunitRoleCapture(VersionedContract):
     Same-trial replay never silently reruns an interrupted role. A fresh collection
     requires a new trial ID and remains in the same declared dependence group.
     """
+
+    MAXIMUM_BYTES: ClassVar[int] = 16 * 1024**2
 
     context_fingerprint: Fingerprint
     trial_id: Label

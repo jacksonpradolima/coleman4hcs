@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from coleman.corpus import MaterializationSpec, SourceCache, load_registry, validate_materialization
+from coleman.corpus.archives import deterministic_zip_bytes
 from coleman.corpus.source_views import SourceViewSpec, materialize_source_view, source_view_bytes
 
 
@@ -168,3 +169,31 @@ def test_interrupted_input_retry_output_pins_and_byte_tampering(tmp_path):
     path.write_bytes(b"changed cached input")
     with pytest.raises(ValueError):
         materialize_source_view(spec, cache)
+
+
+@pytest.mark.parametrize("member,total", [(0, 16), (True, 16), (-1, 16), (16, 0), (16, True), (16, 64 * 1024**2 + 1)])
+def test_shared_zip_encoder_rejects_invalid_explicit_byte_budgets(member, total):
+    entries = (("owned.txt", b"owned"),)
+    with pytest.raises(ValueError, match="byte budgets"):
+        deterministic_zip_bytes(entries, maximum_member_bytes=member, maximum_total_bytes=total)
+
+
+def test_shared_zip_encoder_exact_bounds_order_and_source_view_byte_compatibility():
+    entries = (("b.txt", b"bb"), ("a.txt", b"aa"))
+    encoded = deterministic_zip_bytes(entries, maximum_member_bytes=2, maximum_total_bytes=4)
+    assert source_view_bytes(entries) == encoded
+    assert deterministic_zip_bytes(tuple(reversed(entries)), maximum_member_bytes=2, maximum_total_bytes=4) == encoded
+    with pytest.raises(ValueError, match="decoded-byte bounds"):
+        deterministic_zip_bytes(entries, maximum_member_bytes=1, maximum_total_bytes=4)
+    with pytest.raises(ValueError, match="decoded-byte bounds"):
+        deterministic_zip_bytes(entries, maximum_member_bytes=2, maximum_total_bytes=3)
+
+
+def test_diagnostic_profile_does_not_widen_source_view_limits():
+    payload = b"x" * (8 * 1024**2 + 1)
+    entries = (("diagnostic.json", payload),)
+    with pytest.raises(ValueError, match="decoded-byte bounds"):
+        source_view_bytes(entries)
+    encoded = deterministic_zip_bytes(entries, maximum_member_bytes=16 * 1024**2, maximum_total_bytes=40 * 1024**2)
+    with zipfile.ZipFile(io.BytesIO(encoded)) as archive:
+        assert archive.read("diagnostic.json") == payload

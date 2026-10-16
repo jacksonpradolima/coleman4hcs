@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import stat
 import struct
 import zipfile
@@ -14,6 +15,46 @@ from coleman.corpus.zip_metadata import entry_boundaries, local_data_offset, val
 
 _UTF8_DESCRIPTOR_FLAGS = 0x0808
 _DEFLATE_LEVEL_FLAGS = 0x0006
+
+
+def deterministic_zip_bytes(
+    entries: tuple[tuple[str, bytes], ...], *, maximum_member_bytes: int, maximum_total_bytes: int
+) -> bytes:
+    """Encode deterministic regular-file ZIP bytes under explicit decoded-byte budgets.
+
+    Budgets are strict positive integers at most 64 MiB; at most 128 unique safe
+    names are supported. Stored bytes, fixed DOS epoch/Unix permissions and empty
+    metadata remove host/time/compressor variability. ZIP64 remains disabled.
+    Encoded size includes bounded ZIP headers beyond the decoded total. No files
+    or network are accessed. Invalid names/budgets/duplicates/sizes raise ValueError;
+    non-bytes raise TypeError. Callers retain their own narrower format limits.
+    """
+    if any(
+        type(value) is not int or not 1 <= value <= 64 * 1024**2
+        for value in (maximum_member_bytes, maximum_total_bytes)
+    ):
+        raise ValueError("Deterministic ZIP requires positive byte budgets at most 64 MiB")
+    if not 1 <= len(entries) <= 128 or len({name for name, _ in entries}) != len(entries):
+        raise ValueError("Deterministic ZIP requires 1..128 uniquely named files")
+    total = 0
+    for name, payload in entries:
+        safe_member_name(name)
+        if not isinstance(payload, bytes):
+            raise TypeError("Deterministic ZIP payload must be bytes")
+        total += len(payload)
+        if len(payload) > maximum_member_bytes or total > maximum_total_bytes:
+            raise ValueError("Deterministic ZIP payload exceeds decoded-byte bounds")
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", allowZip64=False) as archive:
+        for name, payload in sorted(entries):
+            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.create_system = 3
+            info.create_version = 20
+            info.extract_version = 20
+            info.compress_type = zipfile.ZIP_STORED
+            info.external_attr = (stat.S_IFREG | 0o644) << 16
+            archive.writestr(info, payload)
+    return buffer.getvalue()
 
 
 def _zip_footer(path: Path, spec: MaterializationSpec) -> int:

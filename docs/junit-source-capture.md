@@ -101,6 +101,17 @@ parent bounds collection to 60 seconds and 1 MiB combined stdout/stderr by defau
 recipes may select only the contract's bounded ranges. These guards support
 trusted public-source reproduction; they are not a hostile-code security sandbox.
 
+Diagnostic packaging has its own explicit budget: each complete role packet is
+bounded to 16 MiB, the normalized report remains bounded to 8 MiB, and the decoded
+envelope total is at most 40 MiB. The shared deterministic ZIP encoder preserves
+stored bytes and existing ZIP64/entry policies; source-view limits remain
+8 MiB per file and 16 MiB total. This accommodates the permitted 4-MiB output
+profile without dropping raw streams or parsed diagnostics. Before acquisition
+or execution, the producer computes a conservative normalized-report size bound
+from declared test/trial labels and maximal field sizes. Unsupported combinations
+reject before a source trial can create unpublishable completed role checkpoints.
+The sizing records are never published as observations.
+
 The filtered runtime receipt retains host/Python/package versions, Docker
 client/server architecture and versions, kernel and target image config digest
 and size. It excludes credentials, context names, unrelated containers, image
