@@ -3,6 +3,7 @@
 import json
 import os
 import shutil
+import subprocess
 import sys
 
 from coleman.transports import junit_matrix as matrix
@@ -93,20 +94,24 @@ print(json.dumps(proof,sort_keys=True))
     assert proof["installed"]
     assert proof["owned_offline_validation"]
     assert proof["real_source_capture"] == (source_cache != "-")
-    cli = command(
+    cli = subprocess.run(
         [
             str(python),
             "-m",
             "coleman.transports.junit_matrix",
             "--validate",
-            str(owned.receipt_path),
             "--cache",
             str(cache.root),
             "--output",
             str(writer.run_root),
         ],
-        outside,
-        env,
+        cwd=outside,
+        env=env,
+        input=owned.receipt_path.read_text(),
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=240,
     )
     assert json.loads(cli.stdout)["integrity"] == "verified"
     # Native CI uses its own owned exact-answer fixture, never Java elapsed counters as CI costs.

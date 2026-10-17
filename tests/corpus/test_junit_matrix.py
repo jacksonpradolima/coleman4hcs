@@ -209,12 +209,8 @@ def test_capture_roundtrip_raw_correspondence_replay_and_cli(tmp_path, monkeypat
     summary = json.loads(capsys.readouterr().out)
     assert summary["curated_focal_fixes"] == 1
     assert summary["declared_projects"] == 1
-    assert (
-        matrix.main(
-            ["--validate", str(first.receipt_path), "--cache", str(cache.root), "--output", str(writer.run_root)]
-        )
-        == 0
-    )
+    monkeypatch.setattr("sys.stdin", SimpleNamespace(buffer=io.BytesIO(first.receipt_path.read_bytes())))
+    assert matrix.main(["--validate", "--cache", str(cache.root), "--output", str(writer.run_root)]) == 0
     assert json.loads(capsys.readouterr().out)["integrity"] == "verified"
     assert len(calls) == 4
 
@@ -536,7 +532,7 @@ def test_changing_reused_producer_dependency_changes_matrix_generation(monkeypat
 
 
 @pytest.mark.parametrize("alias", ["parent", "symlink"])
-def test_cli_validation_cannot_read_a_receipt_outside_the_declared_output(tmp_path, monkeypatch, alias):
+def test_cli_validation_rejects_receipt_path_arguments_without_opening_files(tmp_path, monkeypatch, alias):
     output = tmp_path / "output"
     output.mkdir()
     external = tmp_path / "external.json"
@@ -561,5 +557,14 @@ def test_cli_validation_cannot_read_a_receipt_outside_the_declared_output(tmp_pa
         "--output",
         str(output),
     ]
-    with pytest.raises(ValueError, match="within its output tree"):
+    with pytest.raises(SystemExit) as error:
+        matrix.main(arguments)
+    assert error.value.code == 2
+
+
+def test_cli_validation_bounds_stdin_before_parsing(tmp_path, monkeypatch):
+    monkeypatch.setattr("sys.stdin", SimpleNamespace(buffer=io.BytesIO(b"{}")))
+    monkeypatch.setattr(JunitMatrixReceipt, "MAXIMUM_BYTES", 1)
+    arguments = ["--validate", "--cache", str(tmp_path / "cache"), "--output", str(tmp_path / "output")]
+    with pytest.raises(ValueError, match="stdin exceeds"):
         matrix.main(arguments)

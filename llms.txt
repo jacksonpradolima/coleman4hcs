@@ -5869,17 +5869,19 @@ Validate a saved index without Docker or source execution:
 ```bash
 MATRIX_RECEIPT="$(/tmp/coleman-matrix-env/bin/python -c 'import json; print(json.load(open("matrix-summary.json"))["receipt"])')"
 /tmp/coleman-matrix-env/bin/python -m coleman.transports.junit_matrix \
-  --validate "$MATRIX_RECEIPT" \
+  --validate \
   --cache /tmp/coleman-java-source-cache \
-  --output /tmp/coleman-java-observations
+  --output /tmp/coleman-java-observations < "$MATRIX_RECEIPT"
 ```
 
 Offline integrity validation can republish identical source-view cache metadata.
 It verifies actual source members, context, raw protocol packets and normalized
 observations; it starts no process and fetches nothing. Integrity is correspondence,
 not authentication of execution truth or benchmark efficacy.
-The CLI accepts a validation receipt only inside the declared output tree;
-parent traversal and escaping symlink aliases reject before that file is read.
+The CLI reads at most 8 MiB of receipt JSON from stdin; `--validate` accepts no
+file path. The operator explicitly supplies the input descriptor. Referenced
+controlled datasets remain confined to their declared output tree. The Python
+API accepts the already parsed typed receipt.
 
 ## Frozen source selection
 

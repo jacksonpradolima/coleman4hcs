@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sys
 from collections import Counter
 from importlib.metadata import version
 from importlib.resources import files
@@ -287,11 +288,13 @@ def main(argv: list[str] | None = None) -> int:
 
     This optional transport does not run policies, alter admission, infer CI
     chronology or interpret source errors as assertion-based fault detections.
+    Validation consumes bounded JSON bytes from stdin, never a receipt path;
+    malformed/oversized input fails before source/data correspondence checks.
     """
     parser = argparse.ArgumentParser(description=__doc__)
     choice = parser.add_mutually_exclusive_group()
     choice.add_argument("--recipe", type=Path)
-    choice.add_argument("--validate", type=Path)
+    choice.add_argument("--validate", action="store_true", help="Validate bounded receipt JSON from stdin")
     parser.add_argument("--cache", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--fetch", action="store_true")
@@ -300,8 +303,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("Offline validation cannot fetch sources")
     cache = SourceCache(args.cache)
     if args.validate:
-        receipt_path = _contained(args.output, args.validate)
-        receipt = JunitMatrixReceipt.from_json(_read(receipt_path, JunitMatrixReceipt.MAXIMUM_BYTES))
+        payload = sys.stdin.buffer.read(JunitMatrixReceipt.MAXIMUM_BYTES + 1)
+        if len(payload) > JunitMatrixReceipt.MAXIMUM_BYTES:
+            raise ValueError("Java matrix validation stdin exceeds its byte limit")
+        receipt = JunitMatrixReceipt.from_json(payload)
         validate_junit_matrix(receipt, cache, args.output)
         print(json.dumps({"integrity": "verified", "receipt": receipt.fingerprint, "status": receipt.status}))
         return 0
