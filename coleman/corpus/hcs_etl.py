@@ -18,6 +18,8 @@ from coleman.corpus.materialization import SourceCache, validate_cache_separatio
 from coleman.corpus.materialization_contracts import safe_member_name
 from coleman.results.domain import fingerprint
 
+_SHA256_PREFIX = "sha256:"
+
 
 def hcs_producer() -> str:
     """Identify actual conversion/contract/storage code, independently of user labels or transport.
@@ -70,7 +72,7 @@ def preflight_hcs_etl(recipe: HCSRecipe, cache: Path, output: Path) -> Path:
     validate_source_storage(cache)
     validate_source_storage(output)
     validate_cache_separation(cache, output)
-    identity = fingerprint([recipe.fingerprint, hcs_producer(), pl.__version__]).removeprefix("sha256:")
+    identity = fingerprint([recipe.fingerprint, hcs_producer(), pl.__version__]).removeprefix(_SHA256_PREFIX)
     root = _target(output, "hcs-etl/" + identity)
     for relative in (
         "complete.json",
@@ -102,7 +104,7 @@ def _receipt(recipe: HCSRecipe, projection: HCSProjection) -> tuple[HCSReceipt, 
         records.append(
             ETLFile(
                 path=path,
-                sha256="sha256:" + hashlib.sha256(payload).hexdigest(),
+                sha256=_SHA256_PREFIX + hashlib.sha256(payload).hexdigest(),
                 size_bytes=len(payload),
                 rows=frame.height,
             )
@@ -166,5 +168,5 @@ def validate_hcs_etl(receipt: HCSReceipt, cache: SourceCache, root: Path) -> Non
     for item in receipt.files:
         with _target(root, item.path).open("rb") as stream:
             payload = stream.read(item.size_bytes + 1)
-        if len(payload) != item.size_bytes or "sha256:" + hashlib.sha256(payload).hexdigest() != item.sha256:
+        if len(payload) != item.size_bytes or _SHA256_PREFIX + hashlib.sha256(payload).hexdigest() != item.sha256:
             raise ValueError("HCS artifact bytes disagree with verified source")

@@ -90,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
         with redirect_stdout(sys.stderr):
             for strategy in strategies:
                 result = run_hcs_replay(path, cache, output / "native" / strategy, strategy=strategy)
-                runs.append(dict(strategy=strategy, run_id=result.run_id, artifacts_dir=result.artifacts_dir))
+                runs.append({"strategy": strategy, "run_id": result.run_id, "artifacts_dir": result.artifacts_dir})
     summary["native_runs"] = runs
     print(json.dumps(summary, sort_keys=True))
     return 0

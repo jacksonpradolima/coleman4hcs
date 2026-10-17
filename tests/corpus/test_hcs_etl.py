@@ -88,8 +88,9 @@ def test_completion_future_missing_or_coerced_versions_reject(tmp_path, version)
         raw.pop("schema_version")
     else:
         raw["schema_version"] = version
+    payload = json.dumps(raw)
     with pytest.raises(ValueError):
-        HCSReceipt.from_json(json.dumps(raw))
+        HCSReceipt.from_json(payload)
 
 
 def test_incompatible_units_orders_unsafe_formats_and_aliases_reject():
@@ -104,8 +105,9 @@ def test_incompatible_units_orders_unsafe_formats_and_aliases_reject():
     ]:
         with pytest.raises(ValueError):
             changed(recipe, **updates)
+    mismatched = variant_alias("linux_x")
     with pytest.raises(ValueError, match="alias disagrees"):
-        HCSVariant(name="linux.x", alias=variant_alias("linux_x"))
+        HCSVariant(name="linux.x", alias=mismatched)
 
 
 def test_original_variant_names_are_not_normalized_or_merged():
@@ -238,8 +240,9 @@ def test_completion_impossible_counts_bindings_and_unmeasured_zero_reject(tmp_pa
             "cells": "cells.parquet",
         }[kind]
         next(f for f in raw["files"] if f["path"] == target)["rows"] += 1
+    receipt_type = type(receipt)
     with pytest.raises(ValueError):
-        type(receipt).model_validate(raw)
+        receipt_type.model_validate(raw)
 
 
 def test_interruption_has_no_false_completion_concurrent_retry_converges(tmp_path, monkeypatch):
@@ -291,8 +294,14 @@ def test_forged_artifacts_and_receipts_reject(tmp_path, kind):
         updates["accounting"] = changed(receipt.accounting, duplicate_rows=2, other_attempt_rows=2)
     else:
         updates["files"] = receipt.files[:-1]
-    with pytest.raises(ValueError):
-        validate_hcs_etl(changed(receipt, **updates), cache, path.parent)
+    if kind == "roles":
+        # Missing declared file roles fail the receipt schema before file I/O.
+        with pytest.raises(ValueError):
+            changed(receipt, **updates)
+    else:
+        forged = changed(receipt, **updates)
+        with pytest.raises(ValueError):
+            validate_hcs_etl(forged, cache, path.parent)
 
 
 def test_missing_source_or_unproven_original_bytes_never_adopted(tmp_path):

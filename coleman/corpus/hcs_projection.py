@@ -206,6 +206,15 @@ def _require_stable_cost_sums(native: pl.DataFrame) -> None:
             raise ValueError("HCS projected cost range cannot guarantee stable native prefix sums")
 
 
+def _cell_status(eligible: bool, parsed: int) -> str:
+    """Distinguish native eligibility, excluded parsed evidence and absence without fabricating outcomes."""
+    if eligible:
+        return "eligible"
+    if parsed:
+        return "excluded"
+    return "absent_parsed_source"
+
+
 def _cells(source: HCSSlice, variants: tuple[HCSVariant, ...], native: pl.DataFrame) -> pl.DataFrame:
     """Keep absent parsed cells visible, distinguishing metadata-only jobs from observed all-pass tests."""
     counts = Counter((c.job.pipeline_id, c.job.variant) for c in source.observations)
@@ -228,7 +237,7 @@ def _cells(source: HCSSlice, variants: tuple[HCSVariant, ...], native: pl.DataFr
                     "parsed_rows": parsed,
                     "replay_rows": 0 if part is None else part.height,
                     "reported_nonpass_rows": None if part is None else part["Verdict"].sum(),
-                    "cell_status": "eligible" if part is not None else "excluded" if parsed else "absent_parsed_source",
+                    "cell_status": _cell_status(part is not None, parsed),
                     "setup_seconds": None,
                     "shared_runner_occupancy": None,
                 }

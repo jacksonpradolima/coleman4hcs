@@ -25,7 +25,7 @@ def _integer(value: object) -> int:
     """Read positive bounded source IDs without booleans, fractional truncation or missing coercion."""
     if type(value) is int:
         number = value
-    elif isinstance(value, str) and re.fullmatch(r"[1-9][0-9]{0,18}", value):
+    elif isinstance(value, str) and re.fullmatch(r"[1-9]\d{0,18}", value, flags=re.ASCII):
         number = int(value)
     else:
         raise ValueError("HCS source ID must be a positive integer")

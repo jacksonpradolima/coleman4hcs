@@ -17,7 +17,7 @@ from tests.corpus.hcs_support import hcs_recipe, prepare_hcs
 from tests.corpus.test_source_views import changed, source_spec
 
 
-@pytest.mark.parametrize("value", [None, True, 0, -1, 1.5, "01", "1.0", "", 2**63, str(2**63)])
+@pytest.mark.parametrize("value", [None, True, 0, -1, 1.5, "01", "1.0", "", 2**63, str(2**63), "1١", "1１"])
 def test_ambiguous_or_out_of_native_bound_ids_reject(value):
     with pytest.raises(ValueError):
         _integer(value)
@@ -46,8 +46,9 @@ def test_bad_original_job_metadata_rejects_without_export_completion(tmp_path, k
         return jobs
 
     recipe, cache = prepare_hcs(tmp_path, jobs_transform=invalid)
+    writer = ArtifactWriter(tmp_path / "etl")
     with pytest.raises(ValueError):
-        export_hcs_parquet(recipe, cache, ArtifactWriter(tmp_path / "etl"))
+        export_hcs_parquet(recipe, cache, writer)
     assert not list((tmp_path / "etl").rglob("complete.json"))
 
 
@@ -141,8 +142,9 @@ def test_raw_csv_schema_and_bounded_dispositions_reject_before_completion(tmp_pa
     package = source_spec("bounded-executions.csv", payload)
     recipe = changed(recipe, executions=package)
     materialize_source(package, cache, lambda: io.BytesIO(payload))
+    writer = ArtifactWriter(tmp_path / "etl")
     with pytest.raises(ValueError):
-        export_hcs_parquet(recipe, cache, ArtifactWriter(tmp_path / "etl"))
+        export_hcs_parquet(recipe, cache, writer)
     assert not list((tmp_path / "etl").rglob("complete.json"))
 
 
@@ -163,8 +165,9 @@ def test_raw_job_json_schema_and_record_budget_reject(tmp_path, kind):
     package = source_spec("bounded-jobs.json", payload)
     recipe = changed(recipe, jobs=package)
     materialize_source(package, cache, lambda: io.BytesIO(payload))
+    writer = ArtifactWriter(tmp_path / "etl")
     with pytest.raises(ValueError):
-        export_hcs_parquet(recipe, cache, ArtifactWriter(tmp_path / "etl"))
+        export_hcs_parquet(recipe, cache, writer)
 
 
 @pytest.mark.parametrize("kind", ["variants", "suite"])
@@ -180,8 +183,9 @@ def test_native_projection_bounds_do_not_silently_drop_excess_members(tmp_path, 
         return jobs
 
     recipe, cache = prepare_hcs(tmp_path, rows_transform=rows_transform, jobs_transform=jobs_transform)
+    writer = ArtifactWriter(tmp_path / "etl")
     with pytest.raises(ValueError, match="variant bounds|suite exceeds"):
-        export_hcs_parquet(recipe, cache, ArtifactWriter(tmp_path / "etl"))
+        export_hcs_parquet(recipe, cache, writer)
     assert not list((tmp_path / "etl").rglob("complete.json"))
 
 
