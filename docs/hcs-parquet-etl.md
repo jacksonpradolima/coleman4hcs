@@ -214,8 +214,14 @@ The native API persists the exact receipt in its manifest. Multi-budget native
 checkpoints use `checkpoints/budget-v1/<mode-value-digest>/<dataset>/`; close ratio
 values that round to the same percent remain distinct. Single-budget checkpoint
 paths and payloads are unchanged. An old unscoped multi-budget progress marker
-is ambiguous and **rejects before loading it**. Retain the original package and
-output; explicitly start a fresh output tree rather than guessing a migration.
+is ambiguous and **rejects before loading it**, including nested run IDs such as
+`team/project`. Detection covers the entire configured checkpoint tree. New
+`budget-v1/<digest>` markers are distinguished by their original run ID in at
+most 1 MiB of progress JSON; a legacy name resembling that namespace cannot
+bypass detection. Malformed, oversized or mismatched scoped run-ID metadata
+blocks continuation. No checkpoint pickle is read during this preflight.
+Retain the original package and output; explicitly start a fresh output tree
+rather than guessing a migration.
 
 For built-in native scenarios using local checkpoints and the Parquet sink,
 resume first verifies a persisted ownership binding between results and their
