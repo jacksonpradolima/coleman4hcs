@@ -344,6 +344,22 @@ def test_published_prior_recipe_and_new_frozen_presets_bind_actual_harness():
     assert {"LICENSE.txt", "NOTICE.txt"}.issubset(names)
 
 
+def test_uncontrolled_upstream_fixture_inputs_are_disclosed_without_dropping_tests():
+    plan = matrix.load_junit_matrix()
+    codec = next(cell.recipe for cell in plan.cells if cell.recipe.fault_id == "CODEC-65")
+    names = {Path(member.name).name for member in codec.fixture.output.members}
+    assert {"Base64Test.java", "HexTest.java", "DigestUtilsTest.java"}.issubset(names)
+    for classname in (
+        "org.apache.commons.codec.binary.Base64Test",
+        "org.apache.commons.codec.binary.HexTest",
+        "org.apache.commons.codec.digest.DigestUtilsTest",
+    ):
+        assert any(test.startswith(classname + "::") for test in codec.test_ids)
+    assert len(codec.test_ids) == 166
+    assert any("unseeded java.util.Random" in text and "not captured" in text for text in codec.limitations)
+    assert any("randomness is uncontrolled" in text for text in plan.limitations)
+
+
 @pytest.mark.parametrize(
     "status,elapsed",
     [
