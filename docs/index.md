@@ -34,6 +34,14 @@ preparation, collection, offline validation and recovery. Controlled observation
 retain their admission and generalization limits. See the
 [4.10 release notes](releases/4.10.0.md) for compatibility and scientific limits.
 
+## Controlled Python source capture
+
+The current source revision also adds [controlled Python fault capture](python-source-capture.md):
+one PySnooper fix, an unchanged common fixture and two explicit locale contexts.
+It preserves actual Unicode errors, inconclusive comparisons, component terms
+and real process-interruption recovery. The guide provides a source-wheel
+installation workflow; the transport is newer than release 4.10.
+
 ## LRTS stage views
 
 [Run larger LRTS histories with explicit stage views](lrts-stage-views.md).

@@ -60,14 +60,17 @@ The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
 [#318](https://github.com/jacksonpradolima/coleman/pull/318).
 #304's [controlled Java matrix](java-fault-matrix.md) shipped in 4.10 through
 [#320](https://github.com/jacksonpradolima/coleman/pull/320).
-#305–#313 track the remaining work. Source conversion does not establish admission.
+#305 adds the [controlled Python producer](python-source-capture.md) in the current
+source revision. #306–#313 track the remaining work. Source conversion does not
+establish admission.
 
 | Stage | Subtasks | Dependency |
 | --- | --- | --- |
 | RTPTorrent source path — delivered in 4.8 | [#301 ZIP64 integrity](https://github.com/jacksonpradolima/coleman/issues/301), [#302 real Parquet ETL/replay](https://github.com/jacksonpradolima/coleman/issues/302) | #302 requires #301 |
 | LRTS source expansion — delivered in 4.9 | [#303 larger histories and explicit stage views](https://github.com/jacksonpradolima/coleman/issues/303) | Existing reviewed main; temporal blockers remain explicit |
 | Java source matrix — delivered in 4.10 | [#304 controlled CLI/Codec faults](https://github.com/jacksonpradolima/coleman/issues/304) | Existing JUnit producer; admission remains separate |
-| Other source expansion | [#305 non-Java faults](https://github.com/jacksonpradolima/coleman/issues/305), [#306 seeded faults](https://github.com/jacksonpradolima/coleman/issues/306), [#307 HCS](https://github.com/jacksonpradolima/coleman/issues/307), [#308 stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main |
+| Python source — current source revision | [#305 non-Java fault reproduction](https://github.com/jacksonpradolima/coleman/issues/305) | Existing generic controlled observations; one fix, two correlated locale contexts |
+| Other source expansion | [#306 seeded faults](https://github.com/jacksonpradolima/coleman/issues/306), [#307 HCS](https://github.com/jacksonpradolima/coleman/issues/307), [#308 stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main |
 | Evidence integration | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | #302–#308 |
 | Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
 | Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
@@ -88,7 +91,8 @@ wheel was exercised outside checkout with the actual source cache, native runs
 and checkpoint continuation. Remaining source admission, diversity and
 confirmatory work continues through the public subtasks. #303's new profiles
 preserve all raw/processed stages and use exact context/node bindings, while
-retaining explicit missing temporal evidence. Remaining expansion begins with #305.
+retaining explicit missing temporal evidence. Remaining expansion follows through
+the sequential public source subtasks.
 
 **4.9.0** publishes the stage-view contracts and three frozen presets: ActiveMQ,
 Log4j Ubuntu and Log4j Windows. All raw observations/processed stages remain
@@ -104,6 +108,14 @@ offline recovery preserve all negative outcomes. Source qualification collected
 714 role observations / 357 same-test pairs across two codebases. Controlled
 source collection remains separate from admission and policy comparison in #309
 onward; the remaining source subtasks follow sequentially.
+
+The current source revision adds #305's [controlled Python capture](python-source-capture.md).
+An unchanged PySnooper fixture reproduces a Unicode exception/fix under ASCII;
+the generic result remains inconclusive. Both revisions pass in the predeclared
+UTF-8 contrast. Whole-wheel component terms, actual runtime provenance, installed
+process interruption and offline recovery remain explicit. These two contexts
+share one curated fix, and source admission remains in #309. The next source
+implementation is #306; no overlapping expansion is started here.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:

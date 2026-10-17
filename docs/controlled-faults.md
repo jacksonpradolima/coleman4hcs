@@ -15,6 +15,11 @@ seven required diversity cells remain uncovered. Source assessments for
 The optional [pinned JUnit3 producer](junit-source-capture.md) now provides a
 reproducible public Java source recipe, with bounded execution and raw-role recovery.
 
+The optional [Python source capture](python-source-capture.md) uses the same domain
+contracts for a pinned upstream PySnooper pair. Its two declared locales preserve
+actual exception-to-pass and both-pass results, with separate component terms,
+typed provenance and real process-interruption recovery.
+
 ## Architecture and trust boundary
 
 ```mermaid
