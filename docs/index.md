@@ -20,7 +20,21 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.9
+## New in 4.10
+
+[Collect a controlled Java fault matrix](java-fault-matrix.md) with the published
+wheel: three curated upstream fixes across Apache Commons CLI and Codec, frozen
+source/runtime recipes, typed indices and offline recovery. Source/context/raw
+validation keeps every selected outcome inspectable. The initial qualification
+retained **714 role observations / 357 same-test pairs**, including both-fail and
+inconclusive results. Incomplete collection never acquires a completion marker.
+
+The complete guide includes the verified wheel, explicit native arm64 Docker
+preparation, collection, offline validation and recovery. Controlled observations
+retain their admission and generalization limits. See the
+[4.10 release notes](releases/4.10.0.md) for compatibility and scientific limits.
+
+## LRTS stage views
 
 [Run larger LRTS histories with explicit stage views](lrts-stage-views.md).
 The published wheel preserves **18,901 ActiveMQ method observations** and
@@ -34,12 +48,6 @@ feature clocks, expected test universe, verified continuity and concurrency
 remain explicit blockers. The workflow is a post-hoc serial simulation, and
 broader corpus admission and confirmation remain open.
 See the [4.9 release notes](releases/4.9.0.md).
-
-This revision also adds a [controlled Java fault matrix](java-fault-matrix.md):
-three curated upstream fixes across CLI and Codec, raw/source validation and
-offline recovery. Its guide builds this revision's wheel. The initial 357
-same-test pairs retain both-fail and inconclusive results; this controlled layer
-does not establish historical CI chronology, independence or policy efficacy.
 
 ## Existing real-data workflows
 
@@ -74,7 +82,7 @@ The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures a
 visible source-admission gaps; all seven diversity regimes remain uncovered.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
-correctness checks. See the [4.9 release notes](releases/4.9.0.md) for examples,
+correctness checks. See the [4.10 release notes](releases/4.10.0.md) for examples,
 compatibility and limits.
 
 ## Quick Start
@@ -83,7 +91,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.9.0/coleman-4.9.0-py3-none-any.whl#sha256=eb59ae45bc280a3d7cfa33bc1c360f68fc69859d9632c864bd996b29ac81a9bd"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.10.0/coleman-4.10.0-py3-none-any.whl#sha256=b85b6d94fdb48d7f31d580583dfe1be96de2c63f07341b7159d2fbf777639d29"
 coleman run --config my-experiment.yaml
 ```
 

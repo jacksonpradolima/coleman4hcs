@@ -58,13 +58,16 @@ fixes remain independently shippable.
 The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
 4.8; #303's [larger LRTS stage views](lrts-stage-views.md) shipped in 4.9 through
 [#318](https://github.com/jacksonpradolima/coleman/pull/318).
-#304–#313 track the remaining work. Source conversion does not establish admission.
+#304's [controlled Java matrix](java-fault-matrix.md) shipped in 4.10 through
+[#320](https://github.com/jacksonpradolima/coleman/pull/320).
+#305–#313 track the remaining work. Source conversion does not establish admission.
 
 | Stage | Subtasks | Dependency |
 | --- | --- | --- |
 | RTPTorrent source path — delivered in 4.8 | [#301 ZIP64 integrity](https://github.com/jacksonpradolima/coleman/issues/301), [#302 real Parquet ETL/replay](https://github.com/jacksonpradolima/coleman/issues/302) | #302 requires #301 |
 | LRTS source expansion — delivered in 4.9 | [#303 larger histories and explicit stage views](https://github.com/jacksonpradolima/coleman/issues/303) | Existing reviewed main; temporal blockers remain explicit |
-| Other source expansion | [#304 Java faults](https://github.com/jacksonpradolima/coleman/issues/304), [#305 non-Java faults](https://github.com/jacksonpradolima/coleman/issues/305), [#306 seeded faults](https://github.com/jacksonpradolima/coleman/issues/306), [#307 HCS](https://github.com/jacksonpradolima/coleman/issues/307), [#308 stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main |
+| Java source matrix — delivered in 4.10 | [#304 controlled CLI/Codec faults](https://github.com/jacksonpradolima/coleman/issues/304) | Existing JUnit producer; admission remains separate |
+| Other source expansion | [#305 non-Java faults](https://github.com/jacksonpradolima/coleman/issues/305), [#306 seeded faults](https://github.com/jacksonpradolima/coleman/issues/306), [#307 HCS](https://github.com/jacksonpradolima/coleman/issues/307), [#308 stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main |
 | Evidence integration | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | #302–#308 |
 | Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
 | Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
@@ -85,15 +88,7 @@ wheel was exercised outside checkout with the actual source cache, native runs
 and checkpoint continuation. Remaining source admission, diversity and
 confirmatory work continues through the public subtasks. #303's new profiles
 preserve all raw/processed stages and use exact context/node bindings, while
-retaining explicit missing temporal evidence. Remaining expansion begins with #304.
-
-This revision implements #304's [bounded Java fault matrix](java-fault-matrix.md)
-on the existing source producer: CLI-13, CLI-51 and an explicitly partial CODEC-65
-fixture. Typed plans, raw/context verification, honest incomplete indices and
-offline recovery preserve all negative outcomes. Source qualification collected
-714 role observations / 357 same-test pairs across two codebases. Controlled
-source collection remains separate from admission and policy comparison in #309
-onward; the remaining source subtasks follow sequentially.
+retaining explicit missing temporal evidence. Remaining expansion begins with #305.
 
 **4.9.0** publishes the stage-view contracts and three frozen presets: ActiveMQ,
 Log4j Ubuntu and Log4j Windows. All raw observations/processed stages remain
@@ -101,6 +96,14 @@ analytical evidence; exact context/node bindings select one native view. The
 Log4j views share original source identities. Installed real-source workflows
 exercise native replay and checkpoints while keeping all temporal blockers.
 Existing single-stage LRTS producers, recipes and artifacts retain their semantics.
+
+**4.10.0** publishes #304's [bounded Java fault matrix](java-fault-matrix.md)
+on the existing source producer: CLI-13, CLI-51 and an explicitly partial CODEC-65
+fixture. Typed plans, raw/context verification, honest incomplete indices and
+offline recovery preserve all negative outcomes. Source qualification collected
+714 role observations / 357 same-test pairs across two codebases. Controlled
+source collection remains separate from admission and policy comparison in #309
+onward; the remaining source subtasks follow sequentially.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:

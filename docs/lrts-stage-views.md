@@ -5,7 +5,7 @@ reports into analytical Parquet and checkpointed TCPCI runs. ActiveMQ supplies a
 larger single-stage history; Log4j keeps its reported Ubuntu and Windows contexts
 separate. Each view runs Random and UCB through the existing native API.
 
-The published **4.9 wheel** includes this stage-view workflow and retains
+The published **4.10 wheel** includes this stage-view workflow and retains
 [Karaf](lrts-parquet-etl.md) and [RTPTorrent](rtptorrent-parquet-etl.md). It contains
 the typed contracts and frozen public source recipes; large archives remain
 separate operator downloads.
@@ -18,7 +18,7 @@ and outputs outside any Git repository; no checkout is needed:
 
 ```bash
 uv venv /tmp/coleman-stage-env --python 3.14
-uv pip install --python /tmp/coleman-stage-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.9.0/coleman-4.9.0-py3-none-any.whl#sha256=eb59ae45bc280a3d7cfa33bc1c360f68fc69859d9632c864bd996b29ac81a9bd"
+uv pip install --python /tmp/coleman-stage-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.10.0/coleman-4.10.0-py3-none-any.whl#sha256=b85b6d94fdb48d7f31d580583dfe1be96de2c63f07341b7159d2fbf777639d29"
 mkdir -p /tmp/coleman-stage-sources
 
 # Explicit operator downloads can resume; the ETL separately verifies full hashes.

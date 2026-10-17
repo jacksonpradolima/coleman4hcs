@@ -9,11 +9,11 @@ inventory and [licensed source-package materialization](corpus-materialization.m
 The diversified benchmark program remains open.
 
 For the separate source-specific ETL workflows, see [Karaf](lrts-parquet-etl.md),
-[RTPTorrent](rtptorrent-parquet-etl.md) and the published 4.9 [ActiveMQ/Log4j stage
+[RTPTorrent](rtptorrent-parquet-etl.md) and the published 4.10 [ActiveMQ/Log4j stage
 views](lrts-stage-views.md). Those exports preserve their own provenance and
 admission blockers; they do not silently add admitted registrations to this registry.
 
-For controlled Java sources, this revision adds a separate [CLI/Codec
+For controlled Java sources, the published 4.10 wheel includes a separate [CLI/Codec
 matrix](java-fault-matrix.md) using the existing controlled/JUnit producer.
 Its typed index preserves all selected outcomes and incomplete evidence. It does
 not silently change this registry's admission or diversity coverage.
@@ -32,7 +32,7 @@ follows from passing these checks.
 
 ## Installed commands
 
-Install the wheel attached to [COLEMAN 4.9](https://github.com/jacksonpradolima/coleman/releases/tag/v4.9.0)
+Install the wheel attached to [COLEMAN 4.10](https://github.com/jacksonpradolima/coleman/releases/tag/v4.10.0)
 in a Python 3.14+ environment, or build a development wheel from the reviewed source.
 Copy examples to a directory outside the checkout. Once installed, these local
 operations need no optional dependency, provider subscription, credential or
