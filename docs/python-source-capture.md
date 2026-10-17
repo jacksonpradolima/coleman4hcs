@@ -17,15 +17,13 @@ native Linux arm64 Docker engine. The subject interpreter is separately pinned t
 CPython 3.8.1; it does not change the SDK's Python requirement. Other architectures
 need independently reviewed recipes and runtime qualification.
 
-Build the current source revision into an external wheel directory, then install
-the wheel into a separate environment. This feature is newer than the published
-4.10 release; installing that release does not provide this transport.
+Install the published **4.11 wheel** into a fresh external environment. The
+SHA-256 fragment verifies the release bytes before installation; no checkout is
+required. Runtime preparation is a separate, explicit operator action.
 
 ```bash
-# From the COLEMAN checkout:
-uv build --wheel --out-dir /tmp/coleman-python-dist
 uv venv /tmp/coleman-python-env --python 3.14
-uv pip install --python /tmp/coleman-python-env/bin/python /tmp/coleman-python-dist/coleman-*.whl
+uv pip install --python /tmp/coleman-python-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.11.0/coleman-4.11.0-py3-none-any.whl#sha256=d328c0d9bfd9e75658c64e35876c3151fb242c805846835c211a3622d8b75e55"
 
 # Explicit operator preparation; the producer never pulls an image.
 docker pull --platform linux/arm64 docker.io/library/python@sha256:ffae7d875975e38d38378ce65d10ab62c2156eb198e2e798664ec6c793015c03

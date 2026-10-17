@@ -20,7 +20,20 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.10
+## New in 4.11
+
+[Reproduce a controlled Python fault](python-source-capture.md) with the published
+wheel: unchanged PySnooper source/tests, pinned dependencies and two frozen locale
+contexts. The ASCII exception-to-pass comparison remains **inconclusive**; the
+UTF-8 contrast is **both-pass**. Raw evidence, component terms, offline validation
+and real process-interruption recovery stay inspectable. The two contexts share
+one curated fix and do not establish independent observations or policy efficacy.
+
+The complete guide includes the verified wheel, explicit native arm64 Docker
+preparation and recovery commands. See the [4.11 release notes](releases/4.11.0.md)
+for compatibility and scientific limits.
+
+## Controlled Java source matrix
 
 [Collect a controlled Java fault matrix](java-fault-matrix.md) with the published
 wheel: three curated upstream fixes across Apache Commons CLI and Codec, frozen
@@ -33,14 +46,6 @@ The complete guide includes the verified wheel, explicit native arm64 Docker
 preparation, collection, offline validation and recovery. Controlled observations
 retain their admission and generalization limits. See the
 [4.10 release notes](releases/4.10.0.md) for compatibility and scientific limits.
-
-## Controlled Python source capture
-
-The current source revision also adds [controlled Python fault capture](python-source-capture.md):
-one PySnooper fix, an unchanged common fixture and two explicit locale contexts.
-It preserves actual Unicode errors, inconclusive comparisons, component terms
-and real process-interruption recovery. The guide provides a source-wheel
-installation workflow; the transport is newer than release 4.10.
 
 ## LRTS stage views
 
@@ -90,7 +95,7 @@ The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures a
 visible source-admission gaps; all seven diversity regimes remain uncovered.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
-correctness checks. See the [4.10 release notes](releases/4.10.0.md) for examples,
+correctness checks. See the [4.11 release notes](releases/4.11.0.md) for examples,
 compatibility and limits.
 
 ## Quick Start
@@ -99,7 +104,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.10.0/coleman-4.10.0-py3-none-any.whl#sha256=b85b6d94fdb48d7f31d580583dfe1be96de2c63f07341b7159d2fbf777639d29"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.11.0/coleman-4.11.0-py3-none-any.whl#sha256=d328c0d9bfd9e75658c64e35876c3151fb242c805846835c211a3622d8b75e55"
 coleman run --config my-experiment.yaml
 ```
 
