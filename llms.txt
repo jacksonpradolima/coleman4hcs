@@ -2538,7 +2538,8 @@ reviewed wheel: conservative package/version identity changes the output generat
 flowchart LR
     A[Pinned public raw files and separate terms] --> B[Existing source views and external cache]
     B --> C[Typed pre-execution plan and durable ownership]
-    C --> D[Pinned offline GCC container]
+    C --> K[Shared optional transport isolation guards]
+    K --> D[Pinned offline GCC container]
     D --> E[Existing bounded process collector]
     E --> F[Raw C roles and independent output oracle]
     F --> G[Existing generic controlled dataset]
@@ -2551,6 +2552,11 @@ One local POSIX producer lock owns each recipe/trial/implementation generation.
 Physical container names additionally bind the resolved output namespace, so
 independent output roots cannot collide or clean each other's containers.
 This physical ownership scope does not change logical observation identity.
+The C, Python and JUnit transports share container isolation arguments, while
+each producer retains its own runtime, observer, oracle and wire contracts. C
+alone explicitly requests executable scratch for its bounded compilation. C and
+Python also share CLI parsing and accounting presentation; these optional
+transport helpers introduce no dependency from the controlled domain to a CLI.
 The plan precedes execution; role ownership precedes spawning; immutable raw role
 packets follow owned cleanup. Receipt and completion are written last. Identical
 retries revalidate source/context/raw bytes without duplicating observation or
@@ -6476,9 +6482,10 @@ these terms. The recipe-only policy keeps foreign content in the external cache.
 flowchart LR
     recipe[Pinned Java source recipe] --> raw[Reviewed raw source and dependency cache]
     raw --> views[Deterministic source views]
-    views --> producer[Optional bounded Docker producer]
+    views --> guards[Shared optional container guards]
+    guards --> producer[Optional bounded Docker producer]
     harness[Packaged COLEMAN JUnit3 harness] --> producer
-    producer --> packets[Versioned raw role packets and start markers]
+    producer --> packets[Raw v1 role packets and v2 ownership markers]
     packets --> report[Controlled report plus diagnostic members]
     report --> domain[Existing offline controlled conversion]
     domain --> artifact[Immutable controlled artifact]
@@ -6534,7 +6541,13 @@ producers for the same context/trial; a process crash releases it. Cleanup targe
 only the producer's deterministic container name. A cleanup failure propagates
 without committing a role packet; the next call retries cleanup and retains the
 interrupted observation state. Source acquisition, staging and
-publication failures never certify a completed learning checkpoint.
+publication failures never certify a completed learning checkpoint. New start
+markers use schema version 2 and persist the original output namespace and exact
+container name. Their name is validated against the logical context/trial/role
+before cleanup. Version 1 markers remain readable and recover using their original
+state-prefix container naming rule; unknown versions reject before cleanup. V2
+markers are bounded to 8 KiB and legacy v1 markers retain their 4-KiB bound. Raw
+role packets and controlled datasets retain their existing version 1 contracts.
 
 Successful protocols require the exact discovered test sequence and a final
 trailer. Discovery loads excluded classes without initializing them. Output from
@@ -6576,11 +6589,15 @@ functional reproduction only. Chronological benchmark admission, additional
 languages/faults, independent observations, fair baselines and all seven diversity
 regimes remain work in [#261](https://github.com/jacksonpradolima/coleman/issues/261).
 
-Physical container ownership includes the resolved output namespace. Equal logical
+New v2 container ownership includes the resolved output namespace. Equal logical
 trials in separate output roots cannot collide or clean each other's containers;
 observation identities retain their original meaning. Keep incomplete ownership
-state at its original output location for recovery, and retain the original
-reviewed producer package when reopening older captures.
+state together when moving an output tree: a version 2 marker still identifies
+the original container after relocation. Legacy v1 names retain their global
+context/trial scope; their missing output namespace cannot be inferred
+retroactively. Retain the original reviewed producer
+package when reopening older captures; changing package bytes changes the source
+context and does not automatically discover an older producer's generation.
 
 
 
@@ -8713,7 +8730,8 @@ flowchart LR
     R[Typed source and component recipe] --> C[Existing verified external cache]
     C --> P[Immutable pre-execution plan]
     P --> S[Durable role ownership]
-    S --> D[Bounded Docker: private dependencies and pytest]
+    S --> K[Shared optional transport isolation guards]
+    K --> D[Bounded Docker: private dependencies and pytest]
     D --> B[Atomic raw role packets]
     B --> V[Reparse and bind actual protocol]
     V --> G[Existing controlled dataset and immutable artifacts]
@@ -8722,6 +8740,12 @@ flowchart LR
     S --> X[Uncommitted recovery: interrupted and unavailable]
     X --> V
 ```
+
+Python, C and JUnit share container isolation arguments. Each retains its own
+runtime, observer and wire contracts; Python keeps its original scratch mount
+semantics. The Python and C CLIs share argument parsing and accounting display.
+These helpers live in the optional transports; the controlled domain remains
+independent of CLI and runtime execution.
 
 A nonblocking POSIX lock prevents concurrent producers within the same output
 generation from observing the recipe/trial/implementation twice. Separate output
@@ -9125,8 +9149,11 @@ use a fresh generation for a changed producer.
 
 Physical container ownership for C, Python and JUnit now includes the resolved
 output namespace. Separate output roots cannot collide or clean one another's
-containers; logical observation identities are unchanged. Keep incomplete state
-at its original output location and retain its original producer for recovery.
+containers; logical observation identities are unchanged. JUnit start markers now
+use explicit schema v2 and persist the original physical ownership, so relocation
+still cleans the original container. Legacy v1 markers retain their original
+cleanup rule; future versions reject. C/Python incomplete ownership stays at its
+original output location. Retain the original producer package for recovery.
 
 The first C qualification's noexec scratch failure remains incomplete with zero
 observed cases. Explicit executable tmpfs and a recorded pre-observation amendment
