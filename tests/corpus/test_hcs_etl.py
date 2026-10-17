@@ -35,7 +35,8 @@ def test_metadata_only_job_labels_preserve_absent_cells_without_fabricated_tests
     assert pl.read_parquet(path.parent / f"vts/{binding.alias}/features-engineered.parquet").is_empty()
     observations = pl.read_parquet(path.parent / "observations.parquet")
     assert binding.name not in observations["variant_name"].to_list()
-    assert receipt.accounting.selected_rows == 17 and receipt.accounting.replay_rows == 10
+    assert receipt.accounting.selected_rows == 17
+    assert receipt.accounting.replay_rows == 10
     validate_hcs_etl(receipt, cache, path.parent)
 
 
@@ -46,7 +47,8 @@ def test_known_job_topology_survives_zero_selected_csv_observations(tmp_path):
     assert receipt.accounting.selected_rows == receipt.accounting.replay_rows == 0
     assert len(receipt.variants) == 4
     cells = pl.read_parquet(path.parent / "cells.parquet")
-    assert cells.height == 8 and cells["metadata_jobs"].sum() == 6
+    assert cells.height == 8
+    assert cells["metadata_jobs"].sum() == 6
     assert cells["parsed_rows"].sum() == cells["replay_rows"].sum() == 0
     assert cells["reported_nonpass_rows"].null_count() == cells.height
     assert cells["cell_status"].unique().to_list() == ["absent_parsed_source"]

@@ -86,7 +86,8 @@ def test_metadata_only_labels_never_create_fake_native_variant_executions(tmp_pa
     result = run_hcs_replay(completion, cache, tmp_path / "native", strategy=strategy)
     rows = check_native_accounting(completion, result.artifacts_dir, strategy)
     assert rows.height == expected
-    assert alias not in rows["scenario"].to_list() and alias not in rows["variant"].to_list()
+    assert alias not in rows["scenario"].to_list()
+    assert alias not in rows["variant"].to_list()
     assert alias not in result.spec.experiment.datasets
 
 
