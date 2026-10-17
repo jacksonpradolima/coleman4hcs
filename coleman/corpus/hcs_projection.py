@@ -259,9 +259,8 @@ def project_hcs(source: HCSSlice) -> HCSProjection:
     """
     source = HCSSlice.model_validate(source)
     reasons = _dispositions(source)
-    variants = tuple(
-        HCSVariant(name=n, alias=variant_alias(n)) for n in sorted({c.job.variant for c in source.observations})
-    )
+    names = {job.variant for job in source.jobs} | {case.job.variant for case in source.observations}
+    variants = tuple(HCSVariant(name=name, alias=variant_alias(name)) for name in sorted(names))
     if len(variants) > 64 or len({v.alias for v in variants}) != len(variants):
         raise ValueError("HCS variant bounds or digest collision")
     rounds = {pipeline: i for i, pipeline in enumerate(source.recipe.pipeline_ids, 1)}

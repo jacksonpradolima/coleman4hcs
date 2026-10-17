@@ -1,11 +1,13 @@
 """Adversarial checks of the independent reference itself, using only authored tiny quantities."""
 
 import json
+from collections import Counter
 from decimal import Decimal
 
+import polars as pl
 import pytest
 
-from tests.corpus.hcs_raw_reference import _check_row
+from tests.corpus.hcs_raw_reference import _check_cells, _check_row
 
 
 def example():
@@ -29,6 +31,51 @@ def example():
 def test_owned_zero_duration_and_budget_boundary_agree_exactly():
     cases, row = example()
     assert _check_row(cases, row) is False
+
+
+@pytest.mark.parametrize("mutation", [None, "missing_cell", "metadata_count", "invented_nonpass_zero"])
+def test_independent_sparse_reference_requires_known_but_unobserved_cells(mutation):
+    rows = [
+        dict(
+            pipeline_id=1,
+            variant_name="seen",
+            variant_alias="v_seen",
+            metadata_jobs=1,
+            parsed_rows=1,
+            replay_rows=1,
+            reported_nonpass_rows=0,
+            cell_status="eligible",
+        ),
+        dict(
+            pipeline_id=1,
+            variant_name="metadata",
+            variant_alias="v_metadata",
+            metadata_jobs=1,
+            parsed_rows=0,
+            replay_rows=0,
+            reported_nonpass_rows=None,
+            cell_status="absent_parsed_source",
+        ),
+    ]
+    if mutation == "missing_cell":
+        rows.pop()
+    elif mutation == "metadata_count":
+        rows[1]["metadata_jobs"] = 0
+    elif mutation == "invented_nonpass_zero":
+        rows[1]["reported_nonpass_rows"] = 0
+    table = pl.DataFrame(rows)
+    inputs = (
+        (1,),
+        {"v_seen": "seen", "v_metadata": "metadata"},
+        {(1, "seen"): {"A": (Decimal(1), 0)}},
+        Counter({(1, "seen"): 1, (1, "metadata"): 1}),
+        Counter({(1, "seen"): 1}),
+    )
+    if mutation is None:
+        _check_cells(table, *inputs)
+    else:
+        with pytest.raises(AssertionError):
+            _check_cells(table, *inputs)
 
 
 @pytest.mark.parametrize(

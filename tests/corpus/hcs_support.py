@@ -86,3 +86,8 @@ def prepare_hcs(tmp_path, **kwargs):
     materialize_source(recipe.executions, cache, lambda: io.BytesIO(csv_bytes))
     materialize_source(recipe.jobs, cache, lambda: io.BytesIO(jobs_bytes))
     return recipe, cache
+
+
+def metadata_only_job(jobs):
+    """Add a selected known CI job label without inventing a parsed test execution."""
+    return [*jobs, {**jobs[0], "id": 90, "name": "metadata-only"}]

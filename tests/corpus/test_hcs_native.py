@@ -15,6 +15,7 @@ from coleman.evaluation import NAPFDVerdictMetric
 from coleman.policy import RandomPolicy
 from coleman.reward import RNFailReward
 from coleman.runner import create_agents, get_scenario_provider
+from tests.corpus.hcs_support import metadata_only_job
 from tests.corpus.test_hcs_etl import export
 
 
@@ -76,6 +77,17 @@ def test_actual_native_strategies_per_variant_denominators_and_idempotence(tmp_p
     manifest = json.loads((Path(second.artifacts_dir) / "manifest.json").read_bytes())
     assert sum(x["type"] == "corpus_etl_receipt" for x in manifest["artifacts"]) == 1
     assert receipt.scope == "posthoc-test-only-serial-HCS-simulation"
+
+
+@pytest.mark.parametrize("strategy,expected", [("wts", 24), ("vts", 16)])
+def test_metadata_only_labels_never_create_fake_native_variant_executions(tmp_path, strategy, expected):
+    receipt, cache, completion = export(tmp_path, jobs_transform=metadata_only_job)
+    alias = next(v.alias for v in receipt.variants if v.name == "metadata-only")
+    result = run_hcs_replay(completion, cache, tmp_path / "native", strategy=strategy)
+    rows = check_native_accounting(completion, result.artifacts_dir, strategy)
+    assert rows.height == expected
+    assert alias not in rows["scenario"].to_list() and alias not in rows["variant"].to_list()
+    assert alias not in result.spec.experiment.datasets
 
 
 @pytest.mark.parametrize("strategy", ["wts", "vts"])

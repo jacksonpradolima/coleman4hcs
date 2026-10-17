@@ -92,8 +92,8 @@ if sys.argv[1]!='-':
     r=HCSReceipt.from_json(p.read_bytes());validate_hcs_etl(r,cache,p.parent)
     counts=r.accounting
     assert (counts.input_rows,counts.selected_rows,counts.replay_rows,counts.other_attempt_rows)==(278950,885,856,29)
-    assert len(r.variants)==7
-    cells=pl.read_parquet(p.parent/'cells.parquet');assert cells.height==112
+    assert len(r.variants)==13
+    cells=pl.read_parquet(p.parent/'cells.parquet');assert cells.height==208
     assert cells.filter(pl.col('cell_status')=='eligible').height==44
     for strategy in ['wts','vts']:
         a=run_hcs_replay(p,cache,Path('real-native')/strategy,strategy=strategy)

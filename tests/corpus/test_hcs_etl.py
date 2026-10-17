@@ -12,7 +12,7 @@ from coleman.corpus.hcs_contracts import HCSReceipt, HCSRecipe, HCSVariant, vari
 from coleman.corpus.hcs_etl import export_hcs_parquet, validate_hcs_etl
 from coleman.corpus.hcs_raw import read_hcs_slice
 from coleman.corpus.materialization_contracts import MaterializationReceipt
-from tests.corpus.hcs_support import hcs_recipe, prepare_hcs
+from tests.corpus.hcs_support import hcs_recipe, metadata_only_job, prepare_hcs
 from tests.corpus.test_source_views import changed, digest
 
 
@@ -20,6 +20,37 @@ def export(tmp_path, **kwargs):
     recipe, cache = prepare_hcs(tmp_path, **kwargs)
     completion = export_hcs_parquet(recipe, cache, ArtifactWriter(tmp_path / "etl"))
     return HCSReceipt.from_json(completion.read_bytes()), cache, completion
+
+
+def test_metadata_only_job_labels_preserve_absent_cells_without_fabricated_tests(tmp_path):
+    receipt, cache, path = export(tmp_path, jobs_transform=metadata_only_job)
+    binding = next(v for v in receipt.variants if v.name == "metadata-only")
+    cells = pl.read_parquet(path.parent / "cells.parquet")
+    missing = cells.filter(pl.col("variant_name") == binding.name).sort("pipeline_id")
+    assert cells.height == 2 * len(receipt.variants)
+    assert missing["metadata_jobs"].to_list() == [1, 0]
+    assert missing["parsed_rows"].to_list() == missing["replay_rows"].to_list() == [0, 0]
+    assert missing["reported_nonpass_rows"].to_list() == [None, None]
+    assert missing["cell_status"].to_list() == ["absent_parsed_source", "absent_parsed_source"]
+    assert pl.read_parquet(path.parent / f"vts/{binding.alias}/features-engineered.parquet").is_empty()
+    observations = pl.read_parquet(path.parent / "observations.parquet")
+    assert binding.name not in observations["variant_name"].to_list()
+    assert receipt.accounting.selected_rows == 17 and receipt.accounting.replay_rows == 10
+    validate_hcs_etl(receipt, cache, path.parent)
+
+
+def test_known_job_topology_survives_zero_selected_csv_observations(tmp_path):
+    receipt, cache, path = export(
+        tmp_path, rows_transform=lambda rows: [row for row in rows if row["pipeline_id"] == "303"]
+    )
+    assert receipt.accounting.selected_rows == receipt.accounting.replay_rows == 0
+    assert len(receipt.variants) == 4
+    cells = pl.read_parquet(path.parent / "cells.parquet")
+    assert cells.height == 8 and cells["metadata_jobs"].sum() == 6
+    assert cells["parsed_rows"].sum() == cells["replay_rows"].sum() == 0
+    assert cells["reported_nonpass_rows"].null_count() == cells.height
+    assert cells["cell_status"].unique().to_list() == ["absent_parsed_source"]
+    validate_hcs_etl(receipt, cache, path.parent)
 
 
 def test_source_roundtrip_explicit_units_missingness_identity_and_sparse_cells(tmp_path):

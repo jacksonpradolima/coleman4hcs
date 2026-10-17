@@ -162,7 +162,11 @@ class HCSSlice(Immutable):
 
 
 class HCSVariant(Immutable):
-    """Reversible original name to portable digest alias; no punctuation/case normalization."""
+    """Reversible selected job label, including metadata-only labels without inferred test semantics.
+
+    Portable digest aliases preserve punctuation/case. A binding does not imply
+    parsed observations, eligibility or an observed test configuration.
+    """
 
     name: Name
     alias: Annotated[str, Field(pattern=r"^v_[0-9a-f]{64}$", strict=True)]

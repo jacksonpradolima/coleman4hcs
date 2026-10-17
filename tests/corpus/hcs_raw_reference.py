@@ -10,7 +10,7 @@ import csv
 import hashlib
 import json
 import struct
-from collections import defaultdict
+from collections import Counter, defaultdict
 from decimal import Decimal
 from fractions import Fraction
 from pathlib import Path
@@ -74,7 +74,42 @@ def _source_cases(cache, receipt):
         previous = union[pipeline].get(name, (Decimal(0), 0))
         union[pipeline][name] = max(previous[0], cost), max(previous[1], verdict)
     assert len(variants) == 44 and sum(len(cases) for cases in union.values()) == 320
-    return variants, union
+    metadata_jobs = Counter(
+        (job["pipeline"]["id"], job["name"])
+        for job in jobs.values()
+        if job["pipeline"]["id"] in receipt.recipe.pipeline_ids
+    )
+    parsed_rows = Counter((int(row["pipeline_id"]), jobs[int(row["job_id"])]["name"]) for row in selected)
+    assert sum(metadata_jobs.values()) == 78
+    return variants, union, metadata_jobs, parsed_rows
+
+
+def _check_cells(table, pipelines, aliases, variants, metadata_jobs, parsed_rows):
+    """Check the complete declared universe independently, including labels without any parsed test."""
+    expected = {}
+    for pipeline in pipelines:
+        for alias, name in aliases.items():
+            key = pipeline, name
+            cases = variants.get(key)
+            if cases:
+                status, count, nonpass = "eligible", len(cases), sum(case[1] for case in cases.values())
+            elif parsed_rows[key]:
+                status, count, nonpass = "excluded", 0, None
+            else:
+                status, count, nonpass = "absent_parsed_source", 0, None
+            expected[pipeline, name, alias] = metadata_jobs[key], parsed_rows[key], count, nonpass, status
+    columns = [
+        "pipeline_id",
+        "variant_name",
+        "variant_alias",
+        "metadata_jobs",
+        "parsed_rows",
+        "replay_rows",
+        "reported_nonpass_rows",
+        "cell_status",
+    ]
+    actual = {tuple(row[:3]): tuple(row[3:]) for row in table.select(columns).iter_rows()}
+    assert table.height == len(expected) and actual == expected
 
 
 def _check_row(cases, row):
@@ -121,10 +156,12 @@ def verify_libssh_raw_reference(cache_root, completion, runs, working_directory)
     assert receipt.recipe.jobs.source.sha256 == (
         "sha256:19b8652f902c20706fb32b7e9bcf3cb4859c701b6a900cd3954152c563454cd0"
     )
-    variants, union = _source_cases(SourceCache(cache_root), receipt)
+    variants, union, metadata_jobs, parsed_rows = _source_cases(SourceCache(cache_root), receipt)
     aliases = {variant.alias: variant.name for variant in receipt.variants}
-    assert len(aliases) == len(set(aliases.values())) == 7
-    assert set(aliases.values()) == {variant for _, variant in variants}
+    assert len(aliases) == len(set(aliases.values())) == 13
+    assert set(aliases.values()) == {name for _, name in metadata_jobs}
+    cells = pl.read_parquet((working_directory / completion).parent / "cells.parquet")
+    _check_cells(cells, receipt.recipe.pipeline_ids, aliases, variants, metadata_jobs, parsed_rows)
     run_results, differences = [], []
     report = dict(
         schema_version=1,
@@ -135,7 +172,10 @@ def verify_libssh_raw_reference(cache_root, completion, runs, working_directory)
         other_attempt_rows=29,
         union_rows=320,
         active_cells=44,
-        declared_cells=112,
+        csv_observed_labels=7,
+        known_job_labels=13,
+        metadata_only_labels=sorted(set(aliases.values()) - {name for _, name in variants}),
+        declared_cells=208,
         runs=run_results,
         decimal_boundary_differences=differences,
     )

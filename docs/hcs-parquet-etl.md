@@ -92,8 +92,10 @@ The frozen first-sixteen-pipeline slice has these descriptive counts:
 | Other-attempt rows explicitly excluded | 29 |
 | Retained native variant test executions | 856 |
 | Surrogate union test rows | 320 |
-| Original variant names in the slice | 7 |
-| Declared pipeline × variant cells | 112 |
+| Labels with parsed CSV observations | 7 |
+| All selected job labels, including metadata-only | 13 |
+| Metadata-only labels without parsed observations | 6 |
+| Declared pipeline × known-job-label cells | 208 |
 | Cells with retained parsed tests | 44 |
 | WTS result rows, including union and per-variant results | 240 |
 | VTS result rows | 176 |
@@ -104,6 +106,15 @@ or evidence of policy superiority. The complete raw file has **44 observed
 variant names**, including all-pass variants. The publisher summary's 34 variants
 that failed at least once are not the full universe; this bounded preset does not
 claim to exercise all 44.
+
+The six metadata-only labels are `CentOS7/libgcrypt`, `CentOS7/libgcrypt/x86-64`,
+`Fedora/openssl 1.0.x/x86`, `Fedora/openssl 1.1.x/x86`, `FreeBSD/x86-64` and
+`static-analysis`. They remain visible with metadata job counts and absent parsed
+evidence across all declared pipelines. A known job label is not automatically an
+observed test configuration: no test semantics are inferred for `static-analysis`.
+Their native VTS tables are empty and they create no native executions. Missing
+reported nonpass counts remain null. An independent raw-source reference checks
+all 208 cells, including these uncovered rows, rather than only the active subset.
 
 ## Contract, identities and explicit costs
 
