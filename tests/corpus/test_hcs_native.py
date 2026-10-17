@@ -21,7 +21,7 @@ def check_native_accounting(completion, artifacts, strategy):
     expected = []
     for row in rows.iter_rows(named=True):
         if strategy == "wts":
-            build = row["step"]
+            build = sorted(union["BuildId"].unique().to_list())[row["step"] - 1]
             suite = union if row["variant"] is None else variants.filter(pl.col("Variant") == row["variant"])
         else:
             suite = variants.filter(pl.col("Variant") == row["scenario"])
@@ -139,3 +139,22 @@ def test_unsupported_projected_dynamic_range_rejects_instead_of_unstable_full_bu
     with pytest.raises(ValueError, match="stable native prefix sums"):
         export(tmp_path, rows_transform=wide_range)
     assert not list((tmp_path / "etl").rglob("complete.json"))
+
+
+@pytest.mark.parametrize("strategy,expected", [("wts", 12), ("vts", 8)])
+def test_fully_excluded_round_preserves_pipeline_mapping_and_processed_checkpoint_step(tmp_path, strategy, expected):
+    def unavailable_first(rows):
+        for row in rows:
+            if row["pipeline_id"] == "101":
+                row["duration"] = ""
+        return rows
+
+    _, cache, completion = export(tmp_path, rows_transform=unavailable_first)
+    native = pl.read_parquet(completion.parent / "datasets/owned-hcs/features-engineered.parquet")
+    assert native["BuildId"].unique().to_list() == [2]
+    first = run_hcs_replay(completion, cache, tmp_path / "native", strategy=strategy)
+    second = run_hcs_replay(completion, cache, tmp_path / "native", strategy=strategy)
+    assert first.run_id == second.run_id
+    rows = check_native_accounting(completion, second.artifacts_dir, strategy)
+    assert rows.height == expected
+    assert rows["step"].unique().to_list() == [1]

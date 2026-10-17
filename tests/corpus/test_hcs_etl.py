@@ -183,6 +183,26 @@ def test_source_order_metamorphism_keeps_native_bytes_and_original_logical_ids(t
     assert a.recipe.fingerprint != b.recipe.fingerprint
 
 
+def test_cross_variant_feedback_changes_union_but_does_not_mutate_another_vts_input(tmp_path):
+    def changed_other_variant(rows):
+        for row in rows:
+            if row["job_id"] == "1" and row["test_name"] == "B":
+                row["verdict"] = "0"
+        return rows
+
+    a, _, path_a = export(tmp_path / "a")
+    b, _, path_b = export(tmp_path / "b", rows_transform=changed_other_variant)
+    alias = variant_alias("linux_x")
+    target = f"vts/{alias}/features-engineered.parquet"
+    assert (path_a.parent / target).read_bytes() == (path_b.parent / target).read_bytes()
+    union_path = "datasets/owned-hcs/features-engineered.parquet"
+    x, y = pl.read_parquet(path_a.parent / union_path), pl.read_parquet(path_b.parent / union_path)
+    assert x["Name"].to_list() == y["Name"].to_list()
+    assert x["SourceExecutionId"].to_list() == y["SourceExecutionId"].to_list()
+    assert x["Verdict"].sum() == y["Verdict"].sum() + 1
+    assert a.accounting == b.accounting
+
+
 @pytest.mark.parametrize(
     "kind",
     [
