@@ -35,6 +35,12 @@ remain explicit blockers. The workflow is a post-hoc serial simulation, and
 broader corpus admission and confirmation remain open.
 See the [4.9 release notes](releases/4.9.0.md).
 
+This revision also adds a [controlled Java fault matrix](java-fault-matrix.md):
+three curated upstream fixes across CLI and Codec, raw/source validation and
+offline recovery. Its guide builds this revision's wheel. The initial 357
+same-test pairs retain both-fail and inconclusive results; this controlled layer
+does not establish historical CI chronology, independence or policy efficacy.
+
 ## Existing real-data workflows
 
 [Turn real RTPTorrent CI history into Parquet and native TCPCI replays](rtptorrent-parquet-etl.md).

@@ -87,6 +87,14 @@ confirmatory work continues through the public subtasks. #303's new profiles
 preserve all raw/processed stages and use exact context/node bindings, while
 retaining explicit missing temporal evidence. Remaining expansion begins with #304.
 
+This revision implements #304's [bounded Java fault matrix](java-fault-matrix.md)
+on the existing source producer: CLI-13, CLI-51 and an explicitly partial CODEC-65
+fixture. Typed plans, raw/context verification, honest incomplete indices and
+offline recovery preserve all negative outcomes. Source qualification collected
+714 role observations / 357 same-test pairs across two codebases. Controlled
+source collection remains separate from admission and policy comparison in #309
+onward; the remaining source subtasks follow sequentially.
+
 **4.9.0** publishes the stage-view contracts and three frozen presets: ActiveMQ,
 Log4j Ubuntu and Log4j Windows. All raw observations/processed stages remain
 analytical evidence; exact context/node bindings select one native view. The

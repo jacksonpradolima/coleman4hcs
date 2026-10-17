@@ -13,6 +13,11 @@ For the separate source-specific ETL workflows, see [Karaf](lrts-parquet-etl.md)
 views](lrts-stage-views.md). Those exports preserve their own provenance and
 admission blockers; they do not silently add admitted registrations to this registry.
 
+For controlled Java sources, this revision adds a separate [CLI/Codec
+matrix](java-fault-matrix.md) using the existing controlled/JUnit producer.
+Its typed index preserves all selected outcomes and incomplete evidence. It does
+not silently change this registry's admission or diversity coverage.
+
 The registry contains two small repository-authored MIT-licensed CI fixtures and
 an inventory of ten existing public example Parquet artifacts. Historical sources
 remain **blocked for evaluation** until their data-specific terms, duration units,
