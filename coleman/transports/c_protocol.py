@@ -109,15 +109,19 @@ def _case_frames(frames: list[bytes], recipe: CCaptureRecipe) -> tuple[tuple[CCa
             index = len(cases)
             if index >= len(recipe.test_ids) or case.test_id != recipe.test_ids[index]:
                 raise ValueError("C case sequence disagrees with the frozen universe")
-            expected = recipe.cases[index].expected_stdout
-            if (
-                case.termination == "exited"
-                and case.exit_code == 0
-                and (case.outcome == "passed") != (case.stdout == expected and case.stderr == "")
-            ):
-                raise ValueError("C normalized outcome disagrees with the independent output oracle")
+            _oracle_binding(case, recipe.cases[index].expected_stdout)
             cases.append(case)
     return tuple(cases), trailer
+
+
+def _oracle_binding(case: CCase, expected: str) -> None:
+    """Bind normal child output to the frozen oracle; physical errors retain their separate semantics."""
+    if (
+        case.termination == "exited"
+        and case.exit_code == 0
+        and (case.outcome == "passed") != (case.stdout == expected and case.stderr == "")
+    ):
+        raise ValueError("C normalized outcome disagrees with the independent output oracle")
 
 
 def c_role_capture(recipe: CCaptureRecipe, plan: CHarnessPlan, streams: ProcessStreams) -> CRoleCapture:

@@ -112,8 +112,9 @@ def test_changed_authored_implementation_rejects_before_preparing_source(tmp_pat
 
 def test_nonboolean_fetch_and_invalid_environment_fail_closed(tmp_path):
     recipe, cache, environment = prepared_inputs(tmp_path)
+    invalid_fetch = cast(Any, 1)
     with pytest.raises(ValueError, match="boolean"):
-        prepare_c_inputs(recipe, cache, environment, fetch=cast(Any, 1))
+        prepare_c_inputs(recipe, cache, environment, fetch=invalid_fetch)
     from coleman.transports.c_source import owned_c_package
 
     invalid = owned_c_package(cache, "invalid-environment.json", b"{}", "owned-invalid-v1")

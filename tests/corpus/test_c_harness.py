@@ -92,7 +92,9 @@ def test_wrapper_selects_only_declared_function_and_no_original_main(tmp_path):
     module = harness(tmp_path)
     recipe = {"source_member": "subject.c", "buggy_function": "bad", "fixed_function": "goodB2G"}
     buggy, fixed = (module["wrapper"](recipe, role) for role in ("buggy", "fixed"))
-    assert "bad();" in buggy and "goodB2G();" in fixed
+    assert "bad();" in buggy
+    assert "goodB2G();" in fixed
     assert "INCLUDEMAIN" not in buggy + fixed
-    assert "tmpfile()" in fixed and "UINT_MAX != 4294967295U" in fixed
+    assert "tmpfile()" in fixed
+    assert "UINT_MAX != 4294967295U" in fixed
     assert module["instant"]().endswith("Z")

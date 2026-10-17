@@ -73,7 +73,7 @@ class PreparedCInputs(NamedTuple):
 def c_harness_plan(recipe: CCaptureRecipe, context: str, trial_id: str, role: str) -> CHarnessPlan:
     """Bind the entire validated recipe and logical role to one bounded producer-written bootstrap."""
     plan = CHarnessPlan.model_validate(
-        dict(schema_version=1, context_fingerprint=context, trial_id=trial_id, role=role, recipe=recipe)
+        {"schema_version": 1, "context_fingerprint": context, "trial_id": trial_id, "role": role, "recipe": recipe}
     )
     if len((plan.to_json() + "\n").encode()) > plan.MAXIMUM_BYTES:
         raise ValueError("C observer bootstrap exceeds its 1MiB byte limit")
@@ -171,7 +171,9 @@ def prepare_c_inputs(
         fixture_revision=recipe.fixture.output.source.version,
         dependence_group=recipe.dependence_group,
         test_ids=recipe.test_ids,
-        inputs=tuple(ControlledInput.model_validate(dict(name=n, kind=k, materialization=r)) for n, k, r in metadata),
+        inputs=tuple(
+            ControlledInput.model_validate({"name": n, "kind": k, "materialization": r}) for n, k, r in metadata
+        ),
         runtime=runtime,
         limitations=recipe.limitations,
     )

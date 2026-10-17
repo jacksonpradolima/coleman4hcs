@@ -191,8 +191,10 @@ def test_declaration_order_canonical_but_record_order_is_significant():
     pair = changed(spec, cases=(*spec.cases, other))
     assert changed(pair, cases=tuple(reversed(pair.cases))).fingerprint == pair.fingerprint
     rows = owned_records()
+    reordered = wire([rows[1], rows[0], rows[2]])
+    plan = owned_plan()
     with pytest.raises(ValueError):
-        parsed_c_stream(wire([rows[1], rows[0], rows[2]]), spec, owned_plan())
+        parsed_c_stream(reordered, spec, plan)
 
 
 def test_truncated_extra_protocol_after_footer_never_acquires_completion():
