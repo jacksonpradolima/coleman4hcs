@@ -57,6 +57,7 @@ from coleman.agent import (
     SlidingWindowContextualAgent,
 )
 from coleman.budget import BudgetMode
+from coleman.checkpoint.budget import budget_checkpoint_config
 from coleman.environment import Environment
 from coleman.evaluation import NAPFDVerdictMetric
 from coleman.hooks import (
@@ -1120,6 +1121,7 @@ def _run_experiment_impl(spec_dict: dict[str, Any], extension: RunnerExtension |
 
     try:
         for budget_mode, budget_value in budget_points:
+            budget_checkpoints = budget_checkpoint_config(checkpoint_config, budget_points, budget_mode, budget_value)
             sched_time_ratio = budget_value if budget_mode is BudgetMode.RATIO else 0.0
             experiment_directory = f"{experiment_dir}{_budget_directory_segment(budget_mode, budget_value)}/"
             Path(experiment_directory).mkdir(parents=True, exist_ok=True)
@@ -1164,7 +1166,7 @@ def _run_experiment_impl(spec_dict: dict[str, Any], extension: RunnerExtension |
                     context_config=context_config,
                     feature_groups=feature_groups,
                     results_config=results_config,
-                    checkpoint_config=checkpoint_config,
+                    checkpoint_config=budget_checkpoints,
                     telemetry_config=telemetry_config,
                     algorithm_configs=normalized_algorithm_configs,
                     rewards_names=rewards_names,
