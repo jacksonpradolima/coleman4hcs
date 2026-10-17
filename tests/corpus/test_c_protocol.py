@@ -200,3 +200,32 @@ def test_truncated_extra_protocol_after_footer_never_acquires_completion():
     capture = c_role_capture(owned_recipe(), owned_plan(), ProcessStreams(raw, b"", 0, 1, "exited"))
     assert capture.status == "protocol_error"
     assert capture.cases == ()
+
+
+@pytest.mark.parametrize("payload", ["%%%", "YR=="])
+def test_invalid_and_noncanonical_base64_cannot_rewrite_raw_evidence(payload):
+    spec, plan = owned_recipe(), owned_plan()
+    capture = c_role_capture(spec, plan, ProcessStreams(wire(owned_records()), b"", 0, 0, "exited"))
+    altered = changed(capture, stdout_base64=payload)
+    with pytest.raises(ValueError, match="base64|Noncanonical"):
+        validate_c_role_bytes(altered, spec, plan)
+
+
+def test_combined_raw_stream_bound_is_revalidated_on_replay():
+    spec, plan = owned_recipe(), owned_plan()
+    capture = c_role_capture(spec, plan, ProcessStreams(wire(owned_records()), b"", 0, 0, "exited"))
+    oversized = base64.b64encode(b"x" * (spec.limits.maximum_output_bytes + 1)).decode("ascii")
+    altered = changed(capture, stdout_base64=oversized)
+    with pytest.raises(ValueError, match="oversized"):
+        validate_c_role_bytes(altered, spec, plan)
+
+
+@pytest.mark.parametrize("outcome,stdout", [("passed", "0\n"), ("assertion_failed", "1\n")])
+def test_even_coherent_raw_frames_must_satisfy_the_predeclared_independent_oracle(outcome, stdout):
+    rows = owned_records()
+    rows[1].update(outcome=outcome, stdout=stdout)
+    rows[2]["oracle_exit_code"] = int(outcome != "passed")
+    actual = c_role_capture(owned_recipe(), owned_plan(), ProcessStreams(wire(rows), b"", 0, 0, "exited"))
+    assert actual.status == "protocol_error"
+    assert not actual.cases
+    validate_c_role_bytes(actual, owned_recipe(), owned_plan())

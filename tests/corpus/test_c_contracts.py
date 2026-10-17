@@ -257,3 +257,41 @@ def test_timeout_and_output_limit_preserve_observed_physical_exit_zero():
     limited = changed(owned_case(), termination="output_limit", outcome="test_error", exit_code=0, stdout="x" * 65536)
     assert CCase.from_json(timeout.to_json()) == timeout
     assert CCase.from_json(limited.to_json()) == limited
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "duplicate",
+        "missing_header",
+        "missing_completion",
+        "trailer_count",
+        "universe",
+        "oracle",
+        "missing_exit",
+        "termination",
+        "unstarted_exit",
+    ],
+)
+def test_contradictory_role_packet_states_reject_at_the_contract_boundary(kind):
+    data = owned_role().model_dump(mode="json")
+    if kind == "duplicate":
+        data["cases"] *= 2
+    elif kind == "missing_header":
+        data.update(status="process_error", header=None)
+    elif kind == "missing_completion":
+        data["trailer"] = None
+    elif kind == "trailer_count":
+        data["trailer"]["cases"] = 0
+    elif kind == "universe":
+        data["header"]["test_ids"] = ["other"]
+    elif kind == "oracle":
+        data["trailer"]["oracle_exit_code"] = 1
+    elif kind == "missing_exit":
+        data.update(status="protocol_error", exit_code=None)
+    elif kind == "termination":
+        data.update(status="timeout", termination="exited")
+    else:
+        data.update(status="process_error", termination=None, producer_elapsed={"status": "unavailable", "value": None})
+    with pytest.raises(ValueError):
+        CRoleCapture.model_validate(data)
