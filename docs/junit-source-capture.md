@@ -92,9 +92,10 @@ these terms. The recipe-only policy keeps foreign content in the external cache.
 flowchart LR
     recipe[Pinned Java source recipe] --> raw[Reviewed raw source and dependency cache]
     raw --> views[Deterministic source views]
-    views --> producer[Optional bounded Docker producer]
+    views --> guards[Shared optional container guards]
+    guards --> producer[Optional bounded Docker producer]
     harness[Packaged COLEMAN JUnit3 harness] --> producer
-    producer --> packets[Versioned raw role packets and start markers]
+    producer --> packets[Raw v1 role packets and v2 ownership markers]
     packets --> report[Controlled report plus diagnostic members]
     report --> domain[Existing offline controlled conversion]
     domain --> artifact[Immutable controlled artifact]
@@ -154,7 +155,8 @@ publication failures never certify a completed learning checkpoint. New start
 markers use schema version 2 and persist the original output namespace and exact
 container name. Their name is validated against the logical context/trial/role
 before cleanup. Version 1 markers remain readable and recover using their original
-state-prefix container naming rule; unknown versions reject before cleanup. Raw
+state-prefix container naming rule; unknown versions reject before cleanup. V2
+markers are bounded to 8 KiB and legacy v1 markers retain their 4-KiB bound. Raw
 role packets and controlled datasets retain their existing version 1 contracts.
 
 Successful protocols require the exact discovered test sequence and a final
@@ -197,10 +199,12 @@ functional reproduction only. Chronological benchmark admission, additional
 languages/faults, independent observations, fair baselines and all seven diversity
 regimes remain work in [#261](https://github.com/jacksonpradolima/coleman/issues/261).
 
-Physical container ownership includes the resolved output namespace. Equal logical
+New v2 container ownership includes the resolved output namespace. Equal logical
 trials in separate output roots cannot collide or clean each other's containers;
 observation identities retain their original meaning. Keep incomplete ownership
 state together when moving an output tree: a version 2 marker still identifies
-the original container after relocation. Retain the original reviewed producer
+the original container after relocation. Legacy v1 names retain their global
+context/trial scope; their missing output namespace cannot be inferred
+retroactively. Retain the original reviewed producer
 package when reopening older captures; changing package bytes changes the source
 context and does not automatically discover an older producer's generation.

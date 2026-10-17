@@ -67,7 +67,8 @@ def test_old_missing_future_and_coerced_versions_reject(factory, version):
 )
 def test_completed_case_units_ticks_and_missingness_reject(update, factory):
     record = factory()
+    model = type(record)
     data = record.model_dump(mode="json")
     data["elapsed"].update(update)
     with pytest.raises(ValueError):
-        type(record).model_validate(data)
+        model.model_validate(data)
