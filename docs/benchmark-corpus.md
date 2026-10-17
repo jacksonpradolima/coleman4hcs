@@ -9,11 +9,11 @@ inventory and [licensed source-package materialization](corpus-materialization.m
 The diversified benchmark program remains open.
 
 For the separate source-specific ETL workflows, see [Karaf](lrts-parquet-etl.md),
-[RTPTorrent](rtptorrent-parquet-etl.md) and the published 4.12 [ActiveMQ/Log4j stage
+[RTPTorrent](rtptorrent-parquet-etl.md) and the published 4.13 [ActiveMQ/Log4j stage
 views](lrts-stage-views.md). Those exports preserve their own provenance and
 admission blockers; they do not silently add admitted registrations to this registry.
 
-For controlled Java sources, the published 4.12 wheel includes a separate [CLI/Codec
+For controlled Java sources, the published 4.13 wheel includes a separate [CLI/Codec
 matrix](java-fault-matrix.md) using the existing controlled/JUnit producer.
 Its typed index preserves all selected outcomes and incomplete evidence. It does
 not silently change this registry's admission or diversity coverage.
@@ -25,17 +25,19 @@ Its ASCII error-to-pass pair remains inconclusive under the strict generic
 classifier; the UTF-8 contrast passes in both roles. These share one curated fix
 and do not silently add independent observations or admitted registry entries.
 
-The published 4.12 wheel also adds a [constructed C function slice](c-seeded-source-capture.md)
+The published 4.13 wheel also includes a [constructed C function slice](c-seeded-source-capture.md)
 from NIST Juliet 1.3. Its source/component terms were reviewed before acquisition;
 one original template/function pair and six correlated inputs remain explicitly
 synthetic. SIR permission remains unresolved. This workflow adds no registry
 entry or admitted diversity regime.
 
-The source checkout adds a separate [LibSSH HCS ETL](hcs-parquet-etl.md): original
+The published 4.13 wheel includes a separate [LibSSH HCS ETL](hcs-parquet-etl.md): original
 pipeline/job identities, reversible variant aliases, explicit projected test
 costs and native WTS/VTS checkpointed runs. Sparse/absent cells and source
-exclusions remain visible. The guide builds a checkout wheel; this workflow is
-not part of the published 4.12 package and does not add an admitted registry entry.
+exclusions remain visible. The installed qualification verifies all 208 declared
+cells and 416 native WTS/VTS results against the original CSV/JSON. Six known
+job labels have metadata only; they do not become observed test configurations
+or fabricated native runs. This workflow does not add an admitted registry entry.
 
 The registry contains two small repository-authored MIT-licensed CI fixtures and
 an inventory of ten existing public example Parquet artifacts. Historical sources
@@ -51,7 +53,7 @@ follows from passing these checks.
 
 ## Installed commands
 
-Install the wheel attached to [COLEMAN 4.12](https://github.com/jacksonpradolima/coleman/releases/tag/v4.12.0)
+Install the wheel attached to [COLEMAN 4.13](https://github.com/jacksonpradolima/coleman/releases/tag/v4.13.0)
 in a Python 3.14+ environment, or build a development wheel from the reviewed source.
 Copy examples to a directory outside the checkout. Once installed, these local
 operations need no optional dependency, provider subscription, credential or

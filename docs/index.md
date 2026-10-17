@@ -20,6 +20,17 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
+## New in 4.13
+
+[Follow original LibSSH CI data through WTS/VTS Parquet and native replay](hcs-parquet-etl.md)
+with the published wheel. Inspect all 208 sparse cells across thirteen known
+job labels, including six without parsed tests. The qualification independently
+checks 416 native result rows against the original CSV/JSON and verifies offline
+continuation. Exact budget namespaces and result/checkpoint ownership preserve
+committed results during interrupted runs. Missing evidence remains explicit;
+source reproduction does not grant scientific admission or policy superiority.
+See the [4.13 release notes](releases/4.13.0.md) for compatibility and limits.
+
 ## New in 4.12
 
 [Inspect a constructed C weakness](c-seeded-source-capture.md) with the published
@@ -109,7 +120,7 @@ The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures a
 visible source-admission gaps; all seven diversity regimes remain uncovered.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
-correctness checks. See the [4.12 release notes](releases/4.12.0.md) for examples,
+correctness checks. See the [4.13 release notes](releases/4.13.0.md) for examples,
 compatibility and limits.
 
 ## Quick Start
@@ -118,7 +129,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.12.0/coleman-4.12.0-py3-none-any.whl#sha256=5802f83dfa4608a979f132e6e00ea3d8a128c88f4b7bbde07afcd416c33df55e"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.13.0/coleman-4.13.0-py3-none-any.whl#sha256=bbe2f3cf8954fc27fc8f5a44e3713519aa30bcf2cfdd2aad140f4bcc1ae45abc"
 coleman run --config my-experiment.yaml
 ```
 

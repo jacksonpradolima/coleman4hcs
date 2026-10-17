@@ -5,19 +5,17 @@ and **Variant Test Set (VTS)** evaluation. Preserve pipeline/job identity, inspe
 sparse configurations, compare their native result denominators and resume both
 strategies through COLEMAN's existing runner and checkpoints.
 
-This workflow is new in the source checkout; the published **4.12 wheel does not
-contain it**. Build this checkout's wheel for the commands below. Other workflows
-continue to use their documented published packages. Source integrity and a
-successful replay do not establish scientific admission or a winning policy.
+The published **4.13 wheel** includes this workflow. Install it outside the
+repository and supply the two reviewed original files below. Source integrity
+and a successful replay do not establish scientific admission or a winning policy.
 
-## Install the checkout's wheel outside the repository
+## Install the published wheel outside the repository
 
-With Python 3.14+ and uv available, run from the checkout:
+With Python 3.14+ and uv available:
 
 ```bash
-uv build --wheel --out-dir /tmp/coleman-hcs-dist
 uv venv /tmp/coleman-hcs-env --python 3.14
-uv pip install --python /tmp/coleman-hcs-env/bin/python /tmp/coleman-hcs-dist/coleman-*.whl
+uv pip install --python /tmp/coleman-hcs-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.13.0/coleman-4.13.0-py3-none-any.whl#sha256=bbe2f3cf8954fc27fc8f5a44e3713519aa30bcf2cfdd2aad140f4bcc1ae45abc"
 mkdir -p /tmp/coleman-hcs-downloads
 cd /tmp/coleman-hcs-downloads
 ```
