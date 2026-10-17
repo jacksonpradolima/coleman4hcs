@@ -519,25 +519,52 @@ def test_validation_enforces_plan_receipt_and_dataset_budgets(tmp_path, monkeypa
         ("coleman.corpus", "registry.py"),
         ("coleman.corpus", "contracts.py"),
         ("coleman.corpus", "resources/registry-v1.json"),
+        ("coleman.corpus", "zip_metadata.py"),
+        ("coleman.evaluation.protected", "temporal.py"),
     ],
 )
 def test_changing_reused_producer_dependency_changes_matrix_generation(tmp_path, monkeypatch, package, module):
     before = matrix.junit_matrix_producer()
     original = matrix.files
+    target = package.replace(".", "/") + "/" + module
 
-    def altered_files(namespace):
-        def item(name):
-            payload = original(namespace).joinpath(name).read_bytes()
-            if (namespace, name) == (package, module):
+    def altered_resource(resource, path):
+        def read_bytes():
+            payload = resource.read_bytes()
+            if path == target:
                 payload += b"\n# Owned provenance metamorphism\n"
-            return SimpleNamespace(read_bytes=lambda: payload)
+            return payload
 
-        return SimpleNamespace(joinpath=item)
+        return SimpleNamespace(
+            name=resource.name,
+            is_dir=resource.is_dir,
+            is_file=resource.is_file,
+            read_bytes=read_bytes,
+            iterdir=lambda: (altered_resource(child, path + "/" + child.name) for child in resource.iterdir()),
+        )
 
-    monkeypatch.setattr(matrix, "files", altered_files)
+    monkeypatch.setattr(matrix, "files", lambda namespace: altered_resource(original(namespace), namespace))
     after = matrix.junit_matrix_producer()
     assert after != before
     assert matrix._generation(owned_plan(), tmp_path, after) != matrix._generation(owned_plan(), tmp_path, before)
+
+
+def test_new_package_resources_change_identity_but_installation_caches_do_not(tmp_path, monkeypatch):
+    (tmp_path / "owned.py").write_bytes(b"# Owned package fixture\n")
+    monkeypatch.setattr(matrix, "files", lambda namespace: tmp_path)
+    before = matrix.junit_matrix_producer()
+    resources = tmp_path / "resources"
+    resources.mkdir()
+    (resources / "future-format.bin").write_bytes(b"owned future resource")
+    after = matrix.junit_matrix_producer()
+    assert after != before
+    (tmp_path / "owned.pyc").write_bytes(b"incidental bytecode")
+    (tmp_path / "owned.pyo").write_bytes(b"incidental optimized bytecode")
+    (tmp_path / ".installation-state").write_bytes(b"incidental hidden file")
+    cache = tmp_path / "__pycache__"
+    cache.mkdir()
+    (cache / "owned.cpython.pyc").write_bytes(b"incidental interpreter cache")
+    assert matrix.junit_matrix_producer() == after
 
 
 @pytest.mark.parametrize("alias", ["parent", "symlink"])
