@@ -43,6 +43,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/finite-coverage.md
 - docs/getting-started.md
 - docs/index.md
+- docs/java-fault-matrix.md
 - docs/junit-source-capture.md
 - docs/lrts-parquet-etl.md
 - docs/lrts-stage-views.md
@@ -55,6 +56,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/releases/3.6.1.md
 - docs/releases/4.0.0.md
 - docs/releases/4.1.0.md
+- docs/releases/4.10.0.md
 - docs/releases/4.2.0.md
 - docs/releases/4.3.0.md
 - docs/releases/4.4.0.md
@@ -742,7 +744,7 @@ controlled reproductions and empirical benchmark corpora have different roles:
 | **Druid and Retrofit** | Bundled native/contextual Parquet examples, native runner and [descriptive profiles](docs/benchmark-corpus.md#local-profiles-and-the-first-diversity-matrix-44) | Runnable legacy experiments. Source terms, duration units and outcome availability still need corpus admission evidence. |
 | **Dune and its variants** | Bundled native Parquet, WTS/VTS workflows and [variant-aware inventory](docs/benchmark-corpus.md) | Runnable HCS examples. Variants/context files may share executions; broad HCS benchmark admission remains unfinished. |
 | **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | Available in 4.8: 46,995 class executions / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |
-| **Apache Commons CLI-13 buggy/fixed pair** | [Pinned source producer](docs/junit-source-capture.md), common 95-test fixture per revision and recoverable raw observations | One controlled Java pair; bundled recipe requires Docker/arm64. Independent of historical CI chronology; full Defects4J integration remains planned. |
+| **Controlled Java real-fault sources** | Published [CLI-13 producer](docs/junit-source-capture.md); this revision adds a [three-fix CLI/Codec matrix](docs/java-fault-matrix.md) with typed indices and offline recovery | Two codebases, explicit common fixtures, 357 same-test pairs in the initial qualification. Docker/arm64; negative and inconclusive results remain visible. Controlled evidence, not historical CI or full Defects4J reconstruction. |
 | **Owned CI correctness fixtures** | Two tiny [serial/parallel corpus fixtures](docs/benchmark-corpus.md), validation and native integration examples | Available without network. One constructed family for contract/metric checks; no independent-project diversity. |
 | **Coverage and scenario-allocation microbenchmarks** | [Correctness and performance profiles](docs/decision-benchmarks.md), independent exhaustive references and JSON/Markdown reports | Runnable finite-model benchmarks with runtime/memory observations; separate from empirical CI-policy comparisons. |
 | **Pilot, resource and shadow examples** | [Operational accounting](docs/operational-pilot.md), [resource replay](docs/resource-replay.md) and [shadow recovery](docs/prospective-shadow.md) | Runnable synthetic demonstrations of accounting/recovery. Collected prospective evidence remains insufficient. |
@@ -1921,6 +1923,11 @@ For the separate source-specific ETL workflows, see [Karaf](lrts-parquet-etl.md)
 [RTPTorrent](rtptorrent-parquet-etl.md) and the published 4.9 [ActiveMQ/Log4j stage
 views](lrts-stage-views.md). Those exports preserve their own provenance and
 admission blockers; they do not silently add admitted registrations to this registry.
+
+For controlled Java sources, this revision adds a separate [CLI/Codec
+matrix](java-fault-matrix.md) using the existing controlled/JUnit producer.
+Its typed index preserves all selected outcomes and incomplete evidence. It does
+not silently change this registry's admission or diversity coverage.
 
 The registry contains two small repository-authored MIT-licensed CI fixtures and
 an inventory of ten existing public example Parquet artifacts. Historical sources
@@ -5730,6 +5737,12 @@ remain explicit blockers. The workflow is a post-hoc serial simulation, and
 broader corpus admission and confirmation remain open.
 See the [4.9 release notes](releases/4.9.0.md).
 
+This revision also adds a [controlled Java fault matrix](java-fault-matrix.md):
+three curated upstream fixes across CLI and Codec, raw/source validation and
+offline recovery. Its guide builds this revision's wheel. The initial 357
+same-test pairs retain both-fail and inconclusive results; this controlled layer
+does not establish historical CI chronology, independence or policy efficacy.
+
 ## Existing real-data workflows
 
 [Turn real RTPTorrent CI history into Parquet and native TCPCI replays](rtptorrent-parquet-etl.md).
@@ -5794,6 +5807,251 @@ For advanced customization and parallel extension contracts, see
 
 
 
+### FILE: docs/java-fault-matrix.md
+
+# Run a controlled Java fault matrix
+
+Collect three curated upstream fixes across Apache Commons CLI and Codec with
+one frozen plan. Each cell runs buggy and fixed source against the same declared
+fixed-tree fixture, retaining every observed pass, failure, test error and
+incomplete collection. This is controlled functional evidence for TCPCI research;
+it is separate from historical CI and policy comparisons.
+
+This revision adds the matrix transport. Build its wheel below; the published
+4.9 wheel contains the existing single-pair producer, not the new matrix command.
+The matrix reuses that producer and the generic [controlled-observation
+domain](controlled-faults.md). It does not introduce a learning runner or change
+existing source recipes, results, checkpoints or raw-capture semantics.
+
+## Install and collect outside checkout
+
+Use Python 3.14+, uv, POSIX and a native Linux arm64 Docker engine. These frozen
+recipes pin Temurin `11.0.32.1`, the arm64 image digest and
+`America/Los_Angeles`. A different architecture needs a separately reviewed
+recipe; changing its label does not validate another runtime.
+
+Build from this revision, then install into a fresh external environment:
+
+```bash
+uv build --wheel --out-dir /tmp/coleman-matrix-dist
+uv venv /tmp/coleman-matrix-env --python 3.14
+uv pip install --python /tmp/coleman-matrix-env/bin/python /tmp/coleman-matrix-dist/*.whl
+
+# Explicit operator preparation; COLEMAN never pulls an image.
+docker pull --platform linux/arm64 eclipse-temurin@sha256:e4b3ff0f1a427efb2deb02b092ff8316d58573480260720d767d6ecdd69999d8
+
+mkdir -p /tmp/coleman-matrix-workspace
+cd /tmp/coleman-matrix-workspace
+/tmp/coleman-matrix-env/bin/python -m coleman.transports.junit_matrix \
+  --cache /tmp/coleman-java-source-cache \
+  --output /tmp/coleman-java-observations --fetch > matrix-summary.json
+
+# Same plan/trials: validate committed evidence rather than collect it again.
+/tmp/coleman-matrix-env/bin/python -m coleman.transports.junit_matrix \
+  --cache /tmp/coleman-java-source-cache \
+  --output /tmp/coleman-java-observations
+```
+
+Only the first acquisition needs `--fetch`; it permits the existing individually
+pinned HTTPS source/JAR downloads. Subject execution has no network. Both cache
+and output must be outside Git and separate from each other. The system temporary
+directory must also be outside Git. No third-party source or raw capture is bundled.
+
+The JSON summary reports the content-addressed receipt, optional completion path,
+collection status, two declared project labels and three curated focal-fix labels.
+Exit 0 means collection completed, including negative outcomes. Incomplete source
+captures publish an index with `completion: null` and exit 2. Infrastructure,
+preflight and publication errors exit nonzero and retain earlier durable evidence.
+None of these statuses grants scientific admission.
+
+Validate a saved index without Docker or source execution:
+
+```bash
+MATRIX_RECEIPT="$(/tmp/coleman-matrix-env/bin/python -c 'import json; print(json.load(open("matrix-summary.json"))["receipt"])')"
+/tmp/coleman-matrix-env/bin/python -m coleman.transports.junit_matrix \
+  --validate "$MATRIX_RECEIPT" \
+  --cache /tmp/coleman-java-source-cache \
+  --output /tmp/coleman-java-observations
+```
+
+Offline integrity validation can republish identical source-view cache metadata.
+It verifies actual source members, context, raw protocol packets and normalized
+observations; it starts no process and fetches nothing. Integrity is correspondence,
+not authentication of execution truth or benchmark efficacy.
+
+## Frozen source selection
+
+| Curated fix | Direct upstream revisions | Common fixture | Relationship to framework metadata |
+| --- | --- | --- | --- |
+| CLI-13 | `8f46f467a33ace44ccd9f394910940b6c48a3827` → `b0e1b80b6d4a10a9c9f46539bc4c7a3cce55886e` | Existing published 95-test recipe, unchanged | Defects4J Cli **1**, not Cli13 |
+| CLI-51 | `b0e1b80b6d4a10a9c9f46539bc4c7a3cce55886e` → `2ff9573ffb08dd52ec3a55a49f2d77a1e94efbdf` | Same fixed-tree policy, 96 tests | Defects4J Cli2 |
+| CODEC-65 | `9c0cabead7cf075308b11362172ae1a48d41321c` → `52d82d1dfff8c2b2ded9d843e0b03017af6d747c` | Explicit partial fixed-tree fixture, 166 tests | Defects4J Codec1 |
+
+The [CLI-51 fix](https://github.com/apache/commons-cli/commit/2ff9573ffb08dd52ec3a55a49f2d77a1e94efbdf)
+changes PosixParser and adds BugCLI51Test. The [CODEC-65
+fix](https://github.com/apache/commons-codec/commit/52d82d1dfff8c2b2ded9d843e0b03017af6d747c)
+changes locale handling in several encoders. These are direct parent/fix source
+reproductions with a common fixed fixture, not a full Defects4J reconstruction.
+Framework subject labels do not replace source rights or reconstruction evidence.
+Those labels were checked against the pinned Defects4J metadata revision
+`8c16da8230843cdc918eaf4ddb449637f02b83c6` for
+[Cli](https://github.com/rjust/defects4j/blob/8c16da8230843cdc918eaf4ddb449637f02b83c6/framework/projects/Cli/active-bugs.csv)
+and [Codec](https://github.com/rjust/defects4j/blob/8c16da8230843cdc918eaf4ddb449637f02b83c6/framework/projects/Codec/active-bugs.csv).
+
+Codec retains all 25 production Java files per role, 15 fixed fixture Java files,
+and original `LICENSE.txt`/`NOTICE.txt`. Fixture selection was recorded in
+[#304](https://github.com/jacksonpradolima/coleman/issues/304) **before observing
+new source outcomes**:
+
+- `DoubleMetaphoneTest.java` embeds separately noticed aspell data and non-UTF8
+  bytes. It is outside the existing homogeneous-terms/UTF8 source-view profile.
+- `SoundexTest.java` also contains non-UTF8 bytes and is excluded without transcoding.
+- `AllTests.java` references those excluded classes and is excluded as their suite
+  aggregator. Per-TestCase discovery does not require it.
+
+All other fixed-tree Java fixture files remain. This includes
+`RefinedSoundexTest.java`, a different file. Missing focal-class coverage stays
+visible; this is not the complete upstream suite. No outcome-based filtering is
+applied after collection.
+
+Source views preserve exact bytes and original notices. Apache-2.0 subject terms,
+Commons Lang 2.1 terms and JUnit 3.8.1 CPL-1.0 terms remain separately reviewed and
+pinned. The [Codec NOTICE](https://github.com/apache/commons-codec/blob/52d82d1dfff8c2b2ded9d843e0b03017af6d747c/NOTICE.txt)
+identifies the omitted third-party test data; COLEMAN does not relabel it as
+Apache-2.0. Codec needs only the pinned JUnit JAR; CLI retains its original two
+dependencies. The recipe-only policy keeps foreign content in the external cache.
+
+## Observed results and their limits
+
+The initial installed-producer qualification collected **714 role observations**,
+or **357 same-test/trial pairs**, under the frozen runtime:
+
+| Fix | Both pass | Both fail | Assertion failed → passed | Reversed | Inconclusive |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| CLI-13 | 92 | 2 | 1 | 0 | 0 |
+| CLI-51 | 93 | 2 | 0 | 0 | 1 |
+| CODEC-65 | 163 | 0 | 3 | 0 | 0 |
+
+CLI-51's focal buggy test raises `UnrecognizedOptionException`; the fixed role
+passes. The existing strict classifier calls this **inconclusive**, because a
+test error is distinct from an assertion failure. The matrix preserves that
+classification and raw diagnostic. Both CLI fixtures retain the two assertions
+that fail in both revisions. A fixed revision is not presented as wholly correct.
+
+The three Codec assertions belong to Caverphone, Metaphone and RefinedSoundex
+`testLocaleIndependence` methods. They concern **one** curated fix. The two CLI
+fixes share project history. Tests, trials, seeds and JVM repetitions do not become
+independent projects or new faults. These observations are runtime/fixture-specific,
+not a guarantee about every future run.
+
+Each role uses the existing shared JVM and lexical test-ID order. Test-order
+independence is unverified. Integer case nanoseconds include setup/teardown; parent
+process nanoseconds also include startup/compilation. Observed zero remains zero;
+unavailable elapsed values are null with `status: unavailable`. Negative counts,
+negative elapsed counters, non-finite values and incompatible units reject. Neither
+timer is CI queue time, parallel elapsed time, peak memory or removable runner work.
+The existing guards bound each role to 60 seconds, 1 MiB combined output, two CPUs,
+64 PIDs, 128 MiB tmpfs and 1 GiB memory in these presets. A resource limit is not
+a measured peak. Captures are trusted-source reproductions within those guards.
+
+## Contract, artifacts and recovery
+
+```mermaid
+flowchart LR
+    plan[Frozen typed Java matrix plan] --> preflight[Matrix storage and all-cell budget preflight]
+    preflight --> frozen[Immutable plan.json before source execution]
+    frozen --> source[Existing source cache and deterministic views]
+    source --> capture[Existing bounded JUnit producer]
+    capture --> raw[Durable role start markers and raw packets]
+    raw --> controlled[Existing generic ControlledDataset]
+    controlled --> verify[Offline context and raw observation validation]
+    verify --> index[Content-addressed typed matrix index]
+    index --> state{All roles collected?}
+    state -->|yes| complete[Atomic immutable complete.json last]
+    state -->|no| incomplete[Incomplete index; no completion marker]
+    complete --> replay[Offline verified replay; no runtime preflight]
+```
+
+Plans require schema version 1 and allow at most 16 cells / 4 MiB. Receipts require
+schema version 1 and are bounded to 8 MiB. Canonical JSON and SHA-256 identities
+include explicit source recipes, trial IDs, selection protocol and implementation
+provenance. Reordering declared cells/roles does not change identity. Different
+collected clocks or observations legitimately change a receipt; determinism means
+identical captured evidence serializes identically, not that new executions have
+identical elapsed time.
+
+Duplicate cell IDs and duplicate recipe/trial collections reject. Counts refer to
+observed same-test pairs; `unobserved_pairs` preserves completely absent tests.
+One-sided evidence remains inconclusive. The index references separately verified
+controlled dataset fingerprints and actual raw packet digests, never arbitrary
+transport dictionaries. It does not convert controlled observations into native
+CI duration columns or historical builds.
+
+The original source producer owns role recovery. A start marker without a committed
+packet recovers as interrupted, with no invented cases or elapsed time. It does
+not silently rerun that role. Choose a new trial ID for a new collection; it stays
+in the same declared dependence group. Concurrent ownership conflicts reject
+without duplicate execution; retry after the owner finishes. A crash before matrix
+completion leaves the frozen `plan.json` and committed role/data artifacts usable
+for recovery. Unattempted cells remain visible in that plan without invented results.
+An incomplete index is retained without `complete.json`; an all-role collected
+index acquires that marker only after validation and immutable index publication.
+
+Idempotence uses the retained output/capture tree. A fresh output directory does
+not restore another directory's acknowledgments; use new trial IDs for a fresh
+physical collection. Copying an index alone is insufficient: offline validation
+also needs its controlled datasets and the independently verified source cache.
+
+Existing completion is revalidated before any runtime preflight. Corrupt/unknown
+schema or producer versions reject. Missing and older matrix schema versions are
+unsupported; there is no implicit migration. A changed matrix implementation or
+package version selects a new generation, preserving previous bytes. Explicit
+offline validation requires the matching reviewed producer. Existing single-pair
+JUnit recipes, source caches, controlled artifacts, native results and learning
+checkpoints keep their previous contracts and require no migration.
+
+## Python and verification
+
+The optional producer API is also callable without its command-line parser:
+
+```python
+from pathlib import Path
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus.materialization import SourceCache
+from coleman.transports.junit_matrix import (
+    capture_junit_matrix, load_junit_matrix, validate_junit_matrix,
+)
+
+cache = SourceCache("/tmp/coleman-java-source-cache")
+writer = ArtifactWriter("/tmp/coleman-java-observations")
+plan = load_junit_matrix()
+outcome = capture_junit_matrix(plan, cache, writer)  # Offline acquisition by default.
+validate_junit_matrix(outcome.receipt, cache, Path(writer.run_root))
+assert outcome.receipt.admission == "not_evaluated"
+```
+
+Use `--recipe /absolute/path/matrix.json` for another reviewed typed plan. The
+generic controlled domain stays independent of CLI, Docker transports and MCP.
+Protected source admission and policy evaluation remain later #261 subtasks.
+
+Normal tests use owned small fixtures with no downloads. With the image prepared
+and all three recipes acquired into an external cache, repeat installed real-source
+capture, offline matrix validation, import-boundary checks and an independent owned
+native CI/checkpoint workflow:
+
+```bash
+COLEMAN_JUNIT_REAL_CACHE=/tmp/coleman-java-source-cache \
+  uv run pytest tests/corpus/test_installed_junit_matrix.py --no-cov
+```
+
+The native CI fixture has its own exact-answer costs and outcomes; Java harness
+elapsed counters are not substituted for CI costs. Actual historical-CI ETL/replay
+remains available in the [Karaf](lrts-parquet-etl.md),
+[ActiveMQ/Log4j](lrts-stage-views.md) and
+[RTPTorrent](rtptorrent-parquet-etl.md) workflows.
+
+
+
 ### FILE: docs/junit-source-capture.md
 
 # Reproduce a pinned Java fault pair
@@ -5809,10 +6067,16 @@ container images and raw captures remain outside the repository. It does not
 execute Defects4J or claim its complete reconstruction protocol. The generic
 [controlled domain](controlled-faults.md) imports no Docker, CLI or MCP adapter.
 
+For a predeclared multi-fix workflow, this revision adds a separate
+[controlled Java matrix](java-fault-matrix.md), reusing this producer unchanged.
+It includes CLI-13, CLI-51 and an explicitly partial CODEC-65 fixture, with
+negative/inconclusive results retained.
+
 ## Prepare and run
 
-Build and install this branch's wheel as shown in the controlled-observation guide.
-The released 4.5 wheel predates this producer. The bundled preset requires POSIX,
+The published 4.9 wheel includes this single-pair producer; use the verified
+[setup command](setup.md#default-run-no-docker-required). Build this revision's
+wheel for the new matrix command. The bundled preset requires POSIX,
 Docker, an arm64 host and arm64 Docker engine. It pins Temurin `11.0.32.1` and
 `America/Los_Angeles`. Other platforms require a separately reviewed recipe;
 changing a platform label does not validate a different image.
@@ -8079,6 +8343,70 @@ remain work in the [public roadmap](https://jacksonpradolima.github.io/coleman/r
 
 
 
+### FILE: docs/releases/4.10.0.md
+
+# COLEMAN 4.10 — Inspect controlled faults across Java codebases
+
+Reproduce a small, explicit matrix of real upstream fixes before making a
+benchmark claim. COLEMAN now collects CLI-13, CLI-51 and CODEC-65 with frozen
+sources, common test fixtures and the existing bounded JUnit producer. Every
+selected result remains inspectable, including errors and failures that persist
+in both revisions.
+
+## What you can do
+
+- **Collect a declared matrix.** One typed plan describes three focal fixes across
+  Apache Commons CLI and Codec. Pinned source views, original notices, JARs,
+  runtime image, architecture, timezone and harness make the protocol explicit.
+- **Keep negative evidence.** The initial qualification retained 714 role
+  observations / 357 same-test pairs: 348 both-pass, four both-fail, four
+  assertion-failed-to-passed and one inconclusive comparison. CLI-51's test error
+  remains inconclusive under the existing classifier. Three Codec triggering
+  tests do not become three faults.
+- **Resume without inventing observations.** Existing role acknowledgments and
+  raw packets retain interruption semantics. Typed indices distinguish observed
+  pairs from entirely unobserved tests; incomplete collection has no completion
+  marker. A verified completed matrix reopens offline without querying Docker.
+- **Verify the evidence behind the index.** Offline validation checks actual
+  source/context bytes, raw protocols, normalized observations and diagnostic
+  references before accepting counts, identities or collection status.
+
+The [complete matrix guide](https://jacksonpradolima.github.io/coleman/java-fault-matrix/)
+provides installation, explicit runtime preparation, source acquisition, typed
+Python use, CLI collection/validation, recovery and the installed-package workflow.
+Foreign sources, dependencies and captures stay in operator-owned external storage.
+
+## Compatibility and limits
+
+The new optional transport adds versioned matrix plans/indices while reusing the
+existing generic controlled domain, source cache, JUnit producer and immutable
+artifact writer. Old single-pair recipes, controlled artifacts, native results,
+RunSpec identities and learning checkpoints retain their semantics and require
+no migration. Unknown matrix schemas or producers reject; there is no implicit
+reinterpretation of prior evidence.
+
+Codec's common fixture is explicitly partial. Before outcomes were observed,
+three fixture files were excluded because of separately noticed third-party data,
+non-UTF8 source bytes or dependencies on excluded classes. Remaining source bytes
+and original LICENSE/NOTICE are preserved. This is direct-upstream reproduction,
+not the complete original build or a full Defects4J reconstruction.
+
+The CLI fixes share project history. Multiple tests, seeds or trials do not
+establish independent projects or unique faults. Collection clocks and harness
+nanoseconds are not historical CI events, runner work or parallel wall-clock
+savings. Shared-JVM test-order independence remains unverified. All outputs retain
+`not_evaluated` and `insufficient_evidence`; diversified source admission, baseline
+comparisons and confirmation in #261 remain open.
+
+Validation covers versioned goldens, old recipes, strict units/missingness,
+non-finite rejection, deterministic identities, duplicate accounting, negative
+results, source/raw/index correspondence, interrupted publication, concurrency,
+offline continuation and domain import boundaries. Installed-package checks use
+actual Java source collection and a separate native CI exact-answer/checkpoint
+workflow. This validates the evidence pipeline, not algorithm effectiveness.
+
+
+
 ### FILE: docs/releases/4.2.0.md
 
 # COLEMAN 4.2 — Reproduce what your CI decision knew
@@ -9317,6 +9645,14 @@ and checkpoint continuation. Remaining source admission, diversity and
 confirmatory work continues through the public subtasks. #303's new profiles
 preserve all raw/processed stages and use exact context/node bindings, while
 retaining explicit missing temporal evidence. Remaining expansion begins with #304.
+
+This revision implements #304's [bounded Java fault matrix](java-fault-matrix.md)
+on the existing source producer: CLI-13, CLI-51 and an explicitly partial CODEC-65
+fixture. Typed plans, raw/context verification, honest incomplete indices and
+offline recovery preserve all negative outcomes. Source qualification collected
+714 role observations / 357 same-test pairs across two codebases. Controlled
+source collection remains separate from admission and policy comparison in #309
+onward; the remaining source subtasks follow sequentially.
 
 **4.9.0** publishes the stage-view contracts and three frozen presets: ActiveMQ,
 Log4j Ubuntu and Log4j Windows. All raw observations/processed stages remain

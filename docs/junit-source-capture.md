@@ -11,10 +11,16 @@ container images and raw captures remain outside the repository. It does not
 execute Defects4J or claim its complete reconstruction protocol. The generic
 [controlled domain](controlled-faults.md) imports no Docker, CLI or MCP adapter.
 
+For a predeclared multi-fix workflow, this revision adds a separate
+[controlled Java matrix](java-fault-matrix.md), reusing this producer unchanged.
+It includes CLI-13, CLI-51 and an explicitly partial CODEC-65 fixture, with
+negative/inconclusive results retained.
+
 ## Prepare and run
 
-Build and install this branch's wheel as shown in the controlled-observation guide.
-The released 4.5 wheel predates this producer. The bundled preset requires POSIX,
+The published 4.9 wheel includes this single-pair producer; use the verified
+[setup command](setup.md#default-run-no-docker-required). Build this revision's
+wheel for the new matrix command. The bundled preset requires POSIX,
 Docker, an arm64 host and arm64 Docker engine. It pins Temurin `11.0.32.1` and
 `America/Los_Angeles`. Other platforms require a separately reviewed recipe;
 changing a platform label does not validate a different image.
