@@ -213,3 +213,10 @@ def test_published_legacy_v1_receipt_stays_readable_and_validates_original_artif
     validate_lrts_etl(receipt, cache, path.parent)
     with pytest.raises(ValueError):
         LRTSStageRecipe.from_json(recipe.to_json())
+
+
+def test_dataset_alias_uses_artifact_path_contract_before_acquisition(tmp_path):
+    recipe, _, _ = stage_recipe()
+    with pytest.raises(ValueError, match="canonical relative path"):
+        changed(recipe, dataset_id="owned.")
+    assert not list(tmp_path.iterdir())

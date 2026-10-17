@@ -8,6 +8,7 @@ from pydantic import Field, model_validator
 
 from coleman.corpus.lrts_contracts import Label, Name, Positive
 from coleman.corpus.lrts_etl_contracts import Count, ETLFile, ETLMetadataAccounting, LRTSETLRecipe
+from coleman.corpus.materialization_contracts import safe_member_name
 from coleman.results.domain import Fingerprint, canonical_json
 from coleman.results.versioned import VersionedContract
 from coleman.selection.contracts import Immutable
@@ -59,6 +60,7 @@ class LRTSStageRecipe(VersionedContract):
     @model_validator(mode="after")
     def _bindings(self) -> Self:
         """Require complete declared build coverage and unambiguous stage/context/node mappings."""
+        safe_member_name(self.dataset_id)
         self.source.require_native_feedback()
         builds = {(b.pull_request, b.build_id) for b in self.source.builds}
         groups: dict[tuple[str, int], list[LRTSStageBinding]] = {}
