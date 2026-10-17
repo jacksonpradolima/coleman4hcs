@@ -19,7 +19,7 @@ MCP SDK is needed for this workflow; the URL pins the actual wheel SHA-256:
 
 ```bash
 uv venv /tmp/coleman-rtptorrent-env --python 3.14
-uv pip install --python /tmp/coleman-rtptorrent-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.12.0/coleman-4.12.0-py3-none-any.whl#sha256=5802f83dfa4608a979f132e6e00ea3d8a128c88f4b7bbde07afcd416c33df55e"
+uv pip install --python /tmp/coleman-rtptorrent-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.13.0/coleman-4.13.0-py3-none-any.whl#sha256=bbe2f3cf8954fc27fc8f5a44e3713519aa30bcf2cfdd2aad140f4bcc1ae45abc"
 mkdir -p /tmp/coleman-rtptorrent-workspace
 cd /tmp/coleman-rtptorrent-workspace
 ```
@@ -217,7 +217,7 @@ It downloads no foreign dataset:
 ```bash
 cd /tmp/coleman-rtptorrent-workspace
 curl --fail --location --output owned-ci.py \
-  https://raw.githubusercontent.com/jacksonpradolima/coleman/v4.12.0/examples/rtptorrent-parquet/ci.py
+  https://raw.githubusercontent.com/jacksonpradolima/coleman/v4.13.0/examples/rtptorrent-parquet/ci.py
 /tmp/coleman-rtptorrent-env/bin/python -c 'import hashlib, sys; from pathlib import Path; sys.exit(0 if hashlib.sha256(Path("owned-ci.py").read_bytes()).hexdigest() == "9b7c8dec20124cefe975d99a2c794a838e791000d3a7cc3046cbcbfaa5c4fd04" else "Example SHA-256 mismatch")'
 /tmp/coleman-rtptorrent-env/bin/python owned-ci.py owned /tmp/coleman-rtptorrent-owned-cache
 /tmp/coleman-rtptorrent-env/bin/python owned-ci.py owned /tmp/coleman-rtptorrent-owned-cache

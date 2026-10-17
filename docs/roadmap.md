@@ -63,15 +63,19 @@ The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
 #305's [controlled Python producer](python-source-capture.md) shipped in 4.11 through
 [#322](https://github.com/jacksonpradolima/coleman/pull/322). #306's
 [constructed C source slice](c-seeded-source-capture.md) shipped in 4.12 through
-[#324](https://github.com/jacksonpradolima/coleman/pull/324). Six of the thirteen
-public subtasks are delivered. #307–#313 track the remaining work, starting with
-HCS expansion in #307. Source conversion does not establish admission.
+[#324](https://github.com/jacksonpradolima/coleman/pull/324). #307's
+[LibSSH HCS workflow](hcs-parquet-etl.md) shipped in 4.13 through
+[#326](https://github.com/jacksonpradolima/coleman/pull/326). Seven of the thirteen
+public subtasks are delivered. #308–#313 remain open; the deterministic
+interaction-covering stress laboratory in #308 is next. Source conversion does
+not establish admission.
 
-The source checkout's [LibSSH HCS workflow](hcs-parquet-etl.md) implements the next
-bounded slice: raw pipeline/job correspondence, WTS/VTS Parquet, sparse cell
-accounting and isolated multi-budget checkpoints. Its declared cost projection
-preserves original decimal observations. Review/publication of #307 precedes
-starting #308; admission and comparisons remain later gates.
+The published HCS workflow preserves raw pipeline/job correspondence, WTS/VTS
+Parquet, all 208 sparse cells and isolated multi-budget checkpoints. Its declared
+cost projection preserves original decimal observations. Installed validation
+checks 416 native rows independently against original source bytes; six
+metadata-only labels remain absent evidence. Admission and comparisons remain
+later gates.
 
 | Stage | Subtasks | Dependency |
 | --- | --- | --- |
@@ -80,7 +84,8 @@ starting #308; admission and comparisons remain later gates.
 | Java source matrix — delivered in 4.10 | [#304 controlled CLI/Codec faults](https://github.com/jacksonpradolima/coleman/issues/304) | Existing JUnit producer; admission remains separate |
 | Python source — delivered in 4.11 | [#305 non-Java fault reproduction](https://github.com/jacksonpradolima/coleman/issues/305) | Existing generic controlled observations; one fix, two correlated locale contexts |
 | Seeded C source — delivered in 4.12 | [#306 permitted Juliet slice](https://github.com/jacksonpradolima/coleman/issues/306) | One synthetic template/function pair; six correlated inputs, no empirical admission |
-| Other source expansion | [#307 HCS](https://github.com/jacksonpradolima/coleman/issues/307), [#308 stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main |
+| HCS source — delivered in 4.13 | [#307 LibSSH WTS/VTS and variant accounting](https://github.com/jacksonpradolima/coleman/issues/307) | Original pipeline/job identities; 13 known labels, seven with parsed tests; temporal admission remains blocked |
+| Synthetic laboratory — next | [#308 interaction-covering stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main; preserve tiny oracle/resource bounds and explicit synthetic dependence |
 | Evidence integration | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | #302–#308 |
 | Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
 | Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
@@ -137,6 +142,19 @@ ownership retain cleanup after output relocation; an actual published 4.11 v1
 marker was also checked without rewriting its bytes. Existing generic datasets
 and native learning checkpoints keep their contracts. This source delivery does
 not admit a new empirical diversity regime or complete #261.
+
+**4.13.0** publishes #307's [original-data HCS workflow](hcs-parquet-etl.md).
+The frozen sixteen-pipeline slice retains 856 test executions, explicitly excludes
+29 other-attempt records and preserves 208 cells across thirteen known job labels.
+Seven labels have parsed tests; six remain metadata-only, without inferred test
+semantics or fabricated native executions. Independent original-byte checks
+validate all cells and 240 WTS / 176 VTS result rows. Native checkpoint scopes
+separate exact budgets, reject ambiguous nested legacy paths and verify result
+ownership before reconciling uncommitted tails. The actual signed published wheel
+retains the previous source workflows and resumes completed published-4.12
+single-budget results without changing their bytes; ownership metadata adoption
+is explicit. This is a post-hoc test-only simulation, not protected admission or
+evidence of a policy advantage. #308 is the next bounded implementation.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:
