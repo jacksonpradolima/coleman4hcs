@@ -15,7 +15,7 @@ and checkpoint. Inspect the inputs, decisions and evidence behind each result.
 
 [**Run real CI data**](#start-with-real-ci-data) · [**Explore benchmarks**](#datasets) ·
 [**Library and CLI**](#quick-start) · [**Documentation**](https://jacksonpradolima.github.io/coleman/) ·
-[**4.8 release**](https://github.com/jacksonpradolima/coleman/releases/tag/v4.8.0) · [**Cite COLEMAN**](#citation)
+[**4.9 release**](https://github.com/jacksonpradolima/coleman/releases/tag/v4.9.0) · [**Cite COLEMAN**](#citation)
 
 ## What you can build with COLEMAN
 
@@ -39,7 +39,7 @@ With Python 3.14+ in an activated environment, install the published wheel and r
 the complete LRTS workflow. Use cache/output directories outside Git:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.9.0/coleman-4.9.0-py3-none-any.whl#sha256=eb59ae45bc280a3d7cfa33bc1c360f68fc69859d9632c864bd996b29ac81a9bd"
 python -m coleman.transports.lrts_etl \
   --cache /tmp/coleman-lrts-source-cache \
   --output /tmp/coleman-lrts-data --fetch --run
@@ -64,7 +64,7 @@ RNFail feedback. Source temporal admission remains blocked; this run demonstrate
 a usable data pipeline and simulation. Policy efficacy and prospective savings
 require their own eligible observations and comparisons.
 
-The same **4.8 wheel** also provides
+The same **4.9 wheel** also provides
 [RTPTorrent → analytical/native Parquet → checkpointed replay](docs/rtptorrent-parquet-etl.md).
 Its complete HikariCP raw member preserves **46,995 class executions across 1,662
 source jobs**. The declared eight-job preset projects **18 executions** and
@@ -75,12 +75,14 @@ from LRTS and class observations from RTPTorrent retain their distinct units.
 Both workflows are explicit post-hoc simulations; the admission and comparison
 gates remain visible in the [benchmark readiness table](#datasets).
 
-For larger method histories, this revision also adds
-[ActiveMQ and separate Log4j stage views](docs/lrts-stage-views.md). Four source
-builds per project retain complete analytical reports and explicit raw-node
-bindings. The guide builds and tests a wheel from this revision; the published
-4.8 installation above covers the existing Karaf/RTPTorrent workflows. Stage
-views share source build groups, and missing temporal evidence remains explicit.
+For larger method histories, the **published 4.9 wheel** adds
+[ActiveMQ and separate Log4j stage views](docs/lrts-stage-views.md). ActiveMQ
+preserves **18,901 method observations / 18,668 native cases**. Log4j preserves
+**30,066 observations**, with **14,957 Ubuntu / 14,906 Windows native cases**.
+Each view runs two policies over four modeled rounds and resumes from checkpoint.
+The Log4j views share source build groups; their observations are correlated.
+The guide includes explicit archive acquisition, exact raw-node bindings and
+the temporal evidence still missing for protected evaluation.
 
 # Getting started
 
@@ -322,19 +324,19 @@ Each run persists:
 
 Requires Python 3.14 or later in an activated virtual environment. Install the
 wheel published in this repository’s GitHub releases. These examples pin version
-4.8.0 and its published SHA-256. Pip verifies the wheel before installation:
+4.9.0 and its published SHA-256. Pip verifies the wheel before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.9.0/coleman-4.9.0-py3-none-any.whl#sha256=eb59ae45bc280a3d7cfa33bc1c360f68fc69859d9632c864bd996b29ac81a9bd"
 ```
 
 Or with optional extras:
 
 ```bash
 # OpenTelemetry SDK
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.9.0/coleman-4.9.0-py3-none-any.whl#sha256=eb59ae45bc280a3d7cfa33bc1c360f68fc69859d9632c864bd996b29ac81a9bd"
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.9.0/coleman-4.9.0-py3-none-any.whl#sha256=eb59ae45bc280a3d7cfa33bc1c360f68fc69859d9632c864bd996b29ac81a9bd"
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -510,10 +512,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.9.0/coleman-4.9.0-py3-none-any.whl#sha256=eb59ae45bc280a3d7cfa33bc1c360f68fc69859d9632c864bd996b29ac81a9bd"
 
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.9.0/coleman-4.9.0-py3-none-any.whl#sha256=eb59ae45bc280a3d7cfa33bc1c360f68fc69859d9632c864bd996b29ac81a9bd"
 ```
 
 ## Querying results
@@ -576,7 +578,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.9.0/coleman-4.9.0-py3-none-any.whl#sha256=eb59ae45bc280a3d7cfa33bc1c360f68fc69859d9632c864bd996b29ac81a9bd"
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list
@@ -655,7 +657,7 @@ controlled reproductions and empirical benchmark corpora have different roles:
 | Dataset or benchmark | What you can use now | Scope and readiness |
 | --- | --- | --- |
 | **LRTS / Karaf real CI reports** | [Pinned download → analytical/native Parquet → Random/UCB → checkpoint recovery](docs/lrts-parquet-etl.md) | Complete eight-build preset; explicit post-hoc serial simulation. Protected historical admission remains blocked. |
-| **LRTS / ActiveMQ and Log4j stage views** | [Build this revision's wheel → explicit local archive → analytical/native Parquet → checkpoint recovery](docs/lrts-stage-views.md) | Four-build profiles; exact context/node bindings. All raw stages retained; Log4j views share source observations. Temporal admission remains blocked. |
+| **LRTS / ActiveMQ and Log4j stage views** | [Published 4.9 wheel → explicit local archive → analytical/native Parquet → checkpoint recovery](docs/lrts-stage-views.md) | Four-build profiles; exact context/node bindings. All raw stages retained; Log4j views share source observations. Temporal admission remains blocked. |
 | **Druid and Retrofit** | Bundled native/contextual Parquet examples, native runner and [descriptive profiles](docs/benchmark-corpus.md#local-profiles-and-the-first-diversity-matrix-44) | Runnable legacy experiments. Source terms, duration units and outcome availability still need corpus admission evidence. |
 | **Dune and its variants** | Bundled native Parquet, WTS/VTS workflows and [variant-aware inventory](docs/benchmark-corpus.md) | Runnable HCS examples. Variants/context files may share executions; broad HCS benchmark admission remains unfinished. |
 | **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | Available in 4.8: 46,995 class executions / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |

@@ -20,7 +20,22 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.8
+## New in 4.9
+
+[Run larger LRTS histories with explicit stage views](lrts-stage-views.md).
+The published wheel preserves **18,901 ActiveMQ method observations** and
+**30,066 Log4j observations**, with separate Ubuntu/Windows native views.
+Exact source-context/node bindings keep stages distinct; all raw methods and
+processed stages remain analytical evidence. Each four-build view produces
+eight Random/UCB result rows and resumes committed checkpoints.
+
+The Log4j views share source project/build groups. Missing executor, outcome and
+feature clocks, expected test universe, verified continuity and concurrency
+remain explicit blockers. The workflow is a post-hoc serial simulation, and
+broader corpus admission and confirmation remain open.
+See the [4.9 release notes](releases/4.9.0.md).
+
+## Existing real-data workflows
 
 [Turn real RTPTorrent CI history into Parquet and native TCPCI replays](rtptorrent-parquet-etl.md).
 The published wheel verifies the complete ZIP64 source, preserves **46,995 class
@@ -35,13 +50,8 @@ rows and resumes without duplicating committed rounds. Their post-hoc serial
 and budget-censored feedback assumptions do not establish observed chronology,
 policy efficacy or prospective savings. Source admission and confirmation remain open.
 
-The release also corrects Linux worker memory accounting while retaining its
+The 4.8 release also corrected Linux worker memory accounting while retaining its
 limits and historical general telemetry. See the [4.8 release notes](releases/4.8.0.md).
-
-This revision also provides [larger LRTS histories with explicit stage
-views](lrts-stage-views.md): four-build ActiveMQ and Log4j profiles, complete
-analytical records and exact source-node bindings. Its guide builds this
-revision's wheel; the published 4.8 workflows above remain available.
 
 [Controlled observations](controlled-faults.md), the
 [pinned JUnit3 source recipe](junit-source-capture.md),
@@ -58,7 +68,7 @@ The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures a
 visible source-admission gaps; all seven diversity regimes remain uncovered.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
-correctness checks. See the [4.8 release notes](releases/4.8.0.md) for examples,
+correctness checks. See the [4.9 release notes](releases/4.9.0.md) for examples,
 compatibility and limits.
 
 ## Quick Start
@@ -67,7 +77,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.8.0/coleman-4.8.0-py3-none-any.whl#sha256=712bfefe58d3eff09ef9adf239b32ac40594c3c80f17e5330c092f1b8f699b75"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.9.0/coleman-4.9.0-py3-none-any.whl#sha256=eb59ae45bc280a3d7cfa33bc1c360f68fc69859d9632c864bd996b29ac81a9bd"
 coleman run --config my-experiment.yaml
 ```
 
