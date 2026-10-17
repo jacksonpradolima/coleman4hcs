@@ -5,20 +5,20 @@ reports into analytical Parquet and checkpointed TCPCI runs. ActiveMQ supplies a
 larger single-stage history; Log4j keeps its reported Ubuntu and Windows contexts
 separate. Each view runs Random and UCB through the existing native API.
 
-This revision adds the stage-view workflow. The published **4.8 wheel** continues
-to support [Karaf](lrts-parquet-etl.md) and [RTPTorrent](rtptorrent-parquet-etl.md).
-Build and install this revision's wheel for the new module; do not run these
-commands against an older package.
+The published **4.9 wheel** includes this stage-view workflow and retains
+[Karaf](lrts-parquet-etl.md) and [RTPTorrent](rtptorrent-parquet-etl.md). It contains
+the typed contracts and frozen public source recipes; large archives remain
+separate operator downloads.
 
 ## Install outside checkout and acquire exact bytes
 
-With Python 3.14+ and uv, build from this checkout and install into an external
-environment. Keep sources, cache and outputs outside any Git repository:
+With Python 3.14+ and uv, install the published wheel into a fresh external
+environment. Its SHA-256 is verified before installation. Keep sources, cache
+and outputs outside any Git repository; no checkout is needed:
 
 ```bash
-uv build --wheel --out-dir /tmp/coleman-stage-dist
 uv venv /tmp/coleman-stage-env --python 3.14
-uv pip install --python /tmp/coleman-stage-env/bin/python /tmp/coleman-stage-dist/*.whl
+uv pip install --python /tmp/coleman-stage-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.9.0/coleman-4.9.0-py3-none-any.whl#sha256=eb59ae45bc280a3d7cfa33bc1c360f68fc69859d9632c864bd996b29ac81a9bd"
 mkdir -p /tmp/coleman-stage-sources
 
 # Explicit operator downloads can resume; the ETL separately verifies full hashes.

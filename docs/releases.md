@@ -6,6 +6,13 @@ should explain the value to CI users before listing internal implementation work
 
 ## Versioning and integration
 
+The published [COLEMAN 4.9](releases/4.9.0.md) release adds [larger LRTS histories
+with explicit stage views](lrts-stage-views.md): frozen ActiveMQ and Log4j source
+profiles, analytical/native Parquet and actual checkpointed replay. Source
+groups and temporal blockers remain explicit. The signed wheel, source archive,
+SBOM and synchronized lock are available in [the release
+assets](https://github.com/jacksonpradolima/coleman/releases/tag/v4.9.0).
+
 The published [COLEMAN 4.8](releases/4.8.0.md) release combines bounded ZIP64
 source integrity and the [complete RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md),
 including the Linux worker memory-accounting correction. The verified wheel,
