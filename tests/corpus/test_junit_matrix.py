@@ -512,9 +512,16 @@ def test_validation_enforces_plan_receipt_and_dataset_budgets(tmp_path, monkeypa
 
 
 @pytest.mark.parametrize(
-    "package,module", [("coleman.transports", "junit_protocol.py"), ("coleman.corpus", "source_views.py")]
+    "package,module",
+    [
+        ("coleman.transports", "junit_protocol.py"),
+        ("coleman.corpus", "source_views.py"),
+        ("coleman.corpus", "registry.py"),
+        ("coleman.corpus", "contracts.py"),
+        ("coleman.corpus", "resources/registry-v1.json"),
+    ],
 )
-def test_changing_reused_producer_dependency_changes_matrix_generation(monkeypatch, package, module):
+def test_changing_reused_producer_dependency_changes_matrix_generation(tmp_path, monkeypatch, package, module):
     before = matrix.junit_matrix_producer()
     original = matrix.files
 
@@ -528,7 +535,9 @@ def test_changing_reused_producer_dependency_changes_matrix_generation(monkeypat
         return SimpleNamespace(joinpath=item)
 
     monkeypatch.setattr(matrix, "files", altered_files)
-    assert matrix.junit_matrix_producer() != before
+    after = matrix.junit_matrix_producer()
+    assert after != before
+    assert matrix._generation(owned_plan(), tmp_path, after) != matrix._generation(owned_plan(), tmp_path, before)
 
 
 @pytest.mark.parametrize("alias", ["parent", "symlink"])

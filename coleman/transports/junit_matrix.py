@@ -47,6 +47,7 @@ def _digest(payload: bytes) -> str:
 def junit_matrix_producer() -> str:
     """Bind matrix implementation/serialization bytes and package version; old capture provenance stays separate.
 
+    Registry code, contracts and card bytes also bind producer-owned input terms.
     A changed producer requires a new output generation. Unknown producers reject
     on validation rather than silently relabeling existing observations.
     """
@@ -61,6 +62,9 @@ def junit_matrix_producer() -> str:
         (_CORPUS_PACKAGE, "controlled.py"),
         (_CORPUS_PACKAGE, "controlled_contracts.py"),
         (_CORPUS_PACKAGE, "source_views.py"),
+        (_CORPUS_PACKAGE, "registry.py"),
+        (_CORPUS_PACKAGE, "contracts.py"),
+        (_CORPUS_PACKAGE, "resources/registry-v1.json"),
         (_CORPUS_PACKAGE, "materialization.py"),
         (_CORPUS_PACKAGE, "materialization_contracts.py"),
         (_CORPUS_PACKAGE, "archives.py"),
