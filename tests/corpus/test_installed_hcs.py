@@ -6,6 +6,7 @@ import shutil
 import sys
 from pathlib import Path
 
+from tests.corpus.hcs_raw_reference import verify_libssh_raw_reference
 from tests.corpus.hcs_support import hcs_recipe
 from tests.corpus.test_installed_controlled import ROOT, command
 
@@ -111,6 +112,12 @@ print(json.dumps(dict(installed=True,owned=proof,real=real,real_completion=str(p
     proof = json.loads(result.stdout.strip().splitlines()[-1])
     assert proof["installed"]
     assert len(proof["real"]) == (2 if "COLEMAN_HCS_REAL_CACHE" in env else 0)
+    if proof["real"]:
+        reference = verify_libssh_raw_reference(
+            env["COLEMAN_HCS_REAL_CACHE"], proof["real_completion"], proof["real"], outside
+        )
+        assert reference["decimal_boundary_differences"] == []
+        (tmp_path / "installed-hcs-raw-reference.json").write_text(json.dumps(reference, indent=2) + "\n")
     (tmp_path / "installed-hcs-proof.json").write_text(json.dumps(proof, indent=2) + "\n")
     args = [
         str(python),

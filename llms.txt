@@ -6280,7 +6280,22 @@ for strategy in ("wts", "vts"):
 Independent raw-source reference checks validate the retained cohort, exclusions,
 surrogate union, projected budgets and per-cell denominators. The qualification
 also checks differences against original decimal quantities; it is not a new
-metric implementation or a protected policy comparison. Scientific source
+metric implementation or a protected policy comparison. From this checkout,
+after populating the cache with the commands above, reproduce the installed-wheel
+qualification and its independent reference:
+
+```bash
+COLEMAN_HCS_REAL_CACHE=/tmp/coleman-hcs-cache \
+  uv run --extra dev python -m pytest tests/corpus/test_installed_hcs.py --no-cov
+```
+
+The committed `tests/corpus/hcs_raw_reference.py` streams the original CSV and
+job JSON without calling the converter, projection, metric or scheduler. It checks
+every expected policy/budget/variant cell and compares projected prefixes with
+exact rational original-decimal quantities. Authored mutation tests verify that
+incorrect counts, duplicate orders and nonfinite totals fail; a declared modeled
+cost boundary difference remains visible. No original benchmark bytes are bundled.
+Scientific source
 admission, repeated-measures inference and cross-corpus claims remain with the
 [remaining public roadmap](roadmap.md).
 
