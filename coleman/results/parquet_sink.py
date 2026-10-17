@@ -9,7 +9,7 @@ Hive-style partition tree.
 Features
 --------
 * Bounded memory usage (batch_size controls max rows in RAM).
-* Crash-safe: at most the current unflushed buffer is lost.
+* Complete shards publish atomically; native checkpoint recovery reconciles uncommitted tails.
 * ``prioritization_order`` is hashed by default to avoid storage explosion;
   an optional ``top_k`` retains the first *k* entries.
 * Thread-safe: all public methods are guarded by a lock.
@@ -20,8 +20,10 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import tempfile
 import threading
 import time
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -29,6 +31,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from coleman.results.domain_artifacts import LocalResultsSink
+from coleman.results.recovery import ResultCheckpoint, recover_parquet_results
 
 # Arrow schema matching MonitorCollector columns.
 # Keep this in sync with the monitor output so DuckDB can scan a stable layout.
@@ -166,6 +169,7 @@ class ParquetSink(LocalResultsSink):
         self._buffer: list[dict[str, Any]] = []
         self._lock = threading.Lock()
         self._file_counter = 0
+        self._flush_failed = False
         os.makedirs(out_dir, exist_ok=True)
 
     # ------------------------------------------------------------------
@@ -182,6 +186,7 @@ class ParquetSink(LocalResultsSink):
         """Restore state and recreate the lock."""
         for key, value in state.items():
             setattr(self, key, value)
+        self._flush_failed = state.get("_flush_failed", False)
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
@@ -197,6 +202,7 @@ class ParquetSink(LocalResultsSink):
             Column-name → value mapping.
         """
         with self._lock:
+            self._require_usable()
             processed = self._process_row(row)
             self._buffer.append(processed)
             if len(self._buffer) >= self.batch_size:
@@ -206,6 +212,19 @@ class ParquetSink(LocalResultsSink):
         """Force-write the current buffer to Parquet."""
         with self._lock:
             self._flush_locked()
+
+    def recover_checkpoint(self, checkpoint: ResultCheckpoint) -> None:
+        """Reconcile a trusted native checkpoint before buffering a resumed execution.
+
+        Removes uncommitted tail rows, retaining all committed/other coordinates.
+        An occupied buffer raises ValueError rather than discarding new work.
+        Caller owns exclusive recovery of the run; filesystem failures propagate.
+        See :func:`recover_parquet_results` for interruption/compatibility limits.
+        """
+        with self._lock:
+            if self._buffer:
+                raise ValueError("Checkpoint recovery requires an empty result buffer")
+            recover_parquet_results(Path(self.out_dir), checkpoint, _RESULT_SCHEMA)
 
     def close(self) -> None:
         """Flush remaining data and release resources."""
@@ -240,8 +259,14 @@ class ParquetSink(LocalResultsSink):
         A per-flush UUID distinguishes reopened/concurrent instances even when
         PID, wall-clock second and local counter match. Filenames are operational
         identifiers, not deterministic mathematical artifact identities. Existing
-        buffering, partition schema and append semantics remain unchanged.
+        buffering, partition schema and append semantics remain unchanged. Each
+        file is completed in a hidden temporary tree before atomic publication.
+        Partial batches can publish some complete shards; checkpoint recovery
+        removes their uncommitted rows. A failed flush poisons this instance;
+        discard it and reopen/resume through a native checkpoint. Temporary
+        files cannot be mistaken for results, including after process death.
         """
+        self._require_usable()
         if not self._buffer:
             return
 
@@ -254,11 +279,27 @@ class ParquetSink(LocalResultsSink):
         pid = os.getpid()
         basename = f"part-{self._file_counter:06d}-{pid}-{int(time.time())}-{uuid4().hex}-{{i}}.parquet"
 
-        pq.write_to_dataset(
-            table,
-            root_path=self.out_dir,
-            partition_cols=self._partition_cols,
-            compression="zstd",
-            basename_template=basename,
-        )
+        self._flush_failed = True
+        self._publish_batch(table, basename)
         self._buffer.clear()
+        self._flush_failed = False
+
+    def _require_usable(self) -> None:
+        """Reject same-instance retries after an uncertain partial batch publication."""
+        if self._flush_failed:
+            raise RuntimeError("Parquet flush failed; reopen the sink and resume its native checkpoint")
+
+    def _publish_batch(self, table: pa.Table, basename: str) -> None:
+        """Publish complete shards with unique names; power-loss durability is outside this contract."""
+        with tempfile.TemporaryDirectory(prefix=".parquet-stage-", dir=self.out_dir) as temporary:
+            pq.write_to_dataset(
+                table,
+                root_path=temporary,
+                partition_cols=self._partition_cols,
+                compression="zstd",
+                basename_template=basename.removesuffix(".parquet") + ".tmp",
+            )
+            for staged in sorted(Path(temporary).rglob("*.tmp")):
+                target = (Path(self.out_dir) / staged.relative_to(temporary)).with_suffix(".parquet")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(staged, target)

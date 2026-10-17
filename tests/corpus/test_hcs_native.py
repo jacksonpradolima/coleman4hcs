@@ -9,6 +9,11 @@ import pytest
 
 from coleman.application.hcs import run_hcs_replay
 from coleman.checkpoint.checkpoint_store import LocalCheckpointStore
+from coleman.environment import Environment
+from coleman.evaluation import NAPFDVerdictMetric
+from coleman.policy import RandomPolicy
+from coleman.reward import RNFailReward
+from coleman.runner import create_agents, get_scenario_provider
 from tests.corpus.test_hcs_etl import export
 
 
@@ -94,6 +99,76 @@ def test_interrupted_native_matrix_continues_existing_checkpoint_without_double_
     after = run_hcs_replay(completion, cache, tmp_path / "native", strategy=strategy)
     rows = check_native_accounting(completion, after.artifacts_dir, strategy)
     assert rows.height == (24 if strategy == "wts" else 16)
+
+
+@pytest.mark.parametrize("strategy,expected", [("wts", 24), ("vts", 16)])
+@pytest.mark.parametrize("failed_save", [1, 2])
+def test_flushed_uncommitted_tail_is_reconciled_before_native_resume(
+    tmp_path, monkeypatch, strategy, expected, failed_save
+):
+    """Exercise the real gap between result flush and checkpoint commit, with/without older committed progress."""
+    _, cache, completion = export(tmp_path)
+    original, saves = LocalCheckpointStore.save, 0
+
+    def fail_before_commit(self, payload):
+        nonlocal saves
+        saves += 1
+        if saves == failed_save:
+            raise OSError("owned interruption before checkpoint commit")
+        original(self, payload)
+
+    with monkeypatch.context() as fault:
+        fault.setattr(LocalCheckpointStore, "save", fail_before_commit)
+        with pytest.raises(OSError, match="before checkpoint commit"):
+            run_hcs_replay(completion, cache, tmp_path / "native", strategy=strategy)
+    assert list((tmp_path / "native").rglob("*.parquet"))
+    assert not list((tmp_path / "native").rglob("manifest.json"))
+    after = run_hcs_replay(completion, cache, tmp_path / "native", strategy=strategy)
+    rows = check_native_accounting(completion, after.artifacts_dir, strategy)
+    assert rows.height == expected
+    again = run_hcs_replay(completion, cache, tmp_path / "native", strategy=strategy)
+    assert again.run_id == after.run_id
+    assert check_native_accounting(completion, again.artifacts_dir, strategy).equals(rows)
+
+
+def test_progress_without_checkpoint_rejects_without_discarding_any_native_results(tmp_path):
+    _, cache, completion = export(tmp_path)
+    result = run_hcs_replay(completion, cache, tmp_path / "native", strategy="wts")
+    files = list((tmp_path / "native").rglob("*.parquet"))
+    before = {p: p.read_bytes() for p in files}
+    marker = next((tmp_path / "native").rglob("progress_ex1.json"))
+    Path(json.loads(marker.read_bytes())["checkpoint_path"]).unlink()
+    with pytest.raises(ValueError, match="without loadable state"):
+        run_hcs_replay(completion, cache, tmp_path / "native", strategy="wts")
+    assert result.artifacts_dir is not None
+    assert {p: p.read_bytes() for p in files} == before
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_direct_native_environment_preserves_buffered_preceding_execution(tmp_path, enabled):
+    """The library Environment may share one sink across executions with intervals beyond the final round."""
+    _, _, completion = export(tmp_path)
+    provider = get_scenario_provider(
+        datasets_dir=str(completion.parent / "datasets"),
+        dataset="owned-hcs",
+        sched_time_ratio=0.5,
+        use_hcs=False,
+        use_context=False,
+        context_config={},
+        feature_groups={},
+    )
+    env = Environment(
+        create_agents(RandomPolicy(), RNFailReward(), [], seed=42),
+        provider,
+        NAPFDVerdictMetric(),
+        results_config={"enabled": True, "out_dir": str(tmp_path / "results")},
+        checkpoint_config={"enabled": enabled, "base_dir": str(tmp_path / "checkpoints"), "interval": 100},
+    )
+    env.run(experiments=2, trials=2, forecast_next=False)
+    env.store_experiment()
+    rows = pl.read_parquet(str(tmp_path / "results/**/*.parquet"), hive_partitioning=True)
+    assert rows.height == 4
+    assert rows.group_by("experiment").len().sort("experiment")["len"].to_list() == [2, 2]
 
 
 def test_invalid_strategy_and_empty_projection_reject_before_native_execution(tmp_path):

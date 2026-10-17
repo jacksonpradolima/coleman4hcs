@@ -25,6 +25,7 @@ import logging
 import re
 import time
 import warnings
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -33,10 +34,11 @@ import polars as pl
 from coleman.agent import ContextualAgent, SlidingWindowContextualAgent
 from coleman.bandit import EvaluationMetricBandit
 from coleman.budget import BudgetMode
-from coleman.checkpoint.checkpoint_store import CheckpointStore, NullCheckpointStore
+from coleman.checkpoint.checkpoint_store import CheckpointStore, LocalCheckpointStore, NullCheckpointStore
 from coleman.checkpoint.state import CheckpointPayload
 from coleman.environment_base import AbstractEnvironment
 from coleman.results.parquet_sink import ParquetSink
+from coleman.results.recovery import ResultCheckpoint
 from coleman.results.sink_base import NullSink, ResultsSink
 from coleman.scenarios import HCSScenarioLoader, VirtualHCSScenario
 from coleman.telemetry.otel import get_telemetry
@@ -298,12 +300,39 @@ class Environment(AbstractEnvironment):
         """
         run_id = str(self.scenario_provider)
         payload = self.checkpoint_store.load(run_id, experiment)
+        self._recover_native_results(experiment, payload)
         if payload is None:
             return 1, None
 
         self.agents = payload.agents if payload.agents is not None else self.agents
         self.scenario_provider.last_build(payload.step)
         return payload.step + 1, payload.bandit
+
+    def _recover_native_results(self, experiment: int, payload: CheckpointPayload | None) -> None:
+        """Reconcile built-in local Parquet runs before replaying uncommitted rounds.
+
+        Legacy completed files and checkpoint payloads are unchanged. Other
+        sinks/providers retain their existing durability semantics. A progress
+        marker without loadable state rejects instead of erasing old results.
+        Recovery errors block simulation; callers must serialize same-run retries.
+        """
+        mode = getattr(self.scenario_provider, "budget_mode", None)
+        if not isinstance(self._sink, ParquetSink) or not isinstance(self.checkpoint_store, LocalCheckpointStore):
+            return
+        if not isinstance(mode, BudgetMode):
+            return
+        scenario = str(self.scenario_provider)
+        marker = Path(self.checkpoint_store.base_dir) / scenario / f"progress_ex{experiment}.json"
+        if payload is None and marker.exists():
+            raise ValueError("Native checkpoint progress exists without loadable state; retain output for recovery")
+        # Direct Environment.run callers may still buffer a preceding execution.
+        # Persist it before reconciliation; a poisoned failed writer rejects here.
+        self._sink.flush()
+        self._sink.recover_checkpoint(
+            ResultCheckpoint(
+                scenario, experiment, mode, self.scenario_provider.budget_value, payload.step if payload else 0
+            )
+        )
 
     def run_single(
         self,

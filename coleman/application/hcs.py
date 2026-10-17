@@ -35,7 +35,9 @@ def run_hcs_replay(
     The receipt participates in run identity and is persisted in the manifest.
     No source admission, probability, statistical independence, observed setup
     cost or protected temporal evaluation is inferred. Identical arguments resume
-    existing native checkpoints without duplicate results. Invalid strategy,
+    existing native checkpoints, reconciling uncommitted Parquet tails before
+    replay. Serialize attempts of the same run; process interruption is covered,
+    not power loss or missing/corrupt committed shards. Invalid strategy,
     empty input, source/file/path errors raise ValueError/OSError; runner failures
     propagate. Output must be outside Git and separate from cache/export.
     """

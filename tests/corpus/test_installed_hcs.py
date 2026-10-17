@@ -41,6 +41,7 @@ from coleman.corpus.hcs_contracts import HCSReceipt,HCSRecipe
 assert Path(sys.modules['coleman.corpus.hcs_etl'].__file__).resolve().is_relative_to(Path(sys.prefix))
 sys.meta_path.remove(boundary)
 from coleman.application.hcs import run_hcs_replay
+from coleman.checkpoint.checkpoint_store import LocalCheckpointStore
 from coleman.artifacts import ArtifactWriter
 from coleman.corpus.materialization import SourceCache,materialize_source
 from coleman.transports.hcs_etl import load_hcs_recipe
@@ -59,6 +60,19 @@ assert r.accounting.replay_rows==10 and r.accounting.selected_rows==17
 assert r.evidence.setup_seconds is None and r.admission=='blocked_source_evidence'
 proof=[]
 for strategy in ['wts','vts']:
+    original=LocalCheckpointStore.save
+    def interrupted(self,payload):
+        raise OSError('owned interruption after result flush before first checkpoint')
+    LocalCheckpointStore.save=interrupted
+    try:
+        run_hcs_replay(p,cache,Path('native')/strategy,strategy=strategy)
+    except OSError as error:
+        assert str(error)=='owned interruption after result flush before first checkpoint'
+    else:
+        raise AssertionError('checkpoint failure was not injected')
+    finally:
+        LocalCheckpointStore.save=original
+    assert not list((Path('native')/strategy).rglob('manifest.json'))
     a=run_hcs_replay(p,cache,Path('native')/strategy,strategy=strategy)
     b=run_hcs_replay(p,cache,Path('native')/strategy,strategy=strategy)
     assert a.run_id==b.run_id

@@ -6194,6 +6194,8 @@ flowchart LR
     Native --> VTS[Per-variant Parquet]
     WTS --> Runner[Existing RunSpec/API and native runner]
     VTS --> Runner
+    Runner --> Recovery[Reconcile uncommitted Parquet tail on resume]
+    Recovery --> Runner
     Runner --> Results[Per-policy/budget/variant results and checkpoints]
 ```
 
@@ -6211,6 +6213,25 @@ values that round to the same percent remain distinct. Single-budget checkpoint
 paths and payloads are unchanged. An old unscoped multi-budget progress marker
 is ambiguous and **rejects before loading it**. Retain the original package and
 output; explicitly start a fresh output tree rather than guessing a migration.
+
+For built-in native scenarios using local checkpoints and the Parquet sink,
+resume first removes rows beyond the last committed processed step for that
+exact dataset, execution number and budget. This includes a crash after result
+flush but before the first checkpoint: all rows from that uncommitted attempt
+are replayed. Already committed observations and other coordinates are retained;
+unchanged shards remain byte-identical. A progress marker without loadable state
+rejects before deleting results. This does not repair corrupt or missing result
+files that predate the checkpoint, or deduplicate previously committed evidence.
+
+Each native Parquet shard is completed under a temporary name before atomic
+publication. A crash between shard publications leaves complete uncommitted
+shards for reconciliation and temporary files that readers/manifests ignore.
+Reconciliation itself uses atomic shard replacement and is safe to retry after
+interruption. Errors block execution and manifest publication. Discard an instance
+whose flush failed and resume with a fresh API call. Serialize attempts of the
+same run; independent executions use distinct shards. Other sinks/custom scenario
+providers keep their existing recovery semantics. Power-loss durability and
+untrusted checkpoint files are outside this local process-interruption contract.
 
 Missing/future schema versions or a missing explicit native cost declaration
 reject. Old native Parquet, corpus profiles, source readers and their artifacts
@@ -9507,6 +9528,14 @@ Single-budget paths and payloads remain compatible. Ambiguous old unscoped
 multi-budget state rejects before loading; no migration guesses which budget
 produced old results. Existing native data, source recipes and artifacts retain
 their meanings.
+
+Native local Parquet recovery also closes the gap between flushing results and
+committing a checkpoint: resume reconciles the uncommitted tail before replay,
+including an interruption before the first checkpoint. Complete shards publish
+atomically; failed writes cannot expose partial Parquet as completed results.
+Committed rows and other executions/budgets remain intact. Same-run attempts must
+be serialized; this process-interruption guarantee does not imply power-loss
+durability or equivalent behavior for every optional sink.
 
 ## Evidence before claims
 
