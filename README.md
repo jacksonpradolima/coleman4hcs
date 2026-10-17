@@ -22,7 +22,7 @@ and checkpoint. Inspect the inputs, decisions and evidence behind each result.
 | Your goal | Available workflow |
 | --- | --- |
 | Compare adaptive CI prioritization policies | Native TCPCI runner, configurable policies/rewards, contextual inputs and [parameter sweeps](#sweep-engine) |
-| Evaluate configurable software | Dune examples and [whole/variant test-set strategies](#running-for-an-hcs-system) |
+| Evaluate configurable software | [Pinned LibSSH data → WTS/VTS Parquet and checkpointed replay](docs/hcs-parquet-etl.md), plus the existing Dune examples |
 | Collect real-fault observations | [Controlled Java matrix](docs/java-fault-matrix.md) and [Python source capture](docs/python-source-capture.md): frozen source/runtime recipes, raw evidence and offline recovery |
 | Inspect a constructed C weakness | [Pinned Juliet/GCC capture](docs/c-seeded-source-capture.md), an independent arithmetic oracle, raw process evidence and interruption recovery |
 | Reproduce and inspect an experiment | Typed RunSpec, deterministic run identity, [provenance](#provenance), Parquet results and resumable checkpoints |
@@ -686,6 +686,7 @@ controlled reproductions and empirical benchmark corpora have different roles:
 | **LRTS / ActiveMQ and Log4j stage views** | [Published 4.12 wheel → explicit local archive → analytical/native Parquet → checkpoint recovery](docs/lrts-stage-views.md) | Four-build profiles; exact context/node bindings. All raw stages retained; Log4j views share source observations. Temporal admission remains blocked. |
 | **Druid and Retrofit** | Bundled native/contextual Parquet examples, native runner and [descriptive profiles](docs/benchmark-corpus.md#local-profiles-and-the-first-diversity-matrix-44) | Runnable legacy experiments. Source terms, duration units and outcome availability still need corpus admission evidence. |
 | **Dune and its variants** | Bundled native Parquet, WTS/VTS workflows and [variant-aware inventory](docs/benchmark-corpus.md) | Runnable HCS examples. Variants/context files may share executions; broad HCS benchmark admission remains unfinished. |
+| **LibSSH historical configurations** | [Source-checkout wheel → original CSV/JSON → analytical/union/variant/VTS Parquet → native checkpoints](docs/hcs-parquet-etl.md) | Sixteen frozen pipelines, seven original variant names, 856 retained test executions and 29 explicit other-attempt exclusions. Test-only projected costs; sparse cells, dependence and temporal admission blockers remain visible. |
 | **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | Available in 4.8: 46,995 class executions / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |
 | **Controlled Java real-fault sources** | Published 4.12 wheel: [CLI-13 producer](docs/junit-source-capture.md) and [three-fix CLI/Codec matrix](docs/java-fault-matrix.md) with typed indices and offline recovery | Two codebases, explicit common fixtures, 357 same-test pairs in the initial qualification. Docker/arm64; negative and inconclusive results remain visible. Controlled evidence, not historical CI or full Defects4J reconstruction. |
 | **Controlled Python real-fault source** | [Published 4.12 wheel → pinned PySnooper capture → offline/interruption recovery](docs/python-source-capture.md) | One unchanged partial fixture, one curated fix, two correlated locales: ASCII error-to-pass remains inconclusive; UTF-8 both-pass. Docker/arm64; component terms and attribution limits retained. |
@@ -782,6 +783,7 @@ flowchart TD
     A[YAML config + packs: run.yaml] --> B[coleman CLI / library API]
     R[Pinned LRTS reports + metadata] --> S[Verified external source cache]
     V[Pinned RTPTorrent ZIP64 + raw class history] --> S
+    W[Pinned LibSSH original execution CSV + job JSON] --> S
     S --> T[Source-specific typed ETL and explicit serial model]
     T --> U[Analytical Parquet + completion provenance]
     T --> C["Native Parquet / legacy CSV; variant input for HCS"]
@@ -943,15 +945,16 @@ coleman run --config run.yaml
 
 ## Running for an HCS system
 
-For HCS systems, we provide two distinct strategies to determine optimal solutions for variants:
+For HCS systems, we provide two strategies to learn and prioritize tests across configurations:
 **WTS** (Whole Test Set Strategy) and **VTS** (Variant Test Set Strategy).
 You can learn more about these in **Ref2** under the [References](#references) section.
 
-When employing the **WTS** and **VTS** strategies, regard `datasets_dir` as the directory housing your system.
-For the **WTS** approach, variants of a system are discerned from subfolders within the `datasets_dir` directory.
-Essentially, `datasets_dir` symbolizes the project name.
-This differentiation in execution methodology between HCS and non-HCS systems is crucial,
-alongside the `wts_strategy` variable. For clarity, please inspect our example directory.
+For **WTS**, each dataset folder under `datasets_dir` contains a whole-system
+`features-engineered.parquet` and a `data-variants.parquet`; its `Variant` column
+identifies configurations present in each modeled round. For **VTS**, each variant
+has its own dataset folder and policy state. The [LibSSH workflow](docs/hcs-parquet-etl.md)
+produces both layouts from pinned public originals, with explicit cost semantics,
+source identities and sparse-cell evidence. The Dune examples below remain available.
 
 ### Whole Test Set Strategy
 

@@ -67,6 +67,12 @@ The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
 public subtasks are delivered. #307–#313 track the remaining work, starting with
 HCS expansion in #307. Source conversion does not establish admission.
 
+The source checkout's [LibSSH HCS workflow](hcs-parquet-etl.md) implements the next
+bounded slice: raw pipeline/job correspondence, WTS/VTS Parquet, sparse cell
+accounting and isolated multi-budget checkpoints. Its declared cost projection
+preserves original decimal observations. Review/publication of #307 precedes
+starting #308; admission and comparisons remain later gates.
+
 | Stage | Subtasks | Dependency |
 | --- | --- | --- |
 | RTPTorrent source path — delivered in 4.8 | [#301 ZIP64 integrity](https://github.com/jacksonpradolima/coleman/issues/301), [#302 real Parquet ETL/replay](https://github.com/jacksonpradolima/coleman/issues/302) | #302 requires #301 |

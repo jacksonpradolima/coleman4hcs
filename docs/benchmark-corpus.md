@@ -31,6 +31,12 @@ one original template/function pair and six correlated inputs remain explicitly
 synthetic. SIR permission remains unresolved. This workflow adds no registry
 entry or admitted diversity regime.
 
+The source checkout adds a separate [LibSSH HCS ETL](hcs-parquet-etl.md): original
+pipeline/job identities, reversible variant aliases, explicit projected test
+costs and native WTS/VTS checkpointed runs. Sparse/absent cells and source
+exclusions remain visible. The guide builds a checkout wheel; this workflow is
+not part of the published 4.12 package and does not add an admitted registry entry.
+
 The registry contains two small repository-authored MIT-licensed CI fixtures and
 an inventory of ten existing public example Parquet artifacts. Historical sources
 remain **blocked for evaluation** until their data-specific terms, duration units,
