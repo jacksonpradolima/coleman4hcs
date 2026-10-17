@@ -90,7 +90,8 @@ print(json.dumps(proof,sort_keys=True))
         env,
     )
     proof = json.loads(result.stdout)
-    assert proof["installed"] and proof["owned_offline_validation"]
+    assert proof["installed"]
+    assert proof["owned_offline_validation"]
     assert proof["real_source_capture"] == (source_cache != "-")
     cli = command(
         [

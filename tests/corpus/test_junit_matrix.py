@@ -533,3 +533,33 @@ def test_changing_reused_producer_dependency_changes_matrix_generation(monkeypat
 
     monkeypatch.setattr(matrix, "files", altered_files)
     assert matrix.junit_matrix_producer() != before
+
+
+@pytest.mark.parametrize("alias", ["parent", "symlink"])
+def test_cli_validation_cannot_read_a_receipt_outside_the_declared_output(tmp_path, monkeypatch, alias):
+    output = tmp_path / "output"
+    output.mkdir()
+    external = tmp_path / "external.json"
+    external.write_text(owned_receipt().to_json())
+    candidate = output / ".." / external.name
+    if alias == "symlink":
+        candidate = output / "receipt.json"
+        candidate.symlink_to(external)
+    original = Path.open
+
+    def guarded(path, *args, **kwargs):
+        if path.resolve() == external.resolve():
+            raise AssertionError("Out-of-output artifact was read before containment validation")
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", guarded)
+    arguments = [
+        "--validate",
+        str(candidate),
+        "--cache",
+        str(tmp_path / "cache"),
+        "--output",
+        str(output),
+    ]
+    with pytest.raises(ValueError, match="within its output tree"):
+        matrix.main(arguments)

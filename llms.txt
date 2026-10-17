@@ -5878,6 +5878,8 @@ Offline integrity validation can republish identical source-view cache metadata.
 It verifies actual source members, context, raw protocol packets and normalized
 observations; it starts no process and fetches nothing. Integrity is correspondence,
 not authentication of execution truth or benchmark efficacy.
+The CLI accepts a validation receipt only inside the declared output tree;
+parent traversal and escaping symlink aliases reject before that file is read.
 
 ## Frozen source selection
 

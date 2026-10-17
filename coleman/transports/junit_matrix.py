@@ -31,12 +31,16 @@ from coleman.transports.junit_source import prepare_junit_inputs, validate_junit
 
 _COMPLETION = "complete.json"
 _DATASET_BYTES = 16 * 1024**2
+_HASH_PREFIX = "sha256:"
+_JSON_SUFFIX = ".json"
+_TRANSPORT_PACKAGE = "coleman.transports"
+_CORPUS_PACKAGE = "coleman.corpus"
 _PLAN_LIMIT_ERROR = "Java matrix plan exceeds its byte limit"
 
 
 def _digest(payload: bytes) -> str:
     """Return the explicit SHA-256 identity of exact bytes, with no filesystem access."""
-    return "sha256:" + hashlib.sha256(payload).hexdigest()
+    return _HASH_PREFIX + hashlib.sha256(payload).hexdigest()
 
 
 def junit_matrix_producer() -> str:
@@ -46,19 +50,19 @@ def junit_matrix_producer() -> str:
     on validation rather than silently relabeling existing observations.
     """
     modules = (
-        ("coleman.transports", "junit_matrix.py"),
-        ("coleman.transports", "junit_matrix_contracts.py"),
-        ("coleman.transports", "junit_capture.py"),
-        ("coleman.transports", "junit_contracts.py"),
-        ("coleman.transports", "junit_process.py"),
-        ("coleman.transports", "junit_protocol.py"),
-        ("coleman.transports", "junit_source.py"),
-        ("coleman.corpus", "controlled.py"),
-        ("coleman.corpus", "controlled_contracts.py"),
-        ("coleman.corpus", "source_views.py"),
-        ("coleman.corpus", "materialization.py"),
-        ("coleman.corpus", "materialization_contracts.py"),
-        ("coleman.corpus", "archives.py"),
+        (_TRANSPORT_PACKAGE, "junit_matrix.py"),
+        (_TRANSPORT_PACKAGE, "junit_matrix_contracts.py"),
+        (_TRANSPORT_PACKAGE, "junit_capture.py"),
+        (_TRANSPORT_PACKAGE, "junit_contracts.py"),
+        (_TRANSPORT_PACKAGE, "junit_process.py"),
+        (_TRANSPORT_PACKAGE, "junit_protocol.py"),
+        (_TRANSPORT_PACKAGE, "junit_source.py"),
+        (_CORPUS_PACKAGE, "controlled.py"),
+        (_CORPUS_PACKAGE, "controlled_contracts.py"),
+        (_CORPUS_PACKAGE, "source_views.py"),
+        (_CORPUS_PACKAGE, "materialization.py"),
+        (_CORPUS_PACKAGE, "materialization_contracts.py"),
+        (_CORPUS_PACKAGE, "archives.py"),
         ("coleman.results", "versioned.py"),
         ("coleman.results", "domain.py"),
         ("coleman.selection", "contracts.py"),
@@ -89,7 +93,10 @@ def _generation(plan: JunitMatrixRecipe, root: Path, producer: str) -> Path:
     """Return a contained hash-only generation path; logical labels never become filesystem paths."""
     return _contained(
         root,
-        root / "corpus-junit-matrix" / plan.fingerprint.removeprefix("sha256:") / producer.removeprefix("sha256:"),
+        root
+        / "corpus-junit-matrix"
+        / plan.fingerprint.removeprefix(_HASH_PREFIX)
+        / producer.removeprefix(_HASH_PREFIX),
     )
 
 
@@ -187,7 +194,7 @@ def validate_junit_matrix(receipt: JunitMatrixReceipt, cache: SourceCache, outpu
         reference = references[cell.cell_id]
         path = _contained(
             output,
-            output / "corpus-controlled" / (reference.dataset_fingerprint.removeprefix("sha256:") + ".json"),
+            output / "corpus-controlled" / (reference.dataset_fingerprint.removeprefix(_HASH_PREFIX) + _JSON_SUFFIX),
         )
         dataset = ControlledDataset.from_json(_read(path, _DATASET_BYTES))
         if dataset.fingerprint != reference.dataset_fingerprint:
@@ -239,7 +246,7 @@ def capture_junit_matrix(
         if saved.plan != plan or saved.status != "collected":
             raise ValueError("Java matrix completion disagrees with the requested complete plan")
         validate_junit_matrix(saved, cache, writer.run_root)
-        path = _contained(writer.run_root, generation / (saved.fingerprint.removeprefix("sha256:") + ".json"))
+        path = _contained(writer.run_root, generation / (saved.fingerprint.removeprefix(_HASH_PREFIX) + _JSON_SUFFIX))
         writer.write_immutable(path, saved.to_json() + "\n")
         return JunitMatrixOutcome(saved, path, complete)
     results = []
@@ -257,7 +264,7 @@ def capture_junit_matrix(
     if len(payload.encode()) > receipt.MAXIMUM_BYTES:
         raise ValueError("Java matrix receipt exceeds its byte limit")
     validate_junit_matrix(receipt, cache, writer.run_root)
-    path = _contained(writer.run_root, generation / (receipt.fingerprint.removeprefix("sha256:") + ".json"))
+    path = _contained(writer.run_root, generation / (receipt.fingerprint.removeprefix(_HASH_PREFIX) + _JSON_SUFFIX))
     writer.write_immutable(path, payload)
     if receipt.status == "collected":
         writer.write_immutable(complete, payload)
@@ -293,7 +300,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("Offline validation cannot fetch sources")
     cache = SourceCache(args.cache)
     if args.validate:
-        receipt = JunitMatrixReceipt.from_json(_read(args.validate, JunitMatrixReceipt.MAXIMUM_BYTES))
+        receipt_path = _contained(args.output, args.validate)
+        receipt = JunitMatrixReceipt.from_json(_read(receipt_path, JunitMatrixReceipt.MAXIMUM_BYTES))
         validate_junit_matrix(receipt, cache, args.output)
         print(json.dumps({"integrity": "verified", "receipt": receipt.fingerprint, "status": receipt.status}))
         return 0
