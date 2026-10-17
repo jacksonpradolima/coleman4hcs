@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import platform
 import tempfile
 from importlib.metadata import version
@@ -11,7 +10,7 @@ from pathlib import Path
 from coleman.corpus import MaterializationReceipt, SourceCache
 from coleman.transports.c_contracts import CCaptureRecipe, CEnvironment, CHarnessPlan
 from coleman.transports.c_source import PreparedCInputs, owned_c_package
-from coleman.transports.junit_capture import _cleanup, _docker_query, _mount, _stage_view
+from coleman.transports.junit_capture import _cleanup, _container_arguments, _docker_query, _mount, _stage_view
 from coleman.transports.junit_process import ProcessStreams, collect_process
 
 
@@ -95,35 +94,9 @@ def run_c_role(
         (harness / "plan.json").write_text(plan.to_json() + "\n", encoding="utf-8")
         for path in harness.iterdir():
             path.chmod(0o644)
-        uid, gid = (os.getuid(), os.getgid()) if os.getuid() else (65534, 65534)
-        args = base + (
-            "run",
-            "--pull=never",
-            "--rm",
-            "--name",
-            container_name,
-            "--platform",
-            recipe.runtime.platform,
-            "--network",
-            "none",
-            "--cap-drop",
-            "ALL",
-            "--security-opt",
-            "no-new-privileges",
-            "--pids-limit",
-            "64",
-            "--cpus",
-            "2",
-            "--memory",
-            str(recipe.limits.memory_bytes),
-            "--read-only",
-            "--tmpfs",
-            "/tmp:rw,exec,nosuid,nodev,size=134217728,mode=1777",
-            "--user",
-            f"{uid}:{gid}",
-            "--workdir",
-            "/fixture",
-        )
+        args = _container_arguments(
+            base, container_name, recipe.runtime.platform, recipe.limits.memory_bytes, executable_scratch=True
+        ) + ("--workdir", "/fixture")
         for setting in (
             "TZ=" + recipe.runtime.timezone,
             "LANG=" + recipe.runtime.locale,

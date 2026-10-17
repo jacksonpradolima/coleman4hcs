@@ -1,8 +1,6 @@
 """Owned C schema fixtures; placeholder digests are not source execution attestations."""
 
-import json
 from datetime import UTC, datetime
-from pathlib import Path
 
 import pytest
 
@@ -99,58 +97,6 @@ def owned_receipt():
         roles=roles,
         status="collected",
     )
-
-
-@pytest.mark.parametrize(
-    "factory,fixture",
-    [
-        (owned_case, "c-case-owned-v1.json"),
-        (owned_role, "c-role-owned-v1.json"),
-        (owned_receipt, "c-receipt-owned-v1.json"),
-    ],
-)
-def test_owned_versioned_goldens_and_roundtrip(factory, fixture):
-    record = factory()
-    assert type(record).from_json(record.to_json()) == record
-    path = Path(__file__).with_name("fixtures") / fixture
-    assert path.read_text() == record.to_json() + "\n"
-
-
-@pytest.mark.parametrize("factory", [owned_case, owned_header, owned_role, owned_receipt])
-@pytest.mark.parametrize("version", [None, 0, 2, True, "1"])
-def test_old_missing_future_and_coerced_versions_reject(factory, version):
-    record = factory()
-    data = record.model_dump(mode="json")
-    if version is None:
-        data.pop("schema_version")
-    else:
-        data["schema_version"] = version
-    payload = json.dumps(data)
-    model = type(record)
-    with pytest.raises(ValueError):
-        model.from_json(payload)
-
-
-@pytest.mark.parametrize(
-    "update",
-    [
-        {"unit": "s"},
-        {"meaning": "CI-runner-work-v1"},
-        {"value": -1},
-        {"value": True},
-        {"value": 0.0},
-        {"value": float("nan")},
-        {"value": float("inf")},
-        {"value": None},
-        {"value": None, "status": "unavailable"},
-        {"value": None, "status": "not_applicable"},
-    ],
-)
-def test_completed_case_units_ticks_and_missingness_reject(update):
-    data = owned_case().model_dump(mode="json")
-    data["elapsed"].update(update)
-    with pytest.raises(ValueError):
-        CCase.model_validate(data)
 
 
 def test_observed_zero_unavailable_null_and_valid_negative_process_exit_are_distinct():

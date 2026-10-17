@@ -2,6 +2,7 @@
 
 import io
 import json
+import shutil
 from collections import Counter
 from datetime import UTC, datetime
 
@@ -13,7 +14,7 @@ from coleman.corpus.controlled_contracts import ControlledDataset
 from coleman.corpus.materialization import materialize_source
 from coleman.transports import junit
 from coleman.transports import junit_capture as capture
-from coleman.transports.junit_contracts import JunitCaptureRecipe, JunitRoleCapture, JunitRoleStart
+from coleman.transports.junit_contracts import JunitCaptureRecipe, JunitRoleCapture, JunitRoleStart, JunitRoleStartV2
 from coleman.transports.junit_process import ProcessStreams
 from coleman.transports.junit_source import classpath, digest, harness_bytes, owned_package, prepare_junit_inputs
 from tests.corpus.test_junit_protocol import changed, encoded, recipe, records
@@ -130,9 +131,11 @@ def test_process_interruption_has_no_false_completion_and_recovers_without_rerun
     assert len(result.dataset.observations) == 1
     assert capture.capture_junit_source(spec, cache, writer, "interrupted-trial") == result
     marker = result.state_directory / "buggy.started.json"
-    started = JunitRoleStart.from_json(marker.read_bytes())
+    started = JunitRoleStartV2.from_json(marker.read_bytes())
     (result.state_directory / "buggy.json").unlink()
-    marker.write_text(changed(started, trial_id="wrong").to_json())
+    wrong_owner = capture.fingerprint([started.context_fingerprint, "wrong", started.output_namespace])
+    wrong_name = "coleman-junit-" + wrong_owner.removeprefix("sha256:")[:24] + "-buggy"
+    marker.write_text(changed(started, trial_id="wrong", container_name=wrong_name).to_json())
     with pytest.raises(ValueError, match="marker identity mismatch"):
         capture.capture_junit_source(spec, cache, writer, "interrupted-trial")
 
@@ -607,3 +610,54 @@ def test_separate_output_roots_have_independent_container_ownership(tmp_path, mo
     assert set(names[:2]).isdisjoint(names[2:]), "Independent outputs must not own the same physical containers"
     assert first.dataset.spec.context == second.dataset.spec.context
     assert first.dataset.pairs == second.dataset.pairs
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_interrupted_container_cleanup_retains_original_ownership_after_output_move(tmp_path, monkeypatch, legacy):
+    spec, cache, environment = prepared_inputs(tmp_path)
+    names = []
+
+    def interrupted(*args):
+        names.append(args[-1])
+        raise KeyboardInterrupt
+
+    substitute_docker(monkeypatch, environment, interrupted)
+    writer = ArtifactWriter(tmp_path / "original")
+    with pytest.raises(KeyboardInterrupt):
+        capture.capture_junit_source(spec, cache, writer, "moved-trial")
+    marker = next(writer.run_root.glob("junit-captures/*/buggy.started.json"))
+    expected_name = names[0]
+    if legacy:
+        data = json.loads(marker.read_bytes())
+        data.pop("container_name", None)
+        data.pop("output_namespace", None)
+        data["schema_version"] = 1
+        marker.write_text(JunitRoleStart.model_validate(data).to_json())
+        expected_name = "coleman-junit-" + marker.parent.name[:24] + "-buggy"
+    destination = tmp_path / "relocated"
+    shutil.move(writer.run_root, destination)
+    cleaned = []
+    monkeypatch.setattr(capture, "_cleanup", lambda base, name: cleaned.append(name))
+    monkeypatch.setattr(capture, "_run_role", lambda *args: ProcessStreams(encoded(records()), b"", 0, 1, "exited"))
+    result = capture.capture_junit_source(spec, cache, ArtifactWriter(destination), "moved-trial")
+    assert cleaned == [expected_name]
+    assert [item.status for item in result.captures] == ["interrupted", "collected"]
+    assert result.captures[0].producer_elapsed.value is None
+
+
+@pytest.mark.parametrize("trial", ['"' * 1024, "🧪" * 1024, "ci" + "\x01" * 1022], ids=["quoted", "utf8", "control"])
+def test_maximum_utf8_or_escaped_trial_marker_remains_recoverable(tmp_path, monkeypatch, trial):
+    spec, cache, environment = prepared_inputs(tmp_path)
+
+    def interrupted(*args):
+        raise KeyboardInterrupt
+
+    substitute_docker(monkeypatch, environment, interrupted)
+    writer = ArtifactWriter(tmp_path / "output")
+    with pytest.raises(KeyboardInterrupt):
+        capture.capture_junit_source(spec, cache, writer, trial)
+    marker = next(writer.run_root.glob("junit-captures/*/buggy.started.json"))
+    assert len(marker.read_bytes()) <= JunitRoleStartV2.MAXIMUM_BYTES
+    monkeypatch.setattr(capture, "_run_role", lambda *args: ProcessStreams(encoded(records()), b"", 0, 1, "exited"))
+    resumed = capture.capture_junit_source(spec, cache, writer, trial)
+    assert [item.status for item in resumed.captures] == ["interrupted", "collected"]

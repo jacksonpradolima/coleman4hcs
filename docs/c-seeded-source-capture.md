@@ -189,7 +189,8 @@ reviewed wheel: conservative package/version identity changes the output generat
 flowchart LR
     A[Pinned public raw files and separate terms] --> B[Existing source views and external cache]
     B --> C[Typed pre-execution plan and durable ownership]
-    C --> D[Pinned offline GCC container]
+    C --> K[Shared optional transport isolation guards]
+    K --> D[Pinned offline GCC container]
     D --> E[Existing bounded process collector]
     E --> F[Raw C roles and independent output oracle]
     F --> G[Existing generic controlled dataset]
@@ -202,6 +203,11 @@ One local POSIX producer lock owns each recipe/trial/implementation generation.
 Physical container names additionally bind the resolved output namespace, so
 independent output roots cannot collide or clean each other's containers.
 This physical ownership scope does not change logical observation identity.
+The C, Python and JUnit transports share container isolation arguments, while
+each producer retains its own runtime, observer, oracle and wire contracts. C
+alone explicitly requests executable scratch for its bounded compilation. C and
+Python also share CLI parsing and accounting presentation; these optional
+transport helpers introduce no dependency from the controlled domain to a CLI.
 The plan precedes execution; role ownership precedes spawning; immutable raw role
 packets follow owned cleanup. Receipt and completion are written last. Identical
 retries revalidate source/context/raw bytes without duplicating observation or

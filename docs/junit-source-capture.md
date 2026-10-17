@@ -150,7 +150,12 @@ producers for the same context/trial; a process crash releases it. Cleanup targe
 only the producer's deterministic container name. A cleanup failure propagates
 without committing a role packet; the next call retries cleanup and retains the
 interrupted observation state. Source acquisition, staging and
-publication failures never certify a completed learning checkpoint.
+publication failures never certify a completed learning checkpoint. New start
+markers use schema version 2 and persist the original output namespace and exact
+container name. Their name is validated against the logical context/trial/role
+before cleanup. Version 1 markers remain readable and recover using their original
+state-prefix container naming rule; unknown versions reject before cleanup. Raw
+role packets and controlled datasets retain their existing version 1 contracts.
 
 Successful protocols require the exact discovered test sequence and a final
 trailer. Discovery loads excluded classes without initializing them. Output from
@@ -195,5 +200,7 @@ regimes remain work in [#261](https://github.com/jacksonpradolima/coleman/issues
 Physical container ownership includes the resolved output namespace. Equal logical
 trials in separate output roots cannot collide or clean each other's containers;
 observation identities retain their original meaning. Keep incomplete ownership
-state at its original output location for recovery, and retain the original
-reviewed producer package when reopening older captures.
+state together when moving an output tree: a version 2 marker still identifies
+the original container after relocation. Retain the original reviewed producer
+package when reopening older captures; changing package bytes changes the source
+context and does not automatically discover an older producer's generation.

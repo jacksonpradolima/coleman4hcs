@@ -181,7 +181,8 @@ flowchart LR
     R[Typed source and component recipe] --> C[Existing verified external cache]
     C --> P[Immutable pre-execution plan]
     P --> S[Durable role ownership]
-    S --> D[Bounded Docker: private dependencies and pytest]
+    S --> K[Shared optional transport isolation guards]
+    K --> D[Bounded Docker: private dependencies and pytest]
     D --> B[Atomic raw role packets]
     B --> V[Reparse and bind actual protocol]
     V --> G[Existing controlled dataset and immutable artifacts]
@@ -190,6 +191,12 @@ flowchart LR
     S --> X[Uncommitted recovery: interrupted and unavailable]
     X --> V
 ```
+
+Python, C and JUnit share container isolation arguments. Each retains its own
+runtime, observer and wire contracts; Python keeps its original scratch mount
+semantics. The Python and C CLIs share argument parsing and accounting display.
+These helpers live in the optional transports; the controlled domain remains
+independent of CLI and runtime execution.
 
 A nonblocking POSIX lock prevents concurrent producers within the same output
 generation from observing the recipe/trial/implementation twice. Separate output
