@@ -31,7 +31,13 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from coleman.results.domain_artifacts import LocalResultsSink
-from coleman.results.recovery import ResultCheckpoint, recover_parquet_results
+from coleman.results.recovery import (
+    _OWNER_METADATA_KEY,
+    ResultCheckpoint,
+    _CheckpointOwner,
+    _recover_parquet_results,
+    bind_checkpoint_results,
+)
 
 # Arrow schema matching MonitorCollector columns.
 # Keep this in sync with the monitor output so DuckDB can scan a stable layout.
@@ -170,6 +176,7 @@ class ParquetSink(LocalResultsSink):
         self._lock = threading.Lock()
         self._file_counter = 0
         self._flush_failed = False
+        self._checkpoint_owner: _CheckpointOwner | None = None
         os.makedirs(out_dir, exist_ok=True)
 
     # ------------------------------------------------------------------
@@ -187,6 +194,7 @@ class ParquetSink(LocalResultsSink):
         for key, value in state.items():
             setattr(self, key, value)
         self._flush_failed = state.get("_flush_failed", False)
+        self._checkpoint_owner = state.get("_checkpoint_owner")
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
@@ -213,18 +221,29 @@ class ParquetSink(LocalResultsSink):
         with self._lock:
             self._flush_locked()
 
-    def recover_checkpoint(self, checkpoint: ResultCheckpoint) -> None:
+    def recover_checkpoint(
+        self, checkpoint: ResultCheckpoint, *, checkpoint_root: Path, checkpoint_loaded: bool = False
+    ) -> None:
         """Reconcile a trusted native checkpoint before buffering a resumed execution.
 
         Removes uncommitted tail rows, retaining all committed/other coordinates.
         An occupied buffer raises ValueError rather than discarding new work.
-        Caller owns exclusive recovery of the run; filesystem failures propagate.
-        See :func:`recover_parquet_results` for interruption/compatibility limits.
+        The checkpoint directory must match the coordinate's persistent ownership
+        binding. Unpaired old results reject without deletion; complete legacy
+        coordinates require checkpoint_loaded=True for safe adoption. Caller owns
+        exclusive recovery of the run; filesystem failures propagate.
+        See :func:`_recover_parquet_results` for interruption/compatibility limits.
         """
         with self._lock:
             if self._buffer:
                 raise ValueError("Checkpoint recovery requires an empty result buffer")
-            recover_parquet_results(Path(self.out_dir), checkpoint, _RESULT_SCHEMA)
+            owner = bind_checkpoint_results(
+                Path(self.out_dir), checkpoint, checkpoint_root, checkpoint_loaded, _RESULT_SCHEMA
+            )
+            if self._checkpoint_owner is not None and self._checkpoint_owner != owner:
+                raise ValueError("Reopen the Parquet sink before switching checkpoint ownership")
+            _recover_parquet_results(Path(self.out_dir), checkpoint, _RESULT_SCHEMA, owner)
+            self._checkpoint_owner = owner
 
     def close(self) -> None:
         """Flush remaining data and release resources."""
@@ -271,6 +290,10 @@ class ParquetSink(LocalResultsSink):
             return
 
         table = pa.Table.from_pylist(self._buffer, schema=_RESULT_SCHEMA)
+        if self._checkpoint_owner is not None:
+            table = table.replace_schema_metadata(
+                {_OWNER_METADATA_KEY: self._checkpoint_owner.to_json().encode("utf-8")}
+            )
         sort_keys = [col for col in self._partition_cols if col in table.column_names]
         if sort_keys:
             table = table.sort_by([(col, "ascending") for col in sort_keys])

@@ -40,7 +40,7 @@ from coleman.environment_base import AbstractEnvironment
 from coleman.results.parquet_sink import ParquetSink
 from coleman.results.recovery import ResultCheckpoint
 from coleman.results.sink_base import NullSink, ResultsSink
-from coleman.scenarios import HCSScenarioLoader, VirtualHCSScenario
+from coleman.scenarios import HCSScenarioLoader, ScenarioLoader, VirtualHCSScenario
 from coleman.telemetry.otel import get_telemetry
 from coleman.telemetry.resources import ProcessResourceTracker, ResourceSnapshot
 from coleman.utils.monitor import MonitorCollector
@@ -316,9 +316,13 @@ class Environment(AbstractEnvironment):
         marker without loadable state rejects instead of erasing old results.
         Recovery errors block simulation; callers must serialize same-run retries.
         """
-        mode = getattr(self.scenario_provider, "budget_mode", None)
-        if not isinstance(self._sink, ParquetSink) or not isinstance(self.checkpoint_store, LocalCheckpointStore):
+        if (
+            not isinstance(self._sink, ParquetSink)
+            or not isinstance(self.checkpoint_store, LocalCheckpointStore)
+            or not isinstance(self.scenario_provider, ScenarioLoader)
+        ):
             return
+        mode = getattr(self.scenario_provider, "budget_mode", None)
         if not isinstance(mode, BudgetMode):
             return
         scenario = str(self.scenario_provider)
@@ -331,7 +335,9 @@ class Environment(AbstractEnvironment):
         self._sink.recover_checkpoint(
             ResultCheckpoint(
                 scenario, experiment, mode, self.scenario_provider.budget_value, payload.step if payload else 0
-            )
+            ),
+            checkpoint_root=Path(self.checkpoint_store.base_dir),
+            checkpoint_loaded=payload is not None,
         )
 
     def run_single(
@@ -462,6 +468,8 @@ class Environment(AbstractEnvironment):
                 last_step = t
                 last_virtual_scenario = virtual_scenario
 
+            self._commit_final_native_step(experiment, last_step, bandit, restore)
+
             if forecast_next:
                 self._run_forecast_prioritization(
                     experiment=experiment,
@@ -482,6 +490,25 @@ class Environment(AbstractEnvironment):
             )
             self.telemetry.mark_run_finished(experiment_attrs)
             self.telemetry.flush()
+
+    def _commit_final_native_step(self, experiment, step, bandit, restore):
+        """Commit a successful native Parquet run even when it ends before its checkpoint interval.
+
+        ``step`` counts processed rounds, not source BuildIds. Reuse the existing
+        flush/store operation before completion is published. Fully restored runs,
+        periodic commits and custom providers/other sinks retain their behavior.
+        Save failures propagate; a short completed run must not later be mistaken
+        for an uncommitted tail and rerun with new timing observations.
+        """
+        if not restore or step <= 0:
+            return
+        if (
+            isinstance(self._sink, ParquetSink)
+            and isinstance(self.checkpoint_store, LocalCheckpointStore)
+            and isinstance(self.scenario_provider, ScenarioLoader)
+            and step % self._checkpoint_interval != 0
+        ):
+            self.save_experiment(experiment, step, bandit)
 
     def _run_forecast_prioritization(self, experiment, next_step, bandit, virtual_scenario, bandit_duration):
         """Compute the next prioritization forecast without evaluating outcomes."""

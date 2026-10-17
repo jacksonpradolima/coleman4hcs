@@ -185,7 +185,8 @@ flowchart LR
     Native --> VTS[Per-variant Parquet]
     WTS --> Runner[Existing RunSpec/API and native runner]
     VTS --> Runner
-    Runner --> Recovery[Reconcile uncommitted Parquet tail on resume]
+    Runner --> Pair[Verify persisted result/checkpoint pairing]
+    Pair --> Recovery[Reconcile uncommitted Parquet tail on resume]
     Recovery --> Runner
     Runner --> Results[Per-policy/budget/variant results and checkpoints]
 ```
@@ -206,13 +207,32 @@ is ambiguous and **rejects before loading it**. Retain the original package and
 output; explicitly start a fresh output tree rather than guessing a migration.
 
 For built-in native scenarios using local checkpoints and the Parquet sink,
-resume first removes rows beyond the last committed processed step for that
+resume first verifies a persisted ownership binding between results and their
+checkpoint directory, then removes rows beyond the last committed processed step for that
 exact dataset, execution number and budget. This includes a crash after result
 flush but before the first checkpoint: all rows from that uncommitted attempt
 are replayed. Already committed observations and other coordinates are retained;
 unchanged shards remain byte-identical. A progress marker without loadable state
 rejects before deleting results. This does not repair corrupt or missing result
 files that predate the checkpoint, or deduplicate previously committed evidence.
+
+Before the first native row, version-one private metadata pairs each result
+coordinate with a persistent checkpoint-directory token. A new or emptied
+checkpoint directory cannot reclaim another run's result rows, even when dataset,
+experiment number and budget match. Such reuse rejects before deletion; retain
+the old data and use fresh paired output paths. Future or corrupt stored
+ownership metadata rejects. Tokens are operational identities; they do not change
+mathematical source/observation digests or claim independent observations.
+Unbound completed legacy coordinates can be adopted only after loading their
+checkpoint and checking that no result exceeds its committed step. This adds
+ownership metadata while preserving original rows and checkpoint payloads.
+Unbound legacy tails remain ambiguous and reject; no migration guesses a run.
+New native shards also retain their owner token in versioned Parquet metadata.
+An unmanaged writer's tail is never reclaimed as another run's work; it rejects
+instead. One sink instance belongs to one checkpoint owner.
+Successful native runs commit their final processed round even when shorter than
+the configured checkpoint interval, so a completed run is not replayed as an
+uncommitted tail. Fully restored completed runs preserve their result bytes.
 
 Each native Parquet shard is completed under a temporary name before atomic
 publication. A crash between shard publications leaves complete uncommitted

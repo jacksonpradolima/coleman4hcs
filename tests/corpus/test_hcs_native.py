@@ -8,6 +8,7 @@ import polars as pl
 import pytest
 
 from coleman.application.hcs import run_hcs_replay
+from coleman.budget import BudgetMode
 from coleman.checkpoint.checkpoint_store import LocalCheckpointStore
 from coleman.environment import Environment
 from coleman.evaluation import NAPFDVerdictMetric
@@ -145,7 +146,8 @@ def test_progress_without_checkpoint_rejects_without_discarding_any_native_resul
 
 
 @pytest.mark.parametrize("enabled", [False, True])
-def test_direct_native_environment_preserves_buffered_preceding_execution(tmp_path, enabled):
+@pytest.mark.parametrize("custom", ["native", "per_round_only"])
+def test_direct_native_environment_preserves_buffered_preceding_execution(tmp_path, enabled, custom):
     """The library Environment may share one sink across executions with intervals beyond the final round."""
     _, _, completion = export(tmp_path)
     provider = get_scenario_provider(
@@ -157,6 +159,27 @@ def test_direct_native_environment_preserves_buffered_preceding_execution(tmp_pa
         context_config={},
         feature_groups={},
     )
+
+    class PerRoundBudgetProvider:
+        """An existing custom provider can expose budgets on each virtual round only."""
+
+        budget_mode = BudgetMode.RATIO
+        budget_value = None
+
+        def __init__(self, actual):
+            self.actual = actual
+
+        def __getattr__(self, name):
+            return getattr(self.actual, name)
+
+        def __iter__(self):
+            return iter(self.actual)
+
+        def __str__(self):
+            return str(self.actual)
+
+    if custom != "native":
+        provider = PerRoundBudgetProvider(provider)
     env = Environment(
         create_agents(RandomPolicy(), RNFailReward(), [], seed=42),
         provider,
@@ -169,6 +192,40 @@ def test_direct_native_environment_preserves_buffered_preceding_execution(tmp_pa
     rows = pl.read_parquet(str(tmp_path / "results/**/*.parquet"), hive_partitioning=True)
     assert rows.height == 4
     assert rows.group_by("experiment").len().sort("experiment")["len"].to_list() == [2, 2]
+    if enabled and custom == "native":
+        before = {p: p.read_bytes() for p in (tmp_path / "results").rglob("*.parquet")}
+        env.run(experiments=2, trials=2, forecast_next=False)
+        env.store_experiment()
+        assert {p: p.read_bytes() for p in (tmp_path / "results").rglob("*.parquet")} == before
+        markers = list((tmp_path / "checkpoints").rglob("progress_ex*.json"))
+        assert len(markers) == 2
+        assert all(json.loads(path.read_bytes())["step_committed"] == 2 for path in markers)
+
+
+def test_new_native_checkpoint_root_preserves_results_from_another_run(tmp_path):
+    """Actual native replay must reject a reused result tree paired with a different run's checkpoints."""
+    _, _, completion = export(tmp_path)
+
+    def environment(base, execution_id):
+        provider = get_scenario_provider(str(completion.parent / "datasets"), "owned-hcs", 0.5, False, False, {}, {})
+        return Environment(
+            create_agents(RandomPolicy(), RNFailReward(), [], seed=42),
+            provider,
+            NAPFDVerdictMetric(),
+            results_config={"enabled": True, "out_dir": str(tmp_path / "results")},
+            checkpoint_config={"enabled": True, "base_dir": str(base), "interval": 1},
+            runtime_metadata={"execution_id": execution_id},
+        )
+
+    first = environment(tmp_path / "first-checkpoints", "original-independent-run")
+    first.run_single(1, trials=2, forecast_next=False)
+    first.store_experiment()
+    before = {p: p.read_bytes() for p in (tmp_path / "results").rglob("*.parquet")}
+    second = environment(tmp_path / "new-checkpoints", "different-independent-run")
+    with pytest.raises(ValueError, match="not paired"):
+        second.run_single(1, trials=2, forecast_next=False)
+    assert {p: p.read_bytes() for p in (tmp_path / "results").rglob("*.parquet")} == before
+    assert not list((tmp_path / "new-checkpoints").rglob("progress_ex1.json"))
 
 
 def test_invalid_strategy_and_empty_projection_reject_before_native_execution(tmp_path):
@@ -180,8 +237,9 @@ def test_invalid_strategy_and_empty_projection_reject_before_native_execution(tm
     _, cache, completion = export(tmp_path, rows_transform=unavailable)
     with pytest.raises(ValueError, match="no compatible native"):
         run_hcs_replay(completion, cache, tmp_path / "native", strategy="wts")
+    invalid_strategy = cast(Any, "future")
     with pytest.raises(ValueError, match="strategy must be"):
-        run_hcs_replay(completion, cache, tmp_path / "native", strategy=cast(Any, "future"))
+        run_hcs_replay(completion, cache, tmp_path / "native", strategy=invalid_strategy)
 
 
 @pytest.mark.parametrize("strategy", ["wts", "vts"])
