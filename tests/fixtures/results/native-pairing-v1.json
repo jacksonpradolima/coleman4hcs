@@ -1,0 +1,11 @@
+{
+  "owner": {
+    "schema_version": 1,
+    "owner_id": "00000000000000000000000000000000"
+  },
+  "binding": {
+    "schema_version": 1,
+    "owner_id": "00000000000000000000000000000000",
+    "scope_id": "sha256:94ec8151464008b05793bce87be277f116c423fcebfa239948b74e51b2f49c94"
+  }
+}

@@ -26,7 +26,9 @@ class _VerifiedReplay(NamedTuple):
     dataset_id: str
     receipt: VersionedContract
     evidence: str
-    extension: Literal["lrts_etl", "rtptorrent_etl", "lrts_stage_etl"]
+    extension: Literal["lrts_etl", "rtptorrent_etl", "lrts_stage_etl", "hcs_etl"]
+    strategy: Literal["serial", "wts", "vts"] = "serial"
+    dataset_ids: tuple[str, ...] = ()
 
 
 def _payload(completion: Path) -> bytes:
@@ -59,15 +61,16 @@ def _run_verified(
         {
             "execution": {"independent_executions": 1, "parallel_pool_size": 1, "seed": seed, "verbose": False},
             "experiment": {
-                "datasets_dir": str(source.root / "datasets"),
-                "datasets": [source.dataset_id],
+                "datasets_dir": str(source.root / ("vts" if source.strategy == "vts" else "datasets")),
+                "datasets": list(source.dataset_ids or (source.dataset_id,)),
                 "policies": list(policies),
                 "rewards": ["RNFail"],
                 "budget": {"mode": "ratio", "values": list(budgets)},
             },
             "checkpoint": {"enabled": True, "interval": 1},
             "algorithm": {"ucb": {"rnfail": {"c": 1.0}}},
-            "results": {"out_dir": str(output), "top_k_prioritization": 10},
+            "results": {"out_dir": str(output), "top_k_prioritization": 1000 if source.strategy != "serial" else 10},
+            "hcs_configuration": {"wts_strategy": source.strategy == "wts"},
             "extensions": {source.extension: {"receipt": source.receipt.fingerprint, "evidence": source.evidence}},
         }
     )

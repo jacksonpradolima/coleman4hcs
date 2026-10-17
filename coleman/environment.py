@@ -25,6 +25,7 @@ import logging
 import re
 import time
 import warnings
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -33,12 +34,13 @@ import polars as pl
 from coleman.agent import ContextualAgent, SlidingWindowContextualAgent
 from coleman.bandit import EvaluationMetricBandit
 from coleman.budget import BudgetMode
-from coleman.checkpoint.checkpoint_store import CheckpointStore, NullCheckpointStore
+from coleman.checkpoint.checkpoint_store import CheckpointStore, LocalCheckpointStore, NullCheckpointStore
 from coleman.checkpoint.state import CheckpointPayload
 from coleman.environment_base import AbstractEnvironment
 from coleman.results.parquet_sink import ParquetSink
+from coleman.results.recovery import ResultCheckpoint
 from coleman.results.sink_base import NullSink, ResultsSink
-from coleman.scenarios import HCSScenarioLoader, VirtualHCSScenario
+from coleman.scenarios import HCSScenarioLoader, ScenarioLoader, VirtualHCSScenario
 from coleman.telemetry.otel import get_telemetry
 from coleman.telemetry.resources import ProcessResourceTracker, ResourceSnapshot
 from coleman.utils.monitor import MonitorCollector
@@ -298,12 +300,45 @@ class Environment(AbstractEnvironment):
         """
         run_id = str(self.scenario_provider)
         payload = self.checkpoint_store.load(run_id, experiment)
+        self._recover_native_results(experiment, payload)
         if payload is None:
             return 1, None
 
         self.agents = payload.agents if payload.agents is not None else self.agents
         self.scenario_provider.last_build(payload.step)
         return payload.step + 1, payload.bandit
+
+    def _recover_native_results(self, experiment: int, payload: CheckpointPayload | None) -> None:
+        """Reconcile built-in local Parquet runs before replaying uncommitted rounds.
+
+        Legacy completed files and checkpoint payloads are unchanged. Other
+        sinks/providers retain their existing durability semantics. A progress
+        marker without loadable state rejects instead of erasing old results.
+        Recovery errors block simulation; callers must serialize same-run retries.
+        """
+        if (
+            not isinstance(self._sink, ParquetSink)
+            or not isinstance(self.checkpoint_store, LocalCheckpointStore)
+            or not isinstance(self.scenario_provider, ScenarioLoader)
+        ):
+            return
+        mode = getattr(self.scenario_provider, "budget_mode", None)
+        if not isinstance(mode, BudgetMode):
+            return
+        scenario = str(self.scenario_provider)
+        marker = Path(self.checkpoint_store.base_dir) / scenario / f"progress_ex{experiment}.json"
+        if payload is None and marker.exists():
+            raise ValueError("Native checkpoint progress exists without loadable state; retain output for recovery")
+        # Direct Environment.run callers may still buffer a preceding execution.
+        # Persist it before reconciliation; a poisoned failed writer rejects here.
+        self._sink.flush()
+        self._sink.recover_checkpoint(
+            ResultCheckpoint(
+                scenario, experiment, mode, self.scenario_provider.budget_value, payload.step if payload else 0
+            ),
+            checkpoint_root=Path(self.checkpoint_store.base_dir),
+            checkpoint_loaded=payload is not None,
+        )
 
     def run_single(
         self,
@@ -433,6 +468,8 @@ class Environment(AbstractEnvironment):
                 last_step = t
                 last_virtual_scenario = virtual_scenario
 
+            self._commit_final_native_step(experiment, last_step, bandit, restore)
+
             if forecast_next:
                 self._run_forecast_prioritization(
                     experiment=experiment,
@@ -453,6 +490,25 @@ class Environment(AbstractEnvironment):
             )
             self.telemetry.mark_run_finished(experiment_attrs)
             self.telemetry.flush()
+
+    def _commit_final_native_step(self, experiment, step, bandit, restore):
+        """Commit a successful native Parquet run even when it ends before its checkpoint interval.
+
+        ``step`` counts processed rounds, not source BuildIds. Reuse the existing
+        flush/store operation before completion is published. Fully restored runs,
+        periodic commits and custom providers/other sinks retain their behavior.
+        Save failures propagate; a short completed run must not later be mistaken
+        for an uncommitted tail and rerun with new timing observations.
+        """
+        if not restore or step <= 0:
+            return
+        if (
+            isinstance(self._sink, ParquetSink)
+            and isinstance(self.checkpoint_store, LocalCheckpointStore)
+            and isinstance(self.scenario_provider, ScenarioLoader)
+            and step % self._checkpoint_interval != 0
+        ):
+            self.save_experiment(experiment, step, bandit)
 
     def _run_forecast_prioritization(self, experiment, next_step, bandit, virtual_scenario, bandit_duration):
         """Compute the next prioritization forecast without evaluating outcomes."""

@@ -67,14 +67,32 @@ def test_installed_base_wheel_repeats_mathematics_and_native_ci_without_componen
     script = outside / "ci.py"
     shutil.copyfile(ROOT / "examples/finite-coverage/ci.py", script)
     outputs = []
+    first_run_files = None
     for _ in range(2):
         result = command([str(python), str(script), "native-ci"], outside, env)
         outputs.append(json.loads(result.stdout.strip().splitlines()[-1]))
+        audited = {
+            path: path.read_bytes()
+            for path in (outside / "native-ci").rglob("*")
+            if path.is_file()
+            and (
+                path.parent.name in {"benchmark-reports", "coverage-results", "domain-records"}
+                or path.suffix == ".pkl"
+                or path.name.startswith("progress_ex")
+                or (path.suffix == ".parquet" and "results" in path.parts)
+            )
+        }
+        if first_run_files is None:
+            first_run_files = audited
+        else:
+            assert audited == first_run_files
     assert outputs[0] == outputs[1]
     assert outputs[0]["native_scheduled"] == ["A", "C"]
     assert outputs[0]["objective"] == "1"
     reports = list((outside / "native-ci").rglob("benchmark-reports/*.json"))
-    assert len(reports) == 4
+    # One completed report per method; identical retries preserve its original
+    # timing evidence rather than execute and publish the same native run again.
+    assert len(reports) == 2
     grouped = {}
     for path in reports:
         report = BenchmarkReport.from_json(path.read_bytes())
