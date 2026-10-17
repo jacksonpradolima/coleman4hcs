@@ -11,6 +11,7 @@ from coleman.corpus.hcs_etl import export_hcs_parquet, preflight_hcs_etl
 from coleman.corpus.hcs_projection import project_hcs
 from coleman.corpus.hcs_raw import _integer, read_hcs_slice
 from coleman.corpus.materialization import materialize_source
+from coleman.results.domain import canonical_json
 from coleman.transports.hcs_etl import load_hcs_recipe, main
 from tests.corpus.hcs_support import hcs_recipe, prepare_hcs
 from tests.corpus.test_source_views import changed, source_spec
@@ -213,3 +214,17 @@ def test_pure_projection_revalidates_unchecked_nested_source_objects(tmp_path, k
     forged = source.model_copy(update=updates)
     with pytest.raises(ValueError):
         project_hcs(forged)
+
+
+def test_wire_bounded_recipe_cannot_publish_a_completion_too_large_for_its_reader(tmp_path):
+    recipe, _, _ = hcs_recipe()
+    raw = recipe.model_dump(mode="json")
+    raw["executions"]["source"]["citation"] = "A" * (2 * 1024**2 - len(recipe.to_json().encode()) - 256)
+    payload = canonical_json(raw).encode()
+    assert len(payload) < 2 * 1024**2
+    path = tmp_path / "recipe.json"
+    path.write_bytes(payload)
+    with pytest.raises(ValueError, match="canonical metadata exceeds 1 MiB"):
+        main(["--recipe", str(path), "--cache", str(tmp_path / "cache"), "--output", str(tmp_path / "etl")])
+    assert not (tmp_path / "cache").exists()
+    assert not (tmp_path / "etl").exists()

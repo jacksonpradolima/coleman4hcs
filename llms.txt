@@ -6084,6 +6084,13 @@ Native logs go to stderr and stdout contains one JSON summary with completion,
 accounting, variant aliases and native artifact/run paths. Raw data stay in the
 content-addressed source cache.
 
+V1 accepts two raw files of at most 64 MiB each, 500,000 parsed CSV records,
+16,000 selected records, 16,384 job records, sixteen pipelines, 64 observed
+variant names and 1,000 tests per native suite. CSV counters/positions refer to
+parsed records after the header. Recipe files have a 2 MiB wire read limit and a
+1 MiB canonical metadata limit, reserving space for bounded completion receipts.
+Oversized metadata rejects before acquisition or cache/output creation.
+
 The frozen first-sixteen-pipeline slice has these descriptive counts:
 
 | Evidence | Count |
@@ -6146,6 +6153,10 @@ WTS learns on one declared surrogate per pipeline: maximum projected duration
 and any reported nonpass for each shared test label. Its ranking projects onto
 each actual variant suite. VTS uses separate policy state for each variant.
 Per-variant budgets and outcome denominators use that variant's own tests.
+Native result `step` counts processed scenarios. Resolve its source pipeline via
+the sorted active `BuildId` values of the corresponding union or variant input,
+then the receipt/cell mapping. Fully excluded rounds retain their original
+modeled IDs in analytical evidence; they do not consume a native processed step.
 The union is not another set of observed executions and its time is not the sum
 of all variant work. Native RNFail is budget-censored: zero nondetection reward
 for an unscheduled case is not an observed pass.
@@ -9465,7 +9476,7 @@ results to another budget's checkpoint.
 
 ## A complete variant-aware data path
 
-The [HCS guide](../hcs-parquet-etl.md) covers the reviewed original downloads,
+The [HCS guide](https://jacksonpradolima.github.io/coleman/hcs-parquet-etl/) covers the reviewed original downloads,
 Parquet export, library/CLI execution and offline replay. Its frozen first-sixteen
 pipeline slice retains **885 source rows**, projects **856 test executions**,
 and explicitly excludes **29 records from another attempt**. Seven original

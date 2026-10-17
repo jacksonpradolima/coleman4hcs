@@ -10,7 +10,7 @@ from pydantic import Field, model_validator
 from coleman.corpus.lrts_contracts import Label, Name, Positive
 from coleman.corpus.lrts_etl_contracts import ETLFile
 from coleman.corpus.materialization_contracts import MaterializationSpec
-from coleman.results.domain import Fingerprint, fingerprint
+from coleman.results.domain import Fingerprint, canonical_json, fingerprint
 from coleman.results.versioned import VersionedContract
 from coleman.selection.contracts import Immutable, Quantity, UnitSemantics
 
@@ -62,6 +62,8 @@ class HCSRecipe(VersionedContract):
                 raise ValueError("HCS requires raw data files within 64 MiB each")
         if self.executions.source.sha256 == self.jobs.source.sha256:
             raise ValueError("HCS execution CSV and job JSON must be distinct sources")
+        if len(canonical_json(self.model_dump(mode="json")).encode("utf-8")) > 1024**2:
+            raise ValueError("HCS canonical metadata exceeds 1 MiB; reserve space for bounded completion receipts")
         return self
 
 
