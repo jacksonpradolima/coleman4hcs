@@ -2548,6 +2548,9 @@ flowchart LR
 ```
 
 One local POSIX producer lock owns each recipe/trial/implementation generation.
+Physical container names additionally bind the resolved output namespace, so
+independent output roots cannot collide or clean each other's containers.
+This physical ownership scope does not change logical observation identity.
 The plan precedes execution; role ownership precedes spawning; immutable raw role
 packets follow owned cleanup. Receipt and completion are written last. Identical
 retries revalidate source/context/raw bytes without duplicating observation or
@@ -6573,6 +6576,12 @@ functional reproduction only. Chronological benchmark admission, additional
 languages/faults, independent observations, fair baselines and all seven diversity
 regimes remain work in [#261](https://github.com/jacksonpradolima/coleman/issues/261).
 
+Physical container ownership includes the resolved output namespace. Equal logical
+trials in separate output roots cannot collide or clean each other's containers;
+observation identities retain their original meaning. Keep incomplete ownership
+state at its original output location for recovery, and retain the original
+reviewed producer package when reopening older captures.
+
 
 
 ### FILE: docs/lrts-parquet-etl.md
@@ -8771,6 +8780,12 @@ Multi-case raw replay compares observations in the generic domain's canonical
 logical-key order. This validation correction preserves original raw/report
 bytes and case order; it does not migrate or reinterpret prior artifacts.
 
+Physical container ownership includes the resolved output namespace. Equal logical
+trials in separate output roots cannot collide or clean each other's containers;
+observation identities retain their original meaning. Keep incomplete ownership
+state at its original output location for recovery, and retain the original
+reviewed producer package when reopening older captures.
+
 
 
 ### FILE: docs/releases/3.6.1.md
@@ -9107,6 +9122,11 @@ generic domain's canonical logical-key order. Original raw/report bytes and case
 ordering retain their meaning. Producer-specific replay binds the original full
 installed package/version: retain the reviewed older wheel for its captures, and
 use a fresh generation for a changed producer.
+
+Physical container ownership for C, Python and JUnit now includes the resolved
+output namespace. Separate output roots cannot collide or clean one another's
+containers; logical observation identities are unchanged. Keep incomplete state
+at its original output location and retain its original producer for recovery.
 
 The first C qualification's noexec scratch failure remains incomplete with zero
 observed cases. Explicit executable tmpfs and a recorded pre-observation amendment

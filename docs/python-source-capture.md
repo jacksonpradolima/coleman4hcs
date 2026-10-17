@@ -247,3 +247,9 @@ roadmap](roadmap.md) and #261's remaining subtasks.
 Multi-case raw replay compares observations in the generic domain's canonical
 logical-key order. This validation correction preserves original raw/report
 bytes and case order; it does not migrate or reinterpret prior artifacts.
+
+Physical container ownership includes the resolved output namespace. Equal logical
+trials in separate output roots cannot collide or clean each other's containers;
+observation identities retain their original meaning. Keep incomplete ownership
+state at its original output location for recovery, and retain the original
+reviewed producer package when reopening older captures.

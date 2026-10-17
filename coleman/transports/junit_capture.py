@@ -322,7 +322,8 @@ def _capture_role(
         if (capture.context_fingerprint, capture.trial_id, capture.role) != expected:
             raise ValueError("JUnit role checkpoint identity mismatch")
         return capture
-    container_name = "coleman-junit-" + state.name[:24] + "-" + role
+    ownership = fingerprint([state.name, str(writer.run_root.resolve())]).removeprefix("sha256:")
+    container_name = "coleman-junit-" + ownership[:24] + "-" + role
     if marker.exists():
         with marker.open("rb") as stream:
             payload = stream.read(4097)

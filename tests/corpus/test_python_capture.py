@@ -502,3 +502,21 @@ def test_multiple_cases_validate_the_existing_domain_canonical_identity_order(tm
     assert result.receipt.status == "collected"
     assert list(result.dataset.observations) == sorted(result.dataset.observations, key=lambda o: o.logical_key)
     assert capture.capture_python_source(spec, cache, writer, "multiple") == result
+
+
+def test_separate_output_roots_have_independent_container_ownership(tmp_path, monkeypatch):
+    spec, cache, environment = prepared_inputs(tmp_path)
+    names = []
+
+    def run(*args):
+        names.append(args[-1])
+        return observed_role(*args)
+
+    substitute_runtime(monkeypatch, environment, run)
+    first = capture.capture_python_source(spec, cache, ArtifactWriter(tmp_path / "first"), "same-trial")
+    second = capture.capture_python_source(spec, cache, ArtifactWriter(tmp_path / "second"), "same-trial")
+    assert len(names) == 4
+    assert set(names[:2]).isdisjoint(names[2:]), (
+        "Separate outputs must not clean or collide with another producer's containers"
+    )
+    assert first.dataset == second.dataset, "Physical ownership must not change logical observation identity"

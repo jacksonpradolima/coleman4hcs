@@ -590,3 +590,20 @@ def test_declared_report_budget_rejects_before_any_source_execution(tmp_path, mo
     with pytest.raises(ValueError, match="normalized report"):
         capture.capture_junit_source(spec, cache, writer, "t" * 1024)
     assert not writer.run_root.exists()
+
+
+def test_separate_output_roots_have_independent_container_ownership(tmp_path, monkeypatch):
+    spec, cache, environment = prepared_inputs(tmp_path)
+    names = []
+
+    def run(*args):
+        names.append(args[-1])
+        return ProcessStreams(encoded(records()), b"", 0, 0, "exited")
+
+    substitute_docker(monkeypatch, environment, run)
+    first = capture.capture_junit_source(spec, cache, ArtifactWriter(tmp_path / "first"), "same-trial")
+    second = capture.capture_junit_source(spec, cache, ArtifactWriter(tmp_path / "second"), "same-trial")
+    assert len(names) == 4
+    assert set(names[:2]).isdisjoint(names[2:]), "Independent outputs must not own the same physical containers"
+    assert first.dataset.spec.context == second.dataset.spec.context
+    assert first.dataset.pairs == second.dataset.pairs

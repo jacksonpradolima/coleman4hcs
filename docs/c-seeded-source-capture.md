@@ -199,6 +199,9 @@ flowchart LR
 ```
 
 One local POSIX producer lock owns each recipe/trial/implementation generation.
+Physical container names additionally bind the resolved output namespace, so
+independent output roots cannot collide or clean each other's containers.
+This physical ownership scope does not change logical observation identity.
 The plan precedes execution; role ownership precedes spawning; immutable raw role
 packets follow owned cleanup. Receipt and completion are written last. Identical
 retries revalidate source/context/raw bytes without duplicating observation or

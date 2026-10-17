@@ -107,7 +107,8 @@ def _capture_role(
     if path.exists():
         return _load_role(state, role, plan)
     harness = c_harness_plan(plan.recipe, prepared.context.fingerprint, plan.trial_id, role)
-    container = "coleman-c-" + harness.fingerprint.removeprefix("sha256:")[:24]
+    ownership = fingerprint([harness.fingerprint, str(writer.run_root.resolve())]).removeprefix("sha256:")
+    container = "coleman-c-" + ownership[:24]
     start = CRoleStart(
         schema_version=1,
         context_fingerprint=prepared.context.fingerprint,

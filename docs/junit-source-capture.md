@@ -191,3 +191,9 @@ mocks no source compiler, JVM, cache, converter or artifact writer. It establish
 functional reproduction only. Chronological benchmark admission, additional
 languages/faults, independent observations, fair baselines and all seven diversity
 regimes remain work in [#261](https://github.com/jacksonpradolima/coleman/issues/261).
+
+Physical container ownership includes the resolved output namespace. Equal logical
+trials in separate output roots cannot collide or clean each other's containers;
+observation identities retain their original meaning. Keep incomplete ownership
+state at its original output location for recovery, and retain the original
+reviewed producer package when reopening older captures.
