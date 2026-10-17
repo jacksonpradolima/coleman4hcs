@@ -224,3 +224,12 @@ or an algorithm comparison. The typed reader does not independently certify this
 external execution. A distributable pinned producer recipe, component-by-component
 admission dossier and broader fresh test/fault matrix remain necessary before
 claiming that the Java/non-Java diversity criteria are satisfied.
+
+## Constructed C source observations
+
+The [optional Juliet C producer](c-seeded-source-capture.md) uses these same generic
+contracts and existing source cache/artifacts. It collects a deliberately bounded
+synthetic function pair with an independent arithmetic oracle, retaining process
+errors, negative outcomes and incomplete recovery. Compiler/runtime acquisition
+and execution remain in optional transports; no C, Docker, CLI or MCP import is
+introduced into this domain. Its elapsed ns never become native CI Duration.

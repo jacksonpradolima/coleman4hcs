@@ -1,0 +1,209 @@
+"""COLEMAN-owned Python 3.13+ observer for bounded, unchanged C function subjects.
+
+The outer producer owns source verification and container isolation. This script
+uses the exact existing bounded process collector for compilation and each child.
+It neither installs dependencies nor converts process elapsed ns to CI costs.
+"""
+
+from __future__ import annotations
+
+import ctypes
+import hashlib
+import importlib.util
+import json
+import os
+import platform
+import sys
+import tempfile
+import time
+from datetime import UTC, datetime
+from pathlib import Path
+
+PREFIX = b"COLEMAN-C-V1\t"
+
+
+def digest(payload):
+    """Identify exact bytes; no content or clock normalization occurs."""
+    return "sha256:" + hashlib.sha256(payload).hexdigest()
+
+
+def instant():
+    """Return actual collection UTC microseconds, separate from monotonic process ticks."""
+    return datetime.now(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
+
+
+def emit(record):
+    """Flush one complete ASCII JSON frame; interrupted writes never manufacture a trailer."""
+    payload = json.dumps(
+        {"schema_version": 1, **record}, ensure_ascii=True, allow_nan=False, sort_keys=True, separators=(",", ":")
+    ).encode("ascii")
+    sys.stdout.buffer.write(PREFIX + payload + b"\n")
+    sys.stdout.buffer.flush()
+
+
+def collector(recipe):
+    """Load the separately pinned COLEMAN collector from the fixed observer mount only."""
+    path = Path(__file__).with_name("process.py")
+    if digest(path.read_bytes()) != recipe["collector_sha256"]:
+        raise ValueError("C process collector digest mismatch")
+    spec = importlib.util.spec_from_file_location("coleman_owned_process", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.collect_process
+
+
+def checked_process(collect, args, seconds=20):
+    """Retain bounded build/probe streams; any limit or nonzero exit prevents case promotion."""
+    result = collect(tuple(args), timeout_seconds=seconds, maximum_output_bytes=1024**2)
+    sys.stderr.buffer.write(result.stdout)
+    sys.stderr.buffer.write(result.stderr)
+    sys.stderr.buffer.flush()
+    if result.termination != "exited" or result.exit_code != 0:
+        raise RuntimeError("C compiler/runtime probe failed or exceeded its guard")
+    return result.stdout.decode("ascii").strip()
+
+
+def wrapper(recipe, role):
+    """Select an unchanged void(void) function; canonical argument becomes private temporary stdin.
+
+    Symbol/path validation belongs to the typed producer plan. The wrapper also
+    checks the required 32-bit unsigned ABI before calling any subject function.
+    No original time-seeded INCLUDEMAIN or alternate goodG2B path is used.
+    """
+    function = recipe[role + "_function"]
+    return (
+        '#include "/source/' + recipe["source_member"] + '"\n'
+        "int main(int argc, char **argv) {\n"
+        "  if (argc != 2 || sizeof(unsigned int)*CHAR_BIT != 32 || UINT_MAX != 4294967295U) return 125;\n"
+        "  FILE *input = tmpfile();\n"
+        "  if (!input) return 126;\n"
+        "  if (fputs(argv[1], input) < 0 || fputc(10, input) == EOF || fseek(input, 0, SEEK_SET)) return 126;\n"
+        "  stdin = input;\n"
+        "  " + function + "();\n"
+        "  if (ferror(stdout) || fclose(input)) return 126;\n"
+        "  return 0;\n}\n"
+    )
+
+
+def expected(value):
+    """Apply the frozen mathematical safety oracle without running or reading either role's result."""
+    if value == 2**32 - 1:
+        return "data value is too large to perform arithmetic safely.\n"
+    return str(value + 1) + "\n"
+
+
+def observe(collect, executable, case):
+    """Observe one bounded child; a physical failure is distinct from a normal output mismatch."""
+    started = instant()
+    result = collect((str(executable), str(case["value"])), timeout_seconds=5, maximum_output_bytes=65536)
+    finished = instant()
+    # Preserve exact supported ASCII subject outputs; undecodable bytes fail the
+    # protocol instead of being silently replaced or interpreted as assertions.
+    stdout, stderr = result.stdout.decode("ascii"), result.stderr.decode("ascii")
+    if result.termination == "timeout":
+        outcome = "timeout"
+    elif result.termination != "exited" or result.exit_code != 0:
+        outcome = "test_error"
+    elif stdout != expected(case["value"]) or stderr:
+        outcome = "assertion_failed"
+    else:
+        outcome = "passed"
+    emit(
+        dict(
+            record_type="case",
+            test_id=case["test_id"],
+            outcome=outcome,
+            termination=result.termination,
+            exit_code=result.exit_code,
+            stdout=stdout,
+            stderr=stderr,
+            elapsed=dict(
+                value=result.elapsed_ns,
+                unit="ns",
+                status="observed",
+                meaning="observed-test-harness-monotonic-elapsed-v1",
+            ),
+            capture_started_at=started,
+            capture_finished_at=finished,
+        )
+    )
+    return outcome != "passed"
+
+
+def main():
+    """Compile in a private tmpfs directory and emit completeness only after every declared observation.
+
+    Compile/probe errors propagate before any header/case. Parent guards bound
+    the whole observer; per-child guards are separate. The standard collector
+    inherits PATH only, so subject cases receive no host credentials/environment.
+    """
+    payload = Path(sys.argv[1]).read_bytes()
+    if len(payload) > 1024**2:
+        raise ValueError("C observer plan exceeds 1 MiB")
+    plan = json.loads(payload)
+    recipe = plan["recipe"]
+    if plan["schema_version"] != 1 or recipe["schema_version"] != 1:
+        raise ValueError("Unknown C observer schema")
+    collect = collector(recipe)
+    compiler = checked_process(collect, ("gcc", "-dumpfullversion"))
+    target = checked_process(collect, ("gcc", "-dumpmachine"))
+    runtime = recipe["runtime"]
+    if (compiler, target, platform.python_version(), platform.libc_ver()[1], ctypes.sizeof(ctypes.c_uint) * 8) != (
+        runtime["version"],
+        runtime["target"],
+        runtime["python_version"],
+        runtime["libc_version"],
+        32,
+    ):
+        raise ValueError("Actual C compiler/interpreter/ABI differs from frozen runtime")
+    if os.environ.get("LC_ALL") != "C" or time.tzname[0] != "UTC":
+        raise ValueError("Actual C observer locale/timezone differs from frozen runtime")
+    with tempfile.TemporaryDirectory(prefix="coleman-c-build-") as temporary:
+        root = Path(temporary)
+        source, executable = root / "driver.c", root / "subject"
+        source.write_text(wrapper(recipe, plan["role"]), encoding="ascii")
+        # Both original functions remain compiled; entry selection is explicit.
+        # Static original goodB2G is visible through this single translation unit.
+        checked_process(
+            collect,
+            (
+                "gcc",
+                "-std=c11",
+                "-O0",
+                "-Wall",
+                "-Wextra",
+                "-I/fixture",
+                str(source),
+                *("/fixture/" + n for n in recipe["support_units"]),
+                "-o",
+                str(executable),
+            ),
+        )
+        emit(
+            dict(
+                record_type="header",
+                context_fingerprint=plan["context_fingerprint"],
+                trial_id=plan["trial_id"],
+                role=plan["role"],
+                plan_sha256=digest(payload),
+                compiler_version=compiler,
+                compiler_target=target,
+                python_version=platform.python_version(),
+                libc_version=platform.libc_ver()[1],
+                architecture=platform.machine(),
+                unsigned_bits=32,
+                timezone=time.tzname[0],
+                locale=os.environ["LC_ALL"],
+                executable_sha256=digest(executable.read_bytes()),
+                test_ids=[case["test_id"] for case in recipe["cases"]],
+            )
+        )
+        failed = False
+        for case in recipe["cases"]:
+            failed = observe(collect, executable, case) or failed
+        emit(dict(record_type="trailer", cases=len(recipe["cases"]), oracle_exit_code=int(failed)))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

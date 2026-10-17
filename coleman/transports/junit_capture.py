@@ -37,6 +37,7 @@ from coleman.transports.junit_contracts import (
     JunitEnvironment,
     JunitRoleCapture,
     JunitRoleStart,
+    JunitRoleStartV2,
     ProducerElapsed,
 )
 from coleman.transports.junit_process import collect_process
@@ -191,6 +192,46 @@ def _source_arguments(receipt: MaterializationReceipt, prefix: str, target: str)
     return "".join(f'"{target}/{name}"\n' for name in sorted(names))
 
 
+def _container_arguments(
+    base: tuple[str, ...], name: str, platform_name: str, memory_bytes: int, *, executable_scratch: bool = False
+) -> tuple[str, ...]:
+    """Return common offline container guards without starting a process or touching storage.
+
+    Callers supply validated runtime limits and their own output-scoped container
+    identity. Scratch is a bounded 128 MiB tmpfs; only C compilation explicitly
+    requests executable scratch. The default preserves existing Python/JUnit
+    mount semantics. Root hosts map to uid/gid 65534; other hosts retain theirs.
+    """
+    uid, gid = (os.getuid(), os.getgid()) if os.getuid() else (65534, 65534)
+    scratch = "/tmp:rw," + ("exec," if executable_scratch else "") + "nosuid,nodev,size=134217728,mode=1777"
+    return base + (
+        "run",
+        "--pull=never",
+        "--rm",
+        "--name",
+        name,
+        "--platform",
+        platform_name,
+        "--network",
+        "none",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--pids-limit",
+        "64",
+        "--cpus",
+        "2",
+        "--memory",
+        str(memory_bytes),
+        "--read-only",
+        "--tmpfs",
+        scratch,
+        "--user",
+        f"{uid}:{gid}",
+    )
+
+
 def _run_role(
     base: tuple[str, ...],
     recipe: JunitCaptureRecipe,
@@ -228,32 +269,7 @@ def _run_role(
         (harness / "classes.txt").write_text("\n".join(sorted(classes)) + "\n")
         for path in harness.iterdir():
             path.chmod(0o644)
-        uid, gid = (os.getuid(), os.getgid()) if os.getuid() else (65534, 65534)
-        args = base + (
-            "run",
-            "--pull=never",
-            "--rm",
-            "--name",
-            container_name,
-            "--platform",
-            recipe.runtime.platform,
-            "--network",
-            "none",
-            "--cap-drop",
-            "ALL",
-            "--security-opt",
-            "no-new-privileges",
-            "--pids-limit",
-            "64",
-            "--cpus",
-            "2",
-            "--memory",
-            str(recipe.limits.memory_bytes),
-            "--read-only",
-            "--tmpfs",
-            "/tmp:rw,nosuid,nodev,size=134217728,mode=1777",
-            "--user",
-            f"{uid}:{gid}",
+        args = _container_arguments(base, container_name, recipe.runtime.platform, recipe.limits.memory_bytes) + (
             "--env",
             "TZ=" + recipe.runtime.timezone,
             "--env",
@@ -303,6 +319,35 @@ def _load_role(path: Path, recipe: JunitCaptureRecipe) -> JunitRoleCapture:
     return capture
 
 
+def _recover_started_role(
+    base: tuple[str, ...], marker: Path, state: Path, expected: tuple[str, str, str]
+) -> JunitRoleStart | JunitRoleStartV2:
+    """Validate bounded v1/v2 ownership and clean its original container before acknowledging interruption.
+
+    Legacy v1 uses the original state-prefix naming rule. V2 retains its stored,
+    validated name even after output relocation. Unknown versions, wrong logical
+    identity or unconfirmed cleanup raise and leave the start marker recoverable.
+    """
+    with marker.open("rb") as stream:
+        payload = stream.read(JunitRoleStartV2.MAXIMUM_BYTES + 1)
+    if len(payload) > JunitRoleStartV2.MAXIMUM_BYTES:
+        raise ValueError("JUnit start marker exceeds 8 KiB")
+    data = decode_json(payload, exact_decimals=True)
+    model = JunitRoleStart if isinstance(data, dict) and data.get("schema_version") == 1 else JunitRoleStartV2
+    started = model.model_validate(data)
+    if not isinstance(started, JunitRoleStartV2) and len(payload) > 4096:
+        raise ValueError("Legacy JUnit start marker exceeds 4 KiB")
+    if (started.context_fingerprint, started.trial_id, started.role) != expected:
+        raise ValueError("JUnit start marker identity mismatch")
+    original_container = (
+        started.container_name
+        if isinstance(started, JunitRoleStartV2)
+        else "coleman-junit-" + state.name[:24] + "-" + expected[2]
+    )
+    _cleanup(base, original_container)
+    return started
+
+
 def _capture_role(
     base: tuple[str, ...],
     recipe: JunitCaptureRecipe,
@@ -322,16 +367,11 @@ def _capture_role(
         if (capture.context_fingerprint, capture.trial_id, capture.role) != expected:
             raise ValueError("JUnit role checkpoint identity mismatch")
         return capture
-    container_name = "coleman-junit-" + state.name[:24] + "-" + role
+    namespace = fingerprint(str(writer.run_root.resolve()))
+    ownership = fingerprint([expected[0], trial_id, namespace]).removeprefix("sha256:")
+    container_name = "coleman-junit-" + ownership[:24] + "-" + role
     if marker.exists():
-        with marker.open("rb") as stream:
-            payload = stream.read(4097)
-        if len(payload) > 4096:
-            raise ValueError("JUnit start marker exceeds 4 KiB")
-        started = JunitRoleStart.from_json(payload)
-        if (started.context_fingerprint, started.trial_id, started.role) != expected:
-            raise ValueError("JUnit start marker identity mismatch")
-        _cleanup(base, container_name)
+        started = _recover_started_role(base, marker, state, expected)
         capture = JunitRoleCapture.model_validate(
             {
                 "schema_version": 1,
@@ -352,13 +392,15 @@ def _capture_role(
         )
     else:
         now = datetime.now(UTC)
-        started = JunitRoleStart.model_validate(
+        started = JunitRoleStartV2.model_validate(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "context_fingerprint": expected[0],
                 "trial_id": trial_id,
                 "role": role,
                 "capture_started_at": now,
+                "output_namespace": namespace,
+                "container_name": container_name,
             }
         )
         writer.write_immutable(marker, started.to_json() + "\n")

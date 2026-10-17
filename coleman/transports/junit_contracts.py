@@ -12,7 +12,7 @@ from coleman.corpus.controlled_contracts import Label, Ticks
 from coleman.corpus.materialization_contracts import MaterializationSpec, safe_member_name
 from coleman.corpus.source_views import SourceViewSpec
 from coleman.evaluation.protected.temporal import Timestamp
-from coleman.results.domain import Fingerprint
+from coleman.results.domain import Fingerprint, fingerprint
 from coleman.results.versioned import VersionedContract
 from coleman.selection.contracts import Immutable
 
@@ -315,6 +315,32 @@ class JunitRoleStart(VersionedContract):
     trial_id: Label
     role: Literal["buggy", "fixed"]
     capture_started_at: CaptureInstant
+
+
+class JunitRoleStartV2(JunitRoleStart):
+    """Persist physical container ownership independently of the current output location.
+
+    Version 1 markers remain readable through JunitRoleStart and retain their
+    legacy state-prefix container names. New v2 markers bind the logical role to
+    a digest of the original resolved output root; moving that root never changes
+    the container requiring cleanup. Neither version certifies completed work.
+    Unknown versions and inconsistent names reject before container operations.
+    The 8 KiB limit includes UTF-8 labels and the added ownership metadata.
+    """
+
+    schema_version: Annotated[int, Field(strict=True, ge=2, le=2)]
+    MAXIMUM_BYTES: ClassVar[int] = 8 * 1024
+    output_namespace: Fingerprint
+    container_name: Annotated[str, Field(strict=True, pattern=r"^coleman-junit-[a-f0-9]{24}-(buggy|fixed)$")]
+
+    @model_validator(mode="after")
+    def owned_container(self) -> Self:
+        """Require the exact name derived from this logical capture and its original output namespace."""
+        ownership = fingerprint([self.context_fingerprint, self.trial_id, self.output_namespace])
+        expected = "coleman-junit-" + ownership.removeprefix("sha256:")[:24] + "-" + self.role
+        if self.container_name != expected:
+            raise ValueError("JUnit container ownership disagrees with its start marker")
+        return self
 
 
 class JunitEnvironment(VersionedContract):

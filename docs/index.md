@@ -33,6 +33,14 @@ The complete guide includes the verified wheel, explicit native arm64 Docker
 preparation and recovery commands. See the [4.11 release notes](releases/4.11.0.md)
 for compatibility and scientific limits.
 
+## Constructed C source capture
+
+The current source adds a [bounded Juliet C workflow](c-seeded-source-capture.md):
+unchanged function selectors, pinned GCC, a predeclared arithmetic oracle and raw
+process evidence. One synthetic template yields six correlated boundary-input
+pairs; it is separate from real-fault sources and corpus admission. The guide
+provides the source-wheel installation path, since this transport follows 4.11.
+
 ## Controlled Java source matrix
 
 [Collect a controlled Java fault matrix](java-fault-matrix.md) with the published

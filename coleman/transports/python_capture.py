@@ -107,7 +107,8 @@ def _capture_role(
     if path.exists():
         return _load_role(state, role, plan)
     harness = python_harness_plan(plan.recipe, prepared.context.fingerprint, plan.trial_id, role)
-    container = "coleman-python-" + harness.fingerprint.removeprefix("sha256:")[:24]
+    ownership = fingerprint([harness.fingerprint, str(writer.run_root.resolve())]).removeprefix("sha256:")
+    container = "coleman-python-" + ownership[:24]
     start = PythonRoleStart(
         schema_version=1,
         context_fingerprint=prepared.context.fingerprint,
@@ -280,7 +281,8 @@ def validate_python_capture(
     report = ControlledReport(
         schema_version=1, context_fingerprint=plan.context.fingerprint, observations=_observations(actual)
     )
-    if report.observations != dataset.observations or _receipt(plan, dataset, actual) != receipt:
+    canonical = tuple(sorted(report.observations, key=lambda item: item.logical_key))
+    if canonical != dataset.observations or _receipt(plan, dataset, actual) != receipt:
         raise ValueError("Python index or normalized observations disagree with original raw evidence")
 
 

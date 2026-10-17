@@ -1,14 +1,15 @@
 """Fresh installed base wheel: offline owned replay, import boundary, native CI and opt-in real Python source."""
 
 import json
-import os
-import shutil
-import subprocess
-import sys
 
 from coleman.artifacts import ArtifactWriter
 from coleman.transports.python_capture import capture_python_source
-from tests.corpus.test_installed_controlled import ROOT, command
+from tests.corpus.installed_source_support import (
+    installed_source_environment,
+    verify_native_checkpoint,
+    verify_offline_source_cli,
+)
+from tests.corpus.test_installed_controlled import command
 from tests.corpus.test_python_capture import prepared_inputs, substitute_runtime
 
 
@@ -18,18 +19,7 @@ def test_installed_python_source_replay_native_checkpoints_and_optional_real_sou
     with monkeypatch.context() as external:
         substitute_runtime(external, environment)
         owned = capture_python_source(spec, cache, writer, "owned-installed")
-    uv = shutil.which("uv")
-    assert uv is not None
-    env = {key: value for key, value in os.environ.items() if key not in {"PYTHONPATH", "PYTHONHOME"}}
-    env.update(UV_LINK_MODE="copy", UV_NO_PROGRESS="1")
-    dist = tmp_path / "dist"
-    command([uv, "build", "--wheel", "--out-dir", str(dist)], ROOT, env)
-    virtual = tmp_path / "installed"
-    command([uv, "venv", str(virtual), "--python", sys.executable], tmp_path, env)
-    python = virtual / "bin/python"
-    command([uv, "pip", "install", "--offline", "--python", str(python), str(next(dist.glob("*.whl")))], tmp_path, env)
-    outside = tmp_path / "outside"
-    outside.mkdir()
+    python, outside, env = installed_source_environment(tmp_path)
     script = """
 import importlib.abc,json,os,signal,subprocess,sys,time
 from pathlib import Path
@@ -137,39 +127,6 @@ print(json.dumps(proof,sort_keys=True))
     assert proof["installed"]
     assert proof["owned_offline_replay"]
     assert proof["real_source_capture"] == (source_cache != "-")
-    no_docker = {**env, "PATH": ""}
-    cli = subprocess.run(
-        [
-            str(python),
-            "-m",
-            "coleman.transports.python",
-            "--recipe-stdin",
-            "--cache",
-            str(cache.root),
-            "--output",
-            str(writer.run_root),
-            "--trial",
-            "owned-installed",
-        ],
-        input=spec.to_json(),
-        cwd=outside,
-        env=no_docker,
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=60,
-    )
-    assert json.loads(cli.stdout)["status"] == "collected"
-    shutil.copyfile(ROOT / "examples/controlled_faults/ci.py", outside / "ci.py")
-    native = [
-        json.loads(
-            command([str(python), "ci.py", "native-owned", str(tmp_path / "native-cache")], outside, env)
-            .stdout.strip()
-            .splitlines()[-1]
-        )
-        for _ in range(2)
-    ]
-    assert native[0] == native[1]
-    assert native[0]["native_rows"] == 1
-    proof["native_ci_checkpoint"] = native[0]
+    verify_offline_source_cli(python, outside, env, "python", cache, writer, spec)
+    proof["native_ci_checkpoint"] = verify_native_checkpoint(python, outside, env, tmp_path)
     (tmp_path / "installed-python-proof.json").write_text(json.dumps(proof, indent=2) + "\n")
