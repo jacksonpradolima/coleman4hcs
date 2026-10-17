@@ -10,13 +10,13 @@ an LLM decision algorithm, or a hosted service.
 Use Python 3.14 or later on Linux or macOS in an activated virtual environment:
 
 ```bash
-python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.9.0/coleman-4.9.0-py3-none-any.whl#sha256=eb59ae45bc280a3d7cfa33bc1c360f68fc69859d9632c864bd996b29ac81a9bd'
+python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.10.0/coleman-4.10.0-py3-none-any.whl#sha256=b85b6d94fdb48d7f31d580583dfe1be96de2c63f07341b7159d2fbf777639d29'
 ```
 
 For optional tools, install the same GitHub wheel with its extra:
 
 ```bash
-python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.9.0/coleman-4.9.0-py3-none-any.whl#sha256=eb59ae45bc280a3d7cfa33bc1c360f68fc69859d9632c864bd996b29ac81a9bd'
+python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.10.0/coleman-4.10.0-py3-none-any.whl#sha256=b85b6d94fdb48d7f31d580583dfe1be96de2c63f07341b7159d2fbf777639d29'
 ```
 
 Use this repository's release assets and verify their published digest and

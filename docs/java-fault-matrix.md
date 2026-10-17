@@ -6,9 +6,8 @@ fixed-tree fixture, retaining every observed pass, failure, test error and
 incomplete collection. This is controlled functional evidence for TCPCI research;
 it is separate from historical CI and policy comparisons.
 
-This revision adds the matrix transport. Build its wheel below; the published
-4.9 wheel contains the existing single-pair producer, not the new matrix command.
-The matrix reuses that producer and the generic [controlled-observation
+The published **4.10 wheel** includes the matrix transport. It reuses the existing
+single-pair producer and the generic [controlled-observation
 domain](controlled-faults.md). It does not introduce a learning runner or change
 existing source recipes, results, checkpoints or raw-capture semantics.
 
@@ -19,12 +18,12 @@ recipes pin Temurin `11.0.32.1`, the arm64 image digest and
 `America/Los_Angeles`. A different architecture needs a separately reviewed
 recipe; changing its label does not validate another runtime.
 
-Build from this revision, then install into a fresh external environment:
+Install the verified published wheel into a fresh external environment; no checkout
+is required:
 
 ```bash
-uv build --wheel --out-dir /tmp/coleman-matrix-dist
 uv venv /tmp/coleman-matrix-env --python 3.14
-uv pip install --python /tmp/coleman-matrix-env/bin/python /tmp/coleman-matrix-dist/*.whl
+uv pip install --python /tmp/coleman-matrix-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.10.0/coleman-4.10.0-py3-none-any.whl#sha256=b85b6d94fdb48d7f31d580583dfe1be96de2c63f07341b7159d2fbf777639d29"
 
 # Explicit operator preparation; COLEMAN never pulls an image.
 docker pull --platform linux/arm64 eclipse-temurin@sha256:e4b3ff0f1a427efb2deb02b092ff8316d58573480260720d767d6ecdd69999d8
