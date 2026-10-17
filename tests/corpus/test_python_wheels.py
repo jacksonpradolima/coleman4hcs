@@ -122,25 +122,30 @@ def test_raw_tamper_and_whole_archive_accounting_reject(tmp_path):
     with pytest.raises(ValueError, match="frozen size"):
         validate_python_wheel(wheel, path)
     path.write_bytes(payload)
+    wrong_size = changed(wheel, decoded_bytes=wheel.decoded_bytes + 1)
     with pytest.raises(ValueError, match="accounting"):
-        validate_python_wheel(changed(wheel, decoded_bytes=wheel.decoded_bytes + 1), path)
+        validate_python_wheel(wrong_size, path)
+    wrong_count = changed(wheel, entry_count=wheel.entry_count + 1)
     with pytest.raises(ValueError, match="accounting"):
-        validate_python_wheel(changed(wheel, entry_count=wheel.entry_count + 1), path)
+        validate_python_wheel(wrong_count, path)
     metadata = next(member for member in wheel.members if member.name.endswith("/METADATA"))
     changed_member = changed(metadata, sha256=digest(b"different metadata"))
+    wrong_metadata = changed(
+        wheel, members=tuple(changed_member if item == metadata else item for item in wheel.members)
+    )
     with pytest.raises(ValueError, match="metadata disagrees"):
-        validate_python_wheel(
-            changed(wheel, members=tuple(changed_member if item == metadata else item for item in wheel.members)), path
-        )
+        validate_python_wheel(wrong_metadata, path)
 
 
 def test_unknown_or_unpinned_component_notices_cannot_be_claimed():
     wheel, _ = owned_wheel()
     component = wheel.components[0]
+    unpinned = changed(component, notice_members=("missing/LICENSE",))
     with pytest.raises(ValueError, match="independently pinned"):
-        changed(wheel, components=(changed(component, notice_members=("missing/LICENSE",)),))
+        changed(wheel, components=(unpinned,))
+    pending = changed(component.license, status="pending")
     with pytest.raises(ValueError, match="recipe-only"):
-        changed(component, license=changed(component.license, status="pending"))
+        changed(component, license=pending)
 
 
 def test_original_wheel_script_requires_an_explicit_independent_pin(tmp_path):

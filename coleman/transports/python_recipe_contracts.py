@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Annotated, ClassVar, Literal, Self
 
 from pydantic import Field, model_validator
@@ -253,14 +254,23 @@ class PythonCaptureRecipe(VersionedContract):
     def _notices(self) -> Self:
         """Bound separately retained original notices before any source acquisition or runtime access."""
         notices = {}
-        for wheel in self.wheels:
-            for component in wheel.components:
-                for notice in component.additional_notices:
-                    if notice.package_id in notices and notices[notice.package_id] != notice:
-                        raise ValueError("Conflicting Python additional notice identity")
-                    if notice.source.size_bytes is None or notice.source.size_bytes > 1024**2:
-                        raise ValueError("Python additional notice exceeds its 1-MiB byte limit")
-                    notices[notice.package_id] = notice
+        for notice in self.component_notices():
+            if notice.package_id in notices and notices[notice.package_id] != notice:
+                raise ValueError("Conflicting Python additional notice identity")
+            if notice.source.size_bytes is None or notice.source.size_bytes > 1024**2:
+                raise ValueError("Python additional notice exceeds its 1-MiB byte limit")
+            notices[notice.package_id] = notice
         if len(notices) > 16 or sum(notice.source.size_bytes or 0 for notice in notices.values()) > 4 * 1024**2:
             raise ValueError("Python additional notices exceed their count/4-MiB byte limit")
         return self
+
+    def component_notices(self) -> Iterator[MaterializationSpec]:
+        """Yield separately retained public notice recipes, without acquisition or deduplication.
+
+        Validation checks conflicting package identities before any caller can
+        materialize them. Repeated identical references are permitted and remain
+        one source input, never independent component observations.
+        """
+        for wheel in self.wheels:
+            for component in wheel.components:
+                yield from component.additional_notices

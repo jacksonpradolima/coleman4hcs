@@ -83,9 +83,21 @@ def parsed_python_stream(payload: bytes, recipe: PythonCaptureRecipe, plan: Pyth
         raise ValueError("Python stream exceeds its record count")
     header = PythonHeader.from_json(frames[0])
     _header_bindings(header, recipe, plan)
+    cases, trailer = _case_frames(frames[1:], recipe)
+    if trailer is not None and trailer.cases != len(cases):
+        raise ValueError("Python trailer disagrees with actual completed cases")
+    if trailer is not None and payload.rsplit(b"\n", 1)[-1].startswith(PREFIX):
+        raise ValueError("Truncated Python protocol frame follows its trailer")
+    return PythonRecords(header, cases, trailer)
+
+
+def _case_frames(
+    frames: list[bytes], recipe: PythonCaptureRecipe
+) -> tuple[tuple[PythonCase, ...], PythonTrailer | None]:
+    """Parse already byte/count-bounded case/trailer frames, preserving the declared case order and schemas."""
     cases = []
     trailer = None
-    for frame in frames[1:]:
+    for frame in frames:
         if trailer is not None:
             raise ValueError("Python protocol frame follows its trailer")
         # Decode with the same duplicate-key/version safeguards as each concrete model.
@@ -98,11 +110,7 @@ def parsed_python_stream(payload: bytes, recipe: PythonCaptureRecipe, plan: Pyth
             if index >= len(recipe.test_ids) or case.test_id != recipe.test_ids[index]:
                 raise ValueError("Python case sequence disagrees with the frozen universe")
             cases.append(case)
-    if trailer is not None and trailer.cases != len(cases):
-        raise ValueError("Python trailer disagrees with actual completed cases")
-    if trailer is not None and payload.rsplit(b"\n", 1)[-1].startswith(PREFIX):
-        raise ValueError("Truncated Python protocol frame follows its trailer")
-    return PythonRecords(header, tuple(cases), trailer)
+    return tuple(cases), trailer
 
 
 def python_role_capture(

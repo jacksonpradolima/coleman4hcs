@@ -89,7 +89,7 @@ def python_harness_plan(recipe: PythonCaptureRecipe, context: str, trial_id: str
             "role": role,
             "fixture_root": "/fixture",
             "production_root": "/source",
-            "dependency_root": "/tmp/dependencies",
+            "dependency_storage": "private-runtime-tempdir-v1",
             "wheel_root": "/wheels",
             "wheels": tuple(wheel.package.members[0].name for wheel in recipe.wheels),
             "distributions": (
@@ -152,15 +152,7 @@ def prepare_python_inputs(
         ControlledInput(name="wheel-" + wheel.distribution.name, kind="dependency", materialization=receipt)
         for wheel, receipt in zip(recipe.wheels, wheels, strict=True)
     )
-    notices = {}
-    for wheel in recipe.wheels:
-        for component in wheel.components:
-            for package in component.additional_notices:
-                if package.package_id in notices and notices[package.package_id].spec != package:
-                    raise ValueError("Conflicting additional Python component notice identity")
-                notices[package.package_id] = materialize_source(
-                    package, cache, public_reader(package) if fetch else None
-                )
+    notices = _materialize_notices(recipe, cache, fetch=fetch)
     inputs.extend(
         ControlledInput(name="notice-" + str(index), kind="dependency", materialization=receipt)
         for index, (_, receipt) in enumerate(sorted(notices.items()))
@@ -176,6 +168,7 @@ def prepare_python_inputs(
         setup=(
             "Unmodified common fixed-tree fixture and separately pinned buggy/fixed production trees",
             "Pure wheels installed locally with --no-index --no-deps --no-compile; no project setup.py/build",
+            "Dependency storage: private-runtime-tempdir-v1; atomic mode0700 allocation in bounded container tmpfs",
             "One interpreter per role; explicit lexical test order; order independence is not established",
             "Per-case monotonic integer ns include setup/call/teardown and are not removable CI runner work",
             "Collection clocks are actual UTC microseconds, never historical CI event or feature clocks",
@@ -210,3 +203,14 @@ def prepare_python_inputs(
         limitations=recipe.limitations,
     )
     return PreparedPythonInputs(context, views[0], views[1], views[2], tuple(wheels), harness)
+
+
+def _materialize_notices(
+    recipe: PythonCaptureRecipe, cache: SourceCache, *, fetch: bool
+) -> dict[str, MaterializationReceipt]:
+    """Retain each already validated notice once through the existing cache; no source code is executed."""
+    notices = {}
+    for package in recipe.component_notices():
+        if package.package_id not in notices:
+            notices[package.package_id] = materialize_source(package, cache, public_reader(package) if fetch else None)
+    return notices

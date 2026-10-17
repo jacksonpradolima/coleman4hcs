@@ -8332,6 +8332,12 @@ of becoming successful tests. The CLI also accepts a bounded versioned recipe vi
 The [public pre-execution protocol](https://github.com/jacksonpradolima/coleman/issues/305#issuecomment-6233689817)
 was recorded before observing subject outcomes. Both profiles use these inputs:
 
+An explicit [observer hardening amendment](https://github.com/jacksonpradolima/coleman/issues/305#issuecomment-6234316313)
+pins the updated harness before its qualification. It changes dependency storage
+to an atomically allocated mode0700 temporary directory in container tmpfs.
+Subject/fixture/test, wheel, image and locale declarations remain unchanged;
+original packets and their original producer are retained without reinterpretation.
+
 | Input | Frozen selection |
 | --- | --- |
 | Buggy source | PySnooper `e21a31162f4c54be693d8ca8260e42393b39abd3`, the direct parent of the fix |
@@ -8351,6 +8357,10 @@ resolution, source builds, project `setup.py` or compilation. The image supplies
 pip 20.0.2, setuptools 45.1.0 and wheel 0.34.2 unchanged. Actual interpreter,
 architecture, locale, encoding, distribution versions and selected discovery are
 checked against the frozen bootstrap plan before promoting case evidence.
+
+The bootstrap plan declares `private-runtime-tempdir-v1`. Python's temporary
+directory API allocates the actual dependency location atomically with mode0700
+and removes it after observation; no predictable shared directory is trusted.
 
 The parent deadline covers the observed Docker process, including interpreter and
 wheel installation overhead. It does not bound the entire acquisition workflow,
@@ -8437,7 +8447,7 @@ flowchart LR
     R[Typed source and component recipe] --> C[Existing verified external cache]
     C --> P[Immutable pre-execution plan]
     P --> S[Durable role ownership]
-    S --> D[Offline bounded Docker observation]
+    S --> D[Bounded Docker: private dependencies and pytest]
     D --> B[Atomic raw role packets]
     B --> V[Reparse and bind actual protocol]
     V --> G[Existing controlled dataset and immutable artifacts]
@@ -8737,6 +8747,8 @@ results; native TCPCI experiments keep their established runner and checkpoints.
   through `python -m coleman.transports.python` or the typed Python API.
 - Inspect original bounded packets, actual interpreter/locale/distribution facts,
   explicit exception identities and separate case/producer nanosecond counters.
+- Install pinned wheels in an atomically allocated private temporary directory
+  inside bounded container tmpfs, with explicit storage policy and cleanup.
 - Reopen completed evidence offline without Docker. A real process kill recovers
   an uncommitted role as interrupted, without silently repeating its observation.
 - Validate recipe, context, raw protocol, normalized observations and immutable

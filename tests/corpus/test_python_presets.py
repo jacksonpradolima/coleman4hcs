@@ -65,8 +65,9 @@ def test_missing_old_future_and_coerced_recipe_versions_reject(model, factory, v
         data.pop("schema_version")
     else:
         data["schema_version"] = version
+    payload = json.dumps(data)
     with pytest.raises(ValueError):
-        model.from_json(json.dumps(data))
+        model.from_json(payload)
 
 
 def test_legacy_controlled_artifact_keeps_original_bytes_schema_and_missingness():
@@ -96,5 +97,6 @@ def test_universe_duplicates_undeclared_files_and_dependency_collisions_reject()
     with pytest.raises(ValueError, match="distinct distributions"):
         changed(spec, wheels=spec.wheels * 2)
     provided = (*spec.runtime.provided_distributions, spec.wheels[0].distribution)
+    runtime = changed(spec.runtime, provided_distributions=provided)
     with pytest.raises(ValueError, match="distinct distributions"):
-        changed(spec, runtime=changed(spec.runtime, provided_distributions=provided))
+        changed(spec, runtime=runtime)

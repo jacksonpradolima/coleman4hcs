@@ -130,8 +130,9 @@ def test_old_missing_future_and_coerced_versions_reject(factory, version):
     else:
         data["schema_version"] = version
     payload = json.dumps(data)
+    model = type(record)
     with pytest.raises(ValueError):
-        type(record).from_json(payload)
+        model.from_json(payload)
 
 
 @pytest.mark.parametrize(
@@ -235,12 +236,19 @@ def test_actual_owned_harness_preserves_assertions_errors_skips_and_elapsed(tmp_
     fixture = tmp_path / "fixture"
     tests = fixture / "tests"
     tests.mkdir(parents=True)
+    allocation = tmp_path / "owned-dependency-allocation.json"
     (tests / "test_owned.py").write_text(
         "import pytest\n"
         "def test_pass():\n    assert 2 + 2 == 4\n"
         "def test_assert():\n    assert 2 + 2 == 5\n"
         'def test_error():\n    raise ValueError("owned deliberate error")\n'
         'def test_skip():\n    pytest.skip("owned deliberate skip")\n'
+        "def test_private():\n    import json, stat, sys\n    from pathlib import Path\n"
+        '    roots = [Path(p) for p in sys.path if Path(p).name.startswith("coleman-python-dependencies-")]\n'
+        "    assert len(roots) == 1\n    root = roots[0]\n    assert root.is_dir()\n"
+        "    assert stat.S_IMODE(root.stat().st_mode) == 0o700\n"
+        '    assert root.name.startswith("coleman-python-dependencies-")\n'
+        f'    Path({str(allocation)!r}).write_text(json.dumps({{"path": str(root)}}))\n'
     )
     plan = PythonHarnessPlan(
         schema_version=1,
@@ -249,11 +257,11 @@ def test_actual_owned_harness_preserves_assertions_errors_skips_and_elapsed(tmp_
         role="buggy",
         fixture_root=str(fixture),
         production_root=str(tmp_path / "production"),
-        dependency_root=str(tmp_path / "dependencies"),
+        dependency_storage="private-runtime-tempdir-v1",
         wheel_root=str(tmp_path / "wheels"),
         wheels=(),
         distributions=(DistributionVersion(name="pytest", version=importlib.metadata.version("pytest")),),
-        test_ids=tuple("tests/test_owned.py::test_" + name for name in ("pass", "assert", "error", "skip")),
+        test_ids=tuple("tests/test_owned.py::test_" + name for name in ("pass", "assert", "error", "skip", "private")),
     )
     path = tmp_path / "plan.json"
     path.write_text(plan.to_json() + "\n")
@@ -284,9 +292,12 @@ def test_actual_owned_harness_preserves_assertions_errors_skips_and_elapsed(tmp_
     trailer = PythonTrailer.model_validate(rows[-1])
     assert set(header.test_ids) == set(plan.test_ids)
     assert {case.test_id for case in cases} == set(plan.test_ids)
-    assert trailer.cases == 4
+    assert trailer.cases == 5
     assert trailer.pytest_exit_code == 1
     assert {case.outcome for case in cases} == {"passed", "assertion_failed", "test_error", "skipped"}
     assert all(case.elapsed.status == "observed" for case in cases)
     assert all(case.elapsed.unit == "ns" for case in cases)
     assert {case.error_type for case in cases if case.error_type} == {"builtins.AssertionError", "builtins.ValueError"}
+    private = next(case for case in cases if case.test_id.endswith("::test_private"))
+    assert private.outcome == "passed"
+    assert not Path(json.loads(allocation.read_text())["path"]).exists()

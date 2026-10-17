@@ -16,6 +16,7 @@ import os
 import platform
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -167,7 +168,19 @@ def main():
     if type(plan.get("schema_version")) is not int or plan["schema_version"] != 1:
         raise ValueError("Unsupported Python bootstrap plan version")
     pin = "sha256:" + hashlib.sha256(payload).hexdigest()
-    target = plan["dependency_root"]
+    if plan["dependency_storage"] != "private-runtime-tempdir-v1":
+        raise ValueError("Unsupported Python dependency storage policy")
+    with tempfile.TemporaryDirectory(prefix="coleman-python-dependencies-") as target:
+        return observe(plan, pin, target)
+
+
+def observe(plan, pin, target):
+    """Install and observe only within the caller-owned private temporary directory.
+
+    The directory is allocated atomically with mode0700 inside the container's
+    bounded tmpfs, and removed after observation. No predictable shared location
+    is trusted. All source/fixture/wheel bytes and test selection remain unchanged.
+    """
     if plan["wheels"]:
         subprocess.run(
             [

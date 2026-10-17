@@ -48,6 +48,8 @@ from coleman.transports.python_source import (
 
 _PLAN = "plan.json"
 _COMPLETE = "complete.json"
+_RECEIPT = "receipt.json"
+_JSON_SUFFIX = ".json"
 
 
 def _path(root: Path, name: str) -> Path:
@@ -80,7 +82,7 @@ def _docker_base():
 
 def _load_role(state: Path, role: str, plan: PythonCapturePlan) -> PythonRoleCapture:
     """Revalidate all stored raw/parsed facts and frozen identities before using a role checkpoint."""
-    capture = PythonRoleCapture.from_json(_read(_path(state, role + ".json"), PythonRoleCapture.MAXIMUM_BYTES))
+    capture = PythonRoleCapture.from_json(_read(_path(state, role + _JSON_SUFFIX), PythonRoleCapture.MAXIMUM_BYTES))
     harness = python_harness_plan(plan.recipe, plan.context.fingerprint, plan.trial_id, role)
     validate_python_role_bytes(capture, plan.recipe, harness)
     return capture
@@ -101,7 +103,7 @@ def _capture_role(
     after container cleanup. Process launch errors retain unavailable counters;
     cleanup failures leave the marker for explicit same-trial recovery.
     """
-    path = _path(state, role + ".json")
+    path = _path(state, role + _JSON_SUFFIX)
     if path.exists():
         return _load_role(state, role, plan)
     harness = python_harness_plan(plan.recipe, prepared.context.fingerprint, plan.trial_id, role)
@@ -314,7 +316,7 @@ def _prepare_plan(
                 "fixed.json",
                 "buggy.started.json",
                 "fixed.started.json",
-                "receipt.json",
+                _RECEIPT,
                 _COMPLETE,
             )
         ):
@@ -367,10 +369,10 @@ def capture_python_source(
     with _single_producer(state):
         plan, prepared = _prepare_plan(recipe, cache, writer, trial_id, producer, state, fetch=fetch)
         for role in ("buggy", "fixed"):
-            if _path(state, role + ".json").exists():
+            if _path(state, role + _JSON_SUFFIX).exists():
                 _load_role(state, role, plan)
-        missing = [role for role in ("buggy", "fixed") if not _path(state, role + ".json").exists()]
-        if missing and any(_path(state, name).exists() for name in ("receipt.json", _COMPLETE)):
+        missing = [role for role in ("buggy", "fixed") if not _path(state, role + _JSON_SUFFIX).exists()]
+        if missing and any(_path(state, name).exists() for name in (_RECEIPT, _COMPLETE)):
             raise ValueError("Python index/completion cannot replace a missing raw role packet")
         if missing:
             with _docker_base() as base:
@@ -383,7 +385,7 @@ def capture_python_source(
         validate_controlled_dataset(dataset, cache)
         receipt = _receipt(plan, dataset, captures)
         validate_python_capture(receipt, plan, dataset, cache)
-        writer.write_immutable(_path(state, "receipt.json"), receipt.to_json() + "\n")
+        writer.write_immutable(_path(state, _RECEIPT), receipt.to_json() + "\n")
         if receipt.status == "collected":
             writer.write_immutable(_path(state, _COMPLETE), receipt.to_json() + "\n")
         elif _path(state, _COMPLETE).exists():

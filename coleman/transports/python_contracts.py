@@ -94,7 +94,9 @@ class PythonHarnessPlan(VersionedContract):
 
     Production paths are fixed container mounts; owned harness tests may supply
     separate temporary roots. The outer producer validates/stages every path.
-    Dependency filenames and test members stay portable and relative.
+    Dependency storage is an explicit private-runtime allocation policy, not a
+    caller-selected predictable directory. Wheel filenames/test members remain
+    portable and relative; constructing this model never creates directories.
     """
 
     MAXIMUM_BYTES: ClassVar[int] = 1024**2
@@ -103,7 +105,7 @@ class PythonHarnessPlan(VersionedContract):
     role: Role
     fixture_root: Label
     production_root: Label
-    dependency_root: Label
+    dependency_storage: Literal["private-runtime-tempdir-v1"]
     wheel_root: Label
     wheels: Annotated[tuple[Label, ...], Field(max_length=16)]
     distributions: Annotated[tuple[DistributionVersion, ...], Field(min_length=1, max_length=32)]

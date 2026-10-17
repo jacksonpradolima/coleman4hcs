@@ -265,10 +265,9 @@ def test_unknown_producer_and_conflicting_completion_reject(tmp_path, monkeypatc
     writer = ArtifactWriter(tmp_path / "output")
     result = capture.capture_python_source(spec, cache, writer, "producer")
     plan = PythonCapturePlan.from_json((result.state_directory / "plan.json").read_bytes())
+    unknown = changed(plan, producer_sha256=digest(b"future implementation"))
     with pytest.raises(ValueError, match="Unknown Python capture producer"):
-        capture.validate_python_capture(
-            result.receipt, changed(plan, producer_sha256=digest(b"future implementation")), result.dataset, cache
-        )
+        capture.validate_python_capture(result.receipt, unknown, result.dataset, cache)
     completion = result.state_directory / "complete.json"
     completion.write_text(changed(result.receipt, dataset_fingerprint=digest(b"wrong dataset")).to_json())
     with pytest.raises(ValueError, match="Conflicting immutable"):

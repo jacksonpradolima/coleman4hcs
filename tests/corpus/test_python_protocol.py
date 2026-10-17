@@ -101,7 +101,7 @@ def owned_plan():
         role="buggy",
         fixture_root="/fixture",
         production_root="/source",
-        dependency_root="/tmp/dependencies",
+        dependency_storage="private-runtime-tempdir-v1",
         wheel_root="/wheels",
         wheels=("owned_pytest-1-py3-none-any.whl",),
         distributions=(*owned_header().distributions, DistributionVersion(name="pip", version="owned")),
@@ -214,8 +214,9 @@ def test_absent_footer_or_failed_process_never_claims_collected(exit_code):
 
 def test_duplicate_keys_reject_and_failed_test_remains_valid_completed_collection():
     raw = wire(owned_records()).replace(b'"schema_version": 1', b'"schema_version": 1, "schema_version": 1', 1)
+    spec, plan = owned_recipe(), owned_plan()
     with pytest.raises(ValueError):
-        parsed_python_stream(raw, owned_recipe(), owned_plan())
+        parsed_python_stream(raw, spec, plan)
     rows = owned_records()
     rows[1].update(outcome="assertion_failed", error_type="builtins.AssertionError", diagnostics="owned\u2028assertion")
     rows[2]["pytest_exit_code"] = 1
@@ -226,21 +227,24 @@ def test_duplicate_keys_reject_and_failed_test_remains_valid_completed_collectio
 
 
 def test_rewritten_normalized_observations_reject_even_when_contract_is_coherent():
+    spec, plan = owned_recipe(), owned_plan()
     capture = python_role_capture(
         owned_recipe(), owned_plan(), ProcessStreams(wire(owned_records()), b"", 0, 1, "exited")
     )
     rewritten = changed(capture, cases=(changed(capture.cases[0], diagnostics="rewritten"),))
     with pytest.raises(ValueError, match="disagree with raw"):
-        validate_python_role_bytes(rewritten, owned_recipe(), owned_plan())
+        validate_python_role_bytes(rewritten, spec, plan)
+    other = changed(plan, trial_id="another-trial")
     with pytest.raises(ValueError, match="identity"):
-        validate_python_role_bytes(capture, owned_recipe(), changed(owned_plan(), trial_id="another-trial"))
+        validate_python_role_bytes(capture, spec, other)
 
 
 @pytest.mark.parametrize("status,elapsed,raw", [("timeout", 0, b""), ("output_limit", 1, b"too short")])
 def test_parent_guard_claims_require_deadline_or_full_prefix(status, elapsed, raw):
-    capture = python_role_capture(owned_recipe(), owned_plan(), ProcessStreams(raw, b"", -9, elapsed, status))
+    spec, plan = owned_recipe(), owned_plan()
+    capture = python_role_capture(spec, plan, ProcessStreams(raw, b"", -9, elapsed, status))
     with pytest.raises(ValueError, match="deadline|complete bounded prefix"):
-        validate_python_role_bytes(capture, owned_recipe(), owned_plan())
+        validate_python_role_bytes(capture, spec, plan)
 
 
 def test_record_order_is_significant_but_declaration_order_is_canonical():
@@ -251,8 +255,9 @@ def test_record_order_is_significant_but_declaration_order_is_canonical():
     reordered_spec = changed(spec, wheels=(changed(spec.wheels[0], members=tuple(reversed(spec.wheels[0].members))),))
     assert reordered_spec.fingerprint == spec.fingerprint
     rows = owned_records()
+    raw = wire([rows[1], rows[0], rows[2]])
     with pytest.raises(ValueError):
-        parsed_python_stream(wire([rows[1], rows[0], rows[2]]), spec, plan)
+        parsed_python_stream(raw, spec, plan)
 
 
 def test_truncated_extra_protocol_after_footer_never_acquires_completion():
