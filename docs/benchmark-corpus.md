@@ -39,7 +39,7 @@ follows from passing these checks.
 
 ## Installed commands
 
-Install the wheel attached to [COLEMAN 4.10](https://github.com/jacksonpradolima/coleman/releases/tag/v4.10.0)
+Install the wheel attached to [COLEMAN 4.11](https://github.com/jacksonpradolima/coleman/releases/tag/v4.11.0)
 in a Python 3.14+ environment, or build a development wheel from the reviewed source.
 Copy examples to a directory outside the checkout. Once installed, these local
 operations need no optional dependency, provider subscription, credential or

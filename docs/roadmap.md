@@ -60,16 +60,16 @@ The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
 [#318](https://github.com/jacksonpradolima/coleman/pull/318).
 #304's [controlled Java matrix](java-fault-matrix.md) shipped in 4.10 through
 [#320](https://github.com/jacksonpradolima/coleman/pull/320).
-#305 adds the [controlled Python producer](python-source-capture.md) in the current
-source revision. #306–#313 track the remaining work. Source conversion does not
-establish admission.
+#305's [controlled Python producer](python-source-capture.md) shipped in 4.11 through
+[#322](https://github.com/jacksonpradolima/coleman/pull/322). #306–#313 track the
+remaining work. Source conversion does not establish admission.
 
 | Stage | Subtasks | Dependency |
 | --- | --- | --- |
 | RTPTorrent source path — delivered in 4.8 | [#301 ZIP64 integrity](https://github.com/jacksonpradolima/coleman/issues/301), [#302 real Parquet ETL/replay](https://github.com/jacksonpradolima/coleman/issues/302) | #302 requires #301 |
 | LRTS source expansion — delivered in 4.9 | [#303 larger histories and explicit stage views](https://github.com/jacksonpradolima/coleman/issues/303) | Existing reviewed main; temporal blockers remain explicit |
 | Java source matrix — delivered in 4.10 | [#304 controlled CLI/Codec faults](https://github.com/jacksonpradolima/coleman/issues/304) | Existing JUnit producer; admission remains separate |
-| Python source — current source revision | [#305 non-Java fault reproduction](https://github.com/jacksonpradolima/coleman/issues/305) | Existing generic controlled observations; one fix, two correlated locale contexts |
+| Python source — delivered in 4.11 | [#305 non-Java fault reproduction](https://github.com/jacksonpradolima/coleman/issues/305) | Existing generic controlled observations; one fix, two correlated locale contexts |
 | Other source expansion | [#306 seeded faults](https://github.com/jacksonpradolima/coleman/issues/306), [#307 HCS](https://github.com/jacksonpradolima/coleman/issues/307), [#308 stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main |
 | Evidence integration | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | #302–#308 |
 | Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
@@ -109,7 +109,7 @@ offline recovery preserve all negative outcomes. Source qualification collected
 source collection remains separate from admission and policy comparison in #309
 onward; the remaining source subtasks follow sequentially.
 
-The current source revision adds #305's [controlled Python capture](python-source-capture.md).
+**4.11.0** publishes #305's [controlled Python capture](python-source-capture.md).
 An unchanged PySnooper fixture reproduces a Unicode exception/fix under ASCII;
 the generic result remains inconclusive. Both revisions pass in the predeclared
 UTF-8 contrast. Whole-wheel component terms, actual runtime provenance, installed
