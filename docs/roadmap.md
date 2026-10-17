@@ -61,10 +61,11 @@ The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
 #304's [controlled Java matrix](java-fault-matrix.md) shipped in 4.10 through
 [#320](https://github.com/jacksonpradolima/coleman/pull/320).
 #305's [controlled Python producer](python-source-capture.md) shipped in 4.11 through
-[#322](https://github.com/jacksonpradolima/coleman/pull/322). #306 adds a
-[constructed C source slice](c-seeded-source-capture.md) in the current source
-revision. #307–#313 track the remaining work. Source conversion does not
-establish admission.
+[#322](https://github.com/jacksonpradolima/coleman/pull/322). #306's
+[constructed C source slice](c-seeded-source-capture.md) shipped in 4.12 through
+[#324](https://github.com/jacksonpradolima/coleman/pull/324). Six of the thirteen
+public subtasks are delivered. #307–#313 track the remaining work, starting with
+HCS expansion in #307. Source conversion does not establish admission.
 
 | Stage | Subtasks | Dependency |
 | --- | --- | --- |
@@ -72,7 +73,7 @@ establish admission.
 | LRTS source expansion — delivered in 4.9 | [#303 larger histories and explicit stage views](https://github.com/jacksonpradolima/coleman/issues/303) | Existing reviewed main; temporal blockers remain explicit |
 | Java source matrix — delivered in 4.10 | [#304 controlled CLI/Codec faults](https://github.com/jacksonpradolima/coleman/issues/304) | Existing JUnit producer; admission remains separate |
 | Python source — delivered in 4.11 | [#305 non-Java fault reproduction](https://github.com/jacksonpradolima/coleman/issues/305) | Existing generic controlled observations; one fix, two correlated locale contexts |
-| Seeded C source — current source revision | [#306 permitted Juliet slice](https://github.com/jacksonpradolima/coleman/issues/306) | One synthetic template/function pair; six correlated inputs, no empirical admission |
+| Seeded C source — delivered in 4.12 | [#306 permitted Juliet slice](https://github.com/jacksonpradolima/coleman/issues/306) | One synthetic template/function pair; six correlated inputs, no empirical admission |
 | Other source expansion | [#307 HCS](https://github.com/jacksonpradolima/coleman/issues/307), [#308 stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main |
 | Evidence integration | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | #302–#308 |
 | Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
@@ -117,17 +118,19 @@ An unchanged PySnooper fixture reproduces a Unicode exception/fix under ASCII;
 the generic result remains inconclusive. Both revisions pass in the predeclared
 UTF-8 contrast. Whole-wheel component terms, actual runtime provenance, installed
 process interruption and offline recovery remain explicit. These two contexts
-share one curated fix, and source admission remains in #309. The next source
-implementation is #307 after the current #306 source slice; no overlapping
-expansion is started here.
+share one curated fix, and source admission remains in #309.
 
-The current source adds #306's [bounded C function capture](c-seeded-source-capture.md).
-NIST Juliet's explicit public-domain/CC0 terms and selected mirror byte correspondence
-were reviewed before observation. Six boundary inputs produce five both-pass pairs
-and one output-assertion failure/pass pair. This is one synthetic template, not six
-faults or a new empirical application. The existing cache, controlled domain,
-bounded process collector and native learning checkpoints retain their roles;
-all seven registry diversity regimes remain uncovered pending #309.
+**4.12.0** publishes [constructed C source capture](c-seeded-source-capture.md)
+with individually pinned permitted Juliet inputs, GCC/ABI provenance, a frozen
+arithmetic oracle and six correlated boundary-input pairs from one 2017 synthetic
+template. The qualification retains five both-pass and one output-assertion
+failure/pass pair; it does not establish six independent faults. The actual signed wheel
+was qualified outside checkout with source collection, offline replay and real
+process-interruption recovery. Shared transport guards and strict JUnit v2
+ownership retain cleanup after output relocation; an actual published 4.11 v1
+marker was also checked without rewriting its bytes. Existing generic datasets
+and native learning checkpoints keep their contracts. This source delivery does
+not admit a new empirical diversity regime or complete #261.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:

@@ -20,26 +20,32 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## New in 4.11
+## New in 4.12
 
-[Reproduce a controlled Python fault](python-source-capture.md) with the published
-wheel: unchanged PySnooper source/tests, pinned dependencies and two frozen locale
-contexts. The ASCII exception-to-pass comparison remains **inconclusive**; the
-UTF-8 contrast is **both-pass**. Raw evidence, component terms, offline validation
-and real process-interruption recovery stay inspectable. The two contexts share
-one curated fix and do not establish independent observations or policy efficacy.
+[Inspect a constructed C weakness](c-seeded-source-capture.md) with the published
+wheel: unchanged NIST Juliet functions, pinned GCC and six frozen uint32 boundary
+inputs checked against an independent arithmetic oracle. The installed
+qualification retains five both-pass pairs and one assertion-failure/pass pair.
+Raw streams, compiler/ABI facts, offline replay and actual interruption recovery
+remain inspectable. This is one synthetic template, not six independent faults
+or historical CI.
 
-The complete guide includes the verified wheel, explicit native arm64 Docker
-preparation and recovery commands. See the [4.11 release notes](releases/4.11.0.md)
-for compatibility and scientific limits.
+The guide includes the verified wheel, explicit native arm64 Docker preparation,
+the typed API, component terms and recovery. Shared transport isolation keeps
+runtime policies consistent; JUnit v2 markers retain original container ownership
+after moving an output tree, while legacy v1 markers retain their reader and
+cleanup rule. See the [4.12 release notes](releases/4.12.0.md) for compatibility.
 
-## Constructed C source capture
+## Controlled Python source
 
-The current source adds a [bounded Juliet C workflow](c-seeded-source-capture.md):
-unchanged function selectors, pinned GCC, a predeclared arithmetic oracle and raw
-process evidence. One synthetic template yields six correlated boundary-input
-pairs; it is separate from real-fault sources and corpus admission. The guide
-provides the source-wheel installation path, since this transport follows 4.11.
+[Reproduce a controlled Python fault](python-source-capture.md) with the same
+published wheel: unchanged PySnooper source/tests, pinned dependencies and two
+frozen locale contexts. The ASCII exception-to-pass comparison remains
+**inconclusive**; the UTF-8 contrast is **both-pass**. Component terms, raw evidence,
+offline validation and real interruption recovery stay inspectable. These
+contexts share one curated fix and do not establish independent observations or
+policy efficacy. The producer was introduced in
+[4.11](releases/4.11.0.md); its guide now uses the qualified current wheel.
 
 ## Controlled Java source matrix
 
@@ -103,7 +109,7 @@ The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures a
 visible source-admission gaps; all seven diversity regimes remain uncovered.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
-correctness checks. See the [4.11 release notes](releases/4.11.0.md) for examples,
+correctness checks. See the [4.12 release notes](releases/4.12.0.md) for examples,
 compatibility and limits.
 
 ## Quick Start
@@ -112,7 +118,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.11.0/coleman-4.11.0-py3-none-any.whl#sha256=d328c0d9bfd9e75658c64e35876c3151fb242c805846835c211a3622d8b75e55"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.12.0/coleman-4.12.0-py3-none-any.whl#sha256=5802f83dfa4608a979f132e6e00ea3d8a128c88f4b7bbde07afcd416c33df55e"
 coleman run --config my-experiment.yaml
 ```
 
