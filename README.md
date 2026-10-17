@@ -23,7 +23,7 @@ and checkpoint. Inspect the inputs, decisions and evidence behind each result.
 | --- | --- |
 | Compare adaptive CI prioritization policies | Native TCPCI runner, configurable policies/rewards, contextual inputs and [parameter sweeps](#sweep-engine) |
 | Evaluate configurable software | Dune examples and [whole/variant test-set strategies](#running-for-an-hcs-system) |
-| Collect real-fault observations | [Controlled Java matrix](docs/java-fault-matrix.md): three curated fixes, frozen source/runtime recipes, raw evidence and offline recovery |
+| Collect real-fault observations | [Controlled Java matrix](docs/java-fault-matrix.md) and [Python source capture](docs/python-source-capture.md): frozen source/runtime recipes, raw evidence and offline recovery |
 | Reproduce and inspect an experiment | Typed RunSpec, deterministic run identity, [provenance](#provenance), Parquet results and resumable checkpoints |
 | Check a CI decision before adoption | [Independent mathematical benchmarks](docs/decision-benchmarks.md), [protected comparisons](docs/protected-evaluation.md) and [operational accounting](docs/operational-pilot.md) |
 | Extend or integrate the platform | [Library API](#library-api), [application API and optional MCP](docs/application-api.md), [versioned domain results](docs/domain-results.md) and runner extensions |
@@ -93,6 +93,13 @@ verify source, context and raw packets; interrupted collection remains incomplet
 and completed evidence reopens offline. This optional workflow requires the pinned
 native arm64 Docker runtime. These constructed functional observations retain
 separate admission and generalization limits.
+
+The current source revision also offers [controlled Python capture](docs/python-source-capture.md).
+Reproduce a PySnooper Unicode fix with unchanged source/tests, pinned wheels and
+two explicit locales. The installed qualification retains an ASCII exception-to-pass
+pair as **inconclusive**, plus a UTF-8 both-pass contrast. Real process interruption,
+offline replay and native checkpoint integration are verified. The guide includes
+the source-wheel installation path; this transport is newer than release 4.10.
 
 # Getting started
 
@@ -672,6 +679,7 @@ controlled reproductions and empirical benchmark corpora have different roles:
 | **Dune and its variants** | Bundled native Parquet, WTS/VTS workflows and [variant-aware inventory](docs/benchmark-corpus.md) | Runnable HCS examples. Variants/context files may share executions; broad HCS benchmark admission remains unfinished. |
 | **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | Available in 4.8: 46,995 class executions / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |
 | **Controlled Java real-fault sources** | Published 4.10 wheel: [CLI-13 producer](docs/junit-source-capture.md) and [three-fix CLI/Codec matrix](docs/java-fault-matrix.md) with typed indices and offline recovery | Two codebases, explicit common fixtures, 357 same-test pairs in the initial qualification. Docker/arm64; negative and inconclusive results remain visible. Controlled evidence, not historical CI or full Defects4J reconstruction. |
+| **Controlled Python real-fault source** | [Build/install the current source wheel → pinned PySnooper capture → offline/interruption recovery](docs/python-source-capture.md) | One unchanged partial fixture, one curated fix, two correlated locales: ASCII error-to-pass remains inconclusive; UTF-8 both-pass. Docker/arm64; component terms and attribution limits retained. |
 | **Owned CI correctness fixtures** | Two tiny [serial/parallel corpus fixtures](docs/benchmark-corpus.md), validation and native integration examples | Available without network. One constructed family for contract/metric checks; no independent-project diversity. |
 | **Coverage and scenario-allocation microbenchmarks** | [Correctness and performance profiles](docs/decision-benchmarks.md), independent exhaustive references and JSON/Markdown reports | Runnable finite-model benchmarks with runtime/memory observations; separate from empirical CI-policy comparisons. |
 | **Pilot, resource and shadow examples** | [Operational accounting](docs/operational-pilot.md), [resource replay](docs/resource-replay.md) and [shadow recovery](docs/prospective-shadow.md) | Runnable synthetic demonstrations of accounting/recovery. Collected prospective evidence remains insufficient. |
@@ -704,8 +712,9 @@ retain their own validation gates.
 ## What remains in the benchmark roadmap
 
 [#261](https://github.com/jacksonpradolima/coleman/issues/261) remains open.
-Broader controlled Java and non-Java fault corpora (including the investigated
-Defects4J/BugsInPy paths), seeded-fault objects such as SIR, further source ETLs,
+The controlled Java matrix and bounded Python reproduction are usable source
+workflows; neither completes corpus diversity or scientific admission.
+Broader real-fault coverage, seeded-fault objects such as SIR, further source ETLs,
 additional HCS topologies and the interaction-covering synthetic stress laboratory
 remain work. External baseline reproduction, including investigated DANTE methods,
 also requires its own verified integration and comparable protocol.

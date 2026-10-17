@@ -13,7 +13,9 @@ from urllib.parse import urlsplit
 from coleman.corpus.materialization_contracts import ByteReader
 
 # Provider expansion requires an explicitly reviewed public-source integration.
-_PUBLIC_HOSTS = frozenset({"raw.githubusercontent.com", "repo.maven.apache.org", "zenodo.org"})
+_PUBLIC_HOSTS = frozenset(
+    {"raw.githubusercontent.com", "repo.maven.apache.org", "zenodo.org", "files.pythonhosted.org"}
+)
 
 
 def _public_target(url: str) -> tuple[str, str]:
@@ -74,8 +76,9 @@ def public_https_source(
     """Open a reviewed public source with certificate verification and no ambient authentication/proxy state.
 
     The adapter never follows redirects or requests private/authenticated sources.
-    Only raw.githubusercontent.com, repo.maven.apache.org and zenodo.org are supported. The caller separately
-    supplies a licensed, digest-pinned materialization spec. Size is the HTTP
+    Supported origins are raw.githubusercontent.com, repo.maven.apache.org,
+    zenodo.org and files.pythonhosted.org. The caller separately supplies a
+    licensed, digest-pinned materialization spec. Size is the HTTP
     entity byte count, not packet/TLS/header overhead. Socket inactivity timeouts
     and elapsed checks between reads are not a hard OS deadline for DNS or headers.
     HTTP/SSL/I/O failures propagate; connection/response close on every exit.

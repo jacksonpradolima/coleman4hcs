@@ -30,6 +30,7 @@ from coleman.transports.junit_matrix_contracts import (
 )
 from coleman.transports.junit_protocol import validate_role_bytes
 from coleman.transports.junit_source import prepare_junit_inputs, validate_junit_report_budget
+from coleman.transports.producer_identity import package_pins
 
 _COMPLETION = "complete.json"
 _DATASET_BYTES = 16 * 1024**2
@@ -50,16 +51,7 @@ def _package_pins(root: Traversable, prefix: str = "coleman") -> dict[str, str]:
     state. All other packaged bytes participate, including new resource formats.
     Reads propagate I/O errors; this never modifies a resource or executes it.
     """
-    pins = {}
-    for entry in sorted(root.iterdir(), key=lambda item: item.name):
-        if entry.name.startswith(".") or entry.name == "__pycache__" or entry.name.endswith((".pyc", ".pyo")):
-            continue
-        name = prefix + "/" + entry.name
-        if entry.is_dir():
-            pins.update(_package_pins(entry, name))
-        elif entry.is_file():
-            pins[name] = _digest(entry.read_bytes())
-    return pins
+    return package_pins(root, prefix)
 
 
 def junit_matrix_producer() -> str:

@@ -1,0 +1,1 @@
+{"capture_finished_at":"2020-01-01T00:00:00Z","capture_started_at":"2020-01-01T00:00:00Z","diagnostics":"","elapsed":{"meaning":"observed-test-harness-monotonic-elapsed-v1","status":"observed","unit":"ns","value":0},"error_type":null,"outcome":"passed","record_type":"case","schema_version":1,"test_id":"tests/test_owned.py::test_pass"}

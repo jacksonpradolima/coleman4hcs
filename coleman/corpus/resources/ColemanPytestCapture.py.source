@@ -1,0 +1,230 @@
+"""COLEMAN-owned Python 3.8+ pytest wire harness, staged as data by the optional producer.
+
+Only producer-written plans are accepted. Dependencies install from pinned local
+wheels with no index/build/dependency resolution. Real tests execute in the outer
+producer's isolated process/container. This script neither grants admission nor
+converts its integer monotonic nanoseconds into CI scheduling costs.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import importlib.metadata
+import json
+import locale
+import os
+import platform
+import subprocess
+import sys
+import tempfile
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+PREFIX = b"COLEMAN-PYTEST-V1\t"
+
+
+def instant():
+    """Return actual UTC collection time with microsecond precision, separate from elapsed ticks."""
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+
+
+def emit(stream, record):
+    """Write one complete ASCII-framed JSON record; a closed pipe propagates as a process failure."""
+    record = {"schema_version": 1, **record}
+    payload = (
+        PREFIX
+        + json.dumps(record, ensure_ascii=True, allow_nan=False, sort_keys=True, separators=(",", ":")).encode("ascii")
+        + b"\n"
+    )
+    stream.write(payload)
+    stream.flush()
+
+
+class CapturePlugin:
+    """Observe actual pytest phases; framework reporting is evidence, never authenticated execution truth."""
+
+    def __init__(self, plan, plan_pin, stream, pytest_module):
+        """Retain frozen input and a duplicated original stdout descriptor, independent of pytest capture."""
+        self.plan = plan
+        self.plan_pin = plan_pin
+        self.stream = stream
+        self.assertions = (AssertionError, pytest_module.fail.Exception)
+        self.names = {}
+        self.active = {}
+        self.completed = 0
+
+    def pytest_collection_finish(self, session):
+        """Emit actual selected discovery and runtime versions before any case starts."""
+        root = Path(self.plan["fixture_root"]).resolve()
+        self.names = {
+            item.nodeid: item.path.resolve().relative_to(root).as_posix() + "::" + item.nodeid.split("::", 1)[1]
+            for item in session.items
+        }
+        distributions = [
+            {"name": item["name"], "version": importlib.metadata.version(item["name"])}
+            for item in self.plan["distributions"]
+        ]
+        emit(
+            self.stream,
+            {
+                "record_type": "header",
+                "context_fingerprint": self.plan["context_fingerprint"],
+                "trial_id": self.plan["trial_id"],
+                "role": self.plan["role"],
+                "plan_sha256": self.plan_pin,
+                "python_version": platform.python_version(),
+                "architecture": platform.machine(),
+                "timezone": time.tzname[0],
+                "locale": os.environ.get("LC_ALL") or locale.setlocale(locale.LC_CTYPE),
+                "preferred_encoding": locale.getpreferredencoding(False),
+                "filesystem_encoding": sys.getfilesystemencoding(),
+                "utf8_mode": sys.flags.utf8_mode,
+                "capture_clock": "producer-truncated-utc-microsecond-v1",
+                "distributions": distributions,
+                "test_ids": sorted(self.names.values()),
+            },
+        )
+
+    def pytest_runtest_logstart(self, nodeid, location):
+        """Start the monotonic interval before setup; an unfinished interval creates no invented case."""
+        self.active[nodeid] = {
+            "begin": time.monotonic_ns(),
+            "started": instant(),
+            "outcome": None,
+            "error_type": None,
+            "diagnostics": [],
+        }
+
+    def pytest_runtest_makereport(self, item, call):
+        """Observe real reports; only call assertions/pytest.fail classify as assertion failures.
+
+        Setup/teardown or other exceptions remain test errors. The wrapper never
+        suppresses or changes the test/framework outcome. Skip reasons and actual
+        failure representations are retained without silently truncating them.
+        """
+        result = yield
+        report = result.get_result()
+        state = self.active[item.nodeid]
+        if report.failed:
+            if call.excinfo is None:
+                raise RuntimeError("Failed pytest report lacks actual exception evidence")
+            assertion = call.when == "call" and call.excinfo.errisinstance(self.assertions)
+            if state["outcome"] != "test_error":
+                state["outcome"] = "assertion_failed" if assertion else "test_error"
+                error = type(call.excinfo.value)
+                state["error_type"] = error.__module__ + "." + error.__qualname__
+            state["diagnostics"].append(report.longreprtext)
+        elif report.skipped and state["outcome"] in (None, "passed"):
+            state["outcome"] = "skipped"
+            state["diagnostics"].append(str(report.longrepr))
+        elif report.passed and call.when == "call" and state["outcome"] is None:
+            state["outcome"] = "passed"
+
+    def pytest_runtest_logfinish(self, nodeid, location):
+        """Commit one completed protocol interval; zero ticks remain observed rather than unavailable."""
+        finished = time.monotonic_ns()
+        at = instant()
+        state = self.active.pop(nodeid)
+        if state["outcome"] is None:
+            raise RuntimeError("Finished pytest case lacks an observed terminal outcome")
+        emit(
+            self.stream,
+            {
+                "record_type": "case",
+                "test_id": self.names[nodeid],
+                "outcome": state["outcome"],
+                "elapsed": {
+                    "value": finished - state["begin"],
+                    "unit": "ns",
+                    "meaning": "observed-test-harness-monotonic-elapsed-v1",
+                    "status": "observed",
+                },
+                "capture_started_at": state["started"],
+                "capture_finished_at": at,
+                "error_type": state["error_type"],
+                "diagnostics": "\n".join(state["diagnostics"]),
+            },
+        )
+        self.completed += 1
+
+    def pytest_sessionfinish(self, session, exitstatus):
+        """Emit explicit completion and actual pytest status, including collection/interruption failures."""
+        emit(self.stream, {"record_type": "trailer", "cases": self.completed, "pytest_exit_code": int(exitstatus)})
+
+
+def main():
+    """Read one bounded producer plan and run pinned local pytest without project setup scripts.
+
+    Plan/installation/framework failures propagate. Normal passed/failed test
+    sessions return process exit zero because their distinct outcomes are in the
+    wire records; abnormal pytest statuses remain nonzero/incomplete evidence.
+    """
+    with open(sys.argv[1], "rb") as stream:
+        payload = stream.read(1024**2 + 1)
+    if len(payload) > 1024**2:
+        raise ValueError("Python bootstrap plan exceeds its byte limit")
+    plan = json.loads(payload)
+    if type(plan.get("schema_version")) is not int or plan["schema_version"] != 1:
+        raise ValueError("Unsupported Python bootstrap plan version")
+    pin = "sha256:" + hashlib.sha256(payload).hexdigest()
+    if plan["dependency_storage"] != "private-runtime-tempdir-v1":
+        raise ValueError("Unsupported Python dependency storage policy")
+    with tempfile.TemporaryDirectory(prefix="coleman-python-dependencies-") as target:
+        return observe(plan, pin, target)
+
+
+def observe(plan, pin, target):
+    """Install and observe only within the caller-owned private temporary directory.
+
+    The directory is allocated atomically with mode0700 inside the container's
+    bounded tmpfs, and removed after observation. No predictable shared location
+    is trusted. All source/fixture/wheel bytes and test selection remain unchanged.
+    """
+    if plan["wheels"]:
+        subprocess.run(
+            [
+                sys.executable,
+                "-B",
+                "-m",
+                "pip",
+                "--isolated",
+                "install",
+                "--no-index",
+                "--no-deps",
+                "--no-compile",
+                "--no-cache-dir",
+                "--disable-pip-version-check",
+                "--target",
+                target,
+                *[str(Path(plan["wheel_root"]) / name) for name in plan["wheels"]],
+            ],
+            check=True,
+        )
+    sys.path[:0] = [target, plan["fixture_root"], plan["production_root"]]
+    import pytest
+
+    CapturePlugin.pytest_runtest_makereport = pytest.hookimpl(hookwrapper=True)(CapturePlugin.pytest_runtest_makereport)
+    with os.fdopen(os.dup(1), "wb") as stream:
+        plugin = CapturePlugin(plan, pin, stream, pytest)
+        result = pytest.main(
+            [
+                "-p",
+                "no:terminal",
+                "-p",
+                "no:cacheprovider",
+                "-p",
+                "no:logging",
+                "-c",
+                "/dev/null",
+                "--rootdir",
+                plan["fixture_root"],
+                *[str(Path(plan["fixture_root"]) / name) for name in plan["test_ids"]],
+            ],
+            plugins=[plugin],
+        )
+    return 0 if result in (0, 1) else int(result)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

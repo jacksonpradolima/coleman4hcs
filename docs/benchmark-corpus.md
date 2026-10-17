@@ -18,6 +18,13 @@ matrix](java-fault-matrix.md) using the existing controlled/JUnit producer.
 Its typed index preserves all selected outcomes and incomplete evidence. It does
 not silently change this registry's admission or diversity coverage.
 
+The separate [Python source producer](python-source-capture.md) adds an unchanged
+PySnooper fault/fixture pair in two predeclared locale contexts, with whole-wheel
+component terms, real exception evidence and offline/interruption recovery.
+Its ASCII error-to-pass pair remains inconclusive under the strict generic
+classifier; the UTF-8 contrast passes in both roles. These share one curated fix
+and do not silently add independent observations or admitted registry entries.
+
 The registry contains two small repository-authored MIT-licensed CI fixtures and
 an inventory of ten existing public example Parquet artifacts. Historical sources
 remain **blocked for evaluation** until their data-specific terms, duration units,

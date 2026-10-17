@@ -21,6 +21,9 @@ from coleman.transports import corpus_http
         "https://raw.githubusercontent.com/a\nb",
         "file:///tmp/a",
         "https://example.org/a",
+        "https://files.pythonhosted.org.evil.example/a.whl",
+        "https://files.pythonhosted.org@evil.example/a.whl",
+        "https://files.pythonhosted.org/a.whl?token=x",
     ],
 )
 def test_unapproved_urls_reject_before_connection(monkeypatch, url):
@@ -51,7 +54,9 @@ def connection(monkeypatch, reply):
     return client, constructor
 
 
-@pytest.mark.parametrize("host", ["raw.githubusercontent.com", "repo.maven.apache.org", "zenodo.org"])
+@pytest.mark.parametrize(
+    "host", ["raw.githubusercontent.com", "repo.maven.apache.org", "zenodo.org", "files.pythonhosted.org"]
+)
 def test_approved_origin_uses_verified_tls_no_ambient_headers_and_closes(monkeypatch, host):
     reply = response()
     client, constructor = connection(monkeypatch, reply)
@@ -82,9 +87,10 @@ def test_approved_origin_uses_verified_tls_no_ambient_headers_and_closes(monkeyp
         ([("Unrelated", "header")], 200),
     ],
 )
-def test_response_status_length_and_encoding_reject_and_close(monkeypatch, headers, status):
+@pytest.mark.parametrize("host", ["raw.githubusercontent.com", "files.pythonhosted.org"])
+def test_response_status_length_and_encoding_reject_and_close(monkeypatch, headers, status, host):
     client, _ = connection(monkeypatch, response(headers, status))
-    with pytest.raises(ValueError), corpus_http.public_https_source("https://raw.githubusercontent.com/a", 3):
+    with pytest.raises(ValueError), corpus_http.public_https_source(f"https://{host}/a", 3):
         pytest.fail("Invalid source response opened")
     client.close.assert_called_once()
 
