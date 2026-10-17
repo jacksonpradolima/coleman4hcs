@@ -6,6 +6,10 @@ Parquet, writes a completion/provenance manifest and executes Random and UCB
 through the existing native TCPCI runner. Repeating the command reuses verified
 inputs and resumes the same native checkpoint.
 
+For additional projects and explicit multistage correspondence, see
+[ActiveMQ and Log4j stage views](lrts-stage-views.md). That new recipe family
+preserves these original single-stage contracts and receipts.
+
 Use Python 3.14+ and the published 4.8.0 wheel. Pip verifies its SHA-256:
 
 ```bash

@@ -8,6 +8,11 @@ integration. COLEMAN **4.4** adds bounded local native-Parquet profiles, a repro
 inventory and [licensed source-package materialization](corpus-materialization.md).
 The diversified benchmark program remains open.
 
+For the separate source-specific ETL workflows, see [Karaf](lrts-parquet-etl.md),
+[RTPTorrent](rtptorrent-parquet-etl.md) and this revision's [ActiveMQ/Log4j stage
+views](lrts-stage-views.md). Those exports preserve their own provenance and
+admission blockers; they do not silently add admitted registrations to this registry.
+
 The registry contains two small repository-authored MIT-licensed CI fixtures and
 an inventory of ten existing public example Parquet artifacts. Historical sources
 remain **blocked for evaluation** until their data-specific terms, duration units,
