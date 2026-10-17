@@ -280,7 +280,8 @@ def validate_python_capture(
     report = ControlledReport(
         schema_version=1, context_fingerprint=plan.context.fingerprint, observations=_observations(actual)
     )
-    if report.observations != dataset.observations or _receipt(plan, dataset, actual) != receipt:
+    canonical = tuple(sorted(report.observations, key=lambda item: item.logical_key))
+    if canonical != dataset.observations or _receipt(plan, dataset, actual) != receipt:
         raise ValueError("Python index or normalized observations disagree with original raw evidence")
 
 

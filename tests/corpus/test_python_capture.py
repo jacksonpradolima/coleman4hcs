@@ -467,3 +467,38 @@ def test_maximum_escaped_logical_trial_label_remains_recoverable(tmp_path, monke
     assert result.receipt.status == "incomplete"
     assert [role.status for role in result.captures] == ["interrupted", "collected"]
     assert calls == ["buggy", "fixed"]
+
+
+def test_multiple_cases_validate_the_existing_domain_canonical_identity_order(tmp_path, monkeypatch):
+    spec, cache, environment = prepared_inputs(tmp_path)
+    spec = changed(spec, test_ids=(*spec.test_ids, "tests/test_owned.py::test_second"))
+
+    def multiple(*args):
+        plan = args[-2]
+        header = changed(
+            owned_header(),
+            context_fingerprint=plan.context_fingerprint,
+            trial_id=plan.trial_id,
+            role=plan.role,
+            architecture="aarch64",
+            distributions=plan.distributions,
+            test_ids=plan.test_ids,
+            plan_sha256=digest((plan.to_json() + "\n").encode()),
+        )
+        cases = [changed(owned_case(), test_id=name) for name in spec.test_ids]
+        trailer = dict(schema_version=1, record_type="trailer", cases=2, pytest_exit_code=0)
+        return ProcessStreams(
+            wire([header.model_dump(mode="json"), *(c.model_dump(mode="json") for c in cases), trailer]),
+            b"",
+            0,
+            0,
+            "exited",
+        )
+
+    substitute_runtime(monkeypatch, environment, multiple)
+    writer = ArtifactWriter(tmp_path / "multiple")
+    result = capture.capture_python_source(spec, cache, writer, "multiple")
+    assert len(result.dataset.observations) == 4
+    assert result.receipt.status == "collected"
+    assert list(result.dataset.observations) == sorted(result.dataset.observations, key=lambda o: o.logical_key)
+    assert capture.capture_python_source(spec, cache, writer, "multiple") == result

@@ -243,3 +243,7 @@ Native CI/checkpoint integration is tested separately with the owned exact-answe
 fabricated into a historical build or native scheduling-cost dataset. Broader
 source admission, diversity and comparative evidence remain in the [public
 roadmap](roadmap.md) and #261's remaining subtasks.
+
+Multi-case raw replay compares observations in the generic domain's canonical
+logical-key order. This validation correction preserves original raw/report
+bytes and case order; it does not migrate or reinterpret prior artifacts.

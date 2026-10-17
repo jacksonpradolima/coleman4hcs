@@ -31,6 +31,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/api-reference.md
 - docs/application-api.md
 - docs/benchmark-corpus.md
+- docs/c-seeded-source-capture.md
 - docs/code-cost.md
 - docs/configuration.md
 - docs/controlled-faults.md
@@ -59,6 +60,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/releases/4.1.0.md
 - docs/releases/4.10.0.md
 - docs/releases/4.11.0.md
+- docs/releases/4.12.0.md
 - docs/releases/4.2.0.md
 - docs/releases/4.3.0.md
 - docs/releases/4.4.0.md
@@ -765,6 +767,7 @@ controlled reproductions and empirical benchmark corpora have different roles:
 | **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | Available in 4.8: 46,995 class executions / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |
 | **Controlled Java real-fault sources** | Published 4.11 wheel: [CLI-13 producer](docs/junit-source-capture.md) and [three-fix CLI/Codec matrix](docs/java-fault-matrix.md) with typed indices and offline recovery | Two codebases, explicit common fixtures, 357 same-test pairs in the initial qualification. Docker/arm64; negative and inconclusive results remain visible. Controlled evidence, not historical CI or full Defects4J reconstruction. |
 | **Controlled Python real-fault source** | [Published 4.11 wheel → pinned PySnooper capture → offline/interruption recovery](docs/python-source-capture.md) | One unchanged partial fixture, one curated fix, two correlated locales: ASCII error-to-pass remains inconclusive; UTF-8 both-pass. Docker/arm64; component terms and attribution limits retained. |
+| **Constructed C weakness** | [Current source wheel → pinned Juliet/GCC → independent arithmetic oracle → offline/interruption recovery](docs/c-seeded-source-capture.md) | One 2017 template/function pair, six correlated inputs, five both-pass and one expected pair. CC0/US public-domain source; synthetic provenance, separate from real faults and empirical admission. |
 | **Owned CI correctness fixtures** | Two tiny [serial/parallel corpus fixtures](docs/benchmark-corpus.md), validation and native integration examples | Available without network. One constructed family for contract/metric checks; no independent-project diversity. |
 | **Coverage and scenario-allocation microbenchmarks** | [Correctness and performance profiles](docs/decision-benchmarks.md), independent exhaustive references and JSON/Markdown reports | Runnable finite-model benchmarks with runtime/memory observations; separate from empirical CI-policy comparisons. |
 | **Pilot, resource and shadow examples** | [Operational accounting](docs/operational-pilot.md), [resource replay](docs/resource-replay.md) and [shadow recovery](docs/prospective-shadow.md) | Runnable synthetic demonstrations of accounting/recovery. Collected prospective evidence remains insufficient. |
@@ -799,7 +802,9 @@ retain their own validation gates.
 [#261](https://github.com/jacksonpradolima/coleman/issues/261) remains open.
 The controlled Java matrix and bounded Python reproduction are usable source
 workflows; neither completes corpus diversity or scientific admission.
-Broader real-fault coverage, seeded-fault objects such as SIR, further source ETLs,
+The current source adds a [bounded constructed C slice](docs/c-seeded-source-capture.md)
+from permitted Juliet inputs. SIR component/data terms remain unresolved.
+Broader real-fault coverage, further source ETLs,
 additional HCS topologies and the interaction-covering synthetic stress laboratory
 remain work. External baseline reproduction, including investigated DANTE methods,
 also requires its own verified integration and comparable protocol.
@@ -1941,11 +1946,11 @@ inventory and [licensed source-package materialization](corpus-materialization.m
 The diversified benchmark program remains open.
 
 For the separate source-specific ETL workflows, see [Karaf](lrts-parquet-etl.md),
-[RTPTorrent](rtptorrent-parquet-etl.md) and the published 4.10 [ActiveMQ/Log4j stage
+[RTPTorrent](rtptorrent-parquet-etl.md) and the published 4.11 [ActiveMQ/Log4j stage
 views](lrts-stage-views.md). Those exports preserve their own provenance and
 admission blockers; they do not silently add admitted registrations to this registry.
 
-For controlled Java sources, the published 4.10 wheel includes a separate [CLI/Codec
+For controlled Java sources, the published 4.11 wheel includes a separate [CLI/Codec
 matrix](java-fault-matrix.md) using the existing controlled/JUnit producer.
 Its typed index preserves all selected outcomes and incomplete evidence. It does
 not silently change this registry's admission or diversity coverage.
@@ -1956,6 +1961,12 @@ component terms, real exception evidence and offline/interruption recovery.
 Its ASCII error-to-pass pair remains inconclusive under the strict generic
 classifier; the UTF-8 contrast passes in both roles. These share one curated fix
 and do not silently add independent observations or admitted registry entries.
+
+The current source also adds a [constructed C function slice](c-seeded-source-capture.md)
+from NIST Juliet 1.3. Its source/component terms were reviewed before acquisition;
+one original template/function pair and six correlated inputs remain explicitly
+synthetic. SIR permission remains unresolved. This workflow adds no registry
+entry or admitted diversity regime.
 
 The registry contains two small repository-authored MIT-licensed CI fixtures and
 an inventory of ten existing public example Parquet artifacts. Historical sources
@@ -2331,6 +2342,232 @@ cache and publishes through the same artifact writer. It does not grant source
 admission or convert collection clocks into historical CI chronology. Direct
 upstream Java/Python reproductions are documented separately from the owned
 synthetic installed example; required diversity cells remain uncovered.
+
+
+
+### FILE: docs/c-seeded-source-capture.md
+
+# Reproduce a constructed C weakness
+
+Compare two original Juliet C functions against a frozen checked-arithmetic
+oracle. COLEMAN compiles unchanged public source in a pinned GCC container,
+retains every raw observation, and reopens completed evidence offline.
+
+This is a bounded **synthetic** source workflow for CI/TCPCI research: one
+2017 template-generated weakness and six correlated boundary inputs. Juliet was
+created for assurance-tool evaluation. It is not a real regression history,
+a representative application suite or evidence that a prioritization policy wins.
+The [corpus admission and comparison gates](roadmap.md) remain separate.
+
+## Install outside checkout
+
+The SDK requires Python 3.14+, uv and POSIX. This optional preset additionally
+requires a native Linux arm64 Docker engine and the pinned GCC image. Other
+architectures need separate recipes and qualification.
+
+The current source revision adds this workflow after published 4.11. Build a
+wheel once, then run it outside the repository:
+
+```bash
+# From the COLEMAN checkout:
+uv build --wheel --out-dir /tmp/coleman-c-dist
+uv venv /tmp/coleman-c-env --python 3.14
+uv pip install --python /tmp/coleman-c-env/bin/python /tmp/coleman-c-dist/coleman-*.whl
+
+# Explicit preparation; the producer never pulls an image.
+docker pull --platform linux/arm64 docker.io/library/gcc@sha256:e55a45ec94b8f1dc59f08e3b25b8e7f23b96220235da707ae2cc0dce47f6b46c
+mkdir -p /tmp/coleman-c-workspace
+cd /tmp/coleman-c-workspace
+/tmp/coleman-c-env/bin/python -m coleman.transports.c \
+  --preset juliet-uint32-add-v1 --trial seeded-c-trial-1 \
+  --cache /tmp/coleman-c-source-cache \
+  --output /tmp/coleman-c-observations --fetch > summary.json
+
+# Same recipe/trial/installed producer: verify and reopen, without new execution.
+/tmp/coleman-c-env/bin/python -m coleman.transports.c \
+  --preset juliet-uint32-add-v1 --trial seeded-c-trial-1 \
+  --cache /tmp/coleman-c-source-cache \
+  --output /tmp/coleman-c-observations
+```
+
+Only `--fetch` permits the individually pinned public files to be acquired.
+Source views reuse the existing verified cache and HTTPS transport. No foreign
+source, binary, test pool or build system is bundled in COLEMAN. Cache, output
+and system temporary directories must be outside Git and use separate roots.
+The SDK never invokes the host C compiler or installs subject dependencies.
+
+Exit 0 means both observation protocols completed, including failed assertions.
+Exit 2 means incomplete collection: retained evidence has no completion marker.
+Invalid state, schema, digest or runtime raises. The summary lists dataset,
+state/receipt paths, statuses, unobserved pairs and classifications.
+
+## Source selection and terms
+
+[Public source assessment](https://github.com/jacksonpradolima/coleman/issues/306#issuecomment-6236007670)
+preceded subject execution. The SIR site is archived; its retired license says
+it is no longer in force. Current component/data permission for the original
+Siemens sources, modified faults and test pools was not established. No SIR
+archive was acquired or counted as admitted coverage.
+
+The selected equivalent is [NIST SARD suite 112, Juliet C/C++ 1.3](https://samate.nist.gov/SARD/test-suites/112),
+submitted 2017-10-01. NIST declares US public-domain status and CC0 1.0 for foreign
+rights. The complete official ZIP was independently verified outside Git:
+**152,957,342 bytes**, SHA-256
+`ada9d7e1c323d283446df3f55bdee0d00bda1fed786785fe98764d58688f38eb`.
+
+The ZIP has 106,316 entries, exceeding the existing bounded archive-selection
+contract. Acquisition instead uses four individually pinned original files from
+[a public mirror at immutable revision `f88433e3443648a17671398797a04ea1f8e1a274`](https://github.com/arichardson/juliet-test-suite-c/tree/f88433e3443648a17671398797a04ea1f8e1a274),
+plus its NIST public-domain/CC0 LICENSE. All four selected files were verified
+byte-identical to the official ZIP. The mirror's additional build system and its
+other source changes are outside this recipe. Existing archive limits remain intact.
+
+| Original member under `C/` | Decoded bytes | SHA-256 |
+| --- | ---: | --- |
+| `testcases/CWE190_Integer_Overflow/s05/CWE190_Integer_Overflow__unsigned_int_fscanf_add_01.c` | 2854 | `e7dd00c5433bc4368d32b4ff5b899422e248979a421d763810d98f81fb4180ac` |
+| `testcasesupport/std_testcase.h` | 4004 | `a78aaf3a54a6210260ad70123c09c3c283c6edf7808b6244205e00b8f2d9b8d0` |
+| `testcasesupport/std_testcase_io.h` | 1457 | `6459df50d22697bb61619e2effd688ebb98915db25f7eb1bdbb767f888066fb6` |
+| `testcasesupport/io.c` | 5429 | `50ace91d0f9cd9f281d5d8ff3a9ca879ee2779d737030ae84e8e4be3df5b299c` |
+
+Role source views contain the same original subject bytes, aliased `subject.c`,
+and LICENSE. The common fixture contains the three unchanged support files and
+LICENSE. Their terms/digests remain separate from COLEMAN's authored observer,
+metadata and the GCC image's independently licensed components. A source license
+or image digest is not an umbrella component license or a security audit.
+
+## Frozen roles, input pool and independent oracle
+
+The authored driver includes the unchanged C file and calls either original
+`CWE190_Integer_Overflow__unsigned_int_fscanf_add_01_bad` or original static
+`goodB2G`. Both consume the same decimal input; the latter checks the addition.
+All original functions remain compiled, but original `goodG2B` (hardcoded input)
+and the time-seeded `INCLUDEMAIN` are not invoked. Role version labels explicitly
+identify these function selectors, not fabricated upstream revision commits.
+
+The driver checks the uint32 ABI and supplies each validated decimal argument
+through a private temporary stdin stream. This intervention is recorded in
+provenance. The independent oracle expects mathematical `n+1` below UINT32_MAX,
+and exactly `data value is too large to perform arithmetic safely.` plus LF at
+the maximum. Exit must be zero and child stderr empty. Neither role's observed
+output is used to construct the oracle.
+
+| Input | Required complete stdout, before LF | Observed bad | Observed goodB2G |
+| ---: | --- | --- | --- |
+| 0 | `1` | pass | pass |
+| 1 | `2` | pass | pass |
+| 2 | `3` | pass | pass |
+| 2147483647 | `2147483648` | pass | pass |
+| 4294967294 | `4294967295` | pass | pass |
+| 4294967295 | explicit safety message above | assertion failure: `0` | pass |
+
+The initial installed qualification retained **12 role observations / six pairs**:
+five `both_pass`, one `expected`. This is one constructed template/function pair,
+not six independent faults. [Unsigned C arithmetic wraps modulo its width](https://www.gnu.org/software/c-intro-and-ref/manual/html_node/Unsigned-Overflow.html);
+the last mismatch does not rely on undefined signed overflow. Signed, malformed
+and out-of-range scanf inputs are outside this v1 oracle's scope.
+
+The [pre-execution protocol](https://github.com/jacksonpradolima/coleman/issues/306#issuecomment-6236145420)
+records the source, selectors, pool, oracle and observer pins before qualification.
+The first attempt compiled but could not execute in Docker's default noexec tmpfs;
+its raw errors and zero-case incomplete result were preserved. The explicit
+[executable-scratch amendment](https://github.com/jacksonpradolima/coleman/issues/306#issuecomment-6236219189)
+preceded the first observed cases. A subsequent canonical-order validation fix
+compares normalized observations in the generic domain's established logical-key
+order; it changes no raw packet or outcome and also fixes multi-case Python replay.
+
+## Runtime, guards and units
+
+The pinned official image provides GCC **15.2.0**, target `aarch64-linux-gnu`,
+glibc **2.41**, observer Python **3.13.5** and 32-bit unsigned int. The observer
+verifies these facts before case promotion. LC_ALL/LANG are C, timezone UTC.
+Compilation uses `-std=c11 -O0 -Wall -Wextra`, the common support include path,
+original `io.c` and authored driver. No upstream setup or build script runs.
+
+Compilation occurs in an atomically allocated mode0700 directory inside the
+bounded **executable** tmpfs (`private-executable-tmpfs-v1`). Native C binaries need
+this explicit exec permission. Root and staged inputs stay read-only; the container
+is non-root, networkless, cap-drop-all/no-new-privileges, with two CPUs, 64 PIDs,
+1 GiB memory and 128 MiB tmpfs. The observer uses the existing bounded process
+collector for every compiler/probe and subject process.
+
+| Interval | Deadline | Combined raw stdout/stderr bound |
+| --- | ---: | ---: |
+| Compiler or version probe | 20 seconds | 1 MiB |
+| Each subject input | 5 seconds | 64 KiB |
+| Whole Docker role | 60 seconds | 1 MiB |
+
+An individual nonzero exit or negative POSIX signal is `test_error`; a deadline is
+`timeout`; output-limit termination is `test_error`. Only a normal completed child
+with wrong output is `assertion_failed`. Complete bounded child streams and actual
+exit codes remain in the case record; unsupported non-ASCII bytes fail the observer
+protocol instead of being silently replaced.
+
+Case elapsed is exact integer monotonic **nanoseconds**, including process startup.
+Zero is observed; unavailable elapsed after an uncommitted interruption is null
+with explicit status. The parent role's separate nanoseconds include compilation
+and Docker overhead. UTC collection clocks have microsecond precision. None is
+historical CI time, removable scheduling work or a prospective saving.
+The parent guard excludes acquisition, staging and separate cleanup commands.
+These are trusted-source experiments, not a hostile-code sandbox certification.
+
+## API, immutable artifacts and recovery
+
+```python
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus import SourceCache
+from coleman.transports.c import load_c_recipe
+from coleman.transports.c_capture import capture_c_source, validate_c_capture
+from coleman.transports.c_contracts import CCapturePlan
+
+cache = SourceCache("/tmp/coleman-c-source-cache")
+writer = ArtifactWriter("/tmp/coleman-c-observations")
+result = capture_c_source(load_c_recipe(), cache, writer, "seeded-c-trial-1")
+plan = CCapturePlan.from_json((result.state_directory / "plan.json").read_bytes())
+validate_c_capture(result.receipt, plan, result.dataset, cache)
+assert capture_c_source(plan.recipe, cache, writer, plan.trial_id) == result
+print(result.dataset_path, result.receipt.status)
+```
+
+The package exposes typed v1 recipe, bootstrap, case, raw-role, ownership, plan
+and receipt contracts. Missing/old/future versions reject; no implicit migration
+rewrites source truth. Existing generic controlled artifacts keep their schema
+and meaning. To reopen an older producer-specific capture, retain its original
+reviewed wheel: conservative package/version identity changes the output generation.
+
+```mermaid
+flowchart LR
+    A[Pinned public raw files and separate terms] --> B[Existing source views and external cache]
+    B --> C[Typed pre-execution plan and durable ownership]
+    C --> D[Pinned offline GCC container]
+    D --> E[Existing bounded process collector]
+    E --> F[Raw C roles and independent output oracle]
+    F --> G[Existing generic controlled dataset]
+    G --> H[Validated receipt]
+    H --> I[Completion marker only after both roles]
+    G --> J[Separate native CI experiment and checkpoint]
+```
+
+One local POSIX producer lock owns each recipe/trial/implementation generation.
+The plan precedes execution; role ownership precedes spawning; immutable raw role
+packets follow owned cleanup. Receipt and completion are written last. Identical
+retries revalidate source/context/raw bytes without duplicating observation or
+execution. This local filesystem lock is not a distributed execution ledger.
+
+If a process stops after ownership but before a role packet, same-trial recovery
+records that role as interrupted with unavailable elapsed and no invented cases.
+A missing other role may run only in the original runtime context. Completed roles
+replay without Docker. Fresh physical observation requires a **new trial ID**.
+Incomplete receipts have no completion marker. Hash-consistent metadata rewrites
+still reject when they disagree with the original raw records and frozen oracle.
+These checks prove consistency, not authenticated execution truth.
+
+Native TCPCI experiments continue through the existing API, RunSpec, policies,
+Parquet sinks and learning checkpoints. Keep their modeled CI inputs and costs
+independently declared; do not convert observer ns into Duration. The installed
+qualification separately exercises the [owned controlled/native CI example](controlled-faults.md)
+and checkpoint continuation twice. Controlled source records remain
+`constructed` / `not_evaluated` / `insufficient_evidence`; temporal admission raises.
+No source-collection result closes the broader benchmark program in #261.
 
 
 
@@ -3476,6 +3713,15 @@ or an algorithm comparison. The typed reader does not independently certify this
 external execution. A distributable pinned producer recipe, component-by-component
 admission dossier and broader fresh test/fault matrix remain necessary before
 claiming that the Java/non-Java diversity criteria are satisfied.
+
+## Constructed C source observations
+
+The [optional Juliet C producer](c-seeded-source-capture.md) uses these same generic
+contracts and existing source cache/artifacts. It collects a deliberately bounded
+synthetic function pair with an independent arithmetic oracle, retaining process
+errors, negative outcomes and incomplete recovery. Compiler/runtime acquisition
+and execution remain in optional transports; no C, Docker, CLI or MCP import is
+introduced into this domain. Its elapsed ns never become native CI Duration.
 
 
 
@@ -5767,6 +6013,14 @@ one curated fix and do not establish independent observations or policy efficacy
 The complete guide includes the verified wheel, explicit native arm64 Docker
 preparation and recovery commands. See the [4.11 release notes](releases/4.11.0.md)
 for compatibility and scientific limits.
+
+## Constructed C source capture
+
+The current source adds a [bounded Juliet C workflow](c-seeded-source-capture.md):
+unchanged function selectors, pinned GCC, a predeclared arithmetic oracle and raw
+process evidence. One synthetic template yields six correlated boundary-input
+pairs; it is separate from real-fault sources and corpus admission. The guide
+provides the source-wheel installation path, since this transport follows 4.11.
 
 ## Controlled Java source matrix
 
@@ -8513,6 +8767,10 @@ fabricated into a historical build or native scheduling-cost dataset. Broader
 source admission, diversity and comparative evidence remain in the [public
 roadmap](roadmap.md) and #261's remaining subtasks.
 
+Multi-case raw replay compares observations in the generic domain's canonical
+logical-key order. This validation correction preserves original raw/report
+bytes and case order; it does not migrate or reinterpret prior artifacts.
+
 
 
 ### FILE: docs/releases/3.6.1.md
@@ -8803,6 +9061,74 @@ isolated benchmark condition; SDK dependency audits do not establish that image'
 security. Initial presets are native linux/arm64 and an explicitly partial
 fixture. Broader source coverage, admission, comparisons and the confirmatory
 corpus report remain in #261's public subtasks, beginning next with #306.
+
+
+
+### FILE: docs/releases/4.12.0.md
+
+# COLEMAN 4.12.0 — Inspect constructed C faults with an independent oracle
+
+Extend controlled CI research beyond Java and Python with a deliberately bounded
+C source workflow. COLEMAN's optional producer compiles original NIST Juliet
+functions in a pinned GCC container, evaluates a frozen arithmetic oracle and
+retains the raw evidence. Reopen completed observations offline or recover a
+stopped collector without inventing successful tests.
+
+## What you can use
+
+- `python -m coleman.transports.c` and the typed capture API for the frozen
+  `juliet-uint32-add-v1` preset. Small individually pinned raw source views reuse
+  the existing cache and public HTTPS adapter; no foreign code or binaries ship
+  inside the SDK.
+- Explicit original `bad` and `goodB2G` entry selection against identical source,
+  support files and six declared uint32 boundary inputs. The independent safety
+  oracle preserves five both-pass pairs and one assertion-failure/pass pair from
+  the installed qualification.
+- Versioned recipes, runtime/ABI facts, full bounded child streams, negative
+  POSIX exit codes, integer nanosecond intervals, immutable ownership/receipts and
+  honest incomplete recovery. Compiler diagnostics and executable digests remain
+  inspectable alongside outcomes.
+- Existing native TCPCI policies, Parquet results and checkpoints. Observer ns
+  remain separate from independently declared modeled scheduling costs.
+
+The [complete guide](https://jacksonpradolima.github.io/coleman/c-seeded-source-capture/)
+provides installation, explicit native arm64 runtime preparation, acquisition,
+collection, replay, API validation, units, component terms and recovery behavior.
+
+## Compatibility and artifacts
+
+The generic controlled-result schema, native runner and learning checkpoints keep
+their existing contracts. New C transport records require explicit supported v1;
+missing, older and future schemas reject. Old generic artifacts stay readable
+without implicit migration or reinterpreted values.
+
+A multi-case Python replay validation correction now compares observations in the
+generic domain's canonical logical-key order. Original raw/report bytes and case
+ordering retain their meaning. Producer-specific replay binds the original full
+installed package/version: retain the reviewed older wheel for its captures, and
+use a fresh generation for a changed producer.
+
+The first C qualification's noexec scratch failure remains incomplete with zero
+observed cases. Explicit executable tmpfs and a recorded pre-observation amendment
+made native binary execution possible while retaining read-only inputs, non-root,
+network, capability and resource guards. No failed evidence was rewritten into a
+successful run.
+
+## Scope of the evidence
+
+This is **one 2017 template-generated synthetic weakness / six correlated inputs**,
+not six independent faults, real application history or a complete Juliet suite.
+NIST's public-domain/CC0 declaration and the four selected mirror files' exact
+correspondence to the official ZIP were checked before source qualification.
+SIR component/data permission remains unresolved; its accessibility is not treated
+as admission evidence.
+
+These observations remain constructed, not evaluated for admission, and
+insufficient for generalization. Historical chronology, independent cross-corpus
+coverage, baseline comparisons and the confirmatory report remain open under
+#261. All seven required registry diversity regimes remain uncovered. No policy
+improvement, calibrated probability, prospective saving or broad security claim
+follows from this small controlled reproduction.
 
 
 
@@ -10019,8 +10345,10 @@ The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
 #304's [controlled Java matrix](java-fault-matrix.md) shipped in 4.10 through
 [#320](https://github.com/jacksonpradolima/coleman/pull/320).
 #305's [controlled Python producer](python-source-capture.md) shipped in 4.11 through
-[#322](https://github.com/jacksonpradolima/coleman/pull/322). #306–#313 track the
-remaining work. Source conversion does not establish admission.
+[#322](https://github.com/jacksonpradolima/coleman/pull/322). #306 adds a
+[constructed C source slice](c-seeded-source-capture.md) in the current source
+revision. #307–#313 track the remaining work. Source conversion does not
+establish admission.
 
 | Stage | Subtasks | Dependency |
 | --- | --- | --- |
@@ -10028,7 +10356,8 @@ remaining work. Source conversion does not establish admission.
 | LRTS source expansion — delivered in 4.9 | [#303 larger histories and explicit stage views](https://github.com/jacksonpradolima/coleman/issues/303) | Existing reviewed main; temporal blockers remain explicit |
 | Java source matrix — delivered in 4.10 | [#304 controlled CLI/Codec faults](https://github.com/jacksonpradolima/coleman/issues/304) | Existing JUnit producer; admission remains separate |
 | Python source — delivered in 4.11 | [#305 non-Java fault reproduction](https://github.com/jacksonpradolima/coleman/issues/305) | Existing generic controlled observations; one fix, two correlated locale contexts |
-| Other source expansion | [#306 seeded faults](https://github.com/jacksonpradolima/coleman/issues/306), [#307 HCS](https://github.com/jacksonpradolima/coleman/issues/307), [#308 stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main |
+| Seeded C source — current source revision | [#306 permitted Juliet slice](https://github.com/jacksonpradolima/coleman/issues/306) | One synthetic template/function pair; six correlated inputs, no empirical admission |
+| Other source expansion | [#307 HCS](https://github.com/jacksonpradolima/coleman/issues/307), [#308 stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main |
 | Evidence integration | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | #302–#308 |
 | Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
 | Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
@@ -10073,7 +10402,16 @@ the generic result remains inconclusive. Both revisions pass in the predeclared
 UTF-8 contrast. Whole-wheel component terms, actual runtime provenance, installed
 process interruption and offline recovery remain explicit. These two contexts
 share one curated fix, and source admission remains in #309. The next source
-implementation is #306; no overlapping expansion is started here.
+implementation is #307 after the current #306 source slice; no overlapping
+expansion is started here.
+
+The current source adds #306's [bounded C function capture](c-seeded-source-capture.md).
+NIST Juliet's explicit public-domain/CC0 terms and selected mirror byte correspondence
+were reviewed before observation. Six boundary inputs produce five both-pass pairs
+and one output-assertion failure/pass pair. This is one synthetic template, not six
+faults or a new empirical application. The existing cache, controlled domain,
+bounded process collector and native learning checkpoints retain their roles;
+all seven registry diversity regimes remain uncovered pending #309.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:

@@ -9,11 +9,11 @@ inventory and [licensed source-package materialization](corpus-materialization.m
 The diversified benchmark program remains open.
 
 For the separate source-specific ETL workflows, see [Karaf](lrts-parquet-etl.md),
-[RTPTorrent](rtptorrent-parquet-etl.md) and the published 4.10 [ActiveMQ/Log4j stage
+[RTPTorrent](rtptorrent-parquet-etl.md) and the published 4.11 [ActiveMQ/Log4j stage
 views](lrts-stage-views.md). Those exports preserve their own provenance and
 admission blockers; they do not silently add admitted registrations to this registry.
 
-For controlled Java sources, the published 4.10 wheel includes a separate [CLI/Codec
+For controlled Java sources, the published 4.11 wheel includes a separate [CLI/Codec
 matrix](java-fault-matrix.md) using the existing controlled/JUnit producer.
 Its typed index preserves all selected outcomes and incomplete evidence. It does
 not silently change this registry's admission or diversity coverage.
@@ -24,6 +24,12 @@ component terms, real exception evidence and offline/interruption recovery.
 Its ASCII error-to-pass pair remains inconclusive under the strict generic
 classifier; the UTF-8 contrast passes in both roles. These share one curated fix
 and do not silently add independent observations or admitted registry entries.
+
+The current source also adds a [constructed C function slice](c-seeded-source-capture.md)
+from NIST Juliet 1.3. Its source/component terms were reviewed before acquisition;
+one original template/function pair and six correlated inputs remain explicitly
+synthetic. SIR permission remains unresolved. This workflow adds no registry
+entry or admitted diversity regime.
 
 The registry contains two small repository-authored MIT-licensed CI fixtures and
 an inventory of ten existing public example Parquet artifacts. Historical sources
