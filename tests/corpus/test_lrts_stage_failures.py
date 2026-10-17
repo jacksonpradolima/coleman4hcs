@@ -122,8 +122,9 @@ def test_raw_stage_relations_include_empty_suites_and_exact_nodes(tmp_path, kind
         )
         bindings[0] = changed(bindings[0], **{key: value})
         recipe = changed(recipe, stage_bindings=tuple(bindings))
+    writer = ArtifactWriter(tmp_path / "output")
     with pytest.raises(ValueError, match="raw context/node relation"):
-        export_lrts_stage_parquet(recipe, cache, ArtifactWriter(tmp_path / "output"))
+        export_lrts_stage_parquet(recipe, cache, writer)
     assert not list((tmp_path / "output").rglob("complete.json"))
 
 
@@ -195,8 +196,9 @@ def test_source_units_remain_checked_by_existing_dto():
     case = LRTSCase(
         position=0, class_name="owned.C", method_name="test", source_status="PASSED", skipped=False, duration=measure
     )
+    incompatible = changed(measure, unit="ms")
     with pytest.raises(ValueError, match="units/meaning/status"):
-        changed(case, duration=changed(measure, unit="ms"))
+        changed(case, duration=incompatible)
 
 
 def test_published_legacy_v1_receipt_stays_readable_and_validates_original_artifacts(tmp_path):
@@ -211,8 +213,9 @@ def test_published_legacy_v1_receipt_stays_readable_and_validates_original_artif
     assert receipt.recipe == recipe
     assert path.read_bytes() == fixture.read_bytes()
     validate_lrts_etl(receipt, cache, path.parent)
+    legacy_payload = recipe.to_json()
     with pytest.raises(ValueError):
-        LRTSStageRecipe.from_json(recipe.to_json())
+        LRTSStageRecipe.from_json(legacy_payload)
 
 
 def test_dataset_alias_uses_artifact_path_contract_before_acquisition(tmp_path):
@@ -220,3 +223,33 @@ def test_dataset_alias_uses_artifact_path_contract_before_acquisition(tmp_path):
     with pytest.raises(ValueError, match="canonical relative path"):
         changed(recipe, dataset_id="owned.")
     assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize(
+    "alias", ["CON", "con", "CON.txt", "PRN", "AUX", "NUL", "COM1", "com9.log", "LPT1", "lpt9.txt"]
+)
+def test_windows_reserved_aliases_reject_on_every_host_before_acquisition(tmp_path, alias):
+    recipe, _, _ = stage_recipe()
+    with pytest.raises(ValueError, match="Windows-reserved"):
+        changed(recipe, dataset_id=alias)
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("alias", ["CONSOLE", "COM10", "LPT10", "auxiliary", "normal.con"])
+def test_portable_alias_validation_does_not_reject_similar_ordinary_names(alias):
+    recipe, _, _ = stage_recipe()
+    assert changed(recipe, dataset_id=alias).dataset_id == alias
+
+
+def test_cli_rejects_reserved_alias_before_creating_source_cache(tmp_path):
+    recipe, _, _ = stage_recipe()
+    value = recipe.model_dump(mode="json")
+    value["dataset_id"] = "NUL"
+    config = tmp_path / "recipe.json"
+    config.write_text(json.dumps(value))
+    cache = tmp_path / "cache"
+    output = tmp_path / "output"
+    with pytest.raises(ValueError, match="Windows-reserved"):
+        cli.main(["--recipe", str(config), "--cache", str(cache), "--output", str(output)])
+    assert not cache.exists()
+    assert not output.exists()

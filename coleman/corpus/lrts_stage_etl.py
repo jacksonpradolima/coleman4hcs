@@ -23,6 +23,7 @@ from coleman.corpus.materialization_contracts import MaterializationReceipt
 from coleman.results.domain import fingerprint
 
 _SHA256 = "sha256:"
+_COMPLETION = "complete.json"
 
 
 class _Counts(TypedDict):
@@ -86,7 +87,7 @@ def _plan(recipe: LRTSStageRecipe, cache_root: Path, output_root: Path) -> _Plan
     producer = lrts_stage_producer()
     identity = fingerprint(["lrts-stage-parquet-export-v1", recipe.fingerprint, producer, pl.__version__])
     root = _output(output_root, "corpus-etl/" + identity.removeprefix(_SHA256))
-    for relative in (*_paths(recipe), "complete.json"):
+    for relative in (*_paths(recipe), _COMPLETION):
         _output(root, relative)
     return _Plan(root, producer)
 
@@ -195,7 +196,7 @@ def export_lrts_stage_parquet(recipe: LRTSStageRecipe, cache: SourceCache, write
         source_stages=len(recipe.stage_bindings),
         **_counts(tables),
     )
-    completion = _output(plan.root, "complete.json")
+    completion = _output(plan.root, _COMPLETION)
     writer.write_immutable(completion, receipt.to_json() + "\n")
     return completion
 
@@ -212,7 +213,7 @@ def validate_lrts_stage_etl(receipt: LRTSStageReceipt, cache: SourceCache, root:
     receipt = LRTSStageReceipt.model_validate(receipt)
     validate_cache_separation(cache.root, root)
     validate_source_storage(root)
-    for relative in (*_paths(receipt.recipe), "complete.json"):
+    for relative in (*_paths(receipt.recipe), _COMPLETION):
         _output(root, relative)
     if receipt.producer_sha256 != lrts_stage_producer():
         raise ValueError("Unsupported LRTS stage producer; use its recorded implementation")

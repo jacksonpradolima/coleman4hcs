@@ -102,8 +102,9 @@ def test_complete_source_stage_roundtrip_conservation_and_correlated_views(tmp_p
     assert receipt.fingerprint != second.fingerprint
     with pytest.raises(ValueError, match="evaluation blocked"):
         receipt.temporal.require_temporal_evaluation()
+    legacy_writer = ArtifactWriter(tmp_path / "old-output")
     with pytest.raises(ValueError, match="one explicit metadata stage"):
-        export_lrts_parquet(recipe.source, cache, ArtifactWriter(tmp_path / "old-output"))
+        export_lrts_parquet(recipe.source, cache, legacy_writer)
 
 
 def test_stage_contract_golden_set_order_and_unknown_versions():
@@ -139,8 +140,9 @@ def test_unproved_raw_correspondence_rejects_without_completion(tmp_path, field,
     bindings = list(recipe.stage_bindings)
     bindings[0] = changed(bindings[0], **{field: value})
     recipe = changed(recipe, stage_bindings=tuple(bindings))
+    writer = ArtifactWriter(tmp_path / "output")
     with pytest.raises(ValueError, match="raw context/node relation"):
-        export_lrts_stage_parquet(recipe, cache, ArtifactWriter(tmp_path / "output"))
+        export_lrts_stage_parquet(recipe, cache, writer)
     assert not list((tmp_path / "output").rglob("complete.json"))
 
 
@@ -196,8 +198,9 @@ def test_invalid_reported_seconds_reject_without_completion(tmp_path, value):
         return report
 
     recipe, cache = prepare(tmp_path, transform=invalid)
+    writer = ArtifactWriter(tmp_path / "output")
     with pytest.raises(ValueError):
-        export_lrts_stage_parquet(recipe, cache, ArtifactWriter(tmp_path / "output"))
+        export_lrts_stage_parquet(recipe, cache, writer)
     assert not list((tmp_path / "output").rglob("complete.json"))
 
 
@@ -221,8 +224,9 @@ def test_unsupported_source_evidence_rejects_without_completion(tmp_path, kind):
         recipe = changed(recipe, source=changed(recipe.source, builds=tuple(reversed(recipe.source.builds))))
     elif kind == "case_limit":
         recipe = changed(recipe, source=changed(recipe.source, maximum_cases=6))
+    writer = ArtifactWriter(tmp_path / "output")
     with pytest.raises(ValueError):
-        export_lrts_stage_parquet(recipe, cache, ArtifactWriter(tmp_path / "output"))
+        export_lrts_stage_parquet(recipe, cache, writer)
     assert not list((tmp_path / "output").rglob("complete.json"))
 
 
@@ -255,9 +259,13 @@ def test_forged_completion_rejects_metadata_or_actual_verification(tmp_path, kin
     else:
         value["excluded_outside_stage"] -= 1
         value["excluded_not_run"] += 1
-    with pytest.raises(ValueError):
+    if kind in {"conservation", "roles", "stages", "sources", "rounds"}:
+        with pytest.raises(ValueError):
+            LRTSStageReceipt.model_validate(value)
+    else:
         forged = LRTSStageReceipt.model_validate(value)
-        validate_lrts_stage_etl(forged, cache, path.parent)
+        with pytest.raises(ValueError):
+            validate_lrts_stage_etl(forged, cache, path.parent)
 
 
 @pytest.mark.parametrize("version", [None, 0, 2, True, "1"])
@@ -291,8 +299,9 @@ def test_source_derived_verifier_rejects_self_signed_parquet_and_corruption(tmp_
         changed(f, sha256=digest(payload), size_bytes=len(payload)) if f.path == "observations.parquet" else f
         for f in receipt.files
     )
+    forged = changed(receipt, files=records)
     with pytest.raises(ValueError, match="artifact identity"):
-        validate_lrts_stage_etl(changed(receipt, files=records), cache, path.parent)
+        validate_lrts_stage_etl(forged, cache, path.parent)
 
 
 def test_exact_metadata_duplicates_and_source_order_metamorphism(tmp_path):

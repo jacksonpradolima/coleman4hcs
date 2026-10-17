@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ntpath
 from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
@@ -46,6 +47,8 @@ class LRTSStageRecipe(VersionedContract):
     remain analytical observations; outside-stage rows have explicit exclusions.
     Label/occurrence correspondence is an assumption, not verified continuity.
     New family/schema identities cannot reinterpret existing receipts. No I/O.
+    Native aliases reject Windows device components on every host, including
+    case variants and dotted extensions, before acquisition or publication.
     """
 
     recipe: Literal["lrts-stage-parquet-replay-v1"] = "lrts-stage-parquet-replay-v1"
@@ -61,6 +64,8 @@ class LRTSStageRecipe(VersionedContract):
     def _bindings(self) -> Self:
         """Require complete declared build coverage and unambiguous stage/context/node mappings."""
         safe_member_name(self.dataset_id)
+        if ntpath.isreserved(self.dataset_id):
+            raise ValueError("LRTS native dataset alias is Windows-reserved")
         self.source.require_native_feedback()
         builds = {(b.pull_request, b.build_id) for b in self.source.builds}
         groups: dict[tuple[str, int], list[LRTSStageBinding]] = {}

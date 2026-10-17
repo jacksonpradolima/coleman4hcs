@@ -216,8 +216,10 @@ print(result.run_id, receipt.admission, receipt.temporal.model_dump())
 
 The new `lrts-stage-parquet-replay-v1` family requires integer `schema_version=1`.
 Missing, coerced, unknown or future versions reject. Canonical recipe metadata is
-at most 1 MiB; transport recipe/receipt reads are capped at 2 MiB. Fixed Parquet
-settings and the recorded Polars version bind physical bytes; canonical rows
+at most 1 MiB; transport recipe/receipt reads are capped at 2 MiB. Native aliases
+also reject Windows device names, including case variants and dotted extensions,
+on every host before acquisition. Fixed Parquet settings and the recorded Polars
+version bind physical bytes; canonical rows
 separately bind logical meaning. Validation regenerates source-derived expected
 bytes and rejects forged/self-signed Parquet without decoding it.
 
