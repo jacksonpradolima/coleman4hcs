@@ -67,9 +67,11 @@ The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
 [LibSSH HCS workflow](hcs-parquet-etl.md) shipped in 4.13 through
 [#326](https://github.com/jacksonpradolima/coleman/pull/326). #308's deterministic
 [interaction-covering stress laboratory](ci-stress-laboratory.md) shipped in 4.14
-through [#328](https://github.com/jacksonpradolima/coleman/pull/328). Eight of the
-thirteen public subtasks are delivered. #309–#313 remain open; evidence-backed
-source admission in #309 is next. Source conversion does not establish admission.
+through [#328](https://github.com/jacksonpradolima/coleman/pull/328). #309's
+[source admission and production reality](corpus-admission.md) shipped in 4.15
+through [#330](https://github.com/jacksonpradolima/coleman/pull/330). Nine of the
+thirteen public subtasks are delivered. #310–#313 remain open; metric/statistical
+references in #310 are next. Source conversion does not establish historical admission.
 
 The published HCS workflow preserves raw pipeline/job correspondence, WTS/VTS
 Parquet, all 208 sparse cells and isolated multi-budget checkpoints. Its declared
@@ -87,7 +89,7 @@ later gates.
 | Seeded C source — delivered in 4.12 | [#306 permitted Juliet slice](https://github.com/jacksonpradolima/coleman/issues/306) | One synthetic template/function pair; six correlated inputs, no empirical admission |
 | HCS source — delivered in 4.13 | [#307 LibSSH WTS/VTS and variant accounting](https://github.com/jacksonpradolima/coleman/issues/307) | Original pipeline/job identities; 13 known labels, seven with parsed tests; temporal admission remains blocked |
 | Synthetic laboratory — delivered in 4.14 | [#308 interaction-covering stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Tiny oracle/resource bounds; explicit synthetic dependence and native eligibility |
-| Evidence integration | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | #302–#308 |
+| Evidence integration — delivered in 4.15 | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | Three scoped regimes covered; four historical/HCS regimes remain uncovered |
 | Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
 | Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
 | Final execution/report | [#313 confirmatory corpus](https://github.com/jacksonpradolima/coleman/issues/313) | #309–#312 and the complete parent gates |
@@ -165,15 +167,18 @@ process. Rare failures survive churn; zero-work cases retain typed traces while
 native replay rejects their undefined cost metric. Existing 4.13 native results
 and checkpoints resume without changing protected bytes. This owned synthetic
 family supports mechanism checks; it does not admit empirical diversity regimes
-or establish independent faults. #309 is the current bounded implementation.
+or establish independent faults.
 
-**4.15 development** adds [source admission and production reality](corpus-admission.md)
+**4.15.0** adds [source admission and production reality](corpus-admission.md)
 on the existing registry, profiles, source receipts and immutable publication.
 Original raw-capture verification uses an explicit application boundary; domain
 imports remain independent of transports. A 35-axis matrix distinguishes observed,
 reconstructed, missing, synthetic and inapplicable facts. Functional/mechanism
-qualification cannot grant historical confirmation. The issue remains open until
-the complete qualification, local review and published-package checks pass.
+qualification cannot grant historical confirmation. The signed published wheel
+revalidates 61 actual bindings / 63 cards, all six original raw-capture proofs and
+the complete 39-case stress family. Three scoped regimes are covered; four
+historical/HCS regimes stay uncovered. Actual 4.14 native results resume without
+changing protected bytes. #309 is delivered; #261 remains open and #310 is next.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:

@@ -108,14 +108,14 @@ and checkpoint. Inspect the inputs, decisions and evidence behind each result.
 
 [**Run real CI data**](#start-with-real-ci-data) · [**Explore benchmarks**](#datasets) ·
 [**Library and CLI**](#quick-start) · [**Documentation**](https://jacksonpradolima.github.io/coleman/) ·
-[**4.14 release**](https://github.com/jacksonpradolima/coleman/releases/tag/v4.14.0) · [**Cite COLEMAN**](#citation)
+[**4.15 release**](https://github.com/jacksonpradolima/coleman/releases/tag/v4.15.0) · [**Cite COLEMAN**](#citation)
 
 ## What you can build with COLEMAN
 
 | Your goal | Available workflow |
 | --- | --- |
 | Stress a difficult CI decision | [32 deterministic interaction-covering cases](docs/ci-stress-laboratory.md), explicit truth and feedback clocks, native Parquet and resumable agents |
-| Audit what a source actually supports | [Development source-admission API](docs/corpus-admission.md): verify original evidence, retain explicit units and inspect a 35-axis production-reality matrix |
+| Audit what a source actually supports | [Source-admission API](docs/corpus-admission.md): verify original evidence, retain explicit units and inspect a 35-axis production-reality matrix |
 | Compare adaptive CI prioritization policies | Native TCPCI runner, configurable policies/rewards, contextual inputs and [parameter sweeps](#sweep-engine) |
 | Evaluate configurable software | [Pinned LibSSH data → WTS/VTS Parquet and checkpointed replay](docs/hcs-parquet-etl.md), plus the existing Dune examples |
 | Collect real-fault observations | [Controlled Java matrix](docs/java-fault-matrix.md) and [Python source capture](docs/python-source-capture.md): frozen source/runtime recipes, raw evidence and offline recovery |
@@ -130,13 +130,22 @@ Use the [resource replay](docs/resource-replay.md),
 modeled costs, observed execution and evidence available at decision time.
 Negative and inconclusive results remain visible in their reports.
 
+**New in 4.15: inspect the evidence before comparing policies.** The
+[source-admission workflow](docs/corpus-admission.md) verifies original artifacts
+and produces a versioned report across 35 production-reality axes. The published
+wheel validates 61 source bindings, keeps stages/jobs/variants distinct and
+preserves the original producers of controlled captures. Three narrow
+functional/mechanism regimes are covered; four historical/HCS regimes remain
+uncovered. You can reproduce useful experiments while seeing exactly which
+claims still lack evidence.
+
 ## Start with real CI data
 
 With Python 3.14+ in an activated environment, install the published wheel and run
 the complete LRTS workflow. Use cache/output directories outside Git:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 python -m coleman.transports.lrts_etl \
   --cache /tmp/coleman-lrts-source-cache \
   --output /tmp/coleman-lrts-data --fetch --run
@@ -161,7 +170,7 @@ RNFail feedback. Source temporal admission remains blocked; this run demonstrate
 a usable data pipeline and simulation. Policy efficacy and prospective savings
 require their own eligible observations and comparisons.
 
-The same **4.14 wheel** also provides
+The same **4.15 wheel** also provides
 [RTPTorrent → analytical/native Parquet → checkpointed replay](docs/rtptorrent-parquet-etl.md).
 Its complete HikariCP raw member preserves **46,995 class executions across 1,662
 source jobs**. The declared eight-job preset projects **18 executions** and
@@ -172,7 +181,7 @@ from LRTS and class observations from RTPTorrent retain their distinct units.
 Both workflows are explicit post-hoc simulations; the admission and comparison
 gates remain visible in the [benchmark readiness table](#datasets).
 
-For larger method histories, the **published 4.14 wheel** includes
+For larger method histories, the **published 4.15 wheel** includes
 [ActiveMQ and separate Log4j stage views](docs/lrts-stage-views.md). ActiveMQ
 preserves **18,901 method observations / 18,668 native cases**. Log4j preserves
 **30,066 observations**, with **14,957 Ubuntu / 14,906 Windows native cases**.
@@ -181,7 +190,7 @@ The Log4j views share source build groups; their observations are correlated.
 The guide includes explicit archive acquisition, exact raw-node bindings and
 the temporal evidence still missing for protected evaluation.
 
-The **4.14 wheel** also takes [original LibSSH CI data through WTS/VTS
+The **4.15 wheel** also takes [original LibSSH CI data through WTS/VTS
 Parquet and checkpointed replay](docs/hcs-parquet-etl.md). Its frozen sixteen
 pipelines retain 856 test executions and all 208 sparse cells across 13 known
 job labels. Seven labels have parsed tests; the remaining six keep their missing
@@ -190,7 +199,7 @@ resume both budgets without mixing their checkpoints. Temporal admission stays
 separate from this reproducible data path.
 
 Reproduce upstream Java faults with the [controlled CLI/Codec matrix](docs/java-fault-matrix.md),
-also included in **4.14**. One frozen plan collects three curated fixes across two
+also included in **4.15**. One frozen plan collects three curated fixes across two
 codebases, retaining all **714 role observations / 357 same-test pairs** from the
 initial qualification, including both-fail and inconclusive outcomes. Typed indices
 verify source, context and raw packets; interrupted collection remains incomplete,
@@ -198,14 +207,14 @@ and completed evidence reopens offline. This optional workflow requires the pinn
 native arm64 Docker runtime. These constructed functional observations retain
 separate admission and generalization limits.
 
-The **published 4.14 wheel** also offers [controlled Python capture](docs/python-source-capture.md).
+The **published 4.15 wheel** also offers [controlled Python capture](docs/python-source-capture.md).
 Reproduce a PySnooper Unicode fix with unchanged source/tests, pinned wheels and
 two explicit locales. The installed qualification retains an ASCII exception-to-pass
 pair as **inconclusive**, plus a UTF-8 both-pass contrast. Real process interruption,
 offline replay and native checkpoint integration are verified. The guide includes
 the verified published-wheel installation command and explicit runtime preparation.
 
-The **4.14 wheel** includes [constructed C source capture](docs/c-seeded-source-capture.md):
+The **4.15 wheel** includes [constructed C source capture](docs/c-seeded-source-capture.md):
 unchanged NIST Juliet functions, a pinned GCC runtime and six frozen uint32 inputs
 checked against an independent arithmetic oracle. The initial qualification
 retains five both-pass pairs and one assertion-failure/pass pair. Inspect raw
@@ -453,19 +462,19 @@ Each run persists:
 
 Requires Python 3.14 or later in an activated virtual environment. Install the
 wheel published in this repository’s GitHub releases. These examples pin version
-4.14.0 and its published SHA-256. Pip verifies the wheel before installation:
+4.15.0 and its published SHA-256. Pip verifies the wheel before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 ```
 
 Or with optional extras:
 
 ```bash
 # OpenTelemetry SDK
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -641,10 +650,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 ```
 
 ## Querying results
@@ -707,7 +716,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list
@@ -786,15 +795,15 @@ controlled reproductions and empirical benchmark corpora have different roles:
 | Dataset or benchmark | What you can use now | Scope and readiness |
 | --- | --- | --- |
 | **LRTS / Karaf real CI reports** | [Pinned download → analytical/native Parquet → Random/UCB → checkpoint recovery](docs/lrts-parquet-etl.md) | Complete eight-build preset; explicit post-hoc serial simulation. Protected historical admission remains blocked. |
-| **LRTS / ActiveMQ and Log4j stage views** | [Published 4.14 wheel → explicit local archive → analytical/native Parquet → checkpoint recovery](docs/lrts-stage-views.md) | Four-build profiles; exact context/node bindings. All raw stages retained; Log4j views share source observations. Temporal admission remains blocked. |
+| **LRTS / ActiveMQ and Log4j stage views** | [Published 4.15 wheel → explicit local archive → analytical/native Parquet → checkpoint recovery](docs/lrts-stage-views.md) | Four-build profiles; exact context/node bindings. All raw stages retained; Log4j views share source observations. Temporal admission remains blocked. |
 | **Druid and Retrofit** | Bundled native/contextual Parquet examples, native runner and [descriptive profiles](docs/benchmark-corpus.md#local-profiles-and-the-first-diversity-matrix-44) | Runnable legacy experiments. Source terms, duration units and outcome availability still need corpus admission evidence. |
 | **Dune and its variants** | Bundled native Parquet, WTS/VTS workflows and [variant-aware inventory](docs/benchmark-corpus.md) | Runnable HCS examples. Variants/context files may share executions; broad HCS benchmark admission remains unfinished. |
-| **LibSSH historical configurations** | [Published 4.14 wheel → original CSV/JSON → analytical/union/variant/VTS Parquet → native checkpoints](docs/hcs-parquet-etl.md) | Sixteen frozen pipelines, 13 known job labels (seven with parsed tests), 856 retained test executions and 29 explicit other-attempt exclusions. All 208 sparse cells retain missing evidence; metadata-only jobs never become passing tests or native executions. Test-only costs and temporal admission blockers remain explicit. |
+| **LibSSH historical configurations** | [Published 4.15 wheel → original CSV/JSON → analytical/union/variant/VTS Parquet → native checkpoints](docs/hcs-parquet-etl.md) | Sixteen frozen pipelines, 13 known job labels (seven with parsed tests), 856 retained test executions and 29 explicit other-attempt exclusions. All 208 sparse cells retain missing evidence; metadata-only jobs never become passing tests or native executions. Test-only costs and temporal admission blockers remain explicit. |
 | **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | Available in 4.8: 46,995 class executions / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |
-| **Controlled Java real-fault sources** | Published 4.14 wheel: [CLI-13 producer](docs/junit-source-capture.md) and [three-fix CLI/Codec matrix](docs/java-fault-matrix.md) with typed indices and offline recovery | Two codebases, explicit common fixtures, 357 same-test pairs in the initial qualification. Docker/arm64; negative and inconclusive results remain visible. Controlled evidence, not historical CI or full Defects4J reconstruction. |
-| **Controlled Python real-fault source** | [Published 4.14 wheel → pinned PySnooper capture → offline/interruption recovery](docs/python-source-capture.md) | One unchanged partial fixture, one curated fix, two correlated locales: ASCII error-to-pass remains inconclusive; UTF-8 both-pass. Docker/arm64; component terms and attribution limits retained. |
-| **Constructed C weakness** | [Published 4.14 wheel → pinned Juliet/GCC → independent arithmetic oracle → offline/interruption recovery](docs/c-seeded-source-capture.md) | One 2017 template/function pair, six correlated inputs, five both-pass and one expected pair. CC0/US public-domain source; synthetic provenance, separate from real faults and empirical admission. |
-| **Deterministic CI stress laboratory (published 4.14)** | [32 interaction-covering cases → truth JSONL/native Parquet → actual agents/checkpoints](docs/ci-stress-laboratory.md) | Eleven factors; tiny through 50,000 logical tests; explicit delayed/corrected feedback eligibility and modeled worker schedules. One owned constructed family; no empirical admission. |
+| **Controlled Java real-fault sources** | Published 4.15 wheel: [CLI-13 producer](docs/junit-source-capture.md) and [three-fix CLI/Codec matrix](docs/java-fault-matrix.md) with typed indices and offline recovery | Two codebases, explicit common fixtures, 357 same-test pairs in the initial qualification. Docker/arm64; negative and inconclusive results remain visible. Controlled evidence, not historical CI or full Defects4J reconstruction. |
+| **Controlled Python real-fault source** | [Published 4.15 wheel → pinned PySnooper capture → offline/interruption recovery](docs/python-source-capture.md) | One unchanged partial fixture, one curated fix, two correlated locales: ASCII error-to-pass remains inconclusive; UTF-8 both-pass. Docker/arm64; component terms and attribution limits retained. |
+| **Constructed C weakness** | [Published 4.15 wheel → pinned Juliet/GCC → independent arithmetic oracle → offline/interruption recovery](docs/c-seeded-source-capture.md) | One 2017 template/function pair, six correlated inputs, five both-pass and one expected pair. CC0/US public-domain source; synthetic provenance, separate from real faults and empirical admission. |
+| **Deterministic CI stress laboratory (introduced in 4.14)** | [32 interaction-covering cases → truth JSONL/native Parquet → actual agents/checkpoints](docs/ci-stress-laboratory.md) | Eleven factors; tiny through 50,000 logical tests; explicit delayed/corrected feedback eligibility and modeled worker schedules. One owned constructed family; no empirical admission. |
 | **Owned CI correctness fixtures** | Two tiny [serial/parallel corpus fixtures](docs/benchmark-corpus.md), validation and native integration examples | Available without network. One constructed family for contract/metric checks; no independent-project diversity. |
 | **Coverage and scenario-allocation microbenchmarks** | [Correctness and performance profiles](docs/decision-benchmarks.md), independent exhaustive references and JSON/Markdown reports | Runnable finite-model benchmarks with runtime/memory observations; separate from empirical CI-policy comparisons. |
 | **Pilot, resource and shadow examples** | [Operational accounting](docs/operational-pilot.md), [resource replay](docs/resource-replay.md) and [shadow recovery](docs/prospective-shadow.md) | Runnable synthetic demonstrations of accounting/recovery. Collected prospective evidence remains insufficient. |
@@ -829,22 +838,24 @@ retain their own validation gates.
 [#261](https://github.com/jacksonpradolima/coleman/issues/261) remains open.
 The controlled Java matrix and bounded Python reproduction are usable source
 workflows; neither completes corpus diversity or scientific admission.
-The published 4.14 wheel includes a [bounded constructed C slice](docs/c-seeded-source-capture.md)
+The published 4.15 wheel includes a [bounded constructed C slice](docs/c-seeded-source-capture.md)
 from permitted Juliet inputs. SIR component/data terms remain unresolved.
-Eight of the thirteen public subtasks are delivered, including LibSSH WTS/VTS
+Nine of the thirteen public subtasks are delivered, including LibSSH WTS/VTS
 (introduced in 4.13) and the [#308](https://github.com/jacksonpradolima/coleman/issues/308)
-interaction-covering synthetic stress laboratory in 4.14. The development branch for
-#309 adds [evidence-backed source admission](docs/corpus-admission.md);
+interaction-covering synthetic stress laboratory in 4.14. Published 4.15 delivers
+[#309's source admission](docs/corpus-admission.md) through
+[PR #330](https://github.com/jacksonpradolima/coleman/pull/330);
 metric/statistical validation, comparable baselines, public prospective collection
-feasibility and the confirmatory report remain in #309–#313. External baseline
+feasibility and the confirmatory report remain in #310–#313. External baseline
 reproduction, including investigated DANTE methods, requires its own verified
 integration and comparable protocol.
 
 Completing the issue additionally requires the predeclared baseline matrix,
 eligible temporal/statistical comparisons, production-reality/diversity coverage,
-a frozen confirmatory run and the per-project/cross-corpus report. All seven
-required diversity regimes remain uncovered in the registry. Existing source
-readers and a working real-data slice support that program without claiming it
+a frozen confirmatory run and the per-project/cross-corpus report. The original
+fixture-readiness view keeps all seven regimes uncovered; the separate 4.15 audit
+covers three narrow purposes and leaves four historical/HCS regimes uncovered.
+Existing source readers and a working real-data slice support that program without claiming it
 has already finished. Follow the [public roadmap](docs/roadmap.md).
 
 Existing dataset discovery links remain available at the
@@ -1654,13 +1665,13 @@ an LLM decision algorithm, or a hosted service.
 Use Python 3.14 or later on Linux or macOS in an activated virtual environment:
 
 ```bash
-python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66'
+python -m pip install 'https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde'
 ```
 
 For optional tools, install the same GitHub wheel with its extra:
 
 ```bash
-python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66'
+python -m pip install 'coleman[mcp] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde'
 ```
 
 Use this repository's release assets and verify their published digest and
@@ -1978,12 +1989,18 @@ integration. COLEMAN **4.4** adds bounded local native-Parquet profiles, a repro
 inventory and [licensed source-package materialization](corpus-materialization.md).
 The diversified benchmark program remains open.
 
+**4.15** adds a separate [source-admission and production-reality audit](corpus-admission.md)
+using this same registry/card model and explicit verified source bindings. Its
+published qualification covers three narrow functional/mechanism regimes and
+leaves four historical/HCS regimes uncovered. Original registrations and
+phase-one fixture readiness keep their meanings; they are not silently upgraded.
+
 For the separate source-specific ETL workflows, see [Karaf](lrts-parquet-etl.md),
-[RTPTorrent](rtptorrent-parquet-etl.md) and the published 4.13 [ActiveMQ/Log4j stage
+[RTPTorrent](rtptorrent-parquet-etl.md) and the published 4.15 [ActiveMQ/Log4j stage
 views](lrts-stage-views.md). Those exports preserve their own provenance and
 admission blockers; they do not silently add admitted registrations to this registry.
 
-For controlled Java sources, the published 4.13 wheel includes a separate [CLI/Codec
+For controlled Java sources, the published 4.15 wheel includes a separate [CLI/Codec
 matrix](java-fault-matrix.md) using the existing controlled/JUnit producer.
 Its typed index preserves all selected outcomes and incomplete evidence. It does
 not silently change this registry's admission or diversity coverage.
@@ -1995,13 +2012,13 @@ Its ASCII error-to-pass pair remains inconclusive under the strict generic
 classifier; the UTF-8 contrast passes in both roles. These share one curated fix
 and do not silently add independent observations or admitted registry entries.
 
-The published 4.13 wheel also includes a [constructed C function slice](c-seeded-source-capture.md)
+The published 4.15 wheel also includes a [constructed C function slice](c-seeded-source-capture.md)
 from NIST Juliet 1.3. Its source/component terms were reviewed before acquisition;
 one original template/function pair and six correlated inputs remain explicitly
 synthetic. SIR permission remains unresolved. This workflow adds no registry
-entry or admitted diversity regime.
+default registry entry or admitted diversity regime by itself.
 
-The published 4.13 wheel includes a separate [LibSSH HCS ETL](hcs-parquet-etl.md): original
+The published 4.15 wheel includes a separate [LibSSH HCS ETL](hcs-parquet-etl.md): original
 pipeline/job identities, reversible variant aliases, explicit projected test
 costs and native WTS/VTS checkpointed runs. Sparse/absent cells and source
 exclusions remain visible. The installed qualification verifies all 208 declared
@@ -2400,19 +2417,26 @@ created for assurance-tool evaluation. It is not a real regression history,
 a representative application suite or evidence that a prioritization policy wins.
 The [corpus admission and comparison gates](roadmap.md) remain separate.
 
+The installation below uses the current collector. The initial Docker outcomes
+retain their original qualifications; they were not recollected with 4.15.
+Capture producers bind the whole SDK and package version, so reopening old
+observations requires their original package. The [4.15 admission adapter](corpus-admission.md)
+revalidates the retained 4.13 captures with their original pinned wheel and raw
+parsers; unchanged legacy capture code alone cannot relabel a producer.
+
 ## Install outside checkout
 
 The SDK requires Python 3.14+, uv and POSIX. This optional preset additionally
 requires a native Linux arm64 Docker engine and the pinned GCC image. Other
 architectures need separate recipes and qualification.
 
-Install the published **4.14 wheel** into a fresh external environment. The
+Install the published **4.15 wheel** into a fresh external environment. The
 SHA-256 fragment verifies the release bytes before installation; no checkout is
 required. Runtime preparation remains a separate, explicit operator action:
 
 ```bash
 uv venv /tmp/coleman-c-env --python 3.14
-uv pip install --python /tmp/coleman-c-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+uv pip install --python /tmp/coleman-c-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 
 # Explicit preparation; the producer never pulls an image.
 docker pull --platform linux/arm64 docker.io/library/gcc@sha256:e55a45ec94b8f1dc59f08e3b25b8e7f23b96220235da707ae2cc0dce47f6b46c
@@ -2630,7 +2654,7 @@ or a 50,000-test suite. It complements the real-source workflows with controlled
 mechanism checks. It does not establish real-project generalization, empirical
 corpus admission, independent faults or an algorithm winner.
 
-This workflow ships in the published **4.14** wheel. Its installed qualification
+This workflow ships in the published **4.15** wheel. Its installed qualification
 checks the complete authored package against the release tag, runs actual native
 agents outside the source checkout and verifies process-interruption recovery.
 
@@ -2643,7 +2667,7 @@ The URL pins the verified release SHA-256. Outputs stay outside the repository.
 ```bash
 export COLEMAN_STRESS_HOME="$(mktemp -d "${TMPDIR:-/tmp}/coleman-stress.XXXXXX")"
 uv venv "$COLEMAN_STRESS_HOME/installed" --python 3.14
-uv pip install --python "$COLEMAN_STRESS_HOME/installed/bin/python" "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+uv pip install --python "$COLEMAN_STRESS_HOME/installed/bin/python" "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 cd "$COLEMAN_STRESS_HOME"
 ```
 
@@ -4033,23 +4057,21 @@ an explicit refusal of protected historical evaluation. The report connects
 versioned receipts, source-specific terms, analytical profiles and the existing
 registry. A successful ETL or a large suite is not scientific admission.
 
-This workflow is new in the development source for **4.15**. The published 4.14
-wheel retains its documented workflows; build the reviewed source below to use
-these APIs before their release. The development qualification below is source-purpose
-evidence, not a completed cross-corpus policy comparison or a published 4.15 wheel.
+This workflow is available in the verified published **4.15** wheel. Audit
+source-purpose evidence before a policy comparison; the report retains missing
+historical gates and does not claim completed cross-corpus confirmation.
 
 ## Install and audit a source
 
-From the COLEMAN checkout, build a base wheel and install it outside the
-repository. Python 3.14 and uv are required. Docker and MCP are unnecessary for
+Install the verified wheel outside a repository; no checkout is required.
+Python 3.14 and uv are required. Docker and MCP are unnecessary for
 this audit. Source data, controlled observations and generated reports stay
 outside Git, with separate cache, ETL and audit directories.
 
 ```bash
 export COLEMAN_CI_HOME="$(mktemp -d "${TMPDIR:-/tmp}/coleman-ci-audit.XXXXXX")"
-uv build --wheel --out-dir "$COLEMAN_CI_HOME/dist"
 uv venv "$COLEMAN_CI_HOME/installed" --python 3.14
-uv pip install --python "$COLEMAN_CI_HOME/installed/bin/python" "$COLEMAN_CI_HOME"/dist/*.whl
+uv pip install --python "$COLEMAN_CI_HOME/installed/bin/python" "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 cd "$COLEMAN_CI_HOME"
 
 export COLEMAN_CI_CACHE="$COLEMAN_CI_HOME/source-cache"
@@ -4339,14 +4361,21 @@ cache, result and learning-checkpoint bytes are never repaired or rewritten.
 Trusted local filesystem parents and existing artifact durability limits apply;
 this does not claim protection from concurrent hostile filesystem mutation.
 
-## Development source qualification
+## Published 4.15 qualification
 
-The installed development wheel was exercised outside the checkout with all 306
-authored SDK files checked against the source, MCP absent and a domain transport
-import guard active. The audit verified 61 actual source bindings in the existing
+The actual published wheel was installed outside the checkout with all 306
+authored SDK files checked against the reviewed source/tag, MCP absent and a
+domain transport import guard active. Its audit reverified 61 actual source bindings in the existing
 registry, producing 63 cards; the two owned tiny fixtures remained visibly unbound.
-Publication, complete-artifact validation and repeated publication reverified all
-bindings offline and preserved every report byte.
+The frozen source qualification exercised publication, complete-artifact
+validation and repeated publication with all bindings and unchanged report bytes.
+The published package validates that same complete report offline. Both literal
+examples above pass against actual Karaf data. A separate existing native API
+replay runs Random/UCB, produces 16 rows and resumes checkpoint step 8. It also
+resumes the actual published 4.14 run without altering any protected
+result/checkpoint byte. Wheel/source signatures, six asset
+digests, version-only automatic bump and SBOM were checked against the release's
+actual main-push identity.
 
 | Source bindings | Count | Result |
 | --- | ---: | --- |
@@ -4363,7 +4392,8 @@ wheel, SHA-256 `bbe2f3cf8954fc27fc8f5a44e3713519aa30bcf2cfdd2aad140f4bcc1ae45abc
 and original whole-SDK producer. A separate original environment was reconstructed
 from that wheel and the same 31 recorded dependency versions after its earlier
 temporary environment failed to import Pydantic. Source/capture bytes were not
-rewritten, recollected or relabeled to the development package.
+rewritten, recollected or relabeled to 4.15. The current release has not recollected
+these Docker subject executions; its admission adapter verifies the originals.
 
 The result covers `controlled_java_real_faults`,
 `controlled_non_java_real_faults` and `deterministic_adversarial_simulation` for
@@ -4374,7 +4404,7 @@ while preserving job/stage dimensions; this does not clear historical blockers.
 Generalization remains `insufficient_evidence`. Source/stage copies, locales,
 variants and seeds must not be added as independent projects or faults.
 
-The development report fingerprint is
+The source report fingerprint, also verified by the published wheel, is
 `sha256:5563f81230ec34c15d31e8bb6d416ea5236489ee5f092af5d437d7f7ffdaffb4`.
 It identifies this frozen source/review snapshot, not a universal dataset or an
 efficacy result. Full reports stay outside Git because embedded controlled
@@ -6645,7 +6675,7 @@ and **Variant Test Set (VTS)** evaluation. Preserve pipeline/job identity, inspe
 sparse configurations, compare their native result denominators and resume both
 strategies through COLEMAN's existing runner and checkpoints.
 
-The published **4.14 wheel** includes this workflow. Install it outside the
+The published **4.15 wheel** includes this workflow. Install it outside the
 repository and supply the two reviewed original files below. Source integrity
 and a successful replay do not establish scientific admission or a winning policy.
 
@@ -6655,7 +6685,7 @@ With Python 3.14+ and uv available:
 
 ```bash
 uv venv /tmp/coleman-hcs-env --python 3.14
-uv pip install --python /tmp/coleman-hcs-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+uv pip install --python /tmp/coleman-hcs-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 mkdir -p /tmp/coleman-hcs-downloads
 cd /tmp/coleman-hcs-downloads
 ```
@@ -6991,15 +7021,17 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## Development: source admission for 4.15
+## New in 4.15
 
 [Audit what a CI source actually supports](corpus-admission.md). Reuse existing
 source completions and the registry, verify original bytes and produce versioned
 JSON plus a human report covering 35 production-reality axes. Controlled
 functional evidence, constructed mechanism checks and protected historical
 evaluation retain separate gates. Missing evidence stays visible. The guide
-includes complete installation, audit and offline recovery examples; these new
-APIs require the development wheel until 4.15 is published.
+includes complete published-wheel installation, audit and offline recovery examples.
+The actual qualification verifies 61 source bindings, original raw producers and
+two CI report structures. Three functional/mechanism regimes are covered; four
+historical/HCS regimes remain uncovered. See the [4.15 release notes](releases/4.15.0.md).
 
 ## New in 4.14
 
@@ -7102,7 +7134,9 @@ limits and historical general telemetry. See the [4.8 release notes](releases/4.
 [pinned JUnit3 source recipe](junit-source-capture.md),
 [RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) readers,
 [corpus profiles](benchmark-corpus.md) and [source cache](corpus-materialization.md)
-retain their workflows. All seven required diversity regimes remain uncovered.
+retain their workflows. The original fixture-readiness view keeps all seven
+regimes uncovered; the separate [4.15 source audit](corpus-admission.md) qualifies
+three narrow purposes and retains four historical/HCS gaps.
 
 [Exact resource accounting](resource-replay.md) and [frozen shadow evaluation](prospective-shadow.md)
 retain their 4.3 behavior. The included synthetic shadow fixture remains inconclusive.
@@ -7110,7 +7144,7 @@ retain their 4.3 behavior. The included synthetic shadow fixture remains inconcl
 [Point-in-time observations](point-in-time-observations.md) preserve what each
 decision knew, including late/corrected outcomes and conservative freshness.
 The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures and
-visible source-admission gaps; all seven diversity regimes remain uncovered.
+visible source-admission gaps. Its original phase-one readiness remains unchanged.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
 correctness checks. See the [4.13 release notes](releases/4.13.0.md) for examples,
@@ -7122,7 +7156,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 coleman run --config my-experiment.yaml
 ```
 
@@ -7154,10 +7188,17 @@ fixed-tree fixture, retaining every observed pass, failure, test error and
 incomplete collection. This is controlled functional evidence for TCPCI research;
 it is separate from historical CI and policy comparisons.
 
-The published **4.14 wheel** includes the matrix transport. It reuses the existing
+The published **4.15 wheel** includes the matrix transport. It reuses the existing
 single-pair producer and the generic [controlled-observation
 domain](controlled-faults.md). It does not introduce a learning runner or change
 existing source recipes, results, checkpoints or raw-capture semantics.
+
+The installation below uses the current collector. The initial Docker outcomes
+retain their original qualifications; they were not recollected with 4.15.
+Capture producers bind the whole SDK and package version, so reopening old
+observations requires their original package. The [4.15 admission adapter](corpus-admission.md)
+revalidates the retained 4.13 captures with their original pinned wheel and raw
+parsers; unchanged legacy capture code alone cannot relabel a producer.
 
 ## Install and collect outside checkout
 
@@ -7171,7 +7212,7 @@ is required:
 
 ```bash
 uv venv /tmp/coleman-matrix-env --python 3.14
-uv pip install --python /tmp/coleman-matrix-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+uv pip install --python /tmp/coleman-matrix-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 
 # Explicit operator preparation; COLEMAN never pulls an image.
 docker pull --platform linux/arm64 eclipse-temurin@sha256:e4b3ff0f1a427efb2deb02b092ff8316d58573480260720d767d6ecdd69999d8
@@ -7428,7 +7469,7 @@ negative/inconclusive results retained.
 
 ## Prepare and run
 
-The published 4.10 wheel includes this single-pair producer and the matrix
+The published 4.15 wheel includes this single-pair producer and the matrix
 command; use the verified [setup command](setup.md#default-run-no-docker-required).
 The bundled preset requires POSIX,
 Docker, an arm64 host and arm64 Docker engine. It pins Temurin `11.0.32.1` and
@@ -7635,10 +7676,10 @@ For additional projects and explicit multistage correspondence, see
 [ActiveMQ and Log4j stage views](lrts-stage-views.md). That new recipe family
 preserves these original single-stage contracts and receipts.
 
-Use Python 3.14+ and the published 4.14.0 wheel. Pip verifies its SHA-256:
+Use Python 3.14+ and the published 4.15.0 wheel. Pip verifies its SHA-256:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 ```
 
 Choose cache and output directories outside Git. No Docker, optional MCP SDK,
@@ -7851,7 +7892,7 @@ reports into analytical Parquet and checkpointed TCPCI runs. ActiveMQ supplies a
 larger single-stage history; Log4j keeps its reported Ubuntu and Windows contexts
 separate. Each view runs Random and UCB through the existing native API.
 
-The published **4.14 wheel** includes this stage-view workflow and retains
+The published **4.15 wheel** includes this stage-view workflow and retains
 [Karaf](lrts-parquet-etl.md) and [RTPTorrent](rtptorrent-parquet-etl.md). It contains
 the typed contracts and frozen public source recipes; large archives remain
 separate operator downloads.
@@ -7864,7 +7905,7 @@ and outputs outside any Git repository; no checkout is needed:
 
 ```bash
 uv venv /tmp/coleman-stage-env --python 3.14
-uv pip install --python /tmp/coleman-stage-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+uv pip install --python /tmp/coleman-stage-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 mkdir -p /tmp/coleman-stage-sources
 
 # Explicit operator downloads can resume; the ETL separately verifies full hashes.
@@ -8422,7 +8463,7 @@ cd examples/observability
 docker compose up -d
 
 # Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 
 # Enable telemetry — use the telemetry/local pack in your run.yaml:
 #   packs:
@@ -8442,7 +8483,7 @@ coleman run --config run.yaml
 
 ```bash
 docker compose --profile clickhouse up -d
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 ```
 
 ## Tear down
@@ -9579,6 +9620,13 @@ source views, the verified external cache and immutable artifacts. Native TCPCI
 experiments continue to use the existing application API, policies and checkpoints.
 No historical CI events or scheduling costs are inferred from source execution.
 
+The installation below uses the current collector. The initial Docker outcomes
+retain their original qualifications; they were not recollected with 4.15.
+Capture producers bind the whole SDK and package version, so reopening old
+observations requires their original package. The [4.15 admission adapter](corpus-admission.md)
+revalidates the retained 4.13 captures with their original pinned wheel and raw
+parsers; unchanged legacy capture code alone cannot relabel a producer.
+
 ## Install and collect outside checkout
 
 The SDK requires Python 3.14+, uv and POSIX. These presets additionally require a
@@ -9586,13 +9634,13 @@ native Linux arm64 Docker engine. The subject interpreter is separately pinned t
 CPython 3.8.1; it does not change the SDK's Python requirement. Other architectures
 need independently reviewed recipes and runtime qualification.
 
-Install the published **4.14 wheel** into a fresh external environment. The
+Install the published **4.15 wheel** into a fresh external environment. The
 SHA-256 fragment verifies the release bytes before installation; no checkout is
 required. Runtime preparation is a separate, explicit operator action.
 
 ```bash
 uv venv /tmp/coleman-python-env --python 3.14
-uv pip install --python /tmp/coleman-python-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+uv pip install --python /tmp/coleman-python-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 
 # Explicit operator preparation; the producer never pulls an image.
 docker pull --platform linux/arm64 docker.io/library/python@sha256:ffae7d875975e38d38378ce65d10ab62c2156eb198e2e798664ec6c793015c03
@@ -10333,8 +10381,11 @@ share a build? Was a label available when the decision was made? COLEMAN 4.15 ad
 an auditable source-admission workflow that makes those questions explicit before
 you compare CI prioritization policies.
 
-This is the reviewed development description; publication and release-asset
-qualification remain pending.
+The published wheel was qualified outside checkout: all 306 SDK resources match
+the reviewed source and tag, and 61 source bindings reproduce the same versioned
+report. Both distributions have verified GitHub workflow signatures. Actual Karaf
+agents reach checkpoint step 8 and resume published 4.14 results without changing
+their protected bytes.
 
 ## One inventory, inspectable evidence
 
@@ -11596,9 +11647,11 @@ The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
 [LibSSH HCS workflow](hcs-parquet-etl.md) shipped in 4.13 through
 [#326](https://github.com/jacksonpradolima/coleman/pull/326). #308's deterministic
 [interaction-covering stress laboratory](ci-stress-laboratory.md) shipped in 4.14
-through [#328](https://github.com/jacksonpradolima/coleman/pull/328). Eight of the
-thirteen public subtasks are delivered. #309–#313 remain open; evidence-backed
-source admission in #309 is next. Source conversion does not establish admission.
+through [#328](https://github.com/jacksonpradolima/coleman/pull/328). #309's
+[source admission and production reality](corpus-admission.md) shipped in 4.15
+through [#330](https://github.com/jacksonpradolima/coleman/pull/330). Nine of the
+thirteen public subtasks are delivered. #310–#313 remain open; metric/statistical
+references in #310 are next. Source conversion does not establish historical admission.
 
 The published HCS workflow preserves raw pipeline/job correspondence, WTS/VTS
 Parquet, all 208 sparse cells and isolated multi-budget checkpoints. Its declared
@@ -11616,7 +11669,7 @@ later gates.
 | Seeded C source — delivered in 4.12 | [#306 permitted Juliet slice](https://github.com/jacksonpradolima/coleman/issues/306) | One synthetic template/function pair; six correlated inputs, no empirical admission |
 | HCS source — delivered in 4.13 | [#307 LibSSH WTS/VTS and variant accounting](https://github.com/jacksonpradolima/coleman/issues/307) | Original pipeline/job identities; 13 known labels, seven with parsed tests; temporal admission remains blocked |
 | Synthetic laboratory — delivered in 4.14 | [#308 interaction-covering stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Tiny oracle/resource bounds; explicit synthetic dependence and native eligibility |
-| Evidence integration | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | #302–#308 |
+| Evidence integration — delivered in 4.15 | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | Three scoped regimes covered; four historical/HCS regimes remain uncovered |
 | Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
 | Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
 | Final execution/report | [#313 confirmatory corpus](https://github.com/jacksonpradolima/coleman/issues/313) | #309–#312 and the complete parent gates |
@@ -11694,15 +11747,18 @@ process. Rare failures survive churn; zero-work cases retain typed traces while
 native replay rejects their undefined cost metric. Existing 4.13 native results
 and checkpoints resume without changing protected bytes. This owned synthetic
 family supports mechanism checks; it does not admit empirical diversity regimes
-or establish independent faults. #309 is the current bounded implementation.
+or establish independent faults.
 
-**4.15 development** adds [source admission and production reality](corpus-admission.md)
+**4.15.0** adds [source admission and production reality](corpus-admission.md)
 on the existing registry, profiles, source receipts and immutable publication.
 Original raw-capture verification uses an explicit application boundary; domain
 imports remain independent of transports. A 35-axis matrix distinguishes observed,
 reconstructed, missing, synthetic and inapplicable facts. Functional/mechanism
-qualification cannot grant historical confirmation. The issue remains open until
-the complete qualification, local review and published-package checks pass.
+qualification cannot grant historical confirmation. The signed published wheel
+revalidates 61 actual bindings / 63 cards, all six original raw-capture proofs and
+the complete 39-case stress family. Three scoped regimes are covered; four
+historical/HCS regimes stay uncovered. Actual 4.14 native results resume without
+changing protected bytes. #309 is delivered; #261 remains open and #310 is next.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:
@@ -11760,7 +11816,7 @@ MCP SDK is needed for this workflow; the URL pins the actual wheel SHA-256:
 
 ```bash
 uv venv /tmp/coleman-rtptorrent-env --python 3.14
-uv pip install --python /tmp/coleman-rtptorrent-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+uv pip install --python /tmp/coleman-rtptorrent-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 mkdir -p /tmp/coleman-rtptorrent-workspace
 cd /tmp/coleman-rtptorrent-workspace
 ```
@@ -12566,7 +12622,7 @@ Install this repository's GitHub release wheel, pinned to its published SHA-256.
 Pip verifies the complete wheel against this digest before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 ```
 
 Use the library API or the `coleman` CLI to run experiments:
@@ -12656,10 +12712,10 @@ coleman run --config experiment.yaml
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 
 # ClickHouse sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 ```
 
 ## Optional observability stack
@@ -13072,7 +13128,7 @@ and need no foreign dataset, Docker or MCP SDK:
 
 ```bash
 uv venv /tmp/coleman-zip64-env --python 3.14
-uv pip install --python /tmp/coleman-zip64-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+uv pip install --python /tmp/coleman-zip64-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 mkdir -p /tmp/coleman-zip64-workspace
 cd /tmp/coleman-zip64-workspace
 curl --fail --location --output ci.py \

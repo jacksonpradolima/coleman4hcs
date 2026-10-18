@@ -6,23 +6,21 @@ an explicit refusal of protected historical evaluation. The report connects
 versioned receipts, source-specific terms, analytical profiles and the existing
 registry. A successful ETL or a large suite is not scientific admission.
 
-This workflow is new in the development source for **4.15**. The published 4.14
-wheel retains its documented workflows; build the reviewed source below to use
-these APIs before their release. The development qualification below is source-purpose
-evidence, not a completed cross-corpus policy comparison or a published 4.15 wheel.
+This workflow is available in the verified published **4.15** wheel. Audit
+source-purpose evidence before a policy comparison; the report retains missing
+historical gates and does not claim completed cross-corpus confirmation.
 
 ## Install and audit a source
 
-From the COLEMAN checkout, build a base wheel and install it outside the
-repository. Python 3.14 and uv are required. Docker and MCP are unnecessary for
+Install the verified wheel outside a repository; no checkout is required.
+Python 3.14 and uv are required. Docker and MCP are unnecessary for
 this audit. Source data, controlled observations and generated reports stay
 outside Git, with separate cache, ETL and audit directories.
 
 ```bash
 export COLEMAN_CI_HOME="$(mktemp -d "${TMPDIR:-/tmp}/coleman-ci-audit.XXXXXX")"
-uv build --wheel --out-dir "$COLEMAN_CI_HOME/dist"
 uv venv "$COLEMAN_CI_HOME/installed" --python 3.14
-uv pip install --python "$COLEMAN_CI_HOME/installed/bin/python" "$COLEMAN_CI_HOME"/dist/*.whl
+uv pip install --python "$COLEMAN_CI_HOME/installed/bin/python" "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 cd "$COLEMAN_CI_HOME"
 
 export COLEMAN_CI_CACHE="$COLEMAN_CI_HOME/source-cache"
@@ -312,14 +310,21 @@ cache, result and learning-checkpoint bytes are never repaired or rewritten.
 Trusted local filesystem parents and existing artifact durability limits apply;
 this does not claim protection from concurrent hostile filesystem mutation.
 
-## Development source qualification
+## Published 4.15 qualification
 
-The installed development wheel was exercised outside the checkout with all 306
-authored SDK files checked against the source, MCP absent and a domain transport
-import guard active. The audit verified 61 actual source bindings in the existing
+The actual published wheel was installed outside the checkout with all 306
+authored SDK files checked against the reviewed source/tag, MCP absent and a
+domain transport import guard active. Its audit reverified 61 actual source bindings in the existing
 registry, producing 63 cards; the two owned tiny fixtures remained visibly unbound.
-Publication, complete-artifact validation and repeated publication reverified all
-bindings offline and preserved every report byte.
+The frozen source qualification exercised publication, complete-artifact
+validation and repeated publication with all bindings and unchanged report bytes.
+The published package validates that same complete report offline. Both literal
+examples above pass against actual Karaf data. A separate existing native API
+replay runs Random/UCB, produces 16 rows and resumes checkpoint step 8. It also
+resumes the actual published 4.14 run without altering any protected
+result/checkpoint byte. Wheel/source signatures, six asset
+digests, version-only automatic bump and SBOM were checked against the release's
+actual main-push identity.
 
 | Source bindings | Count | Result |
 | --- | ---: | --- |
@@ -336,7 +341,8 @@ wheel, SHA-256 `bbe2f3cf8954fc27fc8f5a44e3713519aa30bcf2cfdd2aad140f4bcc1ae45abc
 and original whole-SDK producer. A separate original environment was reconstructed
 from that wheel and the same 31 recorded dependency versions after its earlier
 temporary environment failed to import Pydantic. Source/capture bytes were not
-rewritten, recollected or relabeled to the development package.
+rewritten, recollected or relabeled to 4.15. The current release has not recollected
+these Docker subject executions; its admission adapter verifies the originals.
 
 The result covers `controlled_java_real_faults`,
 `controlled_non_java_real_faults` and `deterministic_adversarial_simulation` for
@@ -347,7 +353,7 @@ while preserving job/stage dimensions; this does not clear historical blockers.
 Generalization remains `insufficient_evidence`. Source/stage copies, locales,
 variants and seeds must not be added as independent projects or faults.
 
-The development report fingerprint is
+The source report fingerprint, also verified by the published wheel, is
 `sha256:5563f81230ec34c15d31e8bb6d416ea5236489ee5f092af5d437d7f7ffdaffb4`.
 It identifies this frozen source/review snapshot, not a universal dataset or an
 efficacy result. Full reports stay outside Git because embedded controlled

@@ -20,15 +20,17 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
-## Development: source admission for 4.15
+## New in 4.15
 
 [Audit what a CI source actually supports](corpus-admission.md). Reuse existing
 source completions and the registry, verify original bytes and produce versioned
 JSON plus a human report covering 35 production-reality axes. Controlled
 functional evidence, constructed mechanism checks and protected historical
 evaluation retain separate gates. Missing evidence stays visible. The guide
-includes complete installation, audit and offline recovery examples; these new
-APIs require the development wheel until 4.15 is published.
+includes complete published-wheel installation, audit and offline recovery examples.
+The actual qualification verifies 61 source bindings, original raw producers and
+two CI report structures. Three functional/mechanism regimes are covered; four
+historical/HCS regimes remain uncovered. See the [4.15 release notes](releases/4.15.0.md).
 
 ## New in 4.14
 
@@ -131,7 +133,9 @@ limits and historical general telemetry. See the [4.8 release notes](releases/4.
 [pinned JUnit3 source recipe](junit-source-capture.md),
 [RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) readers,
 [corpus profiles](benchmark-corpus.md) and [source cache](corpus-materialization.md)
-retain their workflows. All seven required diversity regimes remain uncovered.
+retain their workflows. The original fixture-readiness view keeps all seven
+regimes uncovered; the separate [4.15 source audit](corpus-admission.md) qualifies
+three narrow purposes and retains four historical/HCS gaps.
 
 [Exact resource accounting](resource-replay.md) and [frozen shadow evaluation](prospective-shadow.md)
 retain their 4.3 behavior. The included synthetic shadow fixture remains inconclusive.
@@ -139,7 +143,7 @@ retain their 4.3 behavior. The included synthetic shadow fixture remains inconcl
 [Point-in-time observations](point-in-time-observations.md) preserve what each
 decision knew, including late/corrected outcomes and conservative freshness.
 The [corpus foundation](benchmark-corpus.md) retains two known-answer fixtures and
-visible source-admission gaps; all seven diversity regimes remain uncovered.
+visible source-admission gaps. Its original phase-one readiness remains unchanged.
 Use the [operational CI pilot](operational-pilot.md), [application API](application-api.md)
 and [independent benchmarks](decision-benchmarks.md) for complete experiments and
 correctness checks. See the [4.13 release notes](releases/4.13.0.md) for examples,
@@ -151,7 +155,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 coleman run --config my-experiment.yaml
 ```
 
