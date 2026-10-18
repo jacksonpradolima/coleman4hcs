@@ -10,7 +10,19 @@ from coleman.corpus.admission_sources import source_description
 
 def _cell(value: str) -> str:
     """Escape source-derived Markdown/HTML, retaining one physical table row per value."""
-    return escape(value, quote=True).replace("|", "\\|").replace("`", "&#96;").replace("\n", " ").replace("\r", " ")
+    encoded = escape(value, quote=True)
+    for symbol, entity in (
+        ("\\", "&#92;"),
+        ("|", "&#124;"),
+        ("`", "&#96;"),
+        ("[", "&#91;"),
+        ("]", "&#93;"),
+        ("*", "&#42;"),
+        ("_", "&#95;"),
+        ("~", "&#126;"),
+    ):
+        encoded = encoded.replace(symbol, entity)
+    return encoded.replace("\n", " ").replace("\r", " ")
 
 
 def _overview(report: CorpusAdmission) -> list[str]:

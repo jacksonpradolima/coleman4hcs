@@ -348,7 +348,7 @@ Generalization remains `insufficient_evidence`. Source/stage copies, locales,
 variants and seeds must not be added as independent projects or faults.
 
 The development report fingerprint is
-`sha256:2b69ce8559d028dc3445ba18e01c62531586335fddebfc9f5e7001168968145f`.
+`sha256:fe72549d2876abeb77eaf2120a7d197c0bf3e79db8bf2b76683b81aa376d111b`.
 It identifies this frozen source/review snapshot, not a universal dataset or an
 efficacy result. Full reports stay outside Git because embedded controlled
 observations retain their recipe-only component restrictions. Original phase-one

@@ -4,6 +4,7 @@ import hashlib
 import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from html import unescape
 from pathlib import Path
 
 import polars as pl
@@ -55,7 +56,7 @@ def test_real_owned_etl_audit_publication_and_native_checkpoint_continuation(tmp
     assert validate_admission_completion(marker, (evidence,)) == report
     human = (marker.parent / "report.md").read_text()
     assert human == render_corpus_admission(report)
-    assert "Observed source-model count: 0" in human and "not_applicable" in human
+    assert "Observed source-model count: 0" in human and "not_applicable" in unescape(human)
     assert "not independent sampling units" in human
 
     # Existing native API remains a declared post-hoc simulation, independent
@@ -234,8 +235,13 @@ def test_source_qualification_cannot_publish_inside_git_or_inside_its_source_cac
 
 def test_renderer_escapes_source_labels_as_data_and_is_deterministic(tmp_path):
     evidence = controlled_source(tmp_path)
-    declaration = changed(evidence.review, limitations=("<script>bad()</script> | `row`",))
+    label = r"<script>bad()</script> \| [source label](https://example.invalid) *styled* _value_ ~old~ `row`"
+    declaration = changed(evidence.review, limitations=(label,))
     report = audit_corpus(load_registry(), (replace(evidence, review=declaration),))
     human = render_corpus_admission(report)
-    assert "<script>" not in human and "&lt;script&gt;" in human and "\\|" in human and "&#96;" in human
+    assert "<script>" not in human and "&lt;script&gt;" in human and "&#124;" in human and "&#96;" in human
+    assert "[source label](" not in human and "&#91;source label&#93;" in human
+    assert "&#92;&#124;" in human and "&#42;styled&#42;" in human
+    assert "&#95;value&#95;" in human and "&#126;old&#126;" in human
+    assert label in unescape(human)
     assert human == render_corpus_admission(CorpusAdmission.from_json(report.to_json()))
