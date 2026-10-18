@@ -10,6 +10,7 @@ from coleman.corpus.repeated_contracts import (
     CorpusBuild,
     CorpusRepetition,
     RepetitionDesign,
+    repetition_execution_id,
 )
 from coleman.evaluation.protected import (
     ComparisonHypothesis,
@@ -113,7 +114,7 @@ def repeated_report(unit_differences=None, target_end=None):
                             schema_version=1,
                             namespace="ci.owned.repetitions",
                             run_id=candidate.candidate_id,
-                            execution_id=f"seed-{seed}",
+                            execution_id=repetition_execution_id(candidate.candidate_id, seed),
                             decision_id=build.member_id,
                             data_fingerprint=frozen.data_fingerprint,
                             available_at=build.metadata.available_at,

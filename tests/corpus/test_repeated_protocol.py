@@ -10,7 +10,7 @@ import pytest
 
 from coleman.artifacts import ArtifactWriter
 from coleman.corpus.repeated import RepeatedCorpusReport, publish_repeated_corpus
-from coleman.corpus.repeated_contracts import RepetitionDesign
+from coleman.corpus.repeated_contracts import RepetitionDesign, repetition_execution_id
 from coleman.corpus.validation import CorpusFixtureReport
 from coleman.evaluation.protected import EvaluationAudit, FamilyReport, FrozenCandidate, evaluate
 from coleman.results.domain import fingerprint
@@ -73,18 +73,79 @@ def test_missing_extra_duplicate_and_relabelled_raw_cells_fail_closed():
     missing = report.rows[:-1]
     duplicate = (*report.rows, report.rows[0])
     original, second = report.rows[:2]
-    reused = changed(second, record=original.record)
-    reused_rows = (original, reused, *report.rows[2:])
-    foreign = changed(original, seed=99)
+    with pytest.raises(ValueError, match="repetition cell"):
+        changed(second, record=original.record)
+    foreign_record = changed(original.record, execution_id=repetition_execution_id(original.candidate_id, 99))
+    foreign = changed(original, seed=99, record=foreign_record)
     foreign_rows = (foreign, *report.rows[1:])
     for rows, message in (
         (missing, "Every expected"),
         (duplicate, "duplicate"),
-        (reused_rows, "identity"),
         (foreign_rows, "Unexpected"),
     ):
         with pytest.raises(ValueError, match=message):
             changed(report, rows=rows)
+
+
+@pytest.mark.parametrize("other_member,other_seed", [("build-2", 11), ("build-0", 42)])
+def test_unchanged_raw_records_cannot_be_swapped_between_members_or_seeds(other_member, other_seed):
+    report = repeated_report()
+    # Reproduced P1: cross-family swapping previously changed 1.5/4.5 means to
+    # 2.5/2.5 despite unchanged unique records and valid candidate provenance.
+    left = next(
+        row for row in report.rows if (row.candidate_id, row.member_id, row.seed) == ("candidate", "build-0", 11)
+    )
+    right = next(
+        row
+        for row in report.rows
+        if (row.candidate_id, row.member_id, row.seed) == ("candidate", other_member, other_seed)
+    )
+    payload = json.loads(report.to_json())
+    for row in payload["rows"]:
+        identity = row["candidate_id"], row["member_id"], row["seed"]
+        if identity == (left.candidate_id, left.member_id, left.seed):
+            row["record"] = right.record.model_dump(mode="json")
+        elif identity == (right.candidate_id, right.member_id, right.seed):
+            row["record"] = left.record.model_dump(mode="json")
+    with pytest.raises(ValueError, match="repetition cell"):
+        RepeatedCorpusReport.model_validate(payload)
+
+
+def test_fake_constant_execution_identity_still_fails_global_raw_reuse_guard(monkeypatch):
+    report = repeated_report()
+    payload = json.loads(report.to_json())
+    for row in payload["rows"]:
+        row["record"]["execution_id"] = "fake-constant-id"
+    monkeypatch.setattr("coleman.corpus.repeated_contracts.repetition_execution_id", lambda *_: "fake-constant-id")
+    with pytest.raises(ValueError, match="raw result identity"):
+        RepeatedCorpusReport.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "candidate,seed",
+    [
+        ("", 11),
+        (" candidate", 11),
+        ("x\ny", 11),
+        ("x\ry", 11),
+        (None, 11),
+        ("candidate", True),
+        ("candidate", -1),
+        ("candidate", 2**64),
+        ("candidate", "11"),
+    ],
+)
+def test_repetition_execution_identity_rejects_ambiguous_identifiers_or_non_uint64_seeds(candidate, seed):
+    with pytest.raises(ValueError):
+        repetition_execution_id(candidate, seed)
+
+
+def test_execution_identity_is_stable_and_separates_candidates_and_seeds():
+    identity = repetition_execution_id("candidate", 11)
+    assert identity == fingerprint(["coleman.corpus.repetition-execution.v1", "candidate", 11])
+    assert identity != repetition_execution_id("candidate", 42)
+    assert identity != repetition_execution_id("baseline", 11)
+    assert repetition_execution_id("candidate", 2**64 - 1).startswith("sha256:")
 
 
 @pytest.mark.parametrize("field", ["data_fingerprint", "spec_fingerprint", "evaluation_fingerprint"])
@@ -148,8 +209,9 @@ def test_serial_clustered_and_normality_guards_precede_raw_loader(tmp_path):
         def forbidden():
             raise AssertionError("Unsupported protocol loaded protected outcomes")
 
+        audit = EvaluationAudit(tmp_path)
         with pytest.raises(NotImplementedError):
-            evaluate(frozen, EvaluationAudit(tmp_path), forbidden, actor="owned-fixture")
+            evaluate(frozen, audit, forbidden, actor="owned-fixture")
 
 
 def test_deterministic_raw_order_roundtrip_golden_and_strict_versions():

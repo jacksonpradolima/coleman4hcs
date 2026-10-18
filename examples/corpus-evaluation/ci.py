@@ -25,6 +25,7 @@ from coleman.corpus.repeated_contracts import (
     CorpusBuild,
     CorpusRepetition,
     RepetitionDesign,
+    repetition_execution_id,
 )
 from coleman.evaluation.protected import (
     ComparisonHypothesis,
@@ -46,9 +47,8 @@ def _quantity(value):
     return Quantity(value=Decimal(str(value)), semantics=SECONDS)
 
 
-def main(output):
-    """Freeze the complete seed/build grid and reserve access before native execution."""
-    root = Path(output).resolve()
+def _write_inputs(root):
+    """Publish two owned, related CI histories with a causal sequential replay clock."""
     data = {}
     members = []
     for project in ("constructed_ci_a", "constructed_ci_b"):
@@ -60,14 +60,14 @@ def main(output):
                 if build == 2:
                     name = {"unit": "renamed-unit", "system": "contract"}.get(name, name)
                 rows.append(
-                    dict(
-                        BuildId=build,
-                        Name=name,
-                        Duration=float(duration),
-                        CalcPrio=0,
-                        LastRun=event_at.date().isoformat(),
-                        Verdict=verdict,
-                    )
+                    {
+                        "BuildId": build,
+                        "Name": name,
+                        "Duration": float(duration),
+                        "CalcPrio": 0,
+                        "LastRun": event_at.date().isoformat(),
+                        "Verdict": verdict,
+                    }
                 )
             member_id = f"{project}/build-{build}"
             members.append(
@@ -89,6 +89,11 @@ def main(output):
         directory = root / "inputs" / project
         directory.mkdir(parents=True, exist_ok=True)
         pl.DataFrame(rows).write_parquet(directory / "features-engineered.parquet")
+    return data, tuple(members)
+
+
+def _design(data, members):
+    """Declare source meaning, complete repetition membership and the protected cutoff."""
     now = datetime.now(UTC)
     # Keep a fixed, explicit final cutoff after all assembly below. No historical
     # source clocks are substituted with this analysis-time availability bound.
@@ -112,6 +117,11 @@ def main(output):
         raw_semantics=UnitSemantics(unit="1", meaning="verdict-napfd-full-universe-v1"),
         cost_projection="exact_integer_seconds_v1",
     )
+    return design
+
+
+def _native_specs(root, data, design):
+    """Freeze actual native settings and source-bound checkpoint identities."""
     specs = {}
     for policy in ("Random", "UCB"):
         for seed in design.seeds:
@@ -130,6 +140,93 @@ def main(output):
                     "extensions": {"corpus_source": {"data_fingerprint": design.data_fingerprint}},
                 }
             )
+    return specs
+
+
+def _checked_build(member_id, source, metadata, raw, design):
+    """Reject actual native metric disagreement against the independent rational reference."""
+    build = PilotBuild(
+        build_id=member_id,
+        decided_at=metadata.event_at,
+        outcomes_available_at=metadata.available_at,
+        tests=tuple(
+            PilotTest(
+                test_id=row["Name"],
+                duration=_quantity(row["Duration"]),
+                outcome="failed" if row["Verdict"] else "passed",
+            )
+            for row in source
+        ),
+        baseline_order=tuple(row["Name"] for row in source),
+    )
+    order = tuple(json.loads(raw["prioritization_order_top_k"]))
+    native_budget = sum((test.duration.value for test in build.tests), start=Decimal(0)) * design.budget.value
+    reference = tiny_ci_reference(build, order, _quantity(native_budget))
+    if reference.napfd.value is None or reference.apfdc.value is None:
+        raise ValueError("This complete owned failing fixture requires defined metric references")
+    if not math.isclose(raw["fitness"], float(reference.napfd.value), rel_tol=0, abs_tol=1e-12):
+        raise ValueError("Actual native NAPFD differs from independent rational reference")
+    if not math.isclose(raw["cost"], float(reference.apfdc.value), rel_tol=0, abs_tol=1e-12):
+        raise ValueError("Actual native APFDc differs from independent rational reference")
+    return build
+
+
+def _native_rows(specs, data, design, frozen):
+    """Adapt verified native rows once into typed records retaining source and analysis identity."""
+    metadata_by_build = {member.member_id: member.metadata for member in design.builds}
+    rows = []
+    for (policy, seed), spec in specs.items():
+        native = run(spec)
+        table = pl.read_parquet(str(Path(native.artifacts_dir) / "results/**/*.parquet"), hive_partitioning=True)
+        for raw in table.iter_rows(named=True):
+            project, step = raw["scenario"], raw["step"]
+            source = [row for row in data[project] if row["BuildId"] == step]
+            metadata = metadata_by_build[f"{project}/build-{step}"]
+            build = _checked_build(f"{project}/build-{step}", source, metadata, raw, design)
+            rows.append(
+                CorpusRepetition(
+                    candidate_id=policy,
+                    member_id=build.build_id,
+                    seed=seed,
+                    state="completed",
+                    record=DomainRecord(
+                        schema_version=1,
+                        namespace="ci.corpus.native_projection",
+                        run_id=frozen.fingerprint,
+                        execution_id=repetition_execution_id(policy, seed),
+                        decision_id=build.build_id,
+                        data_fingerprint=frozen.data_fingerprint,
+                        available_at=datetime.now(UTC),
+                        provenance=ResultProvenance(
+                            producer="owned-native-corpus-example",
+                            producer_version="1",
+                            spec_fingerprint=frozen.candidate(policy).configuration_fingerprint,
+                            evaluation_fingerprint=frozen.fingerprint,
+                            source_revision=fingerprint(raw),
+                        ),
+                        measurements=(
+                            Measurement(
+                                name=design.raw_metric,
+                                unit="1",
+                                meaning=design.raw_semantics.meaning,
+                                direction="maximize",
+                                status="observed",
+                                value=raw["fitness"],
+                            ),
+                        ),
+                    ),
+                )
+            )
+    return tuple(rows)
+
+
+def main(output):
+    """Freeze and reserve protected access before executing native candidates and publishing evidence."""
+    root = Path(output).resolve()
+    data, members = _write_inputs(root)
+    design = _design(data, members)
+    plan = design.plan
+    specs = _native_specs(root, data, design)
     candidates = tuple(
         FrozenCandidate.from_configuration(
             policy,
@@ -163,78 +260,14 @@ def main(output):
     audit.save_freeze(frozen)
     writer = ArtifactWriter(root / "protected")
     published = []
-    metadata_by_build = {member.member_id: member.metadata for member in design.builds}
 
     def load_native():
-        rows = []
-        for (policy, seed), spec in specs.items():
-            native = run(spec)
-            table = pl.read_parquet(str(Path(native.artifacts_dir) / "results/**/*.parquet"), hive_partitioning=True)
-            for raw in table.iter_rows(named=True):
-                project, step = raw["scenario"], raw["step"]
-                source = [row for row in data[project] if row["BuildId"] == step]
-                metadata = metadata_by_build[f"{project}/build-{step}"]
-                build = PilotBuild(
-                    build_id=f"{project}/build-{step}",
-                    decided_at=metadata.event_at,
-                    outcomes_available_at=metadata.available_at,
-                    tests=tuple(
-                        PilotTest(
-                            test_id=row["Name"],
-                            duration=_quantity(row["Duration"]),
-                            outcome="failed" if row["Verdict"] else "passed",
-                        )
-                        for row in source
-                    ),
-                    baseline_order=tuple(row["Name"] for row in source),
-                )
-                order = tuple(json.loads(raw["prioritization_order_top_k"]))
-                native_budget = (
-                    sum((test.duration.value for test in build.tests), start=Decimal(0)) * design.budget.value
-                )
-                reference = tiny_ci_reference(build, order, _quantity(native_budget))
-                if reference.napfd.value is None or reference.apfdc.value is None:
-                    raise ValueError("This complete owned failing fixture requires defined metric references")
-                if not math.isclose(raw["fitness"], float(reference.napfd.value), rel_tol=0, abs_tol=1e-12):
-                    raise ValueError("Actual native NAPFD differs from independent rational reference")
-                if not math.isclose(raw["cost"], float(reference.apfdc.value), rel_tol=0, abs_tol=1e-12):
-                    raise ValueError("Actual native APFDc differs from independent rational reference")
-                rows.append(
-                    CorpusRepetition(
-                        candidate_id=policy,
-                        member_id=build.build_id,
-                        seed=seed,
-                        state="completed",
-                        record=DomainRecord(
-                            schema_version=1,
-                            namespace="ci.corpus.native_projection",
-                            run_id=frozen.fingerprint,
-                            execution_id=f"{native.run_id}:{seed}",
-                            decision_id=build.build_id,
-                            data_fingerprint=frozen.data_fingerprint,
-                            available_at=datetime.now(UTC),
-                            provenance=ResultProvenance(
-                                producer="owned-native-corpus-example",
-                                producer_version="1",
-                                spec_fingerprint=frozen.candidate(policy).configuration_fingerprint,
-                                evaluation_fingerprint=frozen.fingerprint,
-                                source_revision=fingerprint(raw),
-                            ),
-                            measurements=(
-                                Measurement(
-                                    name=design.raw_metric,
-                                    unit="1",
-                                    meaning=design.raw_semantics.meaning,
-                                    direction="maximize",
-                                    status="observed",
-                                    value=raw["fitness"],
-                                ),
-                            ),
-                        ),
-                    )
-                )
         report = RepeatedCorpusReport(
-            schema_version=1, design=design, frozen=frozen, rows=tuple(rows), assembled_at=datetime.now(UTC)
+            schema_version=1,
+            design=design,
+            frozen=frozen,
+            rows=_native_rows(specs, data, design, frozen),
+            assembled_at=datetime.now(UTC),
         )
         published.append(publish_repeated_corpus(report, writer))
         return report.paired_observations()

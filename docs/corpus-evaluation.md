@@ -64,6 +64,14 @@ unit/meaning/direction and distinct raw logical keys. Every declared cell must
 exist exactly once. An absent cell fails validation; an interrupted or missing
 execution needs an explicit unavailable record from its producer.
 
+Each immutable raw key must bind the cell: `record.decision_id == member_id` and
+`record.execution_id == repetition_execution_id(candidate_id, seed)`, using the
+helper from `coleman.corpus.repeated_contracts`. This prevents unchanged records
+from being swapped between compatible builds, families or seeds. Row metadata
+and candidate-level provenance alone do not establish this binding. A producer
+with different original keys must create an explicit projection retaining source
+provenance; never rewrite the original artifact to satisfy the new contract.
+
 `completed` means the execution completed, including test failures and valid
 negative metrics. `failed`, `aborted` and `skipped` require a null `unavailable`
 metric. A completed run may still have an undefined or unavailable metric.
