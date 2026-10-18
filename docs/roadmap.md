@@ -72,9 +72,10 @@ through [#328](https://github.com/jacksonpradolima/coleman/pull/328). #309's
 through [#330](https://github.com/jacksonpradolima/coleman/pull/330). #310's [metric references and repeated CI protocol](corpus-evaluation.md) shipped
 in 4.16 through [#332](https://github.com/jacksonpradolima/coleman/pull/332).
 The [comparable baseline matrix](comparable-baselines.md) shipped in 4.17 through
-[#334](https://github.com/jacksonpradolima/coleman/pull/334). Eleven of the thirteen
-public subtasks are delivered. #312 and #313 remain open; public prospective
-feasibility in #312 is next. Source conversion does not establish historical admission.
+[#334](https://github.com/jacksonpradolima/coleman/pull/334). Together with the bounded study below, twelve of the thirteen public subtasks are delivered.
+[#312's bounded public CI feasibility study](public-ci-feasibility.md) supplies a standalone
+example using the same wheel; it does not establish forward TCPCI evidence. #313
+remains dependent on the complete scientific gates. Source conversion does not establish historical admission.
 
 The published HCS workflow preserves raw pipeline/job correspondence, WTS/VTS
 Parquet, all 208 sparse cells and isolated multi-budget checkpoints. Its declared
@@ -95,7 +96,7 @@ later gates.
 | Evidence integration — delivered in 4.15 | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | Three scoped regimes covered; four historical/HCS regimes remain uncovered |
 | Comparison protocol — delivered in 4.16 | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310) | #309; one fold/budget and one paired mean per reviewed repository family |
 | Comparable baselines — delivered in 4.17 | [#311 candidate matrix](https://github.com/jacksonpradolima/coleman/issues/311) | #309 and #310 |
-| Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
+| Public feasibility — bounded study | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
 | Final execution/report | [#313 confirmatory corpus](https://github.com/jacksonpradolima/coleman/issues/313) | #309–#312 and the complete parent gates |
 
 Work started with #301 and #302, one reviewed slice at a time. Their compatible
@@ -199,8 +200,9 @@ failed and incompatible runs, independently checked metrics and checkpoint recov
 Stable source sums protect native budgets from parallel reduction order; legacy
 loaders retain their existing sums. The published wheel executes all twelve built-in
 candidates in the owned example and preserves its artifacts on retry. #311 is
-delivered; #261 stays open, with #312 prospective feasibility next and #313 dependent
-on all remaining scientific gates.
+delivered. The separate [public CI feasibility study](public-ci-feasibility.md) addresses
+#312 using that published SDK. #261 stays open, with #313 dependent on all remaining
+scientific gates.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:

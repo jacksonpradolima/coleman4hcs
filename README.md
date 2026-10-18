@@ -24,6 +24,7 @@ and checkpoint. Inspect the inputs, decisions and evidence behind each result.
 | Stress a difficult CI decision | [32 deterministic interaction-covering cases](docs/ci-stress-laboratory.md), explicit truth and feedback clocks, native Parquet and resumable agents |
 | Audit what a source actually supports | [Source-admission API](docs/corpus-admission.md): verify original evidence, retain explicit units and inspect a 35-axis production-reality matrix |
 | Compare repeated CI experiments | [Versioned raw build/seed records and paired repository-family means](docs/corpus-evaluation.md), explicit missingness and protected access |
+| Assess public CI collection | [Bounded public Actions example](docs/public-ci-feasibility.md), typed receipts and 35 reality axes; explicitly reports missing test and physical-cost evidence |
 | Develop comparable baseline matrices | [Frozen native-policy and heuristic matrix](docs/comparable-baselines.md), explicit incompatibilities, raw costs and checkpoint recovery; available in 4.17 |
 | Compare adaptive CI prioritization policies | Native TCPCI runner, configurable policies/rewards, contextual inputs and [parameter sweeps](#sweep-engine) |
 | Evaluate configurable software | [Pinned LibSSH data → WTS/VTS Parquet and checkpointed replay](docs/hcs-parquet-etl.md), plus the existing Dune examples |
@@ -751,7 +752,7 @@ The controlled Java matrix and bounded Python reproduction are usable source
 workflows; neither completes corpus diversity or scientific admission.
 The published 4.17 wheel includes a [bounded constructed C slice](docs/c-seeded-source-capture.md)
 from permitted Juliet inputs. SIR component/data terms remain unresolved.
-Eleven of the thirteen public subtasks are delivered, including LibSSH WTS/VTS
+Twelve of the thirteen public subtasks are delivered, including LibSSH WTS/VTS
 (introduced in 4.13) and the [#308](https://github.com/jacksonpradolima/coleman/issues/308)
 interaction-covering synthetic stress laboratory in 4.14. Published 4.15 delivers
 [#309's source admission](docs/corpus-admission.md) through
@@ -759,8 +760,9 @@ interaction-covering synthetic stress laboratory in 4.14. Published 4.15 deliver
 4.16 adds [#310's metric references and repeated-observation protocol](docs/corpus-evaluation.md)
 through [PR #332](https://github.com/jacksonpradolima/coleman/pull/332).
 4.17 adds [#311's comparable baseline matrix](docs/comparable-baselines.md) through
-[PR #334](https://github.com/jacksonpradolima/coleman/pull/334). Public prospective
-collection feasibility and the confirmatory report remain in #312–#313. External baseline
+[PR #334](https://github.com/jacksonpradolima/coleman/pull/334). [#312's bounded public CI feasibility study](docs/public-ci-feasibility.md) adds a standalone
+reference example on the same published wheel. It establishes metadata capture and recovery,
+not forward TCPCI evidence. The confirmatory report remains in #313. External baseline
 reproduction, including investigated DANTE methods, requires its own verified
 integration and comparable protocol.
 
