@@ -20,6 +20,18 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
+## New in 4.14
+
+[Reproduce difficult CI decisions in the deterministic stress laboratory](ci-stress-laboratory.md):
+32 cases cover every pair of eleven declared factors, from rare failures and
+name collisions to drift, late feedback and 50,000-test suites. Export known
+truth and native Parquet, run the existing Random/UCB agents and resume their
+checkpoints. Inspect exact work, modeled elapsed time and feedback availability.
+The published-wheel qualification includes a real interrupted process and an
+actual native 50,000-test history. Constructed cases test mechanisms; source
+admission and empirical policy comparisons retain their own gates. See the
+[4.14 release notes](releases/4.14.0.md) for compatibility and limits.
+
 ## New in 4.13
 
 [Follow original LibSSH CI data through WTS/VTS Parquet and native replay](hcs-parquet-etl.md)
@@ -129,7 +141,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.13.0/coleman-4.13.0-py3-none-any.whl#sha256=bbe2f3cf8954fc27fc8f5a44e3713519aa30bcf2cfdd2aad140f4bcc1ae45abc"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
 coleman run --config my-experiment.yaml
 ```
 

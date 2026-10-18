@@ -65,10 +65,11 @@ The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
 [constructed C source slice](c-seeded-source-capture.md) shipped in 4.12 through
 [#324](https://github.com/jacksonpradolima/coleman/pull/324). #307's
 [LibSSH HCS workflow](hcs-parquet-etl.md) shipped in 4.13 through
-[#326](https://github.com/jacksonpradolima/coleman/pull/326). Seven of the thirteen
-public subtasks are delivered. #308–#313 remain open; the deterministic
-[interaction-covering stress laboratory](ci-stress-laboratory.md) in #308 is in development for 4.14. Source conversion does
-not establish admission.
+[#326](https://github.com/jacksonpradolima/coleman/pull/326). #308's deterministic
+[interaction-covering stress laboratory](ci-stress-laboratory.md) shipped in 4.14
+through [#328](https://github.com/jacksonpradolima/coleman/pull/328). Eight of the
+thirteen public subtasks are delivered. #309–#313 remain open; evidence-backed
+source admission in #309 is next. Source conversion does not establish admission.
 
 The published HCS workflow preserves raw pipeline/job correspondence, WTS/VTS
 Parquet, all 208 sparse cells and isolated multi-budget checkpoints. Its declared
@@ -85,7 +86,7 @@ later gates.
 | Python source — delivered in 4.11 | [#305 non-Java fault reproduction](https://github.com/jacksonpradolima/coleman/issues/305) | Existing generic controlled observations; one fix, two correlated locale contexts |
 | Seeded C source — delivered in 4.12 | [#306 permitted Juliet slice](https://github.com/jacksonpradolima/coleman/issues/306) | One synthetic template/function pair; six correlated inputs, no empirical admission |
 | HCS source — delivered in 4.13 | [#307 LibSSH WTS/VTS and variant accounting](https://github.com/jacksonpradolima/coleman/issues/307) | Original pipeline/job identities; 13 known labels, seven with parsed tests; temporal admission remains blocked |
-| Synthetic laboratory — 4.14 development | [#308 interaction-covering stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main; preserve tiny oracle/resource bounds and explicit synthetic dependence |
+| Synthetic laboratory — delivered in 4.14 | [#308 interaction-covering stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Tiny oracle/resource bounds; explicit synthetic dependence and native eligibility |
 | Evidence integration | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | #302–#308 |
 | Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
 | Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
@@ -154,7 +155,17 @@ ownership before reconciling uncommitted tails. The actual signed published whee
 retains the previous source workflows and resumes completed published-4.12
 single-budget results without changing their bytes; ownership metadata adoption
 is explicit. This is a post-hoc test-only simulation, not protected admission or
-evidence of a policy advantage. #308 is the next bounded implementation.
+evidence of a policy advantage.
+
+**4.14.0** publishes #308's [deterministic stress laboratory](ci-stress-laboratory.md).
+Its 32-case covering design exposes eleven factors, explicit constructed truth,
+completion-bound feedback clocks and native Parquet. Installed qualification runs
+actual agents, checks a 50,000-test history and resumes a genuinely interrupted
+process. Rare failures survive churn; zero-work cases retain typed traces while
+native replay rejects their undefined cost metric. Existing 4.13 native results
+and checkpoints resume without changing protected bytes. This owned synthetic
+family supports mechanism checks; it does not admit empirical diversity regimes
+or establish independent faults. #309 is the next bounded implementation.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:

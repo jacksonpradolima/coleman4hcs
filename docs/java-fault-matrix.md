@@ -6,7 +6,7 @@ fixed-tree fixture, retaining every observed pass, failure, test error and
 incomplete collection. This is controlled functional evidence for TCPCI research;
 it is separate from historical CI and policy comparisons.
 
-The published **4.13 wheel** includes the matrix transport. It reuses the existing
+The published **4.14 wheel** includes the matrix transport. It reuses the existing
 single-pair producer and the generic [controlled-observation
 domain](controlled-faults.md). It does not introduce a learning runner or change
 existing source recipes, results, checkpoints or raw-capture semantics.
@@ -23,7 +23,7 @@ is required:
 
 ```bash
 uv venv /tmp/coleman-matrix-env --python 3.14
-uv pip install --python /tmp/coleman-matrix-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.13.0/coleman-4.13.0-py3-none-any.whl#sha256=bbe2f3cf8954fc27fc8f5a44e3713519aa30bcf2cfdd2aad140f4bcc1ae45abc"
+uv pip install --python /tmp/coleman-matrix-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
 
 # Explicit operator preparation; COLEMAN never pulls an image.
 docker pull --platform linux/arm64 eclipse-temurin@sha256:e4b3ff0f1a427efb2deb02b092ff8316d58573480260720d767d6ecdd69999d8
