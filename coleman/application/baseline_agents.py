@@ -112,8 +112,9 @@ class BaselineAgent:
     The existing Environment consumes this small duck-typed agent boundary.
     Contextual inputs are injected here from their verified predecision view;
     the environment's legacy exact-type contextual dispatch is intentionally not
-    used. Native bandits retain their seeded first shuffle. Declared heuristics
-    and the unattainable reference execute their own first ordering immediately.
+    used. Noncontextual native learners retain their seeded first shuffle;
+    LinUCB evaluates its native contextual scores from the first build. Declared
+    heuristics and the unattainable reference apply their own first ordering.
 
     Policy preparation, inference and reward/history update are timed separately
     using the monotonic process clock. These are elapsed measurements, not CPU,

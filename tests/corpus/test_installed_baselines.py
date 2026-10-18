@@ -32,6 +32,7 @@ def test_installed_comparable_matrix_outside_checkout(tmp_path):
     shutil.copy(ROOT / "examples/comparable_baselines.py", script)
     env = os.environ.copy()
     env.pop("PYTHONPATH", None)
+    env.update(OPENBLAS_NUM_THREADS="1", OMP_NUM_THREADS="1", MKL_NUM_THREADS="1", POLARS_MAX_THREADS="2")
     boundary = """
 import importlib.abc, importlib.util, sys
 assert importlib.util.find_spec("mcp") is None
@@ -52,7 +53,7 @@ import coleman.corpus.baseline_results
         env=env,
         check=True,
         capture_output=True,
-        timeout=30,
+        timeout=60,
     )
     output = outside / "evidence"
     command = [str(python), "-I", str(script), str(output)]

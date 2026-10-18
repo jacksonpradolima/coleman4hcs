@@ -21,6 +21,10 @@ all thirteen method declarations. Twelve execute; the external DANTE candidate
 remains incompatible with an explicit reason. This constructed example is one
 family, not independent evidence from three projects.
 
+Use the matrix API for execution and replay. A saved native RunSpec contains the
+typed binding plus a legacy factory placeholder; plain `coleman.api.run` does not
+load extension callbacks and cannot reproduce a qualified matrix cell.
+
 The reusable application interface is:
 
 ```python
@@ -62,8 +66,9 @@ remain separate prerequisites for empirical claims.
 
 Deterministic heuristics break remaining ties by stable test ID. Missing cost or
 history sorts after known inputs and increments an explicit fallback count.
-Unknown outcomes never become passing feedback. Native learners retain their
-existing initial random ordering. Original-order, heuristic and oracle candidates
+Unknown outcomes never become passing feedback. Noncontextual native learners retain their
+existing seeded initial shuffle; LinUCB evaluates native contextual scores from
+the first build. Original-order, heuristic and oracle candidates
 apply their declared rule from the first build. Scores, rewards and observed
 failure frequencies do not become calibrated probabilities. The oracle label
 claims neither a deployable algorithm nor global mathematical optimality.

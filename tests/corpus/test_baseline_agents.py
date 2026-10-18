@@ -61,6 +61,8 @@ def test_real_native_candidate_complete_order_and_observed_phase_costs(method):
             assert ranking == ["c", "a", "b"]
         if build.step == 1 and method == "shortest_prior_v1":
             assert ranking == ["b", "c", "a"]
+        if build.step == 1 and method == "linucb_alpha05_v1":
+            assert ranking == ["b", "a", "c"]
         agent.observe(bandit.pull(ranking))
         assert policy_base._rng is outer_rng
         assert agent.timing.preparation_seconds >= 0
