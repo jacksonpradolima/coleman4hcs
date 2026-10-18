@@ -8,8 +8,9 @@ from tests.corpus.installed_source_support import installed_source_environment
 from tests.corpus.public_actions_support import EXAMPLE, example_module, request, response, wire
 
 
-def test_installed_public_feasibility_capture_outside_checkout(tmp_path):
+def test_installed_public_feasibility_capture_outside_checkout(tmp_path, monkeypatch):
     """Use actual wheel contracts, artifact writer, receipt checkpoints and reader in an isolated process."""
+    monkeypatch.setenv("UV_OFFLINE", "1")
     python, outside, env = installed_source_environment(tmp_path)
     shutil.copyfile(EXAMPLE, outside / "ci.py")
     module = example_module()
