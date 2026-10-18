@@ -1,5 +1,6 @@
 """Independent native-result guards reject incorrect rankings, denominators, clocks and cost projections."""
 
+import math
 from dataclasses import replace
 
 import pytest
@@ -71,6 +72,14 @@ def test_native_full_suite_duration_must_match_actual_source(tmp_path):
     prepared_input = replace(params, available_time=4.0, total_build_duration=8.0)
     with pytest.raises(ValueError, match="full-suite work"):
         _check_native(prepared_input, build, cell)
+
+
+def test_native_source_total_cannot_drift_one_binary64_ulp(tmp_path):
+    params, build, cell = native_case(tmp_path, 2)
+    work = math.nextafter(params.total_build_duration, math.inf)
+    changed = replace(params, total_build_duration=work, available_time=work * float(cell.budget.value))
+    with pytest.raises(ValueError, match="full-suite work"):
+        _check_native(changed, build, cell)
 
 
 @pytest.mark.parametrize("attribute,value", [("detected_failures", 0), ("undetected_failures", 1)])

@@ -1,6 +1,7 @@
 """Actual native end-to-end matrix, immutable completion, relocation and observed failure retention."""
 
 import json
+import math
 import shutil
 from pathlib import Path
 
@@ -40,6 +41,36 @@ def test_actual_complete_matrix_and_exact_retry(matrix):
     before = {str(path.relative_to(root)): path.read_bytes() for path in root.rglob("*") if path.is_file()}
     assert run_baseline_matrix(report.plan, root.parents[2]) == report
     assert before == {str(path.relative_to(root)): path.read_bytes() for path in root.rglob("*") if path.is_file()}
+
+
+def test_fresh_native_matrices_keep_exact_source_budget_across_polars_threads(tmp_path, monkeypatch):
+    original = baseline_plan()
+    build = original.source.builds[0]
+    tests = tuple(
+        change(test, duration=change(test.duration, value=value))
+        for test, value in zip(build.tests, (1e16, 1.0, 1.0), strict=True)
+    )
+    plan = change(
+        original,
+        source=change(original.source, builds=(change(build, tests=tests),)),
+        methods=("seeded_random_v1",),
+        seeds=(42,),
+        budgets=(original.budgets[0],),
+    )
+    reports = []
+    for threads in ("1", "2"):
+        monkeypatch.setenv("POLARS_MAX_THREADS", threads)
+        output = tmp_path / threads
+        report = run_baseline_matrix(plan, output)
+        root = next(output.glob("baseline-matrices/*/*/complete.json")).parent
+        assert read_baseline_matrix(root) == report
+        assert report.cells[0].state == "completed"
+        path = next(root.glob("native/*/baseline-observations/*.json"))
+        quantities = {m["name"]: m["value"] for m in json.loads(path.read_bytes())["record"]["measurements"]}
+        assert quantities["source_full_runner_seconds"] == math.fsum((1e16, 1.0, 1.0))
+        assert quantities["declared_native_work_budget_seconds"] == 5000000000000001.0
+        reports.append(report)
+    assert reports[0].mathematical_fingerprint == reports[1].mathematical_fingerprint
 
 
 def test_completed_matrix_relocates_without_following_old_input_paths(matrix, tmp_path):

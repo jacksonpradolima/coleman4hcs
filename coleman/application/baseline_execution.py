@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import math
 import re
 from functools import partial
 from pathlib import Path
@@ -26,7 +27,7 @@ from coleman.evaluation import NAPFDVerdictMetric
 from coleman.results.domain import Fingerprint, Identifier
 from coleman.results.versioned import VersionedContract
 from coleman.runner import EnvironmentBuildConfig, RunnerExtension
-from coleman.scenarios import ScenarioLoader
+from coleman.scenarios import ScenarioLoader, VirtualScenario
 from coleman.spec.runtime_identity import InstalledRuntime
 
 
@@ -139,6 +140,35 @@ def baseline_input_bytes(plan: BaselinePlan) -> bytes:
     return payload
 
 
+class _BaselineScenarioLoader(ScenarioLoader):
+    """Retain native rows/checkpoint position with a stable frozen-source binary64 budget.
+
+    Polars parallel sums can vary by one or more ulps with reduction order. V1
+    matrix source work uses ``math.fsum`` in canonical source order instead.
+    This changes only this qualified adapter; legacy native loaders keep their
+    existing interpretation. No source outcome enters attainable decision views.
+    """
+
+    def __init__(self, path: str, ratio: float, budget: float, plan: BaselinePlan):
+        """Cache full source work in seconds; eligibility has already required complete finite durations."""
+        super().__init__(path, ratio, BudgetMode.RATIO, budget)
+        self._source_work = tuple(
+            math.fsum(test.duration.value for test in build.tests if test.duration.value is not None)
+            for build in plan.source.builds
+        )
+
+    def get(self) -> VirtualScenario | None:
+        """Normalize source work and its ratio budget before native bandit construction, including resume."""
+        scenario = super().get()
+        if scenario is not None:
+            self.total_build_duration = self._source_work[int(self.current_build) - 1]
+            scenario.total_build_duration = self.total_build_duration
+            scenario.available_time = self.compute_available_time(
+                self.total_build_duration, scenario.get_testcases_df().height
+            )
+        return scenario
+
+
 class _BaselineEnvironment(Environment):
     """Reuse actual native orchestration with serialized attempts and no undeclared final forecast."""
 
@@ -235,7 +265,7 @@ def build_baseline_environment(
     guard = BaselineResourceGuard(plan.limits, root)
     if attempt_id is not None:
         metadata["execution_id"] = TypeAdapter(Identifier).validate_python(attempt_id)
-    source = ScenarioLoader(str(path), config.sched_time_ratio, config.budget_mode, config.budget_value)
+    source = _BaselineScenarioLoader(str(path), config.sched_time_ratio, float(binding.coordinate.budget.value), plan)
     env = _BaselineEnvironment(
         [BaselineAgent(plan, binding.coordinate.method, binding.coordinate.seed)],
         source,

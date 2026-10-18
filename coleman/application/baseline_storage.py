@@ -56,7 +56,7 @@ def _check_science(observation: BaselineObservation, plan: BaselinePlan, cell: B
     build = plan.source.builds[observation.step - 1]
     measured = {item.name: item.value for item in observation.record.measurements}
     source_work = math.fsum(test.duration.value for test in build.tests if test.duration.value is not None)
-    if not _same(measured["source_full_runner_seconds"], source_work):
+    if measured["source_full_runner_seconds"] != source_work:
         raise ValueError("Baseline raw source work does not match the frozen universe")
     work = measured["source_full_runner_seconds"]
     budget = measured["declared_native_work_budget_seconds"]

@@ -1,12 +1,14 @@
 """Frozen source correspondence and cooperative resource limits reject misleading completion evidence."""
 
 import hashlib
+import math
 
 import pytest
 
 from coleman.application import baseline_resources
 from coleman.application.baseline_execution import (
     NativeBaselineBinding,
+    _BaselineScenarioLoader,
     _verify_native_input,
     baseline_dataset_name,
     baseline_input_bytes,
@@ -29,6 +31,38 @@ def binding_for(plan, payload):
         input_sha256="sha256:" + hashlib.sha256(payload).hexdigest(),
         input_size_bytes=len(payload),
     )
+
+
+def test_source_work_uses_stable_binary64_sum_and_preserves_native_resume(tmp_path):
+    plan = baseline_plan()
+    builds = tuple(
+        change(
+            build,
+            tests=tuple(
+                change(test, duration=change(test.duration, value=value))
+                for test, value in zip(build.tests, (1e16, 1.0, 1.0), strict=True)
+            ),
+        )
+        for build in plan.source.builds
+    )
+    plan = change(plan, source=change(plan.source, builds=builds))
+    path = tmp_path / "stable-budget.parquet"
+    path.write_bytes(baseline_input_bytes(plan))
+    loader = _BaselineScenarioLoader(str(path), 0.5, 0.5, plan)
+    expected = math.fsum((1e16, 1.0, 1.0))
+    assert expected == 10000000000000002.0
+    for _ in builds:
+        scenario = loader.get()
+        assert scenario is not None
+        assert scenario.total_build_duration == expected
+        assert loader.total_build_duration == expected
+        assert scenario.available_time == expected * 0.5
+    assert loader.get() is None
+    loader.last_build(1)
+    resumed = loader.get()
+    assert resumed is not None
+    assert resumed.build_id == 2
+    assert resumed.available_time == expected * 0.5
 
 
 def test_native_bytes_are_deterministic_and_not_authorized_by_a_matching_caller_hash(tmp_path):

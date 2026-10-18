@@ -84,7 +84,10 @@ legacy runner's checkpoint format or random behavior.
 Reported source duration is additive test work in seconds. This projection does
 not prove whole-runner occupancy or CI elapsed savings. The native bandit projects
 costs to binary32; the source budget remains binary64 source work times the frozen
-ratio. Selection reproduces native sequential binary64 prefixes. Independent
+ratio. This matrix's loader computes source work with `math.fsum` in canonical
+source order before constructing the native bandit. Parallel reduction order
+cannot change its budget or mathematical digest; legacy native loaders retain
+their existing sums. Selection reproduces native sequential binary64 prefixes. Independent
 rational arithmetic checks NAPFD, midpoint-cost APFDc, recall, selected work and
 first-failure work against that exact projection. Any projected-work excess over
 the declared budget is a separate measurement.

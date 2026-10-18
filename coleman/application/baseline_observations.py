@@ -31,7 +31,7 @@ def _check_native(params: CollectParams, build: BaselineBuild, cell: BaselineCoo
     ):
         raise ValueError("Native baseline execution differs from its frozen candidate or budget")
     source_work = math.fsum(test.duration.value for test in build.tests if test.duration.value is not None)
-    if not math.isclose(params.total_build_duration, source_work, rel_tol=1e-12, abs_tol=1e-12):
+    if params.total_build_duration != source_work:
         raise ValueError("Native full-suite work differs from the declared binary64 source")
     reference = baseline_reference(build, tuple(params.prioritization_order), params.available_time)
     metric = params.metric
