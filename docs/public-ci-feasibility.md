@@ -15,7 +15,7 @@ In an activated Python 3.14+ environment:
 ```bash
 python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.17.0/coleman-4.17.0-py3-none-any.whl#sha256=e5a272ddc0edf72bd909a743fa2b3bc0dfeb8a02871c487ab22683cddeea40ca"
 curl --fail --location \
-  "https://raw.githubusercontent.com/jacksonpradolima/coleman/2416eb1040d18e5dbd69c85ab8c53cfbde8ab89e/examples/public-ci-feasibility/ci.py" \
+  "https://raw.githubusercontent.com/jacksonpradolima/coleman/ac4463b086601c02680f73425828f65b60d1f83e/examples/public-ci-feasibility/ci.py" \
   --output /tmp/coleman-public-ci.py
 python /tmp/coleman-public-ci.py \
   --repository jacksonpradolima/coleman --run-id 39170199990 \
@@ -27,7 +27,7 @@ python /tmp/coleman-public-ci.py \
 ```
 
 The downloaded script SHA-256 is
-`8c02b9093879f39dcef7ac3be984d75252bb8bcfd8af55102f72a694b9b3c150`.
+`0757df3dc65dc2a2d1753417e2fcce4a67c27e7af2b050624529dcebbf64431f`.
 Verify that digest before executing the example.
 
 The public run can eventually disappear or become inaccessible. A missing run,
