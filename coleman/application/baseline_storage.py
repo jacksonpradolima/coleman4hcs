@@ -269,10 +269,11 @@ def validate_native_baseline_completion(
 def _bounded_native_table(root: Path, build_count: int) -> pl.DataFrame:
     """Check every native Parquet footer before decoding bounded table bytes, rows and columns."""
     rows, decoded = 0, 0
-    for path in (root / "results").rglob("*.parquet"):
+    paths = list((root / "results").rglob("*.parquet"))
+    for path in paths:
         with pq.ParquetFile(path) as source:
             rows += source.metadata.num_rows
             decoded += sum(source.metadata.row_group(i).total_byte_size for i in range(source.metadata.num_row_groups))
             if rows > build_count or decoded > 64 * 1024**2 or len(source.schema_arrow) > 64:
                 raise ValueError("Native baseline table exceeds its bounded row/column/decoded-byte limits")
-    return pl.read_parquet(str(root / "results/**/*.parquet"), hive_partitioning=True)
+    return pl.read_parquet(paths, hive_partitioning=True, glob=False)

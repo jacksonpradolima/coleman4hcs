@@ -105,3 +105,17 @@ def test_resource_guard_reserves_complete_receipt_bytes_and_entries(tmp_path):
     guard.check()
     with pytest.raises(BaselineLimitError, match="native_output_limit_exceeded"):
         guard.check_publication(100)
+
+
+@pytest.mark.parametrize("directory", ["evidence[ci]", "evidence?ci", "evidence*ci"])
+def test_native_footer_validation_reads_only_the_literal_verified_paths(tmp_path, directory):
+    """Valid local directory names must not become glob expressions selecting different or nonexistent bytes."""
+    import polars as pl
+
+    from coleman.application.baseline_storage import _bounded_native_table
+
+    root = tmp_path / directory
+    (root / "results").mkdir(parents=True)
+    expected = pl.DataFrame({"step": [1]})
+    expected.write_parquet(root / "results/row.parquet")
+    assert _bounded_native_table(root, 1).equals(expected)
