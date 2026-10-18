@@ -64,15 +64,17 @@ def _check_resources(limits: Limits) -> None:
         os._exit(74)
 
 
-def _output_exceeds(maximum_bytes: int) -> bool:
+def _output_exceeds(maximum_bytes: int, *, root: Path = Path("run"), maximum_entries: int = 128) -> bool:
     """Bound sampled file metadata without retaining an unbounded directory listing.
 
-    Disappearing atomic temporary files are normal; other I/O failures propagate
+    The existing service retains its run/128-file defaults. Trusted native matrix
+    callers can supply their separately frozen root/file bound without a second
+    output walker. Disappearing atomic temporary files are normal; other I/O failures propagate
     to the fail-closed guard. No symlink is followed while measuring file bytes.
     """
     total = 0
-    for count, path in enumerate(Path("run").rglob("*"), start=1):
-        if count > 128:
+    for count, path in enumerate(root.rglob("*"), start=1):
+        if count > maximum_entries:
             return True
         try:
             metadata = path.lstat()

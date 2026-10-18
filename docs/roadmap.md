@@ -72,7 +72,7 @@ through [#328](https://github.com/jacksonpradolima/coleman/pull/328). #309's
 through [#330](https://github.com/jacksonpradolima/coleman/pull/330). #310's [metric references and repeated CI protocol](corpus-evaluation.md) shipped
 in 4.16 through [#332](https://github.com/jacksonpradolima/coleman/pull/332).
 Ten of the thirteen public subtasks are delivered. #311–#313 remain open;
-the comparable baseline matrix in #311 is next. Source conversion does not establish historical admission.
+the [comparable baseline matrix](comparable-baselines.md) in #311 is in development. Source conversion does not establish historical admission.
 
 The published HCS workflow preserves raw pipeline/job correspondence, WTS/VTS
 Parquet, all 208 sparse cells and isolated multi-budget checkpoints. Its declared
@@ -92,7 +92,7 @@ later gates.
 | Synthetic laboratory — delivered in 4.14 | [#308 interaction-covering stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Tiny oracle/resource bounds; explicit synthetic dependence and native eligibility |
 | Evidence integration — delivered in 4.15 | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | Three scoped regimes covered; four historical/HCS regimes remain uncovered |
 | Comparison protocol — delivered in 4.16 | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310) | #309; one fold/budget and one paired mean per reviewed repository family |
-| Comparable baselines — next | [#311 candidate matrix](https://github.com/jacksonpradolima/coleman/issues/311) | #309 and #310 |
+| Comparable baselines — in development | [#311 candidate matrix](https://github.com/jacksonpradolima/coleman/issues/311) | #309 and #310 |
 | Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
 | Final execution/report | [#313 confirmatory corpus](https://github.com/jacksonpradolima/coleman/issues/313) | #309–#312 and the complete parent gates |
 

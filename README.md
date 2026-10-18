@@ -24,6 +24,7 @@ and checkpoint. Inspect the inputs, decisions and evidence behind each result.
 | Stress a difficult CI decision | [32 deterministic interaction-covering cases](docs/ci-stress-laboratory.md), explicit truth and feedback clocks, native Parquet and resumable agents |
 | Audit what a source actually supports | [Source-admission API](docs/corpus-admission.md): verify original evidence, retain explicit units and inspect a 35-axis production-reality matrix |
 | Compare repeated CI experiments | [Versioned raw build/seed records and paired repository-family means](docs/corpus-evaluation.md), explicit missingness and protected access |
+| Develop comparable baseline matrices | [Frozen native-policy and heuristic matrix](docs/comparable-baselines.md), explicit incompatibilities, raw costs and checkpoint recovery; development branch only |
 | Compare adaptive CI prioritization policies | Native TCPCI runner, configurable policies/rewards, contextual inputs and [parameter sweeps](#sweep-engine) |
 | Evaluate configurable software | [Pinned LibSSH data → WTS/VTS Parquet and checkpointed replay](docs/hcs-parquet-etl.md), plus the existing Dune examples |
 | Collect real-fault observations | [Controlled Java matrix](docs/java-fault-matrix.md) and [Python source capture](docs/python-source-capture.md): frozen source/runtime recipes, raw evidence and offline recovery |

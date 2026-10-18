@@ -48,6 +48,15 @@ make pre-commit-install
 make test
 ```
 
+Coverage includes native multiprocessing workers, with branch measurement and
+separate process data combined by pytest-cov. Completed worker processes save
+their data normally. Keep multiprocessing collection enabled for checkpoint tests;
+a parent-only report would miss the principal native execution. For focused
+checks use `uv run python -m pytest tests/corpus/test_baseline_matrix.py`; add
+`--no-cov` only when intentionally skipping the whole-project coverage gate.
+Instrumented timings are test evidence, not benchmark performance measurements.
+
+
 ### Linting and Formatting
 
 ```bash
