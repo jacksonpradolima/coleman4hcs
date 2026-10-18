@@ -61,7 +61,8 @@ def _risk(case: StressCase, build: int, index: int) -> int:
 def _verdict(case: StressCase, build: int, index: int, risk: int) -> int:
     """Combine declared latent truth/flakiness; zero regime overrides even shared flips.
 
-    Rare forces one logical failing test per build. Moderate selects the current
+    Rare selects exactly one failing logical test from the current active
+    universe, preserving its nonzero prevalence under churn. Moderate selects the current
     risk group; bursts occur only every fourth build. Shared variant copies use
     identical truth. History-dependent flips use the preceding latent verdict,
     not previous executed feedback, so policy selection cannot change the world.
@@ -70,7 +71,7 @@ def _verdict(case: StressCase, build: int, index: int, risk: int) -> int:
     if f.failures == "zero":
         return 0
     if f.failures == "rare":
-        return int(index == _counter(case.seed, "rare-location", build) % f.test_count)
+        return int(index == _counter(case.seed, "rare-location", build) % _active_count(case, build))
     baseline = risk if f.failures == "moderate" else int(build % 4 == 2 and index % 2 == 0)
     if f.flakiness == "independent":
         flip = _counter(case.seed, "outcome-noise", build, index) % 32 == 0
@@ -103,12 +104,20 @@ def _duration(case: StressCase, build: int, index: int, verdict: int) -> int:
     return 1
 
 
+def _active_count(case: StressCase, build: int) -> int:
+    """Return the declared current logical population before assigning a rare failure."""
+    count = case.factors.test_count
+    if case.factors.churn == "additions":
+        return max(1, count * (build + 1) // case.builds)
+    if case.factors.churn == "removals":
+        return max(1, count * (case.builds - build) // case.builds)
+    return count
+
+
 def _identity(case: StressCase, build: int, index: int) -> tuple[str, str] | None:
     """Apply churn without collapsing aliases; collision is a display-only ambiguity."""
-    churn, count = case.factors.churn, case.factors.test_count
-    if churn == "additions" and index >= max(1, count * (build + 1) // case.builds):
-        return None
-    if churn == "removals" and index >= max(1, count * (case.builds - build) // case.builds):
+    churn = case.factors.churn
+    if index >= _active_count(case, build):
         return None
     logical = f"t{index:05}"
     if churn == "renames" and build >= case.builds // 2:

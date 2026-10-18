@@ -44,6 +44,25 @@ def certify_design(rows: tuple[StressFactors, ...]) -> tuple[Interaction, ...]:
     return tuple(witnesses)
 
 
+def _extend_pair(axes: tuple[tuple[str, tuple[str, ...]], ...], uncovered: set[Interaction]) -> tuple[str, ...]:
+    """Complete the first outstanding pair, with deterministic level-order ties and no global search."""
+    i, a, j, b = min(uncovered)
+    chosen = {i: a, j: b}
+    for index, (_, levels) in enumerate(axes):
+        if index in chosen:
+            continue
+
+        def score(level: str, axis=index, fixed=chosen, missing=uncovered) -> int:
+            """Count newly covered pairs with already fixed factors."""
+            return sum(
+                (min(axis, k), level if axis < k else v, max(axis, k), v if axis < k else level) in missing
+                for k, v in fixed.items()
+            )
+
+        chosen[index] = max(levels, key=score)
+    return tuple(chosen[k] for k in range(len(axes)))
+
+
 def covering_design() -> StressDesign:
     """Greedily cover outstanding pairs, then delete redundant rows deterministically.
 
@@ -54,21 +73,7 @@ def covering_design() -> StressDesign:
     axes, uncovered = factor_levels(), _required()
     rows: list[tuple[str, ...]] = []
     while uncovered:
-        i, a, j, b = min(uncovered)
-        chosen = {i: a, j: b}
-        for index, (_, levels) in enumerate(axes):
-            if index in chosen:
-                continue
-
-            def score(level: str, axis=index, fixed=chosen, missing=uncovered) -> int:
-                """Count newly covered pairs with already fixed factors."""
-                return sum(
-                    (min(axis, k), level if axis < k else v, max(axis, k), v if axis < k else level) in missing
-                    for k, v in fixed.items()
-                )
-
-            chosen[index] = max(levels, key=score)
-        row = tuple(chosen[k] for k in range(len(axes)))
+        row = _extend_pair(axes, uncovered)
         rows.append(row)
         uncovered -= _pairs(row)
     counts = Counter(pair for row in rows for pair in _pairs(row))

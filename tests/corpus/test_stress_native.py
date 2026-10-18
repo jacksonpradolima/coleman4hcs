@@ -76,3 +76,23 @@ def test_unsupported_candidates_reject_before_output(tmp_path, policies):
     with pytest.raises(ValueError, match="Random/UCB"):
         run_stress_replay(completion, tmp_path / "must-not-exist", policies=policies)
     assert not (tmp_path / "must-not-exist").exists()
+
+
+@pytest.mark.parametrize("churn", ["additions", "removals"])
+def test_rare_churn_native_full_budget_detects_one_failure_in_every_active_build(tmp_path, churn):
+    value = case(failures="rare", churn=churn, variants="changing", budget="full", feedback="full", builds=4)
+    completion = export_stress(value, ArtifactWriter(tmp_path / "export"))
+    result = run_stress_replay(completion, tmp_path / "native", policies=("Random",))
+    rows = check_native(result, value)
+    assert rows.height == 4
+    assert rows["detected"].to_list() == [1] * 4
+    assert rows["missed"].to_list() == [0] * 4
+
+
+@pytest.mark.parametrize("churn", ["additions", "removals"])
+def test_zero_work_cases_remain_valid_exports_but_reject_native_undefined_cost_before_output(tmp_path, churn):
+    value = case(failures="rare", churn=churn, builds=8, feedback="full", budget="full")
+    completion = export_stress(value, ArtifactWriter(tmp_path / "export"))
+    with pytest.raises(ValueError, match="positive full-suite work"):
+        run_stress_replay(completion, tmp_path / "must-not-exist")
+    assert not (tmp_path / "must-not-exist").exists()

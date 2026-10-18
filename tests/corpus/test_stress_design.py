@@ -39,22 +39,25 @@ def test_every_row_has_private_witness_and_deletion_is_detected():
         certify_design(design.rows + design.rows[:1])
     with pytest.raises(ValueError, match="omits"):
         certify_design(())
+    oversized = (StressFactors(),) * 257
     with pytest.raises(ValueError, match="256-row"):
-        certify_design((StressFactors(),) * 257)
+        certify_design(oversized)
 
 
 @pytest.mark.parametrize("version", [None, 0, 2, 999, True, "1"])
 def test_unknown_and_legacy_versions_do_not_migrate(version):
     value = case().model_dump(mode="json")
     value["schema_version"] = version
+    payload = json.dumps(value)
     with pytest.raises(ValidationError):
-        StressCase.from_json(json.dumps(value))
+        StressCase.from_json(payload)
 
 
 @pytest.mark.parametrize("field,value", [("seed", -1), ("seed", 2**32), ("seed", True), ("builds", 1), ("builds", 17)])
 def test_case_resource_bounds(field, value):
+    payload = {**case().model_dump(), field: value}
     with pytest.raises(ValidationError):
-        StressCase.model_validate({**case().model_dump(), field: value})
+        StressCase.model_validate(payload)
 
 
 def test_typed_factor_bounds_and_canonical_input_order():
@@ -95,4 +98,16 @@ def test_native_eligibility_is_explicit(feedback, budget, eligible):
         value.require_native()
     else:
         with pytest.raises(ValueError, match="Native RNFail|Full-label"):
+            value.require_native()
+
+
+@pytest.mark.parametrize("churn", ["additions", "removals"])
+@pytest.mark.parametrize("builds,minimum,eligible", [(4, 2, True), (8, 1, False), (16, 1, False)])
+def test_native_requires_positive_full_suite_work_from_declared_population(churn, builds, minimum, eligible):
+    value = case(churn=churn, builds=builds)
+    assert value.minimum_active_tests == minimum
+    if eligible:
+        value.require_native()
+    else:
+        with pytest.raises(ValueError, match="positive full-suite work"):
             value.require_native()

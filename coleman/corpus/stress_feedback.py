@@ -83,7 +83,7 @@ class StressFeedbackPage(VersionedContract):
         roots = [r for r in self.history.revisions if r.supersedes is None]
         count = max(1, (self.logical_observations + 2047) // 2048)
         expected = min(2048, self.logical_observations - self.page_index * 2048)
-        if self.page_count != count or not self.page_index < count or len(roots) != expected:
+        if self.page_count != count or self.page_index >= count or len(roots) != expected:
             raise ValueError("Stress feedback page dimensions disagree")
         if (
             self.history.source_id != self.case_fingerprint
@@ -134,12 +134,13 @@ class _FeedbackClock(NamedTuple):
     group: str
 
 
-def _revisions(clock: _FeedbackClock, row: StressObservation, completed: int) -> tuple[ObservationRevision, ...]:
+def _revisions(clock: _FeedbackClock, row: StressObservation, completed: int) -> Iterator[ObservationRevision]:
     """Preserve incorrect initial reports and late corrections without rewriting the past."""
     mode, event = clock.mode, clock.event
     target_end = event + timedelta(seconds=completed)
     available = target_end + timedelta(hours=1) + (2 * clock.interval if mode == "delayed" else timedelta(0))
     observation = f"b{row.build:02}:{row.execution_name}"
+    reported = 1 - row.verdict if mode == "corrected" else row.verdict
     root = ObservationRevision(
         schema_version=1,
         metadata=TemporalObservation(
@@ -159,12 +160,13 @@ def _revisions(clock: _FeedbackClock, row: StressObservation, completed: int) ->
             meaning="constructed-binary-report-v1",
             direction="none",
             minimum=0.0,
-            value=None if mode == "missing" else float(1 - row.verdict if mode == "corrected" else row.verdict),
+            value=None if mode == "missing" else float(reported),
             status="unknown" if mode == "missing" else "observed",
         ),
     )
+    yield root
     if mode != "corrected":
-        return (root,)
+        return
     corrected_at = target_end + timedelta(hours=1) + 3 * clock.interval
     correction = ObservationRevision.model_validate(
         {
@@ -179,7 +181,7 @@ def _revisions(clock: _FeedbackClock, row: StressObservation, completed: int) ->
             "measurement": {**root.measurement.model_dump(), "value": float(row.verdict)},
         }
     )
-    return root, correction
+    yield correction
 
 
 def feedback_pages(

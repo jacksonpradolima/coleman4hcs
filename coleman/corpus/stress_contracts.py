@@ -58,17 +58,31 @@ class StressCase(VersionedContract):
     builds: Annotated[int, Field(strict=True, ge=2, le=16)] = 8
     evidence: Literal["constructed-dependent-mechanism-fixture"] = "constructed-dependent-mechanism-fixture"
 
+    @property
+    def minimum_active_tests(self) -> int:
+        """Return the smallest declared logical population, without sampling outcomes or durations."""
+        if self.factors.churn in {"additions", "removals"}:
+            return max(1, self.factors.test_count // self.builds)
+        return self.factors.test_count
+
     def require_native(self) -> None:
         """Reject unsupported immediate-reward semantics before I/O or execution.
 
         Full-label feedback is eligible only at full budget. Censored RNFail
         emits detection rewards, not selected/nonselected passing labels.
         Parallelism is post-hoc modeled replay, not the native serial executor.
+        A one-test current suite contains only the zero-cost logical test; native
+        APFDc cannot represent that zero denominator. Its trace remains valid,
+        but native qualification rejects using declared population bounds only.
         """
         if self.factors.feedback not in {"full", "censored"}:
             raise ValueError("Native RNFail cannot consume delayed, missing or corrected feedback")
         if self.factors.feedback == "full" and self.factors.budget != "full":
             raise ValueError("Full-label native feedback requires full budget")
+        if self.minimum_active_tests < 2:
+            raise ValueError(
+                "Native APFDc requires positive full-suite work; use typed stress replay for zero-work builds"
+            )
 
 
 class StressDesign(VersionedContract):

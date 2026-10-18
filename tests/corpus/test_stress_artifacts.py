@@ -49,8 +49,9 @@ def test_interruption_after_first_complete_file_never_publishes_completion_and_r
 
     with monkeypatch.context() as fault:
         fault.setattr(ArtifactWriter, "write_immutable_stream", interrupted)
+        value, writer = case(), ArtifactWriter(tmp_path)
         with pytest.raises(OSError, match="second publication"):
-            export_stress(case(), ArtifactWriter(tmp_path))
+            export_stress(value, writer)
     assert len(list(tmp_path.rglob("*.jsonl"))) == 1
     assert not list(tmp_path.rglob("complete.json"))
     before = next(tmp_path.rglob("*.jsonl")).read_bytes()
@@ -67,39 +68,47 @@ def test_modified_bytes_and_self_signed_receipts_cannot_certify_truth(tmp_path):
     path.write_bytes(old[:-1])
     with pytest.raises(ValueError, match="artifact bytes"):
         validate_stress(receipt, completion.parent)
+    writer = ArtifactWriter(tmp_path / "export")
     with pytest.raises(ValueError, match="Conflicting|conflict"):
-        export_stress(receipt.case, ArtifactWriter(tmp_path / "export"))
+        export_stress(receipt.case, writer)
     path.write_bytes(old)
     forged = receipt.model_dump()
     forged["files"][0]["sha256"] = "sha256:" + "a" * 64
+    forged_receipt = StressReceipt.model_validate(forged)
     with pytest.raises(ValueError, match="regenerated truth"):
-        validate_stress(StressReceipt.model_validate(forged), completion.parent)
+        validate_stress(forged_receipt, completion.parent)
     for field in ["producer", "parquet_writer"]:
         forged = receipt.model_dump()
         forged[field] = "sha256:" + "b" * 64 if field == "producer" else "unknown-writer"
+        forged_receipt = StressReceipt.model_validate(forged)
         with pytest.raises(ValueError, match="Unsupported stress"):
-            validate_stress(StressReceipt.model_validate(forged), completion.parent)
+            validate_stress(forged_receipt, completion.parent)
 
 
 def test_future_versions_file_roles_and_row_conservation_fail_closed(tmp_path):
     _, receipt = exported(tmp_path)
     for field, value in [("schema_version", 2), ("files", receipt.files[:-1])]:
+        invalid_payload = {**receipt.model_dump(), field: value}
         with pytest.raises(ValueError):
-            StressReceipt.model_validate({**receipt.model_dump(), field: value})
+            StressReceipt.model_validate(invalid_payload)
     invalid = receipt.model_dump()
     invalid["files"][-1]["rows"] += 1
     with pytest.raises(ValueError, match="conservation"):
         StressReceipt.model_validate(invalid)
+    invalid_roles = {**receipt.model_dump(), "files": tuple(reversed(receipt.files))}
     with pytest.raises(ValueError, match="roles"):
-        StressReceipt.model_validate({**receipt.model_dump(), "files": tuple(reversed(receipt.files))})
+        StressReceipt.model_validate(invalid_roles)
 
 
 def test_output_must_be_external_and_fixed_roles_cannot_follow_escaping_symlinks(tmp_path):
+    value = case()
+    writer = ArtifactWriter(Path(__file__).parent / "generated-must-not-exist")
     with pytest.raises(ValueError, match="outside a repository"):
-        export_stress(case(), ArtifactWriter(Path(__file__).parent / "generated-must-not-exist"))
+        export_stress(value, writer)
     output = tmp_path / "output"
     output.mkdir()
     (output / "stress").symlink_to(tmp_path / "elsewhere", target_is_directory=True)
+    writer = ArtifactWriter(output)
     with pytest.raises(ValueError, match="escapes"):
-        export_stress(case(), ArtifactWriter(output))
+        export_stress(value, writer)
     assert not (tmp_path / "elsewhere").exists()

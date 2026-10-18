@@ -192,3 +192,21 @@ def test_execution_cannot_claim_unmodeled_leading_queue_time():
         event["completed_seconds"] += 1
     with pytest.raises(ValueError, match="begin at zero"):
         StressTrace.model_validate(value)
+
+
+def test_zero_work_rare_build_retains_real_detection_at_zero_without_an_apfdc_score():
+    value = case(churn="additions", builds=8, failures="rare", budget="full", variants="changing")
+    trace = schedule_build(value, 0)
+    assert len(trace.events) == 1
+    assert trace.failing_executions == trace.detected_executions == 1
+    assert trace.runner_work.value == trace.full_suite_work.value == trace.modeled_elapsed.value == 0
+    assert trace.first_failure_elapsed is not None
+    assert trace.first_failure_elapsed.value == 0
+    assert trace.first_failure_status == "detected"
+    assert trace.recall.value == 1
+    build = pilot(value, 0)
+    reference = tiny_ci_reference(build, build.baseline_order, trace.budget)
+    assert reference.apfdc.value is None
+    assert reference.apfdc.status == "not_applicable"
+    with pytest.raises(ValueError, match="positive full-suite work"):
+        value.require_native()

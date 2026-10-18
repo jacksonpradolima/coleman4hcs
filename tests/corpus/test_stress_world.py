@@ -12,8 +12,9 @@ from tests.corpus.stress_support import case
 
 @pytest.mark.parametrize("build", [-1, 4, True, 0.0])
 def test_build_bounds_before_allocation(build):
+    value = case()
     with pytest.raises(ValueError, match="index"):
-        generate_build(case(), build)
+        generate_build(value, build)
 
 
 def test_build_order_and_ambient_randomness_do_not_change_truth():
@@ -143,3 +144,32 @@ def test_feedback_budget_worker_and_context_corruption_do_not_change_hidden_worl
     original = truth(case())
     for settings in [{"budget": "full"}, {"feedback": "corrected"}, {"workers": "bounded"}, {"context": "adversarial"}]:
         assert truth(case(**settings)) == original
+
+
+@pytest.mark.parametrize("churn", ["stable", "additions", "removals", "renames", "collisions"])
+@pytest.mark.parametrize("builds", [4, 16])
+def test_rare_failures_remain_one_active_logical_test_after_churn(churn, builds):
+    value = case(failures="rare", variants="stable", churn=churn, builds=builds)
+    for build in range(builds):
+        rows = generate_build(value, build)
+        failing = {row.test_id for row in rows if row.verdict}
+        assert len(failing) == 1
+        assert sum(row.verdict for row in rows) == 3  # three dependent variants, not three faults
+        assert failing.issubset(row.test_id for row in rows)
+
+
+def test_generated_rare_churn_covering_rows_preserve_nonzero_prevalence():
+    from coleman.corpus.stress_contracts import StressCase
+    from coleman.corpus.stress_design import covering_design
+
+    checked = []
+    for index, factors in enumerate(covering_design().rows):
+        if factors.failures != "rare" or factors.churn not in {"additions", "removals"}:
+            continue
+        value = StressCase(schema_version=1, factors=factors)
+        counts = [
+            len({row.test_id for row in generate_build(value, build) if row.verdict}) for build in range(value.builds)
+        ]
+        assert counts == [1] * value.builds
+        checked.append(index)
+    assert checked == [2, 13, 23]

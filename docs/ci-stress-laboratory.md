@@ -87,7 +87,7 @@ cardinality. No full Cartesian experiment is generated or launched.
 | Factor | Levels and interpretation |
 | --- | --- |
 | Logical suite size | `tiny`: 8; `medium`: 256; `large`: 50,000 before churn/variants |
-| Failures | `zero`, `rare` (one logical failure per build), `moderate` (current risk group plus flips), `bursty` (every fourth build) |
+| Failures | `zero`, `rare` (one logical failure among current active tests per build), `moderate` (current risk group plus flips), `bursty` (every fourth build) |
 | Duration | `constant`, `heavy_tail` (bounded dyadic tail, not a log-normal sample), `failure_correlated`, `changing` |
 | Churn | `stable`, `additions`, `removals`, `renames`, `collisions` of display labels |
 | Drift | `sudden`, `gradual`, `recurring`, `contextual` |
@@ -183,9 +183,17 @@ bounded point-in-time reader per page. Reordered delivery is accepted; missing,
 duplicate or conflicting pages fail. Do not silently aggregate only the first
 page of a large history.
 
+The rare regime chooses its failing test after determining the current logical
+population. Additions and removals therefore retain exactly one active logical
+failure per build; dependent variant copies do not create new faults.
+
 The immediate-reward native qualification supports Random/UCB with `censored`,
 or `full` at full budget. Delayed, missing and corrected modes fail before native
-output creation. Their typed feedback channels are usable for mechanism checks;
+output creation. Cases whose declared churn leaves only the zero-cost logical
+test also reject: native APFDc has no positive cost denominator. The minimum
+population check uses only declared bounds, never sampled future labels or costs.
+These cases remain valid in the typed stress replay, with genuine zero work and
+zero-time detection retained. Their typed feedback channels are usable for mechanism checks;
 they are not silently scored by agents unable to consume those channels. Native
 RNFail zero is nondetection reward, including unselected tests, not a passing
 label. Broader candidate eligibility belongs to the comparable baseline protocol.

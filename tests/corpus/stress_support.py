@@ -6,6 +6,7 @@ from fractions import Fraction
 from pathlib import Path
 
 import polars as pl
+import pytest
 
 from coleman.corpus.stress_contracts import StressCase, StressFactors
 from coleman.corpus.stress_world import generate_build
@@ -76,8 +77,9 @@ def check_native(result, case_value):
             if failing:
                 assert reference.napfd.value is not None
                 assert reference.apfdc.value is not None
-                assert record["fitness"] == float(reference.napfd.value)
-                assert record["cost"] == float(reference.apfdc.value)
+                # The reference stays rational; native final metric arithmetic is binary64.
+                assert record["fitness"] == pytest.approx(float(reference.napfd.value), rel=0, abs=1e-15)
+                assert record["cost"] == pytest.approx(float(reference.apfdc.value), rel=0, abs=1e-15)
     coordinates = [(r["scenario"], r["policy"], r["step"], r["budget_value"]) for r in rows.iter_rows(named=True)]
     assert len(set(coordinates)) == rows.height
     return rows

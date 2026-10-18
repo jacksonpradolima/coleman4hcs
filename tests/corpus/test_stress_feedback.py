@@ -60,8 +60,9 @@ def test_receipt_cutoff_and_future_correction_do_not_rewrite_earlier_views():
     assert visible_feedback((trimmed,), decision_time(value, 1))[0].fingerprint == before.fingerprint
     # A fake early-label consumer would differ from the actual cutoff view.
     assert before.fingerprint != after.fingerprint
+    future_payload = {**before.model_dump(), "observations": after.observations}
     with pytest.raises(ValueError, match="unavailable at its cutoff"):
-        ObservationSnapshot.model_validate({**before.model_dump(), "observations": after.observations})
+        ObservationSnapshot.model_validate(future_payload)
     assert observations(pages, source_cutoff + timedelta(minutes=1))
 
 
@@ -72,19 +73,20 @@ def test_large_corrected_feedback_pages_preserve_complete_lineages_and_bounds():
     assert sum(len(p.history.revisions) for p in pages) == 100000
     assert all(len(p.history.revisions) <= 4096 for p in pages)
     assert len(observations(tuple(reversed(pages)), decision_time(value, 4))) == 50000
+    cutoff = decision_time(value, 4)
     for invalid in [pages[:-1], pages + pages[:1], ()]:
         with pytest.raises(ValueError, match="every distinct page"):
-            visible_feedback(invalid, decision_time(value, 4))
+            visible_feedback(invalid, cutoff)
 
     with pytest.raises(ValueError, match="74-page"):
-        visible_feedback(pages * 3, decision_time(value, 4))
+        visible_feedback(pages * 3, cutoff)
     changed = StressFeedbackPage.model_validate({**pages[0].model_dump(), "membership_digest": "sha256:" + "a" * 64})
     with pytest.raises(ValueError, match="conflicting bindings"):
-        visible_feedback((changed,) + pages[1:], decision_time(value, 4))
+        visible_feedback((changed,) + pages[1:], cutoff)
     reordered = StressFeedbackPage.model_validate({**pages[0].model_dump(), "history": pages[1].history})
     counterpart = StressFeedbackPage.model_validate({**pages[1].model_dump(), "history": pages[0].history})
     with pytest.raises(ValueError, match="membership"):
-        visible_feedback((reordered, counterpart) + pages[2:], decision_time(value, 4))
+        visible_feedback((reordered, counterpart) + pages[2:], cutoff)
 
 
 def test_page_membership_binding_and_identity_mutations_reject():
@@ -110,8 +112,9 @@ def test_page_membership_binding_and_identity_mutations_reject():
         with pytest.raises(ValueError, match=error):
             StressFeedbackPage.model_validate(changed)
     bad = StressFeedbackPage.model_validate({**original, "membership_digest": "sha256:" + "b" * 64})
+    cutoff = decision_time(value, 1)
     with pytest.raises(ValueError, match="membership"):
-        visible_feedback((bad,), decision_time(value, 1))
+        visible_feedback((bad,), cutoff)
 
 
 @pytest.mark.parametrize("bad", [-1, 33, True, 0.0])
