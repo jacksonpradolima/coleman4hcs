@@ -19,7 +19,7 @@ MCP SDK is needed for this workflow; the URL pins the actual wheel SHA-256:
 
 ```bash
 uv venv /tmp/coleman-rtptorrent-env --python 3.14
-uv pip install --python /tmp/coleman-rtptorrent-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
+uv pip install --python /tmp/coleman-rtptorrent-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.17.0/coleman-4.17.0-py3-none-any.whl#sha256=e5a272ddc0edf72bd909a743fa2b3bc0dfeb8a02871c487ab22683cddeea40ca"
 mkdir -p /tmp/coleman-rtptorrent-workspace
 cd /tmp/coleman-rtptorrent-workspace
 ```

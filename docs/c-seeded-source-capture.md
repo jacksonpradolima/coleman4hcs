@@ -23,13 +23,13 @@ The SDK requires Python 3.14+, uv and POSIX. This optional preset additionally
 requires a native Linux arm64 Docker engine and the pinned GCC image. Other
 architectures need separate recipes and qualification.
 
-Install the published **4.16 wheel** into a fresh external environment. The
+Install the published **4.17 wheel** into a fresh external environment. The
 SHA-256 fragment verifies the release bytes before installation; no checkout is
 required. Runtime preparation remains a separate, explicit operator action:
 
 ```bash
 uv venv /tmp/coleman-c-env --python 3.14
-uv pip install --python /tmp/coleman-c-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
+uv pip install --python /tmp/coleman-c-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.17.0/coleman-4.17.0-py3-none-any.whl#sha256=e5a272ddc0edf72bd909a743fa2b3bc0dfeb8a02871c487ab22683cddeea40ca"
 
 # Explicit preparation; the producer never pulls an image.
 docker pull --platform linux/arm64 docker.io/library/gcc@sha256:e55a45ec94b8f1dc59f08e3b25b8e7f23b96220235da707ae2cc0dce47f6b46c

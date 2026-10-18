@@ -20,6 +20,17 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
+## New in 4.17
+
+[Compare CI baselines with inspectable evidence](comparable-baselines.md).
+Freeze the source, candidates, seeds and budgets; execute native policies and
+simple heuristics through the existing runner, Parquet sinks and checkpoints.
+Keep incompatible methods and interrupted costs visible. Stable source sums,
+independent metric checks and byte-verified completion make reruns auditable.
+The complete installed example runs twelve candidates and keeps 36 raw build
+records in one constructed family, with insufficient evidence for promotion.
+See the [4.17 release notes](releases/4.17.0.md) for compatibility and limits.
+
 ## New in 4.16
 
 [Compare repeated CI experiments without inflating independent evidence](corpus-evaluation.md).
@@ -165,7 +176,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.17.0/coleman-4.17.0-py3-none-any.whl#sha256=e5a272ddc0edf72bd909a743fa2b3bc0dfeb8a02871c487ab22683cddeea40ca"
 coleman run --config my-experiment.yaml
 ```
 

@@ -14,17 +14,22 @@ published qualification covers three narrow functional/mechanism regimes and
 leaves four historical/HCS regimes uncovered. Original registrations and
 phase-one fixture readiness keep their meanings; they are not silently upgraded.
 
+**4.17** adds the [comparable baseline matrix](comparable-baselines.md): twelve
+internal native/heuristic candidates, explicit incompatibilities, raw per-build
+evidence, stable source budgets and checkpoint recovery. It prepares development
+evidence; source admission and protected confirmation remain separate gates.
+
 **4.16** adds [metric references and repeated CI observations](corpus-evaluation.md):
 a frozen complete build/seed grid, explicit native metric conventions and one
 paired mean per reviewed repository family. This preparation preserves raw
 attempts and source-admission blockers; it does not create independent projects.
 
 For the separate source-specific ETL workflows, see [Karaf](lrts-parquet-etl.md),
-[RTPTorrent](rtptorrent-parquet-etl.md) and the published 4.16 [ActiveMQ/Log4j stage
+[RTPTorrent](rtptorrent-parquet-etl.md) and the published 4.17 [ActiveMQ/Log4j stage
 views](lrts-stage-views.md). Those exports preserve their own provenance and
 admission blockers; they do not silently add admitted registrations to this registry.
 
-For controlled Java sources, the published 4.16 wheel includes a separate [CLI/Codec
+For controlled Java sources, the published 4.17 wheel includes a separate [CLI/Codec
 matrix](java-fault-matrix.md) using the existing controlled/JUnit producer.
 Its typed index preserves all selected outcomes and incomplete evidence. It does
 not silently change this registry's admission or diversity coverage.
@@ -36,13 +41,13 @@ Its ASCII error-to-pass pair remains inconclusive under the strict generic
 classifier; the UTF-8 contrast passes in both roles. These share one curated fix
 and do not silently add independent observations or admitted registry entries.
 
-The published 4.16 wheel also includes a [constructed C function slice](c-seeded-source-capture.md)
+The published 4.17 wheel also includes a [constructed C function slice](c-seeded-source-capture.md)
 from NIST Juliet 1.3. Its source/component terms were reviewed before acquisition;
 one original template/function pair and six correlated inputs remain explicitly
 synthetic. SIR permission remains unresolved. This workflow adds no registry
 default registry entry or admitted diversity regime by itself.
 
-The published 4.16 wheel includes a separate [LibSSH HCS ETL](hcs-parquet-etl.md): original
+The published 4.17 wheel includes a separate [LibSSH HCS ETL](hcs-parquet-etl.md): original
 pipeline/job identities, reversible variant aliases, explicit projected test
 costs and native WTS/VTS checkpointed runs. Sparse/absent cells and source
 exclusions remain visible. The installed qualification verifies all 208 declared
@@ -64,7 +69,7 @@ follows from passing these checks.
 
 ## Installed commands
 
-Install the wheel attached to [COLEMAN 4.16](https://github.com/jacksonpradolima/coleman/releases/tag/v4.16.0)
+Install the wheel attached to [COLEMAN 4.17](https://github.com/jacksonpradolima/coleman/releases/tag/v4.17.0)
 in a Python 3.14+ environment, or build a development wheel from the reviewed source.
 Copy examples to a directory outside the checkout. Once installed, these local
 operations need no optional dependency, provider subscription, credential or

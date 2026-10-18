@@ -6,7 +6,7 @@ or a 50,000-test suite. It complements the real-source workflows with controlled
 mechanism checks. It does not establish real-project generalization, empirical
 corpus admission, independent faults or an algorithm winner.
 
-This workflow ships in the published **4.16** wheel. Its installed qualification
+This workflow ships in the published **4.17** wheel. Its installed qualification
 checks the complete authored package against the release tag, runs actual native
 agents outside the source checkout and verifies process-interruption recovery.
 
@@ -19,7 +19,7 @@ The URL pins the verified release SHA-256. Outputs stay outside the repository.
 ```bash
 export COLEMAN_STRESS_HOME="$(mktemp -d "${TMPDIR:-/tmp}/coleman-stress.XXXXXX")"
 uv venv "$COLEMAN_STRESS_HOME/installed" --python 3.14
-uv pip install --python "$COLEMAN_STRESS_HOME/installed/bin/python" "https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
+uv pip install --python "$COLEMAN_STRESS_HOME/installed/bin/python" "https://github.com/jacksonpradolima/coleman/releases/download/v4.17.0/coleman-4.17.0-py3-none-any.whl#sha256=e5a272ddc0edf72bd909a743fa2b3bc0dfeb8a02871c487ab22683cddeea40ca"
 cd "$COLEMAN_STRESS_HOME"
 ```
 

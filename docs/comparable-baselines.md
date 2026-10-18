@@ -1,6 +1,6 @@
 # Comparable CI baseline matrices
 
-**Development feature for #311; unavailable in the published 4.16 wheel.**
+**Available in the published COLEMAN 4.17 wheel.**
 Execute a frozen candidate matrix through COLEMAN's existing RunSpec runner,
 policies, Parquet results and per-build checkpoints. The application API retains
 raw complete rankings, selected prefixes, failed attempts and incompatible methods.
@@ -8,11 +8,15 @@ It grants no protected test access, source admission or algorithm promotion.
 
 ## Execute and inspect
 
-Use the complete [constructed CI example](https://github.com/jacksonpradolima/coleman/blob/main/examples/comparable_baselines.py)
-with the package built from this development branch. From outside the repository:
+Use the complete [constructed CI example](https://github.com/jacksonpradolima/coleman/blob/v4.17.0/examples/comparable_baselines.py)
+with the published wheel. In an activated Python 3.14+ environment, outside the repository:
 
 ```bash
-python /path/to/coleman/examples/comparable_baselines.py /tmp/ci-baseline-evidence
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.17.0/coleman-4.17.0-py3-none-any.whl#sha256=e5a272ddc0edf72bd909a743fa2b3bc0dfeb8a02871c487ab22683cddeea40ca"
+curl --fail --location \
+  "https://raw.githubusercontent.com/jacksonpradolima/coleman/a30cb5570bfeb7b18af1c7dc1814e1780e7bf8d6/examples/comparable_baselines.py" \
+  --output /tmp/coleman-ci-baselines.py
+python /tmp/coleman-ci-baselines.py /tmp/ci-baseline-evidence
 ```
 
 The script's `__main__` guard is required for native spawned workers. It freezes
@@ -208,5 +212,26 @@ Qualification remains explicitly blocked:
 
 The incompatible result is an honest outcome of the investigation, not evidence
 against the method. No superiority, paper reproduction or algorithm-equivalence
-claim follows. Independent comparisons and reporting continue in #312/#313;
+claim follows. Public provider feasibility and final corpus reporting continue in #312/#313;
 the four historical admission gaps documented in #309 remain open.
+
+## Published 4.17 qualification
+
+The actual signed base wheel was installed outside the checkout, with all 322 SDK
+files verified against the release tag and no MCP dependency. The tagged example
+executes twelve candidates, retains 36 raw build records and preserves all 258
+artifacts on retry. The completed reader verifies the native results and
+checkpoint frontiers without unpickling them.
+
+Original verified Karaf Parquet contains 6,567 method observations across eight
+builds. Ten eligible methods complete all 80 raw records; original order, context
+and DANTE remain incompatible with explicit reasons. The mathematical digest is
+`sha256:7a507a9864cfa2f78ed780270703530cc16a1d4c6ee83b28d29e6ba524c5a968`,
+identical to both final-source runs in different directories with one versus two
+Polars threads. This remains assumed-order retrospective development evidence.
+
+An actual published 4.16 native run continues at checkpoint 8 and retries with all
+28 protected files unchanged. Existing source-admission bindings are revalidated
+using their original producer configuration; legacy stage-ETL byte profiles can
+reject after a thread-setting change in both 4.16 and 4.17. No old receipt is
+rewritten or silently migrated.

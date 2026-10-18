@@ -71,8 +71,10 @@ through [#328](https://github.com/jacksonpradolima/coleman/pull/328). #309's
 [source admission and production reality](corpus-admission.md) shipped in 4.15
 through [#330](https://github.com/jacksonpradolima/coleman/pull/330). #310's [metric references and repeated CI protocol](corpus-evaluation.md) shipped
 in 4.16 through [#332](https://github.com/jacksonpradolima/coleman/pull/332).
-Ten of the thirteen public subtasks are delivered. #311–#313 remain open;
-the [comparable baseline matrix](comparable-baselines.md) in #311 is in development. Source conversion does not establish historical admission.
+The [comparable baseline matrix](comparable-baselines.md) shipped in 4.17 through
+[#334](https://github.com/jacksonpradolima/coleman/pull/334). Eleven of the thirteen
+public subtasks are delivered. #312 and #313 remain open; public prospective
+feasibility in #312 is next. Source conversion does not establish historical admission.
 
 The published HCS workflow preserves raw pipeline/job correspondence, WTS/VTS
 Parquet, all 208 sparse cells and isolated multi-budget checkpoints. Its declared
@@ -92,7 +94,7 @@ later gates.
 | Synthetic laboratory — delivered in 4.14 | [#308 interaction-covering stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Tiny oracle/resource bounds; explicit synthetic dependence and native eligibility |
 | Evidence integration — delivered in 4.15 | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | Three scoped regimes covered; four historical/HCS regimes remain uncovered |
 | Comparison protocol — delivered in 4.16 | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310) | #309; one fold/budget and one paired mean per reviewed repository family |
-| Comparable baselines — in development | [#311 candidate matrix](https://github.com/jacksonpradolima/coleman/issues/311) | #309 and #310 |
+| Comparable baselines — delivered in 4.17 | [#311 candidate matrix](https://github.com/jacksonpradolima/coleman/issues/311) | #309 and #310 |
 | Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
 | Final execution/report | [#313 confirmatory corpus](https://github.com/jacksonpradolima/coleman/issues/313) | #309–#312 and the complete parent gates |
 
@@ -189,7 +191,16 @@ repository families. Existing protected evaluation receives one paired mean per
 family. Native metric conventions, original artifacts and checkpoints retain
 their semantics; no implicit migration grants source eligibility. The published
 wheel runs the complete native example and retains insufficient evidence for its
-one constructed family. #310 is delivered; #261 remains open and #311 is next.
+one constructed family. #310 is delivered; its 4.16 qualification remains historical evidence.
+
+**4.17.0** adds the [comparable native baseline matrix](comparable-baselines.md).
+Versioned source/plan/cell and attempt records retain explicit units, full rankings,
+failed and incompatible runs, independently checked metrics and checkpoint recovery.
+Stable source sums protect native budgets from parallel reduction order; legacy
+loaders retain their existing sums. The published wheel executes all twelve built-in
+candidates in the owned example and preserves its artifacts on retry. #311 is
+delivered; #261 stays open, with #312 prospective feasibility next and #313 dependent
+on all remaining scientific gates.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:
