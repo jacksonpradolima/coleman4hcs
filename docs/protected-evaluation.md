@@ -8,6 +8,11 @@ It uses the [versioned result contract](domain-results.md), existing native runn
 extensions, sinks, artifacts and manifests. No scheduling algorithm or legacy
 result meaning is replaced.
 
+For a frozen corpus with repeated builds and seeds, use the development
+[corpus preparation API](corpus-evaluation.md) to preserve its full raw grid and
+prepare equal-build/seed repository-family means before paired inference. Its
+source leakage groups remain separate from independent inference units.
+
 ## Temporal eligibility
 
 ```python

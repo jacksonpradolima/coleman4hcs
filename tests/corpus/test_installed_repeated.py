@@ -1,0 +1,139 @@
+"""Installed native corpus comparison, protected retry and transport-free domain imports."""
+
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+from coleman.corpus.repeated import RepeatedCorpusReport
+from coleman.evaluation.protected import FamilyReport
+
+ROOT = Path(__file__).parents[2]
+
+
+def test_installed_native_repetitions_and_checkpoint_continuation_outside_checkout(tmp_path):
+    wheel_dir = tmp_path / "wheels"
+    subprocess.run(
+        ["uv", "build", "--offline", "--no-build-isolation", "--wheel", "--out-dir", str(wheel_dir)],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    )
+    wheel = next(wheel_dir.glob("*.whl"))
+    environment = tmp_path / "installed"
+    subprocess.run(["uv", "venv", str(environment), "--python", sys.executable], check=True, capture_output=True)
+    python = environment / "bin" / "python"
+    subprocess.run(
+        ["uv", "pip", "install", "--offline", "--python", str(python), str(wheel)], check=True, capture_output=True
+    )
+    external = tmp_path / "external"
+    external.mkdir()
+    script = external / "ci.py"
+    shutil.copy(ROOT / "examples/corpus-evaluation/ci.py", script)
+    env = os.environ.copy()
+    env.pop("PYTHONPATH", None)
+    output = external / "output"
+
+    def execute():
+        result = subprocess.run(
+            [str(python), "-I", str(script), str(output)],
+            cwd=external,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=True,
+        )
+        return json.loads(result.stdout.splitlines()[-1])
+
+    first = execute()
+    assert first["raw_cells"] == 16
+    assert first["independent_units"] == 1
+    assert first["conclusion"] == "insufficient_evidence"
+    assert first["retry_confirmatory"] is False
+    report = RepeatedCorpusReport.from_json(Path(first["raw_evidence"]).read_bytes())
+    assert len(report.rows) == 16
+    assert report.design.evidence_basis == "constructed_mechanism"
+    assert report.design.source_admission_fingerprint is None
+    comparison = FamilyReport.from_json(Path(first["comparison"]).read_bytes())
+    assert len(comparison.inputs) == 2
+    protected = {
+        path: hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in (output / "native").rglob("*")
+        if path.is_file() and (path.suffix in {".parquet", ".pkl"} or path.name.startswith("progress_"))
+    }
+    assert sum(path.suffix == ".pkl" for path in protected) == 8
+    second = execute()
+    assert second["conclusion"] == "insufficient_evidence"
+    assert second["raw_cells"] == 16
+    assert second["retry_confirmatory"] is False
+    assert {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in protected} == protected
+    assert set(path for path in (output / "native").rglob("*.parquet")) == {
+        p for p in protected if p.suffix == ".parquet"
+    }
+    assert Path(first["raw_evidence"]).read_bytes() == (report.to_json() + "\n").encode()
+    # Kill a real installed process while its immutable writer is still consuming
+    # content. Only an uncommitted temporary file may survive; recovery ignores it.
+    crash_root = external / "interrupted-publication"
+    crash = """
+import os, sys
+from pathlib import Path
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus.repeated import RepeatedCorpusReport, publish_repeated_corpus
+report = RepeatedCorpusReport.from_json(Path(sys.argv[1]).read_bytes())
+writer = ArtifactWriter(sys.argv[2])
+def interrupted(path, content):
+    def chunks():
+        yield content[:100].encode()
+        os._exit(73)
+    writer.write_immutable_stream(path, chunks(), maximum_bytes=len(content.encode()))
+writer.write_immutable = interrupted
+publish_repeated_corpus(report, writer)
+"""
+    stopped = subprocess.run(
+        [str(python), "-I", "-c", crash, first["raw_evidence"], str(crash_root)],
+        cwd=external,
+        env=env,
+        capture_output=True,
+        timeout=30,
+        check=False,
+    )
+    assert stopped.returncode == 73
+    assert not tuple(crash_root.rglob("*.json"))
+    assert len(tuple(crash_root.rglob("*.tmp"))) == 1
+    recovery = """
+import sys
+from pathlib import Path
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus.repeated import RepeatedCorpusReport, publish_repeated_corpus
+report = RepeatedCorpusReport.from_json(Path(sys.argv[1]).read_bytes())
+path = publish_repeated_corpus(report, ArtifactWriter(sys.argv[2]))
+assert RepeatedCorpusReport.from_json(path.read_bytes()) == report
+print(path)
+"""
+    recovered = subprocess.run(
+        [str(python), "-I", "-c", recovery, first["raw_evidence"], str(crash_root)],
+        cwd=external,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=True,
+    )
+    assert Path(recovered.stdout.strip()).read_bytes() == Path(first["raw_evidence"]).read_bytes()
+    guard = """
+import importlib.abc, pathlib, sys
+class Guard(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.startswith(('coleman.cli', 'coleman.transports', 'mcp')):
+            raise AssertionError('Domain attempted transport import: ' + fullname)
+sys.meta_path.insert(0, Guard())
+import coleman.corpus.repeated as domain
+import coleman.corpus.repeated_contracts
+assert pathlib.Path(domain.__file__).resolve().is_relative_to(pathlib.Path(sys.prefix).resolve())
+assert not any(name.startswith(('coleman.cli', 'coleman.transports', 'mcp')) for name in sys.modules)
+"""
+    subprocess.run([str(python), "-I", "-c", guard], cwd=external, env=env, capture_output=True, check=True, timeout=30)
