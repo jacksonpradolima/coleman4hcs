@@ -10235,7 +10235,7 @@ In an activated Python 3.14+ environment:
 ```bash
 python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.17.0/coleman-4.17.0-py3-none-any.whl#sha256=e5a272ddc0edf72bd909a743fa2b3bc0dfeb8a02871c487ab22683cddeea40ca"
 curl --fail --location \
-  "https://raw.githubusercontent.com/jacksonpradolima/coleman/ac4463b086601c02680f73425828f65b60d1f83e/examples/public-ci-feasibility/ci.py" \
+  "https://raw.githubusercontent.com/jacksonpradolima/coleman/7ccbca0c2d665d6bf5b4d58c6727ac5f76555b38/examples/public-ci-feasibility/ci.py" \
   --output /tmp/coleman-public-ci.py
 python /tmp/coleman-public-ci.py \
   --repository jacksonpradolima/coleman --run-id 39170199990 \
