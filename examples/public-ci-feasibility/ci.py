@@ -601,7 +601,10 @@ def capture(request: Request, output: Path, *, fetch: bool = False) -> tuple[Pat
 def _capture_locked(request: Request, runtime: InstalledRuntime, example: str, root: Path, fetch: bool):
     """Publish staged responses/snapshot before completion while holding the existing local ownership lock."""
     if (root / "complete.json").exists():
-        return root, read_capture(root)
+        snapshot = read_capture(root)
+        if (snapshot.request, snapshot.runtime, snapshot.example_sha256) != (request, runtime, example):
+            raise ValueError("Completed capture differs from its requested runtime or example scope")
+        return root, snapshot
     writer = ArtifactWriter(root)
     writer.write_immutable(root / "request.json", request.to_json() + "\n")
     run_response = _response(root, "run", _urls(request), fetch)

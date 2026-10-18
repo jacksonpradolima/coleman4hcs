@@ -307,7 +307,8 @@ def die_after_committed_run(output):
     def owned_http(url, part):
         return response(module, req, part, wire()[0 if part == "run" else 1])
 
-    ArtifactWriter.write_immutable = write_then_die
+    patch = pytest.MonkeyPatch()
+    patch.setattr(ArtifactWriter, "write_immutable", write_then_die)
     module.fetch_response = owned_http
     module.capture(req, Path(output), fetch=True)
 
@@ -331,3 +332,23 @@ def test_process_death_releases_lock_and_preserves_first_committed_receipt(modul
     assert calls == ["jobs"]
     assert path.read_bytes() == original
     assert module.read_capture(root) == recovered
+
+
+def test_completed_capture_from_another_runtime_cannot_satisfy_current_scope(module, tmp_path, monkeypatch):
+    """A self-consistent copied inventory still cannot represent another installed runtime's request."""
+    install_owned_responses(module, monkeypatch)
+    req = request(module)
+    root, value = module.capture(req, tmp_path, fetch=True)
+    payload = value.model_dump()
+    payload["runtime"] = {**value.runtime.model_dump(), "package_fingerprint": "sha256:" + "c" * 64}
+    transferred = module.Snapshot.model_validate(payload)
+    path = root / "snapshot.json"
+    path.write_text(transferred.to_json() + "\n")
+    receipt = module.read_contract(root / "complete.json", module.Completion)
+    replacement = module.Completion.model_validate(
+        {**receipt.model_dump(), "snapshot_fingerprint": transferred.fingerprint, "snapshot_bytes": path.stat().st_size}
+    )
+    (root / "complete.json").write_text(replacement.to_json() + "\n")
+    assert module.read_capture(root) == transferred
+    with pytest.raises(ValueError, match="requested runtime or example scope"):
+        module.capture(req, tmp_path)
