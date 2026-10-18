@@ -20,6 +20,16 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
+## New in 4.16
+
+[Compare repeated CI experiments without inflating independent evidence](corpus-evaluation.md).
+Freeze complete builds, seeds, budgets and repository families; retain raw cells
+and prepare one paired mean per candidate/family for protected evaluation.
+The installed Random/UCB example checks actual metrics and resumes checkpoints;
+its related histories correctly yield insufficient evidence. Zero, negative and
+unavailable measurements stay distinct, and immutable keys bind every build/seed
+cell. See the [4.16 release notes](releases/4.16.0.md) for compatibility and limits.
+
 ## New in 4.15
 
 [Audit what a CI source actually supports](corpus-admission.md). Reuse existing
@@ -155,7 +165,7 @@ With Python 3.14 or later in an activated environment, install the GitHub releas
 For SHA-256 verification before installation, use the [complete setup command](setup.md#default-run-no-docker-required):
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
 coleman run --config my-experiment.yaml
 ```
 

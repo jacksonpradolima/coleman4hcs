@@ -6,7 +6,7 @@ an explicit refusal of protected historical evaluation. The report connects
 versioned receipts, source-specific terms, analytical profiles and the existing
 registry. A successful ETL or a large suite is not scientific admission.
 
-This workflow is available in the verified published **4.15** wheel. Audit
+This workflow is available in the verified published **4.16** wheel. Audit
 source-purpose evidence before a policy comparison; the report retains missing
 historical gates and does not claim completed cross-corpus confirmation.
 
@@ -20,7 +20,7 @@ outside Git, with separate cache, ETL and audit directories.
 ```bash
 export COLEMAN_CI_HOME="$(mktemp -d "${TMPDIR:-/tmp}/coleman-ci-audit.XXXXXX")"
 uv venv "$COLEMAN_CI_HOME/installed" --python 3.14
-uv pip install --python "$COLEMAN_CI_HOME/installed/bin/python" "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
+uv pip install --python "$COLEMAN_CI_HOME/installed/bin/python" "https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
 cd "$COLEMAN_CI_HOME"
 
 export COLEMAN_CI_CACHE="$COLEMAN_CI_HOME/source-cache"
@@ -360,3 +360,12 @@ efficacy result. Full reports stay outside Git because embedded controlled
 observations retain their recipe-only component restrictions. Original phase-one
 fixture readiness still leaves all seven regimes uncovered; this separate scoped
 audit does not rewrite that artifact or close #261.
+
+### Current 4.16 compatibility
+
+The actual published 4.16 wheel revalidates this same complete report and all 61
+source bindings offline, including all six original 4.13 controlled producers.
+Its 308 SDK files match the 4.16 release tag. The report fingerprint, source
+cards, three scoped purposes and four uncovered historical/HCS regimes remain
+unchanged. The [repeated-observation guide](corpus-evaluation.md) records the new
+native metric and checkpoint qualification; it does not grant new admission.
