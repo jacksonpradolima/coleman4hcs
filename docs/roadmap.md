@@ -165,7 +165,15 @@ process. Rare failures survive churn; zero-work cases retain typed traces while
 native replay rejects their undefined cost metric. Existing 4.13 native results
 and checkpoints resume without changing protected bytes. This owned synthetic
 family supports mechanism checks; it does not admit empirical diversity regimes
-or establish independent faults. #309 is the next bounded implementation.
+or establish independent faults. #309 is the current bounded implementation.
+
+**4.15 development** adds [source admission and production reality](corpus-admission.md)
+on the existing registry, profiles, source receipts and immutable publication.
+Original raw-capture verification uses an explicit application boundary; domain
+imports remain independent of transports. A 35-axis matrix distinguishes observed,
+reconstructed, missing, synthetic and inapplicable facts. Functional/mechanism
+qualification cannot grant historical confirmation. The issue remains open until
+the complete qualification, local review and published-package checks pass.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:

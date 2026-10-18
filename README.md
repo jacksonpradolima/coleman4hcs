@@ -22,6 +22,7 @@ and checkpoint. Inspect the inputs, decisions and evidence behind each result.
 | Your goal | Available workflow |
 | --- | --- |
 | Stress a difficult CI decision | [32 deterministic interaction-covering cases](docs/ci-stress-laboratory.md), explicit truth and feedback clocks, native Parquet and resumable agents |
+| Audit what a source actually supports | [Development source-admission API](docs/corpus-admission.md): verify original evidence, retain explicit units and inspect a 35-axis production-reality matrix |
 | Compare adaptive CI prioritization policies | Native TCPCI runner, configurable policies/rewards, contextual inputs and [parameter sweeps](#sweep-engine) |
 | Evaluate configurable software | [Pinned LibSSH data → WTS/VTS Parquet and checkpointed replay](docs/hcs-parquet-etl.md), plus the existing Dune examples |
 | Collect real-fault observations | [Controlled Java matrix](docs/java-fault-matrix.md) and [Python source capture](docs/python-source-capture.md): frozen source/runtime recipes, raw evidence and offline recovery |
@@ -739,7 +740,8 @@ The published 4.14 wheel includes a [bounded constructed C slice](docs/c-seeded-
 from permitted Juliet inputs. SIR component/data terms remain unresolved.
 Eight of the thirteen public subtasks are delivered, including LibSSH WTS/VTS
 (introduced in 4.13) and the [#308](https://github.com/jacksonpradolima/coleman/issues/308)
-interaction-covering synthetic stress laboratory in 4.14. Source admission in #309 is next;
+interaction-covering synthetic stress laboratory in 4.14. The development branch for
+#309 adds [evidence-backed source admission](docs/corpus-admission.md);
 metric/statistical validation, comparable baselines, public prospective collection
 feasibility and the confirmatory report remain in #309–#313. External baseline
 reproduction, including investigated DANTE methods, requires its own verified
