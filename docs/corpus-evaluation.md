@@ -6,7 +6,7 @@ inside its unit, not more independent repositories. This library preparation
 feeds [protected evaluation](protected-evaluation.md); it adds no runner,
 scheduler, fitting service or statistical test.
 
-This workflow is available in the verified published **4.16** wheel. The complete
+Introduced in 4.16, this workflow is also available in the verified published **4.17** wheel. The complete
 example below runs outside the repository with that package.
 Historical source admission and the four remaining uncovered regimes retain
 their [documented limits](corpus-admission.md).
@@ -203,16 +203,16 @@ from the same immutable release tag. Run both outside the repository:
 ```bash
 task_corpus_env="$(mktemp -d)"
 uv venv "$task_corpus_env/installed" --python 3.14
-uv pip install --python "$task_corpus_env/installed/bin/python" "https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
+uv pip install --python "$task_corpus_env/installed/bin/python" "https://github.com/jacksonpradolima/coleman/releases/download/v4.17.0/coleman-4.17.0-py3-none-any.whl#sha256=e5a272ddc0edf72bd909a743fa2b3bc0dfeb8a02871c487ab22683cddeea40ca"
 curl --fail --location --output "$task_corpus_env/ci.py" \
-  https://raw.githubusercontent.com/jacksonpradolima/coleman/v4.16.0/examples/corpus-evaluation/ci.py
+  https://raw.githubusercontent.com/jacksonpradolima/coleman/v4.17.0/examples/corpus-evaluation/ci.py
 cd "$task_corpus_env"
 "$task_corpus_env/installed/bin/python" -I ci.py ./output
 # Resume the native run; fresh analysis metadata does not grant fresh holdout access:
 "$task_corpus_env/installed/bin/python" -I ci.py ./output
 ```
 
-The complete [example](https://github.com/jacksonpradolima/coleman/blob/v4.16.0/examples/corpus-evaluation/ci.py)
+The complete [example](https://github.com/jacksonpradolima/coleman/blob/v4.17.0/examples/corpus-evaluation/ci.py)
 freezes two owned CI histories, two builds each, Random/UCB with explicit `c=1.0`,
 seeds 11/42 and a 0.5 native-work budget, including test rename/churn in build two.
 Build one labels are available before the replay's second decision. Source clocks
@@ -275,3 +275,11 @@ original package identity. The release's wheel/source signatures, six asset
 sizes/digests, SBOM and version-only automatic bump were verified separately.
 These checks establish bounded reproducibility and compatibility; they do not
 establish independent empirical families or policy superiority.
+
+## Current 4.17 compatibility
+
+The actual published 4.17 wheel also executes the complete tagged repeated-CI
+example outside checkout. All 322 installed SDK files match the tag; sixteen raw
+cells retain one constructed family and insufficient evidence. The immutable
+member/seed swap guards reject, and retry preserves all 24 native files. The
+original 4.16 qualification above remains historical evidence.

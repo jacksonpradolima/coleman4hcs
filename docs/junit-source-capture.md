@@ -18,7 +18,7 @@ negative/inconclusive results retained.
 
 ## Prepare and run
 
-The published 4.16 wheel includes this single-pair producer and the matrix
+The published 4.17 wheel includes this single-pair producer and the matrix
 command; use the verified [setup command](setup.md#default-run-no-docker-required).
 The bundled preset requires POSIX,
 Docker, an arm64 host and arm64 Docker engine. It pins Temurin `11.0.32.1` and
