@@ -76,7 +76,7 @@ def test_real_native_candidate_complete_order_and_observed_phase_costs(method):
     "method", ["seeded_random_v1", "thompson_beta11_v1", "portfolio_random_ucb_v1", "recent_failure_v1"]
 )
 @pytest.mark.parametrize("seed", [11, 42])
-def test_real_checkpoint_continuation_preserves_sampling_and_observed_history(tmp_path, method, seed):
+def test_real_checkpoint_continuation_preserves_sampling_and_observed_history(tmp_path, monkeypatch, method, seed):
     plan = baseline_plan()
     agent = BaselineAgent(plan, method, seed)
     for build in plan.source.builds[:2]:
@@ -90,15 +90,13 @@ def test_real_checkpoint_continuation_preserves_sampling_and_observed_history(tm
     agent.update_bandit(final)
     uninterrupted = agent.choose()
     payload = store.load("owned", 1)
-    assert payload is not None and payload.step == 2
+    assert payload is not None
+    assert payload.step == 2
     restored = payload.agents[0]
-    previous = policy_base._rng
-    try:
-        policy_base._rng = np.random.default_rng(987654321)  # A resumed worker has a new process-global RNG.
-        restored.update_bandit(bandit_for(plan.source.builds[2]))
-        assert restored.choose() == uninterrupted
-    finally:
-        policy_base._rng = previous
+    # A resumed worker starts with a fresh process-global generator.
+    monkeypatch.setattr(policy_base, "_rng", np.random.default_rng(987654321))
+    restored.update_bandit(bandit_for(plan.source.builds[2]))
+    assert restored.choose() == uninterrupted
 
 
 def test_cost_history_never_observes_unselected_test_as_a_pass():
@@ -111,15 +109,18 @@ def test_cost_history_never_observes_unselected_test_as_a_pass():
     assert native.evaluation_metric.scheduled_testcases == ["b"]
     assert set(agent.native.policy.historical.history) == {"b"}
     history = agent.native.policy.historical.history["b"]
-    assert history.observations == 1 and history.failures == 0 and history.duration_sum == 2
+    assert history.observations == 1
+    assert history.failures == 0
+    assert history.duration_sum == 2
 
 
 def test_out_of_source_forecast_cannot_invent_an_extra_decision():
     plan = baseline_plan()
     agent = BaselineAgent(plan, "shortest_prior_v1", 42)
     agent.native.t = len(plan.source.builds)
+    undeclared = bandit_for(plan.source.builds[-1])
     with pytest.raises(ValueError, match="no declared decision"):
-        agent.update_bandit(bandit_for(plan.source.builds[-1]))
+        agent.update_bandit(undeclared)
 
 
 def test_context_feature_name_cannot_replace_native_test_identity():

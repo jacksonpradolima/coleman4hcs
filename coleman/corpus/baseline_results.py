@@ -8,7 +8,7 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, model_validator
 
 from coleman.corpus.baseline_contracts import BaselinePlan, Method
-from coleman.corpus.baseline_eligibility import baseline_eligibility
+from coleman.corpus.baseline_eligibility import BaselineEligibility, baseline_eligibility
 from coleman.corpus.repeated_contracts import BUDGET_RATIO, Seed
 from coleman.evaluation.protected.temporal import Timestamp
 from coleman.results.domain import DomainRecord, Fingerprint, Identifier, Measurement, fingerprint
@@ -395,19 +395,24 @@ class BaselineMatrixReport(VersionedContract):
             raise ValueError("Baseline report requires the entire unique frozen candidate/seed/budget grid")
         eligibility = {item.method: item for item in baseline_eligibility(self.plan)}
         for cell in self.cells:
-            if (cell.method, cell.seed, cell.budget) != expected[cell.cell_id]:
-                raise ValueError("Baseline cell identity does not match its declared dimensions")
-            compatible = eligibility[cell.method]
-            if not compatible.compatible and (cell.state != "incompatible" or cell.reasons != compatible.reasons):
-                raise ValueError("Baseline incompatible source/candidate must retain its exact eligibility reasons")
-            if compatible.compatible and cell.state == "incompatible":
-                raise ValueError("An eligible baseline cannot be silently excluded")
-            if cell.state == "completed" and (
-                cell.native_run_id is None or len(cell.observations) != len(self.plan.source.builds)
-            ):
-                raise ValueError("Completed baseline requires every raw build and its native run")
+            self._check_cell(cell, expected[cell.cell_id], eligibility[cell.method])
         object.__setattr__(self, "cells", tuple(sorted(self.cells, key=lambda item: item.cell_id)))
         return self
+
+    def _check_cell(
+        self, cell: BaselineCellResult, dimensions: tuple[str, int, Quantity], compatible: BaselineEligibility
+    ) -> None:
+        """Verify each frozen coordinate retains its exact compatibility and complete raw membership."""
+        if (cell.method, cell.seed, cell.budget) != dimensions:
+            raise ValueError("Baseline cell identity does not match its declared dimensions")
+        if not compatible.compatible and (cell.state != "incompatible" or cell.reasons != compatible.reasons):
+            raise ValueError("Baseline incompatible source/candidate must retain its exact eligibility reasons")
+        if compatible.compatible and cell.state == "incompatible":
+            raise ValueError("An eligible baseline cannot be silently excluded")
+        if cell.state == "completed" and (
+            cell.native_run_id is None or len(cell.observations) != len(self.plan.source.builds)
+        ):
+            raise ValueError("Completed baseline requires every raw build and its native run")
 
     @property
     def complete(self) -> bool:

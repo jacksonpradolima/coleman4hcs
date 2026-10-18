@@ -150,7 +150,9 @@ a terminal event stays visible with unknown costs. Failed cells remain terminal
 results on retry; they are not silently rerun until favorable. Completed cells
 verify their actual bytes without re-execution. Incomplete cells resume through
 native checkpoints, preserving the first immutable per-build evidence. An aborted
-or unavailable cell prevents a matrix completion receipt. A terminal failed cell
+or unavailable cell prevents a matrix completion receipt. After recording the
+partial grid and terminal attempt, a graceful KeyboardInterrupt/SystemExit is
+re-raised so the caller actually stops. A terminal failed cell
 can complete the inventory without pretending its execution succeeded.
 
 Strict readers reject missing/old/future schema versions, changed evidence,

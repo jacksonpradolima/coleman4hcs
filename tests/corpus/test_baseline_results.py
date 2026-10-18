@@ -80,14 +80,16 @@ def test_zero_failure_ratios_are_unavailable_and_zero_detection_time_is_valid():
 
 @pytest.mark.parametrize("budget", [-1.0, float("nan"), float("inf"), True])
 def test_reference_invalid_budget_rejects(budget):
+    prepared_input = baseline_plan().source.builds[0]
     with pytest.raises(ValueError):
-        baseline_reference(baseline_plan().source.builds[0], ("a", "b", "c"), budget)
+        baseline_reference(prepared_input, ("a", "b", "c"), budget)
 
 
 @pytest.mark.parametrize("ranking", [("a", "a", "c"), ("a", "b"), ("a", "b", "unknown")])
 def test_reference_membership_rejects(ranking):
+    prepared_input = baseline_plan().source.builds[0]
     with pytest.raises(ValueError):
-        baseline_reference(baseline_plan().source.builds[0], ranking, 7.0)
+        baseline_reference(prepared_input, ranking, 7.0)
 
 
 def test_binary_cost_scaling_metamorphism():
@@ -142,8 +144,9 @@ def valid_attempt():
     ],
 )
 def test_attempt_event_and_resource_semantics_reject_ambiguous_claims(mutation):
+    prepared_input = valid_attempt()
     with pytest.raises(ValueError):
-        change(valid_attempt(), **mutation)
+        change(prepared_input, **mutation)
 
 
 def test_started_attempt_cannot_claim_terminal_cost_or_failure_reason():
@@ -170,8 +173,9 @@ def test_fully_valid_attempt_and_report_reject_unknown_versions(version):
     for value in (valid_attempt(), incompatible_report()):
         data = value.model_dump()
         data["schema_version"] = version
+        target_operation = type(value).model_validate
         with pytest.raises(ValueError, match="schema_version"):
-            type(value).model_validate(data)
+            target_operation(data)
 
 
 def test_complete_grid_never_silently_drops_incompatible_cells():
@@ -183,10 +187,12 @@ def test_complete_grid_never_silently_drops_incompatible_cells():
     with pytest.raises(ValueError, match="entire unique"):
         change(report, cells=(*report.cells, report.cells[0]))
     cell = report.cells[0]
+    prepared_cells = (change(cell, reasons=("invented_reason",)), *report.cells[1:])
     with pytest.raises(ValueError, match="exact eligibility"):
-        change(report, cells=(change(cell, reasons=("invented_reason",)), *report.cells[1:]))
+        change(report, cells=prepared_cells)
+    prepared_cells = (change(cell, seed=999), *report.cells[1:])
     with pytest.raises(ValueError, match="frozen candidate or budget|declared dimensions"):
-        change(report, cells=(change(cell, seed=999), *report.cells[1:]))
+        change(report, cells=prepared_cells)
     with pytest.raises(ValueError, match="native run"):
         change(cell, native_run_id="invented-native-run")
     with pytest.raises(ValueError, match="resource observations"):

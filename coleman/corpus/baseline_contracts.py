@@ -206,9 +206,9 @@ class BaselineSource(VersionedContract):
                 if (
                     item.source_metadata is not None
                     and item.decided_at is not None
-                    and item.source_metadata.available_at < item.decided_at
+                    and item.source_metadata.available_at <= item.decided_at
                 ):
-                    raise ValueError("Current target outcome was already available before the declared decision")
+                    raise ValueError("Current target outcome was already available at or before the declared decision")
 
 
 class BaselineLimits(Immutable):

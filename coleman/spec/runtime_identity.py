@@ -15,6 +15,8 @@ from coleman.results.versioned import VersionedContract
 from coleman.selection.contracts import Immutable
 from coleman.spec.producer_identity import installed_producer_identity
 
+_DISTRIBUTION_SEPARATORS = r"[-_.]+"
+
 
 class DistributionIdentity(Immutable):
     """One installed distribution's canonical project name/version, not a cryptographic wheel attestation."""
@@ -46,7 +48,9 @@ class InstalledRuntime(VersionedContract):
     def _canonical(self) -> Self:
         """Reject noncanonical/ambiguous distribution identities and normalize enumeration order."""
         names = [item.name for item in self.distributions]
-        if len(names) != len(set(names)) or any(re.sub(r"[-_.]+", "-", name.lower()) != name for name in names):
+        if len(names) != len(set(names)) or any(
+            re.sub(_DISTRIBUTION_SEPARATORS, "-", name.lower()) != name for name in names
+        ):
             raise ValueError("Installed runtime requires unique canonical distribution names")
         object.__setattr__(self, "distributions", tuple(sorted(self.distributions, key=lambda item: item.name)))
         return self
@@ -79,7 +83,7 @@ def _installed_distribution(name: str) -> Distribution:
     if variants != {item.version}:
         raise ValueError("Installed dependency has conflicting versions")
     actual = item.metadata["Name"]
-    if not isinstance(actual, str) or re.sub(r"[-_.]+", "-", actual.lower()) != name:
+    if not isinstance(actual, str) or re.sub(_DISTRIBUTION_SEPARATORS, "-", actual.lower()) != name:
         raise ValueError("Installed dependency metadata disagrees with its requested identity")
     if item.metadata.get_all("Default-Extra"):
         raise ValueError("Runtime default-extra metadata requires explicit qualification")
@@ -111,10 +115,7 @@ def _base_distributions() -> dict[str, str]:
         entries[name] = item.version
         visited[name] = frozenset(extras)
         for requirement in _active_requirements(item, extras):
-            dependency = re.sub(r"[-_.]+", "-", requirement.name.lower())
-            installed = _installed_distribution(dependency)
-            if installed.version not in requirement.specifier:
-                raise ValueError("Installed dependency does not satisfy its active runtime requirement")
+            dependency = _qualified_dependency(requirement)
             previous = requested.get(dependency)
             combined = set(requirement.extras) | (previous or set())
             if previous is None or previous != combined:
@@ -123,3 +124,12 @@ def _base_distributions() -> dict[str, str]:
             if len(requested) > 4096 or len(combined) > 128:
                 raise ValueError("Installed base dependency inventory exceeds its supported bounds")
     return entries
+
+
+def _qualified_dependency(requirement: Requirement) -> str:
+    """Check an active requirement against its named installed distribution without scanning unrelated packages."""
+    dependency = re.sub(_DISTRIBUTION_SEPARATORS, "-", requirement.name.lower())
+    installed = _installed_distribution(dependency)
+    if installed.version not in requirement.specifier:
+        raise ValueError("Installed dependency does not satisfy its active runtime requirement")
+    return dependency

@@ -42,46 +42,53 @@ def test_versioned_baseline_golden_and_roundtrip():
 def test_missing_old_unknown_or_coerced_baseline_version_rejects(version):
     payload = json.loads(baseline_plan().to_json())
     payload["schema_version"] = version
+    prepared_input = json.dumps(payload)
     with pytest.raises(ValueError):
-        BaselinePlan.from_json(json.dumps(payload))
+        BaselinePlan.from_json(prepared_input)
 
 
 @pytest.mark.parametrize("field", ["methods", "seeds", "budgets"])
 def test_duplicate_repetition_dimensions_reject(field):
     plan = baseline_plan()
+    prepared_fields = {field: (getattr(plan, field)[0], getattr(plan, field)[0])}
     with pytest.raises(ValueError, match="Duplicate"):
-        change(plan, **{field: (getattr(plan, field)[0], getattr(plan, field)[0])})
+        change(plan, **prepared_fields)
 
 
 def test_baseline_clock_and_unit_semantics_fail_closed():
     plan = baseline_plan()
     source, build = plan.source, plan.source.builds[0]
     test = build.tests[0]
+    prepared_duration = change(test.duration, unit="ms")
     with pytest.raises(ValueError, match="occupancy seconds"):
-        change(test, duration=change(test.duration, unit="ms"))
+        change(test, duration=prepared_duration)
+    prepared_failure = change(test.failure, value=0.5)
     with pytest.raises(ValueError, match="binary"):
-        change(test, failure=change(test.failure, value=0.5))
+        change(test, failure=prepared_failure)
+    prepared_decided_at = test.context[0].available_at - timedelta(seconds=1)
     with pytest.raises(ValueError, match="future"):
-        change(build, decided_at=test.context[0].available_at - timedelta(seconds=1))
+        change(build, decided_at=prepared_decided_at)
+    prepared_tests = (change(test, context=(change(test.context[0], available_before_step=1),)), *build.tests[1:])
     with pytest.raises(ValueError, match="before its decision step"):
-        change(
-            build, tests=(change(test, context=(change(test.context[0], available_before_step=1),)), *build.tests[1:])
-        )
+        change(build, tests=prepared_tests)
+    prepared_builds = (change(build, source_metadata=None), *source.builds[1:])
     with pytest.raises(ValueError, match="original decision"):
-        change(source, builds=(change(build, source_metadata=None), *source.builds[1:]))
+        change(source, builds=prepared_builds)
     with pytest.raises(ValueError, match="contiguous"):
         change(source, builds=(source.builds[1],))
+    prepared_builds = (build, change(source.builds[1], source_metadata=build.source_metadata), source.builds[2])
     with pytest.raises(ValueError, match="sibling source groups"):
         change(
             source,
-            builds=(build, change(source.builds[1], source_metadata=build.source_metadata), source.builds[2]),
+            builds=prepared_builds,
         )
 
 
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf"), -1.0])
 def test_physical_costs_reject_nonfinite_or_negative(value):
+    prepared_input = baseline_plan().source.builds[0].tests[0].duration
     with pytest.raises(ValueError):
-        change(baseline_plan().source.builds[0].tests[0].duration, value=value)
+        change(prepared_input, value=value)
 
 
 def test_eligibility_keeps_missing_context_order_and_external_methods_visible():
@@ -174,13 +181,15 @@ def test_invalid_feedback_rejects_before_mutation(feedback):
     policy = HistoricalBaseline("failure_frequency_v1", decision_views(baseline_plan()), point_in_time=True)
     with pytest.raises(ValueError):
         policy.accept(1, feedback)
-    assert policy.history == {} and policy.committed_step == 0
+    assert policy.history == {}
+    assert policy.committed_step == 0
 
 
 def test_empty_feedback_advances_without_inventing_passes_and_duplicates_reject():
     policy = HistoricalBaseline("shortest_prior_v1", decision_views(baseline_plan()), point_in_time=True)
     policy.accept(1, ())
-    assert policy.committed_step == 1 and not policy.history
+    assert policy.committed_step == 1
+    assert not policy.history
     with pytest.raises(ValueError, match="out-of-order"):
         policy.accept(1, ())
     with pytest.raises(ValueError, match="next unobserved"):
@@ -217,3 +226,22 @@ def test_signed_context_retains_negative_values_without_becoming_a_probability()
     assert test.context[0].measurement.value == -2.0
     assert test.context[0].measurement.unit == "1"
     assert test.context[0].measurement.direction == "none"
+
+
+def test_target_available_at_decision_is_rejected_but_features_at_that_boundary_are_eligible():
+    """Regression for PR334: equal timestamps cannot make the current target a valid future outcome."""
+    original = baseline_plan()
+    build = original.source.builds[0]
+    metadata = change(build.source_metadata, available_at=build.decided_at)
+    changed_build = change(build, source_metadata=metadata)
+    invalid_builds = (changed_build, *original.source.builds[1:])
+    with pytest.raises(ValueError, match="at or before"):
+        change(original.source, builds=invalid_builds)
+    first = build.tests[0]
+    feature = change(first.context[0], available_at=build.decided_at)
+    contextual_test = change(first, context=(feature,))
+    eligible_build = change(build, tests=(contextual_test, *build.tests[1:]))
+    source = change(original.source, builds=(eligible_build, *original.source.builds[1:]))
+    plan = change(original, source=source)
+    contextual = next(result for result in baseline_eligibility(plan) if result.method == "linucb_alpha05_v1")
+    assert contextual.compatible

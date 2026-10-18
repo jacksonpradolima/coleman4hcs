@@ -40,6 +40,17 @@ from coleman.spec.models import RunSpec
 from coleman.spec.run_id import compute_run_id
 from coleman.spec.runtime_identity import InstalledRuntime
 
+_PLAN_FILE = "plan.json"
+
+
+class _MatrixInterruptedError(RuntimeError):
+    """Carry an audited aborted cell until the complete partial grid is durably published."""
+
+    def __init__(self, cell: BaselineCellResult, interruption: KeyboardInterrupt | SystemExit):
+        """Retain the original stop request; orchestration re-raises it after publishing incomplete evidence."""
+        super().__init__("Baseline matrix invocation interrupted")
+        self.cell, self.interruption = cell, interruption
+
 
 def _publish(writer: ArtifactWriter, path: Path, value) -> None:
     """Bound and atomically publish immutable strict JSON; conflicting bytes raise without replacement."""
@@ -173,18 +184,25 @@ def _execute_cell(root, plan, runtime, binding, dataset, writer) -> BaselineCell
     state, reasons, completion, error = "completed", (), None, None
     try:
         run_with_extension(spec, baseline_extension(attempt_id))
-        completion = validate_native_baseline_completion(
-            native_root, plan, cell, native_root.name, binding.fingerprint, runtime.fingerprint, dataset
-        )
     except BaselineBusyError as caught:
         state, reasons, error = "blocked", ("native_execution_active",), caught
     except (KeyboardInterrupt, SystemExit) as caught:
-        state, reasons, error = "aborted", ("host_invocation_interrupted",), caught
-    except Exception as caught:  # preserve a failed cell rather than selecting only successful runs
-        logging.getLogger(__name__).error("Native baseline cell failed", exc_info=True)
+        reasons = ("host_invocation_interrupted",)
+        terminal = _event(cell, attempt_id, "aborted", reasons, time.perf_counter() - started)
+        _publish(writer, event_root / f"{attempt_id}-terminal.json", terminal)
+        aborted = _cell_result(root, plan, binding, spec, "aborted", reasons)
+        raise _MatrixInterruptedError(aborted, caught) from caught
+    except Exception as caught:  # preserve actual execution failures, never completion-integrity failures
+        if completion_path.exists():
+            raise
+        logging.getLogger(__name__).exception("Native baseline cell failed")
         state, reasons, error = "failed", ("native_execution_failed",), caught
         if isinstance(caught, BaselineLimitError):
             reasons = (caught.reason,)
+    if state == "completed":
+        completion = validate_native_baseline_completion(
+            native_root, plan, cell, native_root.name, binding.fingerprint, runtime.fingerprint, dataset
+        )
     terminal = _event(cell, attempt_id, state, reasons, time.perf_counter() - started, completion, error)
     _publish(writer, event_root / f"{attempt_id}-terminal.json", terminal)
     return _cell_result(root, plan, binding, spec, "unavailable" if state == "blocked" else state, reasons)
@@ -199,7 +217,8 @@ def run_baseline_matrix(plan: BaselinePlan, output: str | Path) -> BaselineMatri
     completed bytes, retain failed cells and resume interrupted native checkpoints.
     Unknown versions, conflicting/corrupt evidence and active matrix locks raise;
     cell execution failures remain explicit report entries. Keyboard interruption
-    records the current cell and leaves remaining eligible cells unavailable.
+    records the current cell, leaves remaining eligible cells unavailable, and
+    re-raises the original interruption after publishing the incomplete report.
 
     Frozen cooperative limits apply per invocation, not as an OS sandbox. Prior
     interrupted costs stay visible and may be unavailable. A runtime change creates
@@ -217,7 +236,7 @@ def run_baseline_matrix(plan: BaselinePlan, output: str | Path) -> BaselineMatri
 def _run_locked(root: Path, plan: BaselinePlan, runtime: InstalledRuntime) -> BaselineMatrixReport:
     """Serialize inventory and completion publication while native children separately own their execution locks."""
     writer = ArtifactWriter(root)
-    _publish(writer, root / "plan.json", plan)
+    _publish(writer, root / _PLAN_FILE, plan)
     _publish(writer, root / "runtime.json", runtime)
     eligibility = {item.method: item for item in baseline_eligibility(plan)}
     data = baseline_input_bytes(plan) if any(item.compatible for item in eligibility.values()) else b""
@@ -227,36 +246,26 @@ def _run_locked(root: Path, plan: BaselinePlan, runtime: InstalledRuntime) -> Ba
             root / "inputs" / dataset / "features-engineered.parquet", (data,), maximum_bytes=len(data)
         )
     cells = []
-    interrupted = False
+    interruption: KeyboardInterrupt | SystemExit | None = None
     for coordinate in baseline_coordinates(plan):
         reasons = eligibility[coordinate.method].reasons
-        if reasons or interrupted:
-            cells.append(
-                BaselineCellResult(
-                    **coordinate.model_dump(),
-                    state="incompatible" if reasons else "unavailable",
-                    reasons=reasons or ("earlier_cell_interrupted",),
-                    native_run_id=None,
-                    observations=(),
-                    mathematical_observations=(),
-                    attempts=(),
-                    unclosed_attempts=0,
-                    resource_evidence="not_applicable" if reasons else "unavailable",
-                )
-            )
+        if reasons or interruption is not None:
+            cells.append(_unexecuted_cell(coordinate, reasons))
             continue
         binding = NativeBaselineBinding(
             schema_version=1,
-            plan_file=str(root / "plan.json"),
+            plan_file=str(root / _PLAN_FILE),
             plan_fingerprint=plan.fingerprint,
             runtime_fingerprint=runtime.fingerprint,
             coordinate=coordinate,
             input_sha256="sha256:" + hashlib.sha256(data).hexdigest(),
             input_size_bytes=len(data),
         )
-        result = _execute_cell(root, plan, runtime, binding, dataset, writer)
+        try:
+            result = _execute_cell(root, plan, runtime, binding, dataset, writer)
+        except _MatrixInterruptedError as stopped:
+            result, interruption = stopped.cell, stopped.interruption
         cells.append(result)
-        interrupted = result.state == "aborted"
     report = BaselineMatrixReport(
         schema_version=1, plan=plan, producer_fingerprint=runtime.fingerprint, cells=tuple(cells)
     )
@@ -271,7 +280,24 @@ def _run_locked(root: Path, plan: BaselinePlan, runtime: InstalledRuntime) -> Ba
             report_size_bytes=len((report.to_json() + "\n").encode()),
         )
         _publish(writer, root / "complete.json", receipt)
+    if interruption is not None:
+        raise interruption
     return report
+
+
+def _unexecuted_cell(coordinate: BaselineCoordinate, reasons: tuple[str, ...]) -> BaselineCellResult:
+    """Distinguish declared incompatibility from unattempted interrupted work without inventing observations."""
+    return BaselineCellResult(
+        **coordinate.model_dump(),
+        state="incompatible" if reasons else "unavailable",
+        reasons=reasons or ("earlier_cell_interrupted",),
+        native_run_id=None,
+        observations=(),
+        mathematical_observations=(),
+        attempts=(),
+        unclosed_attempts=0,
+        resource_evidence="not_applicable" if reasons else "unavailable",
+    )
 
 
 def read_baseline_matrix(root: str | Path) -> BaselineMatrixReport:
@@ -290,7 +316,7 @@ def read_baseline_matrix(root: str | Path) -> BaselineMatrixReport:
         receipt = read_baseline_artifact(root / "complete.json", BaselineMatrixReceipt)
         report_path = root / "reports" / f"{receipt.report_fingerprint[7:]}.json"
         report = read_baseline_artifact(report_path, BaselineMatrixReport)
-        plan = read_baseline_artifact(root / "plan.json", BaselinePlan)
+        plan = read_baseline_artifact(root / _PLAN_FILE, BaselinePlan)
         runtime = read_baseline_artifact(root / "runtime.json", InstalledRuntime)
         if (
             not report.complete
@@ -330,7 +356,7 @@ def _verify_report_cells(root: Path, report: BaselineMatrixReport, runtime: Inst
         ):
             raise ValueError("Baseline report raw observation membership changed")
         _verify_observed_attempts(observations, events)
-        if cell.state == "completed":
+        if cell.state == "completed" or (native_root / "baseline-native-complete.json").exists():
             validate_native_baseline_completion(
                 native_root,
                 plan,

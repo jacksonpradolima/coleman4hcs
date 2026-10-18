@@ -46,8 +46,9 @@ def test_native_bytes_are_deterministic_and_not_authorized_by_a_matching_caller_
     path.write_bytes(changed)
     with pytest.raises(ValueError, match="digest changed"):
         _verify_native_input(path, binding, plan)
+    prepared_argument_1 = binding_for(plan, changed)
     with pytest.raises(ValueError, match="complete frozen source"):
-        _verify_native_input(path, binding_for(plan, changed), plan)
+        _verify_native_input(path, prepared_argument_1, plan)
 
 
 def test_plan_reader_and_unsafe_source_label_do_not_infer_paths(tmp_path):

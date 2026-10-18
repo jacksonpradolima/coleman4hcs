@@ -19,19 +19,21 @@ from tests.corpus.baseline_support import baseline_plan, change
 )
 def test_source_truth_requires_exact_physical_contract(quantity, field, value):
     original = baseline_plan().source.builds[0].tests[0]
+    prepared_fields = {quantity: change(getattr(original, quantity), **{field: value})}
     with pytest.raises(ValueError):
-        change(original, **{quantity: change(getattr(original, quantity), **{field: value})})
+        change(original, **prepared_fields)
 
 
 @pytest.mark.parametrize("field,value", [("meaning", "wrong-v1"), ("minimum", None), ("direction", "none")])
 def test_prior_cost_must_remain_a_distinct_estimate(field, value):
     original = baseline_plan().source.builds[0].tests[0]
+    prepared_prior_cost = change(
+        original.prior_cost, measurement=change(original.prior_cost.measurement, **{field: value})
+    )
     with pytest.raises(ValueError):
         change(
             original,
-            prior_cost=change(
-                original.prior_cost, measurement=change(original.prior_cost.measurement, **{field: value})
-            ),
+            prior_cost=prepared_prior_cost,
         )
 
 
@@ -48,34 +50,41 @@ def test_duplicate_context_original_order_and_test_universe_reject():
 
 def test_source_member_identity_and_real_clocks_cannot_be_rewritten():
     source = baseline_plan().source
+    prepared_builds = (
+        source.builds[0],
+        change(source.builds[1], member_id=source.builds[0].member_id),
+        source.builds[2],
+    )
     with pytest.raises(ValueError, match="Duplicate baseline source member"):
         change(
             source,
-            builds=(source.builds[0], change(source.builds[1], member_id=source.builds[0].member_id), source.builds[2]),
+            builds=prepared_builds,
         )
+    prepared_builds = (
+        source.builds[0],
+        change(source.builds[1], decided_at=source.builds[0].decided_at),
+        source.builds[2],
+    )
     with pytest.raises(ValueError, match="increase strictly"):
         change(
             source,
-            builds=(
-                source.builds[0],
-                change(source.builds[1], decided_at=source.builds[0].decided_at),
-                source.builds[2],
-            ),
+            builds=prepared_builds,
         )
+    prepared_builds = (
+        change(
+            source.builds[0],
+            source_metadata=change(
+                source.builds[0].source_metadata,
+                event_at=source.builds[0].decided_at.replace(year=2025),
+                available_at=source.builds[0].decided_at.replace(year=2025),
+            ),
+        ),
+        *source.builds[1:],
+    )
     with pytest.raises(ValueError, match="already available"):
         change(
             source,
-            builds=(
-                change(
-                    source.builds[0],
-                    source_metadata=change(
-                        source.builds[0].source_metadata,
-                        event_at=source.builds[0].decided_at.replace(year=2025),
-                        available_at=source.builds[0].decided_at.replace(year=2025),
-                    ),
-                ),
-                *source.builds[1:],
-            ),
+            builds=prepared_builds,
         )
 
 
@@ -134,8 +143,9 @@ def test_reference_requires_observed_truth_and_finite_projected_work():
 
 def test_heuristic_rejects_wrong_membership_and_missing_meaningful_order():
     plan = baseline_plan()
+    prepared_argument_1 = decision_views(plan)
     with pytest.raises(ValueError, match="Unsupported"):
-        HistoricalBaseline("seeded_random_v1", decision_views(plan), point_in_time=True)
+        HistoricalBaseline("seeded_random_v1", prepared_argument_1, point_in_time=True)
     heuristic = HistoricalBaseline("recent_failure_v1", decision_views(plan), point_in_time=True)
     with pytest.raises(ValueError, match="universe"):
         heuristic.rank(1, ("a", "b"))

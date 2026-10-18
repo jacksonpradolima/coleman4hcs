@@ -2,6 +2,7 @@
 
 import json
 import shutil
+from pathlib import Path
 
 import pytest
 
@@ -256,35 +257,130 @@ def test_raw_observation_contract_rejects_ambiguous_evidence(matrix, mutation):
     path = next(root.glob("native/*/baseline-observations/*.json"))
     observation = BaselineObservation.from_json(path.read_bytes())
     record = observation.record
-    with pytest.raises(ValueError):
-        if mutation == "ranking":
-            change(observation, ranking=("a", "a", "b"))
-        elif mutation == "selection":
-            change(observation, selected=tuple(reversed(observation.ranking)))
-        elif mutation == "identity":
-            change(observation, record=change(record, execution_id="wrong-logical-cell"))
-        elif mutation == "producer":
-            change(observation, record=change(record, provenance=change(record.provenance, producer="other-producer")))
-        elif mutation == "measurements":
-            change(observation, record=change(record, measurements=record.measurements[:-1]))
-        elif mutation == "censoring":
-            change(
-                observation,
-                first_failure_state="right_censored" if observation.first_failure_state == "detected" else "detected",
-            )
+    if mutation == "ranking":
+        updates = {"ranking": ("a", "a", "b")}
+    elif mutation == "selection":
+        updates = {"selected": tuple(reversed(observation.ranking))}
+    elif mutation == "identity":
+        updates = {"record": change(record, execution_id="wrong-logical-cell")}
+    elif mutation == "producer":
+        producer = change(record.provenance, producer="other-producer")
+        updates = {"record": change(record, provenance=producer)}
+    elif mutation == "measurements":
+        updates = {"record": change(record, measurements=record.measurements[:-1])}
+    elif mutation == "censoring":
+        updates = {
+            "first_failure_state": "right_censored" if observation.first_failure_state == "detected" else "detected"
+        }
+    else:
+        selected_name = "missing_input_fallback_count" if mutation == "fractional_count" else "selected_runner_seconds"
+        target = record.measurement(selected_name)
+        if mutation == "unit":
+            altered = change(target, unit="ms")
+        elif mutation == "fractional_count":
+            altered = change(target, value=0.5)
         else:
-            selected_name = (
-                "missing_input_fallback_count" if mutation == "fractional_count" else "selected_runner_seconds"
-            )
-            target = record.measurement(selected_name)
-            altered = (
-                change(target, unit="ms")
-                if mutation == "unit"
-                else (
-                    change(target, value=0.5)
-                    if mutation == "fractional_count"
-                    else change(target, value=None, status="unavailable")
-                )
-            )
-            measures = tuple(altered if value.name == selected_name else value for value in record.measurements)
-            change(observation, record=change(record, measurements=measures))
+            altered = change(target, value=None, status="unavailable")
+        measures = tuple(altered if value.name == selected_name else value for value in record.measurements)
+        updates = {"record": change(record, measurements=measures)}
+    with pytest.raises(ValueError):
+        change(observation, **updates)
+
+
+@pytest.mark.parametrize("stop_type", [KeyboardInterrupt, SystemExit])
+def test_graceful_host_interrupt_audits_partial_grid_then_stops_caller(tmp_path, monkeypatch, stop_type):
+    """Fault injection verifies a stop request remains a stop request after durable incomplete evidence."""
+    from coleman.application import baselines
+    from coleman.corpus.baseline_results import BaselineAttempt
+
+    original = baseline_plan()
+    plan = change(original, methods=("seeded_random_v1", "ucb_c1_v1"), seeds=(42,), budgets=(original.budgets[0],))
+
+    def interrupted_native_call(spec, extension):
+        """Inject only a host stop at the API boundary; real worker/CP tests cover native execution separately."""
+        raise stop_type(23)
+
+    monkeypatch.setattr(baselines, "run_with_extension", interrupted_native_call)
+    with pytest.raises(stop_type) as stopped:
+        run_baseline_matrix(plan, tmp_path)
+    assert stopped.value.args == (23,)
+    report_path = next(tmp_path.glob("baseline-matrices/*/*/reports/*.json"))
+    report = BaselineMatrixReport.from_json(report_path.read_bytes())
+    assert not report.complete
+    assert {cell.state for cell in report.cells} == {"aborted", "unavailable"}
+    assert not (report_path.parent.parent / "complete.json").exists()
+    attempts = tuple(
+        BaselineAttempt.from_json(path.read_bytes()) for path in report_path.parent.parent.glob("attempts/*/*.json")
+    )
+    assert len(attempts) == 2
+    terminal = next(attempt for attempt in attempts if attempt.event == "terminal")
+    assert terminal.state == "aborted"
+    assert terminal.host_elapsed.value is not None
+    assert terminal.worker_elapsed.value is None
+    assert terminal.worker_peak.value is None
+
+
+def test_actual_completed_native_corruption_is_not_reclassified_as_a_failed_run(tmp_path, monkeypatch):
+    """Regression for PR334: the real native worker completes, then changed bytes must propagate an integrity error."""
+    from coleman.application import baselines
+
+    original = baseline_plan()
+    plan = change(original, methods=("seeded_random_v1",), seeds=(42,), budgets=(original.budgets[0],))
+    actual = baselines.run_with_extension
+
+    def corrupt_after_native_completion(spec, extension):
+        """Run the actual principal component; corrupt one byte inventory only after its receipt exists."""
+        result = actual(spec, extension)
+        assert result.artifacts_dir is not None
+        native_root = Path(result.artifacts_dir)
+        assert (native_root / "baseline-native-complete.json").exists()
+        target = next((native_root / "results").rglob("*.parquet"))
+        with target.open("ab") as stream:
+            stream.write(b"owned-corruption")
+        return result
+
+    monkeypatch.setattr(baselines, "run_with_extension", corrupt_after_native_completion)
+    with pytest.raises(ValueError, match="bytes or artifact membership changed"):
+        run_baseline_matrix(plan, tmp_path)
+    assert not tuple(tmp_path.glob("baseline-matrices/*/*/complete.json"))
+    assert not tuple(tmp_path.glob("baseline-matrices/*/*/attempts/*/*-terminal.json"))
+    with pytest.raises(ValueError, match="bytes or artifact membership changed"):
+        run_baseline_matrix(plan, tmp_path)
+
+
+def test_reader_rechecks_existing_native_completion_even_for_a_failed_cell(matrix, tmp_path):
+    """A consistently rehashed failed inventory cannot hide corrupt bytes behind an existing native receipt."""
+    from coleman.corpus.baseline_results import BaselineAttempt
+
+    root, original = matrix
+    destination = tmp_path / "failed-with-native-receipt"
+    shutil.copytree(root, destination)
+    cell = next(cell for cell in original.cells if cell.state == "completed")
+    ledger = destination / "attempts" / cell.cell_id[7:]
+    terminal_path = next(ledger.glob("*-terminal.json"))
+    terminal = BaselineAttempt.from_json(terminal_path.read_bytes())
+    failed = change(terminal, state="failed", reasons=("native_execution_failed",))
+    terminal_path.write_text(failed.to_json() + "\n")
+    events = tuple(BaselineAttempt.from_json(path.read_bytes()) for path in ledger.glob("*.json"))
+    events = tuple(sorted(events, key=lambda event: (event.recorded_at, event.attempt_id, event.event)))
+    changed_cell = change(
+        cell, state="failed", reasons=failed.reasons, attempts=tuple(event.fingerprint for event in events)
+    )
+    cells = tuple(changed_cell if entry.cell_id == cell.cell_id else entry for entry in original.cells)
+    report = change(original, cells=cells)
+    data = (report.to_json() + "\n").encode()
+    (destination / "reports" / f"{report.fingerprint[7:]}.json").write_bytes(data)
+    receipt = BaselineMatrixReceipt(
+        schema_version=1,
+        plan_fingerprint=report.plan.fingerprint,
+        runtime_fingerprint=report.producer_fingerprint,
+        report_fingerprint=report.fingerprint,
+        mathematical_fingerprint=report.mathematical_fingerprint,
+        report_size_bytes=len(data),
+    )
+    (destination / "complete.json").write_text(receipt.to_json() + "\n")
+    target = next((destination / "native" / cell.native_run_id / "results").rglob("*.parquet"))
+    with target.open("ab") as stream:
+        stream.write(b"owned-byte-corruption")
+    with pytest.raises(ValueError, match="bytes or artifact membership changed"):
+        read_baseline_matrix(destination)

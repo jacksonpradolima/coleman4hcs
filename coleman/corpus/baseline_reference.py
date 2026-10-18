@@ -66,16 +66,14 @@ def baseline_reference(build: BaselineBuild, ranking: tuple[str, ...], budget_se
                 first = occupied + costs[name]
         occupied += costs[name]
     failures = sum(test.failure.value == 1 for test in tests.values())
-    recall = Fraction(len(ranks), failures) if failures else None
-    napfd = None if recall is None else recall - Fraction(sum(ranks), failures * len(tests)) + recall / (2 * len(tests))
-    apfdc = area / (total * failures) if failures else None
+    napfd, apfdc, recall = _quality_ratios(len(tests), failures, ranks, area, total)
     return BaselineReference(
         selected=tuple(selected),
         failures=failures,
         detected=len(ranks),
-        napfd=None if napfd is None else float(napfd),
-        apfdc=None if apfdc is None else float(apfdc),
-        recall=None if recall is None else float(recall),
+        napfd=napfd,
+        apfdc=apfdc,
+        recall=recall,
         selected_work=float(occupied),
         projected_full_work=float(total),
         first_failure=None if first is None else float(first),
@@ -101,3 +99,14 @@ def _projected_inputs(build: BaselineBuild, ranking: tuple[str, ...]):
             raise ValueError("Native reference cost cannot be represented as finite binary32")
         costs[name] = Fraction(projected)
     return tests, costs
+
+
+def _quality_ratios(
+    test_count: int, failures: int, ranks: list[int], area: Fraction, total: Fraction
+) -> tuple[float | None, float | None, float | None]:
+    """Convert exact full-universe ratios once; a zero failure denominator remains unavailable."""
+    if not failures:
+        return None, None, None
+    recall = Fraction(len(ranks), failures)
+    napfd = recall - Fraction(sum(ranks), failures * test_count) + recall / (2 * test_count)
+    return float(napfd), float(area / (total * failures)), float(recall)

@@ -61,14 +61,16 @@ def test_real_native_result_satisfies_independent_scientific_reference(tmp_path,
 )
 def test_native_candidate_or_budget_cannot_change_after_freezing(tmp_path, field, value):
     params, build, cell = native_case(tmp_path, 2)
+    prepared_input = replace(params, **{field: value})
     with pytest.raises(ValueError, match="frozen candidate or budget"):
-        _check_native(replace(params, **{field: value}), build, cell)
+        _check_native(prepared_input, build, cell)
 
 
 def test_native_full_suite_duration_must_match_actual_source(tmp_path):
     params, build, cell = native_case(tmp_path, 2)
+    prepared_input = replace(params, available_time=4.0, total_build_duration=8.0)
     with pytest.raises(ValueError, match="full-suite work"):
-        _check_native(replace(params, available_time=4.0, total_build_duration=8.0), build, cell)
+        _check_native(prepared_input, build, cell)
 
 
 @pytest.mark.parametrize("attribute,value", [("detected_failures", 0), ("undetected_failures", 1)])
@@ -136,8 +138,9 @@ def completed_cell():
 def test_cell_contract_rejects_duplicate_incomplete_or_unobserved_evidence(mutation):
     from tests.corpus.baseline_support import change
 
+    prepared_input = completed_cell()
     with pytest.raises(ValueError):
-        change(completed_cell(), **mutation)
+        change(prepared_input, **mutation)
 
 
 @pytest.mark.parametrize("state", ["aborted", "unavailable"])
@@ -197,8 +200,9 @@ def test_native_completion_requires_complete_membership_unique_file_roles_and_re
         change(receipt, completed_steps=2)
     with pytest.raises(ValueError, match="duplicated evidence"):
         change(receipt, files=(*receipt.files, *receipt.files))
+    prepared_worker_peak = baseline_measurement("native_process_elapsed_seconds", 1.0)
     with pytest.raises(ValueError, match="resource semantics"):
-        change(receipt, worker_peak=baseline_measurement("native_process_elapsed_seconds", 1.0))
+        change(receipt, worker_peak=prepared_worker_peak)
 
 
 def test_runtime_identity_is_canonical_without_equating_different_recorded_environments():
@@ -210,5 +214,6 @@ def test_runtime_identity_is_canonical_without_equating_different_recorded_envir
     assert change(runtime, machine="owned-other-machine").fingerprint != runtime.fingerprint
     with pytest.raises(ValueError, match="unique canonical"):
         change(runtime, distributions=(*runtime.distributions, runtime.distributions[0]))
+    prepared_distributions = (change(runtime.distributions[0], name="Non_Canonical"),)
     with pytest.raises(ValueError, match="unique canonical"):
-        change(runtime, distributions=(change(runtime.distributions[0], name="Non_Canonical"),))
+        change(runtime, distributions=prepared_distributions)

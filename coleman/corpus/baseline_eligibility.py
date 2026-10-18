@@ -8,7 +8,7 @@ from typing import Annotated
 
 from pydantic import Field
 
-from coleman.corpus.baseline_contracts import BaselineFeature, BaselinePlan, Method
+from coleman.corpus.baseline_contracts import BaselineBuild, BaselineFeature, BaselinePlan, Method
 from coleman.results.domain import Identifier
 from coleman.selection.contracts import Immutable
 
@@ -52,22 +52,7 @@ def _source_reasons(plan: BaselinePlan) -> tuple[str, ...]:
     """Reject unsupported native truth/costs and label clocks contradicting immediate feedback."""
     reasons: set[str] = set()
     for build in plan.source.builds:
-        total = 0.0
-        projected_total = 0.0
-        for test in build.tests:
-            if test.duration.status != "observed" or test.failure.status != "observed":
-                reasons.add("native_requires_complete_observed_duration_and_binary_outcome")
-            if test.duration.value is not None:
-                projected = _native_cost(test.duration.value)
-                if projected is None:
-                    reasons.add("native_binary32_duration_overflow")
-                else:
-                    projected_total += projected
-                total += test.duration.value
-        if total <= 0 or not math.isfinite(total):
-            reasons.add("native_requires_finite_positive_full_suite_work")
-        if projected_total <= 0 or not math.isfinite(projected_total):
-            reasons.add("native_requires_finite_positive_projected_work")
+        reasons.update(_build_work_reasons(build))
     for previous, following in zip(plan.source.builds, plan.source.builds[1:], strict=False):
         if (
             previous.source_metadata is not None
@@ -128,3 +113,25 @@ def baseline_eligibility(plan: BaselinePlan) -> tuple[BaselineEligibility, ...]:
             reasons.append("external_component_runtime_and_same_universe_inputs_not_qualified")
         answer.append(BaselineEligibility(method=method, reasons=tuple(sorted(set(reasons)))))
     return tuple(answer)
+
+
+def _build_work_reasons(build: BaselineBuild) -> set[str]:
+    """Validate one complete observed cost universe without changing its declared source membership."""
+    reasons: set[str] = set()
+    total = 0.0
+    projected_total = 0.0
+    for test in build.tests:
+        if test.duration.status != "observed" or test.failure.status != "observed":
+            reasons.add("native_requires_complete_observed_duration_and_binary_outcome")
+        if test.duration.value is not None:
+            projected = _native_cost(test.duration.value)
+            if projected is None:
+                reasons.add("native_binary32_duration_overflow")
+            else:
+                projected_total += projected
+            total += test.duration.value
+    if total <= 0 or not math.isfinite(total):
+        reasons.add("native_requires_finite_positive_full_suite_work")
+    if projected_total <= 0 or not math.isfinite(projected_total):
+        reasons.add("native_requires_finite_positive_projected_work")
+    return reasons

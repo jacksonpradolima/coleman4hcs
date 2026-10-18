@@ -26,8 +26,9 @@ from coleman.results.domain import decode_json, fingerprint
 from coleman.results.domain_artifacts import DomainArtifacts
 from coleman.results.versioned import VersionedContract
 
+_NATIVE_COMPLETION = "baseline-native-complete.json"
 _OPERATIONAL = frozenset(
-    {"manifest.json", "spec.resolved.json", "provenance.json", "native-execution.lock", "baseline-native-complete.json"}
+    {"manifest.json", "spec.resolved.json", "provenance.json", "native-execution.lock", _NATIVE_COMPLETION}
 )
 
 
@@ -145,14 +146,7 @@ def _check_native_rows(
     root: Path, observations: tuple[BaselineObservation, ...], plan: BaselinePlan, cell: BaselineCoordinate
 ) -> None:
     """Check the actual unchanged native table against raw source-derived evidence, excluding variable retry timings."""
-    rows, decoded = 0, 0
-    for path in (root / "results").rglob("*.parquet"):
-        with pq.ParquetFile(path) as source:
-            rows += source.metadata.num_rows
-            decoded += sum(source.metadata.row_group(i).total_byte_size for i in range(source.metadata.num_row_groups))
-            if rows > len(plan.source.builds) or decoded > 64 * 1024**2 or len(source.schema_arrow) > 64:
-                raise ValueError("Native baseline table exceeds its bounded row/column/decoded-byte limits")
-    table = pl.read_parquet(str(root / "results/**/*.parquet"), hive_partitioning=True)
+    table = _bounded_native_table(root, len(plan.source.builds))
     if table.height != len(plan.source.builds) or set(table["step"].to_list()) != {
         build.step for build in plan.source.builds
     }:
@@ -209,7 +203,7 @@ def publish_native_baseline_completion(
 ) -> BaselineNativeCompletion:
     """Validate actual native work, then publish completion last while the child still owns its execution lock."""
     native_run_id = root.name
-    path = root / "baseline-native-complete.json"
+    path = root / _NATIVE_COMPLETION
     if path.exists():
         return validate_native_baseline_completion(
             root, plan, cell, native_run_id, binding_fingerprint, runtime_fingerprint, dataset_id
@@ -252,7 +246,7 @@ def validate_native_baseline_completion(
     dataset_id: str,
 ) -> BaselineNativeCompletion:
     """Reverify native completion against actual files/source, without repairs, network or pickle execution."""
-    receipt = read_baseline_artifact(root / "baseline-native-complete.json", BaselineNativeCompletion)
+    receipt = read_baseline_artifact(root / _NATIVE_COMPLETION, BaselineNativeCompletion)
     if (receipt.cell_id, receipt.plan_fingerprint, receipt.runtime_fingerprint, receipt.native_run_id) != (
         cell.cell_id,
         plan.fingerprint,
@@ -270,3 +264,15 @@ def validate_native_baseline_completion(
     ) or receipt.mathematical_observations != tuple(item.mathematical_fingerprint for item in observations):
         raise ValueError("Native baseline completion raw evidence digests changed")
     return receipt
+
+
+def _bounded_native_table(root: Path, build_count: int) -> pl.DataFrame:
+    """Check every native Parquet footer before decoding bounded table bytes, rows and columns."""
+    rows, decoded = 0, 0
+    for path in (root / "results").rglob("*.parquet"):
+        with pq.ParquetFile(path) as source:
+            rows += source.metadata.num_rows
+            decoded += sum(source.metadata.row_group(i).total_byte_size for i in range(source.metadata.num_row_groups))
+            if rows > build_count or decoded > 64 * 1024**2 or len(source.schema_arrow) > 64:
+                raise ValueError("Native baseline table exceeds its bounded row/column/decoded-byte limits")
+    return pl.read_parquet(str(root / "results/**/*.parquet"), hive_partitioning=True)
