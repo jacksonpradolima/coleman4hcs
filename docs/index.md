@@ -20,6 +20,16 @@ environments.
 - **Deterministic `run_id`** — `sha256(canonical_json(spec))[:12]` for exact replication
 - **Provenance tracking** — `spec.resolved.json` + `provenance.json` per run
 
+## Development: source admission for 4.15
+
+[Audit what a CI source actually supports](corpus-admission.md). Reuse existing
+source completions and the registry, verify original bytes and produce versioned
+JSON plus a human report covering 35 production-reality axes. Controlled
+functional evidence, constructed mechanism checks and protected historical
+evaluation retain separate gates. Missing evidence stays visible. The guide
+includes complete installation, audit and offline recovery examples; these new
+APIs require the development wheel until 4.15 is published.
+
 ## New in 4.14
 
 [Reproduce difficult CI decisions in the deterministic stress laboratory](ci-stress-laboratory.md):
