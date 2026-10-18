@@ -358,6 +358,7 @@ source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
     { name = "numpy" },
+    { name = "packaging" },
     { name = "polars" },
     { name = "pyarrow" },
     { name = "pydantic" },
@@ -445,6 +446,7 @@ requires-dist = [
     { name = "opentelemetry-api", marker = "extra == 'telemetry'", specifier = "==1.41.0" },
     { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'telemetry'", specifier = "==1.41.0" },
     { name = "opentelemetry-sdk", marker = "extra == 'telemetry'", specifier = "==1.41.0" },
+    { name = "packaging", specifier = "==26.3" },
     { name = "pandas", marker = "extra == 'notebook'", specifier = "==3.0.3" },
     { name = "polars", specifier = "==1.39.3" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = "==4.5.1" },
