@@ -124,7 +124,6 @@ omit = ["*/__init__.py", "*/py.typed"]
 branch = true
 concurrency = ["multiprocessing", "thread"]
 parallel = true
-sigterm = true
 
 [tool.coverage.report]
 fail_under = 95
