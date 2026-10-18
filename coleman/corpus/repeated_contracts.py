@@ -35,6 +35,25 @@ class CorpusBuild(Immutable):
     metadata: TemporalObservation
 
 
+def _require_membership(builds: tuple[CorpusBuild, ...]) -> None:
+    """Reject duplicate builds/revisions/siblings and projects split into false independent units."""
+    ids = [build.member_id for build in builds]
+    if len(ids) != len(set(ids)):
+        raise ValueError("Duplicate logical corpus member")
+    observations = [build.metadata.observation_id for build in builds]
+    if len(observations) != len(set(observations)):
+        raise ValueError("Choose one point-in-time revision per logical source build")
+    groups: dict[str, str] = {}
+    projects: dict[str, str] = {}
+    for build in builds:
+        previous_unit = projects.setdefault(build.project_id, build.unit_id)
+        if previous_unit != build.unit_id:
+            raise ValueError("One project cannot create multiple independent units")
+        previous = groups.setdefault(build.metadata.group_id, build.member_id)
+        if previous != build.member_id:
+            raise ValueError("Sibling jobs/variants share one logical corpus member")
+
+
 class RepetitionDesign(VersionedContract):
     """Freeze one fold, one native budget and a complete repeated-measures grid.
 
@@ -77,22 +96,7 @@ class RepetitionDesign(VersionedContract):
             raise ValueError("Duplicate repetition seed")
         if len(self.seeds) * len(self.builds) > 16384:
             raise ValueError("Repetition design exceeds 16,384 build/seed cells per candidate")
-        ids = [build.member_id for build in self.builds]
-        if len(ids) != len(set(ids)):
-            raise ValueError("Duplicate logical corpus member")
-        # A second revision or sibling assigned a fresh member ID cannot multiply a build.
-        observations = [build.metadata.observation_id for build in self.builds]
-        if len(observations) != len(set(observations)):
-            raise ValueError("Choose one point-in-time revision per logical source build")
-        groups: dict[str, str] = {}
-        projects: dict[str, str] = {}
-        for build in self.builds:
-            previous_unit = projects.setdefault(build.project_id, build.unit_id)
-            if previous_unit != build.unit_id:
-                raise ValueError("One project cannot create multiple independent units")
-            previous = groups.setdefault(build.metadata.group_id, build.member_id)
-            if previous != build.member_id:
-                raise ValueError("Sibling jobs/variants share one logical corpus member")
+        _require_membership(self.builds)
         decisions = self.plan.split(tuple(build.metadata for build in self.builds))
         if any(not decision.eligible or decision.partition != "test" for decision in decisions):
             raise ValueError("Corpus members require eligible protected-test source metadata")

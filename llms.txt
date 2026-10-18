@@ -4464,6 +4464,9 @@ before choosing revisions. Late labels stay in their original partition and
 corrected labels never overwrite an earlier point-in-time revision. Every selected
 build must have eligible test metadata. Missing clocks require reproducible
 exclusion or source rejection, not inferred job-finish timestamps.
+Aggregation does not control policy updates. Verify their actual feedback frontier
+with the existing shadow admission rules or justify the sequential replay clock.
+Eligibility at a fold cutoff does not make a label available to an earlier decision.
 
 Freeze the design fingerprint under `corpus_repetition_design` in **every**
 `FrozenCandidate` configuration, together with all resolved runs. The existing
@@ -4623,13 +4626,18 @@ cd "$task_corpus_env"
 The complete [example](https://github.com/jacksonpradolima/coleman/blob/main/examples/corpus-evaluation/ci.py)
 freezes two owned CI histories, two builds each, Random/UCB with explicit `c=1.0`,
 seeds 11/42 and a 0.5 native-work budget, including test rename/churn in build two.
-It reserves access before native execution,
+Build one labels are available before the replay's second decision. Source clocks
+remain separate from actual metric/mean assembly time. It reserves access before native execution,
 checks every actual NAPFD/APFDc against the rational reference, embeds sixteen raw
 cells and publishes two candidate means for **one constructed family**, with
 **insufficient evidence**. The two copied histories share that family; different
 project labels do not establish independent sources. A protected retry is not confirmatory. Rerunning the
 example resumes native checkpoints while preserving existing Parquet/checkpoint
 bytes; its fresh assembly/freeze metadata and shared access history remain visible.
+New analysis projections use the frozen comparison in their logical identity and
+retain the native source-row digest; they do not overwrite earlier projection records.
+Native RunSpecs also bind the source data fingerprint, so changed source rows do
+not resume a previous source's checkpoints at the same input path.
 This is installed TCPCI mechanism qualification, not a published historical study.
 
 Tests additionally retain versioned goldens, legacy artifacts, finite signed/zero

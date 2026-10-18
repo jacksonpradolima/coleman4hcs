@@ -54,6 +54,8 @@ def main(output):
     for project in ("constructed_ci_a", "constructed_ci_b"):
         rows = []
         for build in (1, 2):
+            event_at = datetime(2026, 1, 4 + build, tzinfo=UTC)
+            labels_available_at = event_at + timedelta(hours=1)
             for name, duration, verdict in (("unit", 1, 0), ("integration", 2, 1), ("system", 4, build % 2)):
                 if build == 2:
                     name = {"unit": "renamed-unit", "system": "contract"}.get(name, name)
@@ -63,7 +65,7 @@ def main(output):
                         Name=name,
                         Duration=float(duration),
                         CalcPrio=0,
-                        LastRun="2026-01-05",
+                        LastRun=event_at.date().isoformat(),
                         Verdict=verdict,
                     )
                 )
@@ -78,8 +80,8 @@ def main(output):
                     metadata=TemporalObservation(
                         observation_id=member_id,
                         group_id=member_id,
-                        event_at="2026-01-05T00:00:00Z",
-                        available_at="2026-01-06T00:00:00Z",
+                        event_at=event_at,
+                        available_at=labels_available_at,
                     ),
                 )
             )
@@ -125,6 +127,7 @@ def main(output):
                     },
                     "results": {"out_dir": str(root / "native" / policy / str(seed)), "top_k_prioritization": 3},
                     "algorithm": {"ucb": {"rnfail": {"c": 1.0}}},
+                    "extensions": {"corpus_source": {"data_fingerprint": design.data_fingerprint}},
                 }
             )
     candidates = tuple(
@@ -160,6 +163,7 @@ def main(output):
     audit.save_freeze(frozen)
     writer = ArtifactWriter(root / "protected")
     published = []
+    metadata_by_build = {member.member_id: member.metadata for member in design.builds}
 
     def load_native():
         rows = []
@@ -169,10 +173,11 @@ def main(output):
             for raw in table.iter_rows(named=True):
                 project, step = raw["scenario"], raw["step"]
                 source = [row for row in data[project] if row["BuildId"] == step]
+                metadata = metadata_by_build[f"{project}/build-{step}"]
                 build = PilotBuild(
                     build_id=f"{project}/build-{step}",
-                    decided_at="2026-01-05T00:00:00Z",
-                    outcomes_available_at="2026-01-06T00:00:00Z",
+                    decided_at=metadata.event_at,
+                    outcomes_available_at=metadata.available_at,
                     tests=tuple(
                         PilotTest(
                             test_id=row["Name"],
@@ -203,8 +208,8 @@ def main(output):
                         record=DomainRecord(
                             schema_version=1,
                             namespace="ci.corpus.native_projection",
-                            run_id=native.run_id,
-                            execution_id=str(seed),
+                            run_id=frozen.fingerprint,
+                            execution_id=f"{native.run_id}:{seed}",
                             decision_id=build.build_id,
                             data_fingerprint=frozen.data_fingerprint,
                             available_at=datetime.now(UTC),

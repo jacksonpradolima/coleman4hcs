@@ -58,6 +58,19 @@ def test_installed_native_repetitions_and_checkpoint_continuation_outside_checko
     assert len(report.rows) == 16
     assert report.design.evidence_basis == "constructed_mechanism"
     assert report.design.source_admission_fingerprint is None
+    for candidate in report.frozen.candidates:
+        configurations = json.loads(candidate.configuration_json)["resolved_runs"]
+        assert all(
+            config["extensions"]["corpus_source"]["data_fingerprint"] == report.design.data_fingerprint
+            for config in configurations
+        )
+    assert all(row.record.run_id == report.frozen.fingerprint for row in report.rows)
+    for project in {member.project_id for member in report.design.builds}:
+        timeline = sorted(
+            (member.metadata for member in report.design.builds if member.project_id == project),
+            key=lambda metadata: metadata.event_at,
+        )
+        assert timeline[0].available_at < timeline[1].event_at
     comparison = FamilyReport.from_json(Path(first["comparison"]).read_bytes())
     assert len(comparison.inputs) == 2
     protected = {
@@ -70,6 +83,10 @@ def test_installed_native_repetitions_and_checkpoint_continuation_outside_checko
     assert second["conclusion"] == "insufficient_evidence"
     assert second["raw_cells"] == 16
     assert second["retry_confirmatory"] is False
+    second_report = RepeatedCorpusReport.from_json(Path(second["raw_evidence"]).read_bytes())
+    assert {row.record.logical_key for row in second_report.rows}.isdisjoint(
+        row.record.logical_key for row in report.rows
+    )
     assert {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in protected} == protected
     assert set(path for path in (output / "native").rglob("*.parquet")) == {
         p for p in protected if p.suffix == ".parquet"
