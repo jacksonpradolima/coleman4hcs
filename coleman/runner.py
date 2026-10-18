@@ -878,6 +878,10 @@ def run_parallel_executions(
                     break
                 except TimeoutError:
                     continue
+            # Successful tasks must finish normal worker cleanup before leaving
+            # the Pool context, whose default exit would terminate them.
+            pool.close()
+            pool.join()
         except KeyboardInterrupt:
             logging.warning("Interrupt received. Terminating worker pool...")
             pool.terminate()

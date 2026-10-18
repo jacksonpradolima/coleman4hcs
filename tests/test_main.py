@@ -173,6 +173,7 @@ def test_run_parallel_executions_dispatches_unique_execution_plans():
 
     class FakePool:
         def __init__(self, size, maxtasksperchild=None):
+            captured["shutdown"] = []
             captured["pool_size"] = size
             if maxtasksperchild is not None:
                 captured["maxtasksperchild"] = maxtasksperchild
@@ -181,17 +182,21 @@ def test_run_parallel_executions_dispatches_unique_execution_plans():
             return self
 
         def __exit__(self, exc_type, exc, tb):  # noqa: ARG002
+            captured["shutdown"].append("exit")
             return False
 
         def starmap_async(self, func, args_list):
             captured["args"] = list(args_list)
             return FakeAsyncResult()
 
+        def close(self):
+            captured["shutdown"].append("close")
+
         def terminate(self):
-            return None
+            captured["shutdown"].append("terminate")
 
         def join(self):
-            return None
+            captured["shutdown"].append("join")
 
     class FakeContext:
         def pool(self, size, maxtasksperchild=None):
@@ -236,6 +241,7 @@ def test_run_parallel_executions_dispatches_unique_execution_plans():
     with patch("coleman.runner.get_context", return_value=FakeContext()):
         run_parallel_executions(2, build_config, plans)
 
+    assert captured["shutdown"] == ["close", "join", "exit"]
     assert captured["pool_size"] == 2
     assert captured["maxtasksperchild"] == 1
     assert len(captured["args"]) == 2
@@ -334,6 +340,9 @@ def test_run_parallel_executions_retries_on_timeout_then_completes():
 
         def starmap_async(self, func, args_list):  # noqa: ARG002
             return self.result
+
+        def close(self):
+            return None
 
         def terminate(self):
             return None
