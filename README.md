@@ -751,19 +751,20 @@ The controlled Java matrix and bounded Python reproduction are usable source
 workflows; neither completes corpus diversity or scientific admission.
 The published 4.17 wheel includes a [bounded constructed C slice](docs/c-seeded-source-capture.md)
 from permitted Juliet inputs. SIR component/data terms remain unresolved.
-Ten of the thirteen public subtasks are delivered, including LibSSH WTS/VTS
+Eleven of the thirteen public subtasks are delivered, including LibSSH WTS/VTS
 (introduced in 4.13) and the [#308](https://github.com/jacksonpradolima/coleman/issues/308)
 interaction-covering synthetic stress laboratory in 4.14. Published 4.15 delivers
 [#309's source admission](docs/corpus-admission.md) through
 [PR #330](https://github.com/jacksonpradolima/coleman/pull/330).
 4.16 adds [#310's metric references and repeated-observation protocol](docs/corpus-evaluation.md)
 through [PR #332](https://github.com/jacksonpradolima/coleman/pull/332).
-Comparable baselines, public prospective collection feasibility and the
-confirmatory report remain in #311–#313. External baseline
+4.17 adds [#311's comparable baseline matrix](docs/comparable-baselines.md) through
+[PR #334](https://github.com/jacksonpradolima/coleman/pull/334). Public prospective
+collection feasibility and the confirmatory report remain in #312–#313. External baseline
 reproduction, including investigated DANTE methods, requires its own verified
 integration and comparable protocol.
 
-Completing the issue additionally requires the predeclared baseline matrix,
+Completing the issue additionally requires a predeclared confirmatory protocol,
 eligible temporal/statistical comparisons, production-reality/diversity coverage,
 a frozen confirmatory run and the per-project/cross-corpus report. The original
 fixture-readiness view keeps all seven regimes uncovered; the separate 4.15 audit
