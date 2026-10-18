@@ -25,6 +25,7 @@ nav = [
   { "Deterministic CI Stress Laboratory" = "ci-stress-laboratory.md" },
   { "CI Benchmark Corpus Foundation" = "benchmark-corpus.md" },
   { "Source Admission & Production Reality" = "corpus-admission.md" },
+  { "Corpus Metrics & Repeated Observations" = "corpus-evaluation.md" },
   { "Verified Corpus Materialization" = "corpus-materialization.md" },
   { "Bounded ZIP64 Source Selection" = "zip64-source-selection.md" },
   { "RTPTorrent Source Assessment" = "rtptorrent.md" },
