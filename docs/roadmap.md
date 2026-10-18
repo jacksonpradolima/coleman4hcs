@@ -67,7 +67,7 @@ The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
 [LibSSH HCS workflow](hcs-parquet-etl.md) shipped in 4.13 through
 [#326](https://github.com/jacksonpradolima/coleman/pull/326). Seven of the thirteen
 public subtasks are delivered. #308–#313 remain open; the deterministic
-interaction-covering stress laboratory in #308 is next. Source conversion does
+[interaction-covering stress laboratory](ci-stress-laboratory.md) in #308 is in development for 4.14. Source conversion does
 not establish admission.
 
 The published HCS workflow preserves raw pipeline/job correspondence, WTS/VTS
@@ -85,7 +85,7 @@ later gates.
 | Python source — delivered in 4.11 | [#305 non-Java fault reproduction](https://github.com/jacksonpradolima/coleman/issues/305) | Existing generic controlled observations; one fix, two correlated locale contexts |
 | Seeded C source — delivered in 4.12 | [#306 permitted Juliet slice](https://github.com/jacksonpradolima/coleman/issues/306) | One synthetic template/function pair; six correlated inputs, no empirical admission |
 | HCS source — delivered in 4.13 | [#307 LibSSH WTS/VTS and variant accounting](https://github.com/jacksonpradolima/coleman/issues/307) | Original pipeline/job identities; 13 known labels, seven with parsed tests; temporal admission remains blocked |
-| Synthetic laboratory — next | [#308 interaction-covering stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main; preserve tiny oracle/resource bounds and explicit synthetic dependence |
+| Synthetic laboratory — 4.14 development | [#308 interaction-covering stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Existing reviewed main; preserve tiny oracle/resource bounds and explicit synthetic dependence |
 | Evidence integration | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | #302–#308 |
 | Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
 | Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |

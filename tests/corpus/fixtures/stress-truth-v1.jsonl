@@ -1,0 +1,8 @@
+{"build":0,"context_score":1,"display_name":"t00000","duration_seconds":0,"latent_risk":1,"test_id":"t00000","variant":"v0","verdict":0}
+{"build":0,"context_score":-1,"display_name":"t00001","duration_seconds":2,"latent_risk":0,"test_id":"t00001","variant":"v0","verdict":1}
+{"build":0,"context_score":-1,"display_name":"t00002","duration_seconds":4,"latent_risk":0,"test_id":"t00002","variant":"v0","verdict":0}
+{"build":0,"context_score":-1,"display_name":"t00003","duration_seconds":8,"latent_risk":0,"test_id":"t00003","variant":"v0","verdict":0}
+{"build":0,"context_score":1,"display_name":"t00004","duration_seconds":1,"latent_risk":1,"test_id":"t00004","variant":"v0","verdict":0}
+{"build":0,"context_score":-1,"display_name":"t00005","duration_seconds":2,"latent_risk":0,"test_id":"t00005","variant":"v0","verdict":0}
+{"build":0,"context_score":-1,"display_name":"t00006","duration_seconds":4,"latent_risk":0,"test_id":"t00006","variant":"v0","verdict":0}
+{"build":0,"context_score":-1,"display_name":"t00007","duration_seconds":8,"latent_risk":0,"test_id":"t00007","variant":"v0","verdict":0}

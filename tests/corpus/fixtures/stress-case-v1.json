@@ -1,0 +1,1 @@
+{"builds":4,"evidence":"constructed-dependent-mechanism-fixture","factors":{"budget":"full","churn":"stable","context":"informative","drift":"sudden","duration":"changing","failures":"rare","feedback":"censored","flakiness":"independent","size":"tiny","variants":"changing","workers":"bounded"},"generator":"owned-ci-stress-v1","schema_version":1,"seed":11}
