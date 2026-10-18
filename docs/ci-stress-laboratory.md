@@ -6,21 +6,20 @@ or a 50,000-test suite. It complements the real-source workflows with controlled
 mechanism checks. It does not establish real-project generalization, empirical
 corpus admission, independent faults or an algorithm winner.
 
-This workflow is new in the development source for **4.14**. The published 4.13
-package retains its documented workflows; build the reviewed source wheel below
-to use these new APIs before publication.
+This workflow ships in the published **4.14** wheel. Its installed qualification
+checks the complete authored package against the release tag, runs actual native
+agents outside the source checkout and verifies process-interruption recovery.
 
 ## Install and run one case
 
-From the COLEMAN source checkout, build a base wheel and install it into a fresh
-environment. Python 3.14 and `uv` are required; Docker, MCP and third-party
-benchmark downloads are unnecessary. Outputs stay outside the repository.
+Install the published base wheel into a fresh environment. Python 3.14 and `uv`
+are required; Docker, MCP and third-party benchmark downloads are unnecessary.
+The URL pins the verified release SHA-256. Outputs stay outside the repository.
 
 ```bash
 export COLEMAN_STRESS_HOME="$(mktemp -d "${TMPDIR:-/tmp}/coleman-stress.XXXXXX")"
-uv build --wheel --out-dir "$COLEMAN_STRESS_HOME/dist"
 uv venv "$COLEMAN_STRESS_HOME/installed" --python 3.14
-uv pip install --python "$COLEMAN_STRESS_HOME/installed/bin/python" "$COLEMAN_STRESS_HOME"/dist/*.whl
+uv pip install --python "$COLEMAN_STRESS_HOME/installed/bin/python" "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
 cd "$COLEMAN_STRESS_HOME"
 ```
 

@@ -10,10 +10,10 @@ For additional projects and explicit multistage correspondence, see
 [ActiveMQ and Log4j stage views](lrts-stage-views.md). That new recipe family
 preserves these original single-stage contracts and receipts.
 
-Use Python 3.14+ and the published 4.13.0 wheel. Pip verifies its SHA-256:
+Use Python 3.14+ and the published 4.14.0 wheel. Pip verifies its SHA-256:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.13.0/coleman-4.13.0-py3-none-any.whl#sha256=bbe2f3cf8954fc27fc8f5a44e3713519aa30bcf2cfdd2aad140f4bcc1ae45abc"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
 ```
 
 Choose cache and output directories outside Git. No Docker, optional MCP SDK,

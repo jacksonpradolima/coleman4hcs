@@ -15,11 +15,11 @@ and need no foreign dataset, Docker or MCP SDK:
 
 ```bash
 uv venv /tmp/coleman-zip64-env --python 3.14
-uv pip install --python /tmp/coleman-zip64-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.13.0/coleman-4.13.0-py3-none-any.whl#sha256=bbe2f3cf8954fc27fc8f5a44e3713519aa30bcf2cfdd2aad140f4bcc1ae45abc"
+uv pip install --python /tmp/coleman-zip64-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
 mkdir -p /tmp/coleman-zip64-workspace
 cd /tmp/coleman-zip64-workspace
 curl --fail --location --output ci.py \
-  https://raw.githubusercontent.com/jacksonpradolima/coleman/v4.13.0/examples/zip64-selection/ci.py
+  https://raw.githubusercontent.com/jacksonpradolima/coleman/v4.14.0/examples/zip64-selection/ci.py
 /tmp/coleman-zip64-env/bin/python -c 'import hashlib, sys; from pathlib import Path; sys.exit(0 if hashlib.sha256(Path("ci.py").read_bytes()).hexdigest() == "cf0a610bfa4a620f7620c5b02c5c36c667adaa801839d48a5a6dbd044814cf05" else "Example SHA-256 mismatch")'
 /tmp/coleman-zip64-env/bin/python ci.py selected /tmp/coleman-zip64-cache
 /tmp/coleman-zip64-env/bin/python ci.py selected /tmp/coleman-zip64-cache
