@@ -10,19 +10,26 @@ created for assurance-tool evaluation. It is not a real regression history,
 a representative application suite or evidence that a prioritization policy wins.
 The [corpus admission and comparison gates](roadmap.md) remain separate.
 
+The installation below uses the current collector. The initial Docker outcomes
+retain their original qualifications; they were not recollected with 4.15.
+Capture producers bind the whole SDK and package version, so reopening old
+observations requires their original package. The [4.15 admission adapter](corpus-admission.md)
+revalidates the retained 4.13 captures with their original pinned wheel and raw
+parsers; unchanged legacy capture code alone cannot relabel a producer.
+
 ## Install outside checkout
 
 The SDK requires Python 3.14+, uv and POSIX. This optional preset additionally
 requires a native Linux arm64 Docker engine and the pinned GCC image. Other
 architectures need separate recipes and qualification.
 
-Install the published **4.14 wheel** into a fresh external environment. The
+Install the published **4.15 wheel** into a fresh external environment. The
 SHA-256 fragment verifies the release bytes before installation; no checkout is
 required. Runtime preparation remains a separate, explicit operator action:
 
 ```bash
 uv venv /tmp/coleman-c-env --python 3.14
-uv pip install --python /tmp/coleman-c-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.14.0/coleman-4.14.0-py3-none-any.whl#sha256=de46ef9482f45372c96dd3d402f85daa18c3079733b4008ec05885e0d2d5cf66"
+uv pip install --python /tmp/coleman-c-env/bin/python "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
 
 # Explicit preparation; the producer never pulls an image.
 docker pull --platform linux/arm64 docker.io/library/gcc@sha256:e55a45ec94b8f1dc59f08e3b25b8e7f23b96220235da707ae2cc0dce47f6b46c
