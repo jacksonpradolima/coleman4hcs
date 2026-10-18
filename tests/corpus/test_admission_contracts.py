@@ -95,7 +95,8 @@ def test_versioned_owned_goldens_reuse_an_actual_legacy_profile_without_granting
     whole = FIXTURES / "corpus-admission-owned-v1.json"
     assert metadata_only.to_json() + "\n" == whole.read_text()
     assert CorpusAdmission.from_json(whole.read_bytes()) == metadata_only
-    assert metadata_only.covered_regimes == () and len(metadata_only.uncovered_regimes) == 7
+    assert metadata_only.covered_regimes == ()
+    assert len(metadata_only.uncovered_regimes) == 7
     with pytest.raises(ValueError, match="recorded installed package"):
         validate_corpus_sources(metadata_only, (evidence,))
     # The actual legacy profile/card keep their original reader and bytes.
@@ -135,9 +136,12 @@ def test_empty_known_outcome_population_is_unavailable_not_a_zero_failure_fracti
     def fraction(p):
         return next(m for m in p.measurements if m.name == "source_failure_fraction")
 
-    assert fraction(absent).value is None and fraction(absent).status == "unavailable"
-    assert fraction(observed_zero).value == 0 and fraction(observed_zero).status == "observed"
-    assert absent.duration.minimum is None and observed_zero.duration.minimum == 0
+    assert fraction(absent).value is None
+    assert fraction(absent).status == "unavailable"
+    assert fraction(observed_zero).value == 0
+    assert fraction(observed_zero).status == "observed"
+    assert absent.duration.minimum is None
+    assert observed_zero.duration.minimum == 0
 
 
 def test_profile_permutation_duplicate_and_conflict_metamorphic_properties():
@@ -148,10 +152,13 @@ def test_profile_permutation_duplicate_and_conflict_metamorphic_properties():
         assert actual == expected
         assert actual.model_dump_json() == expected.model_dump_json()
     duplicate = profile_table(normalized((*rows, rows[0])))
-    assert duplicate.rows == 4 and duplicate.unique_observations == 3 and duplicate.duplicate_rows == 1
+    assert duplicate.rows == 4
+    assert duplicate.unique_observations == 3
+    assert duplicate.duplicate_rows == 1
     assert duplicate.conflicting_identities == 0
     conflict = profile_table(normalized((*rows, ("a", "other-group", 3, 1))))
-    assert conflict.conflicting_identities == 1 and conflict.source_groups == 3
+    assert conflict.conflicting_identities == 1
+    assert conflict.source_groups == 3
 
 
 @pytest.mark.parametrize(
@@ -181,7 +188,8 @@ def test_signed_zero_measurements_and_constructed_chronology_are_canonical():
     assert canonical.model_dump_json() == original.model_dump_json()
     constructed = profile_table(table._replace(constructed_history=True))
     span = next(m for m in constructed.measurements if m.name == "source_observed_ci_span")
-    assert span.value is None and span.status == "not_applicable"
+    assert span.value is None
+    assert span.status == "not_applicable"
 
 
 @pytest.mark.parametrize("version", [None, 0, 2, True, "1"])
@@ -196,8 +204,9 @@ def test_missing_old_future_coerced_versions_reject_before_any_io(model, version
         raw.pop("schema_version")
     else:
         raw["schema_version"] = version
+    encoded = json.dumps(raw)
     with pytest.raises(ValueError):
-        model.from_json(json.dumps(raw))
+        model.from_json(encoded)
 
 
 def test_native_variant_execution_groups_preserve_original_declared_groups(tmp_path):
@@ -216,10 +225,12 @@ def test_native_variant_execution_groups_preserve_original_declared_groups(tmp_p
     payload = profile_native_source(card, path)
     binding = SourceEvidence(payload, review(payload, status="unverified"), path)
     assessment = assess_source(binding)
-    assert assessment.card == card and card.manifest.identity.group_fields == ("BuildId",)
+    assert assessment.card == card
+    assert card.manifest.identity.group_fields == ("BuildId",)
     assert assessment.profile.identity == card.manifest.identity
     assert assessment.profile.execution_group_fields == ("BuildId", "Variant")
-    assert assessment.profile.source_groups == 2 and payload.logical_builds == 1
+    assert assessment.profile.source_groups == 2
+    assert payload.logical_builds == 1
     changed_groups = changed(assessment.profile, execution_group_fields=("BuildId",))
     with pytest.raises(ValueError, match="execution-group dimensions"):
         changed(assessment, profile=changed_groups)
@@ -269,7 +280,8 @@ def test_source_units_and_legacy_contracts_keep_their_original_meanings(tmp_path
     receipt_before = source.payload.to_json()
     registry_before = load_registry().to_json()
     assessment = assess_source(source)
-    assert source.payload.to_json() == receipt_before and load_registry().to_json() == registry_before
+    assert source.payload.to_json() == receipt_before
+    assert load_registry().to_json() == registry_before
     assert assessment.profile.duration.semantics.unit == "s"
     assert assessment.card.manifest.outcomes.duration is not None
     assert (
@@ -315,7 +327,8 @@ def test_size_and_fixed_completion_role_bounds_fail_closed():
     roles = tuple(AdmissionFile(path=p, sha256=digest, size_bytes=1) for p in ("admission.json", "report.md"))
     completion = AdmissionCompletion(schema_version=1, report_fingerprint=digest, files=roles)
     assert AdmissionCompletion.from_json(completion.to_json()) == completion
+    reversed_roles = tuple(reversed(roles))
     with pytest.raises(ValueError, match="exactly once"):
-        changed(completion, files=tuple(reversed(roles)))
+        changed(completion, files=reversed_roles)
     with pytest.raises(ValueError, match="Duplicate JSON"):
         AdmissionCompletion.from_json('{"schema_version":1,"schema_version":1}')

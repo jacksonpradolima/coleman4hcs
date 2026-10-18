@@ -27,6 +27,8 @@ from coleman.corpus.admission_contracts import ProducerVerification
 from coleman.corpus.controlled_contracts import ControlledDataset
 from coleman.corpus.materialization import SourceCache, validate_source_storage
 
+_SHA256_PREFIX = "sha256:"
+
 DRIVER = r"""
 import hashlib,importlib.metadata,json,platform,sys
 from importlib.resources import files
@@ -98,7 +100,7 @@ def _wheel_metadata(archive: zipfile.ZipFile) -> tuple[str, tuple[str, ...]]:
 def _wheel_sdk_pins(archive: zipfile.ZipFile, names: tuple[str, ...]) -> dict[str, str]:
     """Hash only installed authored package resources; a missing package cannot become a valid original SDK."""
     pins = {
-        name: "sha256:" + hashlib.sha256(archive.read(name)).hexdigest()
+        name: _SHA256_PREFIX + hashlib.sha256(archive.read(name)).hexdigest()
         for name in names
         if name.startswith("coleman/") and not name.endswith("/")
     }
@@ -191,7 +193,7 @@ class OriginalCaptureVerifier:
                     "size_bytes": size,
                     "availability": "verified_local",
                 },
-                "verifier_sha256": "sha256:"
+                "verifier_sha256": _SHA256_PREFIX
                 + hashlib.sha256(files("coleman.application").joinpath("admission.py").read_bytes()).hexdigest(),
             }
         )
@@ -214,7 +216,7 @@ class OriginalCaptureVerifier:
         if not 1 <= size <= 32 * 1024**2:
             raise ValueError("Original verifier wheel exceeds its 32-MiB bound")
         encoded = self.wheel.read_bytes()
-        digest = "sha256:" + hashlib.sha256(encoded).hexdigest()
+        digest = _SHA256_PREFIX + hashlib.sha256(encoded).hexdigest()
         if digest != self.wheel_sha256:
             raise ValueError("Original verifier wheel SHA-256 disagrees with its reviewed pin")
         with zipfile.ZipFile(io.BytesIO(encoded)) as archive:

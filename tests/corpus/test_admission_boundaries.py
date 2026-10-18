@@ -42,18 +42,21 @@ def test_normalized_profile_requires_complete_explicit_numeric_and_identity_sche
         frame = frame.with_columns(pl.col("duration").cast(pl.Boolean if kind == "boolean-duration" else pl.String))
     else:
         frame = frame.with_columns(pl.lit(2, dtype=pl.Int64).alias("verdict"))
+    invalid = table._replace(frame=frame)
     with pytest.raises(ValueError):
-        profile_table(table._replace(frame=frame))
+        profile_table(invalid)
 
 
 def test_empty_and_unidentified_rows_remain_explicit_without_inventing_groups():
     empty = profile_table(normalized([]))
-    assert empty.rows == empty.source_groups == 0 and empty.duration.minimum is None
+    assert empty.rows == empty.source_groups == 0
+    assert empty.duration.minimum is None
     unidentified = profile_table(normalized([(None, None, None, None)]))
     assert unidentified.rows == unidentified.missing_identity_rows == 1
     assert unidentified.unique_observations == unidentified.source_groups == 0
+    incomplete = normalized([("one", None, 1, 0)])
     with pytest.raises(ValueError, match="complete source group"):
-        profile_table(normalized([("one", None, 1, 0)]))
+        profile_table(incomplete)
 
 
 @pytest.mark.parametrize(
@@ -112,23 +115,29 @@ def test_oversized_source_and_excess_bindings_reject_before_any_source_io(tmp_pa
     binding = SourceEvidence(payload, review(payload), tmp_path / "must-not-open")
     with pytest.raises(ValueError, match="two-million-row"):
         assess_source(binding)
+    registry = load_registry()
     with pytest.raises(ValueError, match="64-source"):
-        audit_corpus(load_registry(), (binding,) * 65)
+        audit_corpus(registry, (binding,) * 65)
     assert not binding.root.exists()
 
 
 def test_invalid_source_bindings_and_conflicting_reviews_never_publish(tmp_path):
     source, completion = lrts_source(tmp_path)
+    incompatible = replace(source, controlled_verifier=object())
     with pytest.raises(ValueError, match="incompatible"):
-        assess_source(replace(source, controlled_verifier=object()))
+        assess_source(incompatible)
+    wrong_review = changed(source.review, payload_fingerprint=fingerprint("wrong"))
+    wrong_source = replace(source, review=wrong_review)
     with pytest.raises(ValueError, match="exact source payload"):
-        assess_source(replace(source, review=changed(source.review, payload_fingerprint=fingerprint("wrong"))))
+        assess_source(wrong_source)
     weaker = replace(source, review=changed(source.review, status="rejected"))
+    registry = load_registry()
     with pytest.raises(ValueError, match="Conflicting evidence"):
-        audit_corpus(load_registry(), (source, weaker))
+        audit_corpus(registry, (source, weaker))
     for kind in ("unknown", "native_profile"):
+        selected = cast(EvidenceKind, kind)
         with pytest.raises(ValueError, match="family|Parquet"):
-            load_source_evidence(cast(EvidenceKind, kind), completion, source.review)
+            load_source_evidence(selected, completion, source.review)
     large = tmp_path / "oversized-contract.json"
     with large.open("wb") as stream:
         stream.truncate(16 * 1024**2 + 1)

@@ -133,9 +133,11 @@ def test_installed_offline_admission_crash_recovery_and_actual_native_checkpoint
     (outside / "expected-sdk.json").write_text(json.dumps(expected))
     result = command([str(python), str(outside / "audit_check.py"), "qualify"], outside, env)
     proof = json.loads(result.stdout.strip().splitlines()[-1])
-    assert proof["installed"] and proof["domain_transport_boundary"]
+    assert proof["installed"]
+    assert proof["domain_transport_boundary"]
     assert proof["actual_publication_interruption_exit"] == 73
-    assert proof["native_rows"] == 4 and proof["native_checkpoint_step"] == 2
+    assert proof["native_rows"] == 4
+    assert proof["native_checkpoint_step"] == 2
     assert proof["sdk_files"] == len(expected)
     examples = re.findall(r"```python\n(.*?)\n```", (ROOT / "docs/corpus-admission.md").read_text(), re.S)
     assert len(examples) == 2
@@ -209,6 +211,7 @@ def _original_wire_and_resigned_metadata_attack(captured, cache, writer, python,
         wrong.verify(payload, cache)
     incomplete = SourceEvidence(payload, binding.review, writer.run_root, cache)
     assert "original_raw_producer_verification_missing" in assess_source(incomplete).admission_reasons
+    incomplete_writer = ArtifactWriter(tmp_path / "must-not-complete-raw")
     with pytest.raises(ValueError, match="bindings"):
-        publish_corpus_admission(report, (incomplete,), ArtifactWriter(tmp_path / "must-not-complete-raw"))
+        publish_corpus_admission(report, (incomplete,), incomplete_writer)
     assert not list((tmp_path / "must-not-complete-raw").rglob("complete.json"))

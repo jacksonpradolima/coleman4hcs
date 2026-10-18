@@ -112,24 +112,25 @@ def qualification(
 def historical_blockers(payload: EvidencePayload) -> tuple[str, ...]:
     """Keep all unresolved historical prerequisites separate from functional/mechanism purposes."""
     if isinstance(payload, NativeSourceProfile):
-        return tuple(sorted({*payload.card.manifest.blocking_reasons, "native_profile_is_descriptive_only"}))
-    if isinstance(payload, ControlledDataset):
-        return ("capture_clocks_are_not_ci_chronology", "controlled_source_is_not_historical_ci")
-    if isinstance(payload, StressReceipt):
-        return ("constructed_truth_is_not_observed_historical_ci",)
-    reasons = {
-        "outcome_availability_unverified",
-        "feature_availability_unverified",
-        "expected_test_universe_unverified",
-        "cross_round_test_correspondence_assumed",
-        "protected_temporal_protocol_unverified",
-        "physical_execution_topology_unverified",
-        "cross_source_project_independence_unverified",
-    }
-    if isinstance(payload, RTPTorrentETLReceipt):
-        reasons.add("logical_build_job_mapping_unverified")
-    if isinstance(payload, HCSReceipt):
-        reasons.update({"upstream_omitted_job_count_unavailable", "upstream_nonpass_statuses_collapsed"})
+        reasons = {*payload.card.manifest.blocking_reasons, "native_profile_is_descriptive_only"}
+    elif isinstance(payload, ControlledDataset):
+        reasons = {"capture_clocks_are_not_ci_chronology", "controlled_source_is_not_historical_ci"}
+    elif isinstance(payload, StressReceipt):
+        reasons = {"constructed_truth_is_not_observed_historical_ci"}
+    else:
+        reasons = {
+            "outcome_availability_unverified",
+            "feature_availability_unverified",
+            "expected_test_universe_unverified",
+            "cross_round_test_correspondence_assumed",
+            "protected_temporal_protocol_unverified",
+            "physical_execution_topology_unverified",
+            "cross_source_project_independence_unverified",
+        }
+        if isinstance(payload, RTPTorrentETLReceipt):
+            reasons.add("logical_build_job_mapping_unverified")
+        if isinstance(payload, HCSReceipt):
+            reasons.update({"upstream_omitted_job_count_unavailable", "upstream_nonpass_statuses_collapsed"})
     return tuple(sorted(reasons))
 
 

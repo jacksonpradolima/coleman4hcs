@@ -119,8 +119,9 @@ def _historical_facts(payload: EvidencePayload, review: SourceReview) -> tuple[R
         status = "synthetic"
     else:
         status = "observed" if history == "observed" and review.status == "reviewed" else "reconstructed"
+    facts: list[RealityFact]
     if isinstance(payload, (LRTSETLReceipt, LRTSStageReceipt)):
-        return (
+        facts = [
             _fact(
                 "source_execution_model",
                 status,
@@ -137,9 +138,9 @@ def _historical_facts(payload: EvidencePayload, review: SourceReview) -> tuple[R
                 "observations.parquet:outcome;replay_exclusion",
                 "A skipped/not-run report is not a passing test; the complete expected suite remains unverified.",
             ),
-        )
-    if isinstance(payload, HCSReceipt):
-        return (
+        ]
+    elif isinstance(payload, HCSReceipt):
+        facts = [
             _fact(
                 "source_execution_model",
                 status,
@@ -161,9 +162,9 @@ def _historical_facts(payload: EvidencePayload, review: SourceReview) -> tuple[R
                 "accounting;cells.parquet",
                 "Upstream omitted whole-job counts are unavailable; binary nonpass labels have collapsed statuses.",
             ),
-        )
-    if isinstance(payload, RTPTorrentETLReceipt):
-        return (
+        ]
+    elif isinstance(payload, RTPTorrentETLReceipt):
+        facts = [
             _fact(
                 "source_execution_model",
                 status,
@@ -178,8 +179,10 @@ def _historical_facts(payload: EvidencePayload, review: SourceReview) -> tuple[R
                 "observations.parquet:class_outcome;replay_exclusion",
                 "Class-level outcomes retain their unit; source clocks and complete expected suites remain unknown.",
             ),
-        )
-    return ()
+        ]
+    else:
+        facts = []
+    return tuple(facts)
 
 
 def _native_facts(payload: NativeSourceProfile) -> tuple[RealityFact, ...]:

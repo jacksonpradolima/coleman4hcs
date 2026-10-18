@@ -42,9 +42,11 @@ def test_source_stages_and_class_units_survive_the_integrated_report(tmp_path):
     assert items[LRTSStageReceipt].profile.source_groups == 4
     assert "stage_id" in items[LRTSStageReceipt].profile.execution_group_fields
     item = items[RTPTorrentETLReceipt]
-    assert item.profile.rows == 8 and item.profile.source_groups == 3
+    assert item.profile.rows == 8
+    assert item.profile.source_groups == 3
     assert item.profile.duration.semantics.unit == "s"
-    assert item.profile.duration.null_count == 2 and item.profile.duration.zero_count == 3
+    assert item.profile.duration.null_count == 2
+    assert item.profile.duration.zero_count == 3
     assert item.card.manifest.outcomes.mapping[0].source_value.startswith("class_outcome:")
     assert item.card.manifest.outcomes.unit == "unverified"  # Class aggregates are not failing-test counts.
     assert "logical_build_job_mapping_unverified" in item.historical_blockers
@@ -62,12 +64,15 @@ def test_reviewed_source_models_are_distinct_without_granting_historical_admissi
     hcs = SourceEvidence(payload, review(payload, history="observed"), marker.parent, cache)
     report = audit_corpus(load_registry(), (lrts, hcs))
     assert report.observed_source_models == ("GitLab-pipeline-job-variant-reports",)
-    assert report.covered_regimes == () and len(report.uncovered_regimes) == 7
+    assert report.covered_regimes == ()
+    assert len(report.uncovered_regimes) == 7
     for status in ("unverified", "rejected"):
         weaker = replace(hcs, review=changed(hcs.review, status=status))
         assert audit_corpus(load_registry(), (lrts, weaker)).observed_source_models == ()
+    incompatible = replace(lrts, review=changed(lrts.review, history="observed"))
+    registry = load_registry()
     with pytest.raises(ValueError, match="declared history"):
-        audit_corpus(load_registry(), (replace(lrts, review=changed(lrts.review, history="observed")), hcs))
+        audit_corpus(registry, (incompatible, hcs))
 
 
 def test_all_default_owned_stress_exports_are_required_and_duplicates_do_not_add_coverage(tmp_path):
@@ -85,7 +90,8 @@ def test_all_default_owned_stress_exports_are_required_and_duplicates_do_not_add
     report = audit_corpus(load_registry(), tuple(bindings))
     assert len(report.assessments) == 39
     assert report.covered_regimes == ("deterministic_adversarial_simulation",)
-    assert len(report.uncovered_regimes) == 6 and report.observed_source_models == ()
+    assert len(report.uncovered_regimes) == 6
+    assert report.observed_source_models == ()
     assert all(x.scope == "synthetic_mechanism" for x in report.assessments)
     assert admitted_regimes(tuple(reversed(report.assessments))) == report.covered_regimes
     assert admitted_regimes(report.assessments + report.assessments) == report.covered_regimes

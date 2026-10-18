@@ -55,6 +55,8 @@ from coleman.corpus.stress_artifacts import validate_stress
 from coleman.corpus.stress_contracts import StressReceipt
 from coleman.results.domain import fingerprint
 
+_SHA256_PREFIX = "sha256:"
+
 MAXIMUM_REPORT_BYTES = CorpusAdmission.MAXIMUM_BYTES
 EvidenceKind = Literal["native_profile", "lrts", "lrts_stage", "rtptorrent", "hcs", "controlled", "stress"]
 
@@ -332,7 +334,7 @@ def publish_corpus_admission(
         if source.cache is not None:
             validate_cache_separation(source.cache.root, writer.run_root)
     validate_corpus_sources(report, sources)
-    root = _target(writer.run_root, "corpus-admission/" + report.fingerprint.removeprefix("sha256:"))
+    root = _target(writer.run_root, "corpus-admission/" + report.fingerprint.removeprefix(_SHA256_PREFIX))
     content = (("admission.json", report.to_json() + "\n"), ("report.md", render_corpus_admission(report)))
     records = []
     for name, text in content:
@@ -342,7 +344,11 @@ def publish_corpus_admission(
         writer.write_immutable(_target(root, name), text)
         records.append(
             AdmissionFile.model_validate(
-                {"path": name, "sha256": "sha256:" + hashlib.sha256(payload).hexdigest(), "size_bytes": len(payload)}
+                {
+                    "path": name,
+                    "sha256": _SHA256_PREFIX + hashlib.sha256(payload).hexdigest(),
+                    "size_bytes": len(payload),
+                }
             )
         )
     completion = AdmissionCompletion(schema_version=1, report_fingerprint=report.fingerprint, files=tuple(records))
@@ -372,7 +378,7 @@ def validate_admission_completion(path: Path, sources: tuple[SourceEvidence, ...
     for item in completion.files:
         with _target(root, item.path).open("rb") as stream:
             payload = stream.read(item.size_bytes + 1)
-        if len(payload) != item.size_bytes or "sha256:" + hashlib.sha256(payload).hexdigest() != item.sha256:
+        if len(payload) != item.size_bytes or _SHA256_PREFIX + hashlib.sha256(payload).hexdigest() != item.sha256:
             raise ValueError("Admission report role bytes disagree with completion")
         contents[item.path] = payload
     report = CorpusAdmission.from_json(contents["admission.json"])
