@@ -15,7 +15,7 @@ and checkpoint. Inspect the inputs, decisions and evidence behind each result.
 
 [**Run real CI data**](#start-with-real-ci-data) · [**Explore benchmarks**](#datasets) ·
 [**Library and CLI**](#quick-start) · [**Documentation**](https://jacksonpradolima.github.io/coleman/) ·
-[**4.15 release**](https://github.com/jacksonpradolima/coleman/releases/tag/v4.15.0) · [**Cite COLEMAN**](#citation)
+[**4.16 release**](https://github.com/jacksonpradolima/coleman/releases/tag/v4.16.0) · [**Cite COLEMAN**](#citation)
 
 ## What you can build with COLEMAN
 
@@ -23,6 +23,7 @@ and checkpoint. Inspect the inputs, decisions and evidence behind each result.
 | --- | --- |
 | Stress a difficult CI decision | [32 deterministic interaction-covering cases](docs/ci-stress-laboratory.md), explicit truth and feedback clocks, native Parquet and resumable agents |
 | Audit what a source actually supports | [Source-admission API](docs/corpus-admission.md): verify original evidence, retain explicit units and inspect a 35-axis production-reality matrix |
+| Compare repeated CI experiments | [Versioned raw build/seed records and paired repository-family means](docs/corpus-evaluation.md), explicit missingness and protected access |
 | Compare adaptive CI prioritization policies | Native TCPCI runner, configurable policies/rewards, contextual inputs and [parameter sweeps](#sweep-engine) |
 | Evaluate configurable software | [Pinned LibSSH data → WTS/VTS Parquet and checkpointed replay](docs/hcs-parquet-etl.md), plus the existing Dune examples |
 | Collect real-fault observations | [Controlled Java matrix](docs/java-fault-matrix.md) and [Python source capture](docs/python-source-capture.md): frozen source/runtime recipes, raw evidence and offline recovery |
@@ -37,14 +38,13 @@ Use the [resource replay](docs/resource-replay.md),
 modeled costs, observed execution and evidence available at decision time.
 Negative and inconclusive results remain visible in their reports.
 
-**New in 4.15: inspect the evidence before comparing policies.** The
-[source-admission workflow](docs/corpus-admission.md) verifies original artifacts
-and produces a versioned report across 35 production-reality axes. The published
-wheel validates 61 source bindings, keeps stages/jobs/variants distinct and
-preserves the original producers of controlled captures. Three narrow
-functional/mechanism regimes are covered; four historical/HCS regimes remain
-uncovered. You can reproduce useful experiments while seeing exactly which
-claims still lack evidence.
+**New in 4.16: compare projects without counting repetitions as independent evidence.**
+[Freeze builds, seeds, budgets and repository families](docs/corpus-evaluation.md),
+retain every raw result and prepare paired family means for protected evaluation.
+The complete installed example runs Random/UCB, independently checks native metrics
+and resumes checkpoints. Its related histories remain one constructed family and
+correctly yield **insufficient evidence**. The [source-admission audit](docs/corpus-admission.md)
+retains 61 source bindings and four uncovered historical/HCS regimes.
 
 ## Start with real CI data
 
@@ -52,7 +52,7 @@ With Python 3.14+ in an activated environment, install the published wheel and r
 the complete LRTS workflow. Use cache/output directories outside Git:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
 python -m coleman.transports.lrts_etl \
   --cache /tmp/coleman-lrts-source-cache \
   --output /tmp/coleman-lrts-data --fetch --run
@@ -77,7 +77,7 @@ RNFail feedback. Source temporal admission remains blocked; this run demonstrate
 a usable data pipeline and simulation. Policy efficacy and prospective savings
 require their own eligible observations and comparisons.
 
-The same **4.15 wheel** also provides
+The same **4.16 wheel** also provides
 [RTPTorrent → analytical/native Parquet → checkpointed replay](docs/rtptorrent-parquet-etl.md).
 Its complete HikariCP raw member preserves **46,995 class executions across 1,662
 source jobs**. The declared eight-job preset projects **18 executions** and
@@ -88,7 +88,7 @@ from LRTS and class observations from RTPTorrent retain their distinct units.
 Both workflows are explicit post-hoc simulations; the admission and comparison
 gates remain visible in the [benchmark readiness table](#datasets).
 
-For larger method histories, the **published 4.15 wheel** includes
+For larger method histories, the **published 4.16 wheel** includes
 [ActiveMQ and separate Log4j stage views](docs/lrts-stage-views.md). ActiveMQ
 preserves **18,901 method observations / 18,668 native cases**. Log4j preserves
 **30,066 observations**, with **14,957 Ubuntu / 14,906 Windows native cases**.
@@ -97,7 +97,7 @@ The Log4j views share source build groups; their observations are correlated.
 The guide includes explicit archive acquisition, exact raw-node bindings and
 the temporal evidence still missing for protected evaluation.
 
-The **4.15 wheel** also takes [original LibSSH CI data through WTS/VTS
+The **4.16 wheel** also takes [original LibSSH CI data through WTS/VTS
 Parquet and checkpointed replay](docs/hcs-parquet-etl.md). Its frozen sixteen
 pipelines retain 856 test executions and all 208 sparse cells across 13 known
 job labels. Seven labels have parsed tests; the remaining six keep their missing
@@ -106,7 +106,7 @@ resume both budgets without mixing their checkpoints. Temporal admission stays
 separate from this reproducible data path.
 
 Reproduce upstream Java faults with the [controlled CLI/Codec matrix](docs/java-fault-matrix.md),
-also included in **4.15**. One frozen plan collects three curated fixes across two
+also included in **4.16**. One frozen plan collects three curated fixes across two
 codebases, retaining all **714 role observations / 357 same-test pairs** from the
 initial qualification, including both-fail and inconclusive outcomes. Typed indices
 verify source, context and raw packets; interrupted collection remains incomplete,
@@ -114,14 +114,14 @@ and completed evidence reopens offline. This optional workflow requires the pinn
 native arm64 Docker runtime. These constructed functional observations retain
 separate admission and generalization limits.
 
-The **published 4.15 wheel** also offers [controlled Python capture](docs/python-source-capture.md).
+The **published 4.16 wheel** also offers [controlled Python capture](docs/python-source-capture.md).
 Reproduce a PySnooper Unicode fix with unchanged source/tests, pinned wheels and
 two explicit locales. The installed qualification retains an ASCII exception-to-pass
 pair as **inconclusive**, plus a UTF-8 both-pass contrast. Real process interruption,
 offline replay and native checkpoint integration are verified. The guide includes
 the verified published-wheel installation command and explicit runtime preparation.
 
-The **4.15 wheel** includes [constructed C source capture](docs/c-seeded-source-capture.md):
+The **4.16 wheel** includes [constructed C source capture](docs/c-seeded-source-capture.md):
 unchanged NIST Juliet functions, a pinned GCC runtime and six frozen uint32 inputs
 checked against an independent arithmetic oracle. The initial qualification
 retains five both-pass pairs and one assertion-failure/pass pair. Inspect raw
@@ -369,19 +369,19 @@ Each run persists:
 
 Requires Python 3.14 or later in an activated virtual environment. Install the
 wheel published in this repository’s GitHub releases. These examples pin version
-4.15.0 and its published SHA-256. Pip verifies the wheel before installation:
+4.16.0 and its published SHA-256. Pip verifies the wheel before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
 ```
 
 Or with optional extras:
 
 ```bash
 # OpenTelemetry SDK
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
 ```
 
 Then use the [Library API](#library-api) or the [`coleman` CLI](#cli) to
@@ -557,10 +557,10 @@ packs:
 
 ```bash
 # Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
 
 # ClickHouse results sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
+python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
 ```
 
 ## Querying results
@@ -623,7 +623,7 @@ cd examples/observability
 docker compose up -d
 
 # 2. Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.15.0/coleman-4.15.0-py3-none-any.whl#sha256=ad2daedb4c251d5ac001db7d73910d912d439629aea4e0a04d84dcc66e279fde"
+uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
 
 # 3. Enable telemetry in your run.yaml:
 #    Replace telemetry/off with telemetry/local in the packs list
@@ -702,14 +702,14 @@ controlled reproductions and empirical benchmark corpora have different roles:
 | Dataset or benchmark | What you can use now | Scope and readiness |
 | --- | --- | --- |
 | **LRTS / Karaf real CI reports** | [Pinned download → analytical/native Parquet → Random/UCB → checkpoint recovery](docs/lrts-parquet-etl.md) | Complete eight-build preset; explicit post-hoc serial simulation. Protected historical admission remains blocked. |
-| **LRTS / ActiveMQ and Log4j stage views** | [Published 4.15 wheel → explicit local archive → analytical/native Parquet → checkpoint recovery](docs/lrts-stage-views.md) | Four-build profiles; exact context/node bindings. All raw stages retained; Log4j views share source observations. Temporal admission remains blocked. |
+| **LRTS / ActiveMQ and Log4j stage views** | [Published 4.16 wheel → explicit local archive → analytical/native Parquet → checkpoint recovery](docs/lrts-stage-views.md) | Four-build profiles; exact context/node bindings. All raw stages retained; Log4j views share source observations. Temporal admission remains blocked. |
 | **Druid and Retrofit** | Bundled native/contextual Parquet examples, native runner and [descriptive profiles](docs/benchmark-corpus.md#local-profiles-and-the-first-diversity-matrix-44) | Runnable legacy experiments. Source terms, duration units and outcome availability still need corpus admission evidence. |
 | **Dune and its variants** | Bundled native Parquet, WTS/VTS workflows and [variant-aware inventory](docs/benchmark-corpus.md) | Runnable HCS examples. Variants/context files may share executions; broad HCS benchmark admission remains unfinished. |
-| **LibSSH historical configurations** | [Published 4.15 wheel → original CSV/JSON → analytical/union/variant/VTS Parquet → native checkpoints](docs/hcs-parquet-etl.md) | Sixteen frozen pipelines, 13 known job labels (seven with parsed tests), 856 retained test executions and 29 explicit other-attempt exclusions. All 208 sparse cells retain missing evidence; metadata-only jobs never become passing tests or native executions. Test-only costs and temporal admission blockers remain explicit. |
+| **LibSSH historical configurations** | [Published 4.16 wheel → original CSV/JSON → analytical/union/variant/VTS Parquet → native checkpoints](docs/hcs-parquet-etl.md) | Sixteen frozen pipelines, 13 known job labels (seven with parsed tests), 856 retained test executions and 29 explicit other-attempt exclusions. All 208 sparse cells retain missing evidence; metadata-only jobs never become passing tests or native executions. Test-only costs and temporal admission blockers remain explicit. |
 | **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | Available in 4.8: 46,995 class executions / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |
-| **Controlled Java real-fault sources** | Published 4.15 wheel: [CLI-13 producer](docs/junit-source-capture.md) and [three-fix CLI/Codec matrix](docs/java-fault-matrix.md) with typed indices and offline recovery | Two codebases, explicit common fixtures, 357 same-test pairs in the initial qualification. Docker/arm64; negative and inconclusive results remain visible. Controlled evidence, not historical CI or full Defects4J reconstruction. |
-| **Controlled Python real-fault source** | [Published 4.15 wheel → pinned PySnooper capture → offline/interruption recovery](docs/python-source-capture.md) | One unchanged partial fixture, one curated fix, two correlated locales: ASCII error-to-pass remains inconclusive; UTF-8 both-pass. Docker/arm64; component terms and attribution limits retained. |
-| **Constructed C weakness** | [Published 4.15 wheel → pinned Juliet/GCC → independent arithmetic oracle → offline/interruption recovery](docs/c-seeded-source-capture.md) | One 2017 template/function pair, six correlated inputs, five both-pass and one expected pair. CC0/US public-domain source; synthetic provenance, separate from real faults and empirical admission. |
+| **Controlled Java real-fault sources** | Published 4.16 wheel: [CLI-13 producer](docs/junit-source-capture.md) and [three-fix CLI/Codec matrix](docs/java-fault-matrix.md) with typed indices and offline recovery | Two codebases, explicit common fixtures, 357 same-test pairs in the initial qualification. Docker/arm64; negative and inconclusive results remain visible. Controlled evidence, not historical CI or full Defects4J reconstruction. |
+| **Controlled Python real-fault source** | [Published 4.16 wheel → pinned PySnooper capture → offline/interruption recovery](docs/python-source-capture.md) | One unchanged partial fixture, one curated fix, two correlated locales: ASCII error-to-pass remains inconclusive; UTF-8 both-pass. Docker/arm64; component terms and attribution limits retained. |
+| **Constructed C weakness** | [Published 4.16 wheel → pinned Juliet/GCC → independent arithmetic oracle → offline/interruption recovery](docs/c-seeded-source-capture.md) | One 2017 template/function pair, six correlated inputs, five both-pass and one expected pair. CC0/US public-domain source; synthetic provenance, separate from real faults and empirical admission. |
 | **Deterministic CI stress laboratory (introduced in 4.14)** | [32 interaction-covering cases → truth JSONL/native Parquet → actual agents/checkpoints](docs/ci-stress-laboratory.md) | Eleven factors; tiny through 50,000 logical tests; explicit delayed/corrected feedback eligibility and modeled worker schedules. One owned constructed family; no empirical admission. |
 | **Owned CI correctness fixtures** | Two tiny [serial/parallel corpus fixtures](docs/benchmark-corpus.md), validation and native integration examples | Available without network. One constructed family for contract/metric checks; no independent-project diversity. |
 | **Coverage and scenario-allocation microbenchmarks** | [Correctness and performance profiles](docs/decision-benchmarks.md), independent exhaustive references and JSON/Markdown reports | Runnable finite-model benchmarks with runtime/memory observations; separate from empirical CI-policy comparisons. |
@@ -745,15 +745,17 @@ retain their own validation gates.
 [#261](https://github.com/jacksonpradolima/coleman/issues/261) remains open.
 The controlled Java matrix and bounded Python reproduction are usable source
 workflows; neither completes corpus diversity or scientific admission.
-The published 4.15 wheel includes a [bounded constructed C slice](docs/c-seeded-source-capture.md)
+The published 4.16 wheel includes a [bounded constructed C slice](docs/c-seeded-source-capture.md)
 from permitted Juliet inputs. SIR component/data terms remain unresolved.
-Nine of the thirteen public subtasks are delivered, including LibSSH WTS/VTS
+Ten of the thirteen public subtasks are delivered, including LibSSH WTS/VTS
 (introduced in 4.13) and the [#308](https://github.com/jacksonpradolima/coleman/issues/308)
 interaction-covering synthetic stress laboratory in 4.14. Published 4.15 delivers
 [#309's source admission](docs/corpus-admission.md) through
-[PR #330](https://github.com/jacksonpradolima/coleman/pull/330);
-metric/statistical validation, comparable baselines, public prospective collection
-feasibility and the confirmatory report remain in #310–#313. External baseline
+[PR #330](https://github.com/jacksonpradolima/coleman/pull/330).
+4.16 adds [#310's metric references and repeated-observation protocol](docs/corpus-evaluation.md)
+through [PR #332](https://github.com/jacksonpradolima/coleman/pull/332).
+Comparable baselines, public prospective collection feasibility and the
+confirmatory report remain in #311–#313. External baseline
 reproduction, including investigated DANTE methods, requires its own verified
 integration and comparable protocol.
 

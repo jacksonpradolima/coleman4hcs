@@ -6,8 +6,8 @@ inside its unit, not more independent repositories. This library preparation
 feeds [protected evaluation](protected-evaluation.md); it adds no runner,
 scheduler, fitting service or statistical test.
 
-This page describes the current development checkout. The published 4.15 wheel
-predates this preparation API. Build this checkout to run the example below.
+This workflow is available in the verified published **4.16** wheel. The complete
+example below runs outside the repository with that package.
 Historical source admission and the four remaining uncovered regimes retain
 their [documented limits](corpus-admission.md).
 
@@ -197,21 +197,22 @@ they do not establish calibration or efficacy on an empirical CI population.
 
 ## Run the complete installed example
 
-From the checkout, build an isolated wheel and copy the authored example outside
-the repository:
+With Python 3.14+ and `uv`, install the published wheel and download the example
+from the same immutable release tag. Run both outside the repository:
 
 ```bash
-task_source="$(pwd)"
 task_corpus_env="$(mktemp -d)"
-uv build --wheel --out-dir "$task_corpus_env/dist"
 uv venv "$task_corpus_env/installed" --python 3.14
-uv pip install --python "$task_corpus_env/installed/bin/python" "$task_corpus_env"/dist/*.whl
-cp "$task_source/examples/corpus-evaluation/ci.py" "$task_corpus_env/ci.py"
+uv pip install --python "$task_corpus_env/installed/bin/python" "https://github.com/jacksonpradolima/coleman/releases/download/v4.16.0/coleman-4.16.0-py3-none-any.whl#sha256=73fac37fc037d4e5c061f838711371ade5ada2f129917f09ef1b49ce87350116"
+curl --fail --location --output "$task_corpus_env/ci.py" \
+  https://raw.githubusercontent.com/jacksonpradolima/coleman/v4.16.0/examples/corpus-evaluation/ci.py
 cd "$task_corpus_env"
+"$task_corpus_env/installed/bin/python" -I ci.py ./output
+# Resume the native run; fresh analysis metadata does not grant fresh holdout access:
 "$task_corpus_env/installed/bin/python" -I ci.py ./output
 ```
 
-The complete [example](https://github.com/jacksonpradolima/coleman/blob/main/examples/corpus-evaluation/ci.py)
+The complete [example](https://github.com/jacksonpradolima/coleman/blob/v4.16.0/examples/corpus-evaluation/ci.py)
 freezes two owned CI histories, two builds each, Random/UCB with explicit `c=1.0`,
 seeds 11/42 and a 0.5 native-work budget, including test rename/churn in build two.
 Build one labels are available before the replay's second decision. Source clocks
@@ -248,3 +249,29 @@ their contracts:
 This validates bounded mechanisms. It does not fill missing temporal/source
 evidence in a historical corpus or turn constructed cases into independent
 empirical observations.
+
+## Published 4.16 qualification
+
+The actual signed 4.16.0 wheel was installed outside the checkout and all 308 SDK
+files were checked against its release tag. The base environment has no MCP;
+domain imports pass a guard rejecting CLI, transport and MCP dependencies.
+The tagged example retains sixteen raw cells and one constructed family;
+repeating it preserves all 24 native result/checkpoint files. The published
+contract rejects unchanged records swapped between builds or seeds.
+
+A separate original Karaf replay checks all sixteen Random/UCB rows across eight
+builds against independent rational references on the actual binary32 cost
+lattice. Full rankings retain 734–844 tests per build. Four zero-failure rows keep
+the native legacy fallback while their scientific reference ratios remain
+undefined. Repeating that run preserves checkpoint step 8 and all 25 protected
+files. Continuing the actual published 4.15 run with 4.16 preserves its 28
+nonoperational files across resume and retry; operational manifests may refresh.
+Missing original source clocks still block protected historical admission.
+
+The same wheel revalidates the original admission report against 61 actual source
+bindings and all six original controlled producers, without changing its digest
+or four uncovered historical/HCS regimes. Original 4.13 captures retain their
+original package identity. The release's wheel/source signatures, six asset
+sizes/digests, SBOM and version-only automatic bump were verified separately.
+These checks establish bounded reproducibility and compatibility; they do not
+establish independent empirical families or policy superiority.

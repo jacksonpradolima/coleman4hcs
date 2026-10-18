@@ -69,9 +69,10 @@ The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
 [interaction-covering stress laboratory](ci-stress-laboratory.md) shipped in 4.14
 through [#328](https://github.com/jacksonpradolima/coleman/pull/328). #309's
 [source admission and production reality](corpus-admission.md) shipped in 4.15
-through [#330](https://github.com/jacksonpradolima/coleman/pull/330). Nine of the
-thirteen public subtasks are delivered. #310–#313 remain open; metric/statistical
-references in #310 are next. Source conversion does not establish historical admission.
+through [#330](https://github.com/jacksonpradolima/coleman/pull/330). #310's [metric references and repeated CI protocol](corpus-evaluation.md) shipped
+in 4.16 through [#332](https://github.com/jacksonpradolima/coleman/pull/332).
+Ten of the thirteen public subtasks are delivered. #311–#313 remain open;
+the comparable baseline matrix in #311 is next. Source conversion does not establish historical admission.
 
 The published HCS workflow preserves raw pipeline/job correspondence, WTS/VTS
 Parquet, all 208 sparse cells and isolated multi-budget checkpoints. Its declared
@@ -90,7 +91,8 @@ later gates.
 | HCS source — delivered in 4.13 | [#307 LibSSH WTS/VTS and variant accounting](https://github.com/jacksonpradolima/coleman/issues/307) | Original pipeline/job identities; 13 known labels, seven with parsed tests; temporal admission remains blocked |
 | Synthetic laboratory — delivered in 4.14 | [#308 interaction-covering stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Tiny oracle/resource bounds; explicit synthetic dependence and native eligibility |
 | Evidence integration — delivered in 4.15 | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | Three scoped regimes covered; four historical/HCS regimes remain uncovered |
-| Comparison protocol | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310), [#311 comparable baselines](https://github.com/jacksonpradolima/coleman/issues/311) | #310 requires #309; #311 requires #309 and #310 |
+| Comparison protocol — delivered in 4.16 | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310) | #309; one fold/budget and one paired mean per reviewed repository family |
+| Comparable baselines — next | [#311 candidate matrix](https://github.com/jacksonpradolima/coleman/issues/311) | #309 and #310 |
 | Forward feasibility | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
 | Final execution/report | [#313 confirmatory corpus](https://github.com/jacksonpradolima/coleman/issues/313) | #309–#312 and the complete parent gates |
 
@@ -178,7 +180,16 @@ qualification cannot grant historical confirmation. The signed published wheel
 revalidates 61 actual bindings / 63 cards, all six original raw-capture proofs and
 the complete 39-case stress family. Three scoped regimes are covered; four
 historical/HCS regimes stay uncovered. Actual 4.14 native results resume without
-changing protected bytes. #309 is delivered; #261 remains open and #310 is next.
+changing protected bytes. #309 is delivered; its original 4.15 qualification remains historical evidence.
+
+**4.16.0** adds [metric references and repeated CI observations](corpus-evaluation.md).
+Versioned raw grids bind every immutable candidate/build/seed key, preserve
+unavailable attempts and average seeds within builds, then builds within reviewed
+repository families. Existing protected evaluation receives one paired mean per
+family. Native metric conventions, original artifacts and checkpoints retain
+their semantics; no implicit migration grants source eligibility. The published
+wheel runs the complete native example and retains insufficient evidence for its
+one constructed family. #310 is delivered; #261 remains open and #311 is next.
 
 The existing public adapter issues now have consciously revised generic CI
 specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:
