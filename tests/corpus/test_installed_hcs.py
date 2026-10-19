@@ -3,11 +3,15 @@
 import json
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 from tests.corpus.hcs_raw_reference import verify_libssh_raw_reference
 from tests.corpus.hcs_support import hcs_recipe
+from tests.corpus.test_hcs_archive_trace import owned_archive
+from tests.corpus.test_hcs_trace import OWNED
+from tests.corpus.test_hcs_trace_artifacts import owned_log_spec
 from tests.corpus.test_installed_controlled import ROOT, command
 
 
@@ -28,17 +32,37 @@ def test_installed_hcs_sources_native_recovery_and_domain_import_boundary(tmp_pa
     (outside / "recipe.json").write_text(recipe.to_json())
     (outside / "executions.csv").write_bytes(csv_bytes)
     (outside / "jobs.json").write_bytes(jobs_bytes)
+    (outside / "owned-ctest.log").write_bytes(OWNED)
+    (outside / "owned-log-spec.json").write_text(owned_log_spec().to_json())
+    _, _, archive_spec, archive_payload = owned_archive(tmp_path / "archive-source")
+    (outside / "archive-spec.json").write_text(archive_spec.to_json())
+    (outside / "archive.zip").write_bytes(archive_payload)
+    shutil.copyfile(ROOT / "tests/corpus/fixtures/hcs-ctest-owned-v1.json", outside / "ctest-golden.json")
     script = """
-import importlib.abc,importlib.util,json,sys
+import importlib.abc,importlib.util,json,sys,os
 from pathlib import Path
 assert importlib.util.find_spec('mcp') is None
 class Boundary(importlib.abc.MetaPathFinder):
     def find_spec(self,fullname,path=None,target=None):
-        if fullname=='coleman.cli' or fullname.startswith(('coleman.transports','mcp')):
+        if fullname=='coleman.cli' or fullname.startswith(('coleman.transports','coleman.application','mcp')):
             raise AssertionError('HCS domain imported transport: '+fullname)
 boundary=Boundary();sys.meta_path.insert(0,boundary)
 from coleman.corpus.hcs_etl import export_hcs_parquet,validate_hcs_etl
 from coleman.corpus.hcs_contracts import HCSReceipt,HCSRecipe
+from coleman.corpus.hcs_trace import parse_hcs_ctest_trace,validate_hcs_ctest_trace
+from coleman.corpus.hcs_trace_contracts import HCSTraceEvidence
+from coleman.corpus.hcs_trace_correspondence import corroborate_hcs_ctest_trace
+from coleman.corpus.hcs_trace_artifacts import HCSLogSpec,publish_hcs_trace_evidence,validate_hcs_trace_completion
+from coleman.corpus.hcs_archive_trace import (
+    HCSArchiveLogSpec,publish_hcs_archive_trace,validate_hcs_archive_trace,load_hcs_archive_log_spec,
+)
+assert load_hcs_archive_log_spec().job_id==63565028
+trace=HCSTraceEvidence.from_json(Path('ctest-golden.json').read_bytes())
+raw=Path('owned-ctest.log').read_bytes()
+assert parse_hcs_ctest_trace(raw,trace.job)==trace
+validate_hcs_ctest_trace(trace,raw)
+assert trace.runs[0].executions[0].elapsed.value==0
+assert trace.predecision_membership=='unverified'
 assert Path(sys.modules['coleman.corpus.hcs_etl'].__file__).resolve().is_relative_to(Path(sys.prefix))
 sys.meta_path.remove(boundary)
 from coleman.application.hcs import run_hcs_replay
@@ -54,6 +78,38 @@ assert old.recipe.feedback.value=='budget-censored-native-RNFail-zero-nondetecti
 recipe=HCSRecipe.from_json(Path('recipe.json').read_bytes());cache=SourceCache('cache')
 for package,name in [(recipe.executions,'executions.csv'),(recipe.jobs,'jobs.json')]:
     materialize_source(package,cache,lambda name=name:Path(name).open('rb'))
+from coleman.corpus.hcs_raw import read_hcs_slice
+trace_proof=corroborate_hcs_ctest_trace(trace,read_hcs_slice(recipe,cache))
+assert trace_proof.matched_observations==3
+assert trace_proof.duplicate_rows==1
+assert trace_proof.admission=='not_granted'
+log_spec=HCSLogSpec.from_json(Path('owned-log-spec.json').read_bytes())
+class InterruptedTrace(ArtifactWriter):
+    def write_immutable(self,path,content):
+        if path.name=='correspondence.json':
+            os._exit(73)
+        return super().write_immutable(path,content)
+trace_writer=InterruptedTrace('corroboration') if sys.argv[-1]=='trace-interrupt' else ArtifactWriter('corroboration')
+trace_path=publish_hcs_trace_evidence(recipe,log_spec,raw,cache,trace_writer)
+trace_receipt=validate_hcs_trace_completion(trace_path,recipe,raw,cache)
+assert trace_receipt.log_spec.terms.status=='pending'
+trace_before={str(p):p.read_bytes() for p in trace_path.parent.iterdir()}
+assert publish_hcs_trace_evidence(recipe,log_spec,raw,cache,trace_writer)==trace_path
+assert trace_before=={str(p):p.read_bytes() for p in trace_path.parent.iterdir()}
+archive_spec=HCSArchiveLogSpec.from_json(Path('archive-spec.json').read_bytes())
+materialize_source(archive_spec.container,cache,lambda:Path('archive.zip').open('rb'))
+class InterruptedArchive(ArtifactWriter):
+    def write_immutable(self,path,content):
+        if path.parent.parent.name=='hcs-archive-trace':
+            os._exit(74)
+        return super().write_immutable(path,content)
+archive_writer=(InterruptedArchive('archive-corroboration') if sys.argv[-1]=='archive-interrupt'
+    else ArtifactWriter('archive-corroboration'))
+archive_path=publish_hcs_archive_trace(recipe,archive_spec,cache,archive_writer)
+archive_receipt=validate_hcs_archive_trace(archive_path,recipe,cache)
+assert archive_receipt.corroboration.files[0].rows==3
+assert archive_receipt.corroboration.log_spec.terms==archive_spec.container.license
+assert archive_receipt.admission=='not_granted'
 p=export_hcs_parquet(recipe,cache,ArtifactWriter('etl'))
 assert export_hcs_parquet(recipe,cache,ArtifactWriter('etl'))==p
 r=HCSReceipt.from_json(p.read_bytes());validate_hcs_etl(r,cache,p.parent)
@@ -108,6 +164,28 @@ print(json.dumps(dict(installed=True,owned=proof,real=real,real_completion=str(p
     shutil.copyfile(
         ROOT / "tests/corpus/fixtures/lrts-etl-owned-completion-v1.json", outside / "legacy-completion.json"
     )
+    interrupted = subprocess.run(
+        [str(python), "-c", script, "-", "trace-interrupt"],
+        cwd=outside,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert interrupted.returncode == 73, interrupted.stderr
+    assert list((outside / "corroboration").rglob("trace.json"))
+    assert not list((outside / "corroboration").rglob("complete.json"))
+    archive_interrupted = subprocess.run(
+        [str(python), "-c", script, "-", "archive-interrupt"],
+        cwd=outside,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert archive_interrupted.returncode == 74, archive_interrupted.stderr
+    assert list((outside / "archive-corroboration" / "hcs-trace").rglob("complete.json"))
+    assert not list((outside / "archive-corroboration" / "hcs-archive-trace").rglob("complete.json"))
     result = command([str(python), "-c", script, env.get("COLEMAN_HCS_REAL_CACHE", "-")], outside, env)
     proof = json.loads(result.stdout.strip().splitlines()[-1])
     assert proof["installed"]

@@ -37,6 +37,7 @@ nav = [
   { "LRTS Download, Parquet & Replay" = "lrts-parquet-etl.md" },
   { "LRTS Stage Views & Larger Histories" = "lrts-stage-views.md" },
   { "LibSSH HCS Parquet & WTS/VTS Replay" = "hcs-parquet-etl.md" },
+  { "Original CTest Trace Corroboration" = "hcs-trace-evidence.md" },
   { "Original Westermo Analytical Parquet" = "westermo-parquet-etl.md" },
   { "Controlled Fault Observations" = "controlled-faults.md" },
   { "Pinned JUnit Source Capture" = "junit-source-capture.md" },

@@ -1,5 +1,9 @@
 # LibSSH: original CI data to variant-aware Parquet and native replay
 
+Original CTest logs can additionally be [corroborated against the archived
+CSV and job metadata](hcs-trace-evidence.md), preserving process states without
+silently changing the old collapsed nonpass labels or temporal admission.
+
 Use a pinned public historical LibSSH slice to exercise **Whole Test Set (WTS)**
 and **Variant Test Set (VTS)** evaluation. Preserve pipeline/job identity, inspect
 sparse configurations, compare their native result denominators and resume both
@@ -324,3 +328,7 @@ cost boundary difference remains visible. No original benchmark bytes are bundle
 Scientific source
 admission, repeated-measures inference and cross-corpus claims remain with the
 [remaining public roadmap](roadmap.md).
+
+The [original CTest evidence guide](hcs-trace-evidence.md#verify-a-log-from-the-original-licensed-release)
+also verifies a selected job log against the complete released CC0 `logs.zip`,
+with separate complete-last archive provenance. This does not grant historical admission.

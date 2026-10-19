@@ -1,0 +1,306 @@
+# Corroborate original CTest logs with HCS data
+
+COLEMAN can compare an original CTest job log with the archived HCS execution
+CSV and job metadata. It retains passed, failed, timeout, exception, skipped and
+not-run states separately. A successful comparison verifies this correspondence;
+it does not supply missing historical availability or predecision test membership.
+
+This workflow requires a wheel built from this source revision after **4.18.0**.
+It is an optional source-qualification step alongside the existing
+[LibSSH Parquet and WTS/VTS workflow](hcs-parquet-etl.md). Old receipts, raw verdicts,
+Parquet and native checkpoints retain their existing meaning.
+
+## Install outside the checkout
+
+Run these commands from the COLEMAN checkout, with Python 3.14 and uv available:
+
+```bash
+export COLEMAN_TRACE_HOME="$(mktemp -d "${TMPDIR:-/tmp}/coleman-ctest.XXXXXX")"
+uv build --wheel --out-dir "$COLEMAN_TRACE_HOME/dist"
+uv venv "$COLEMAN_TRACE_HOME/installed" --python 3.14
+uv pip install --python "$COLEMAN_TRACE_HOME/installed/bin/python" \
+  "$COLEMAN_TRACE_HOME"/dist/coleman-*.whl
+cd "$COLEMAN_TRACE_HOME"
+```
+
+No MCP, Docker, provider credentials or source checkout is needed after installation.
+
+## Read and verify a complete owned example
+
+Save this complete example as `inspect_trace.py` outside the checkout and run
+`"$COLEMAN_TRACE_HOME/installed/bin/python" inspect_trace.py`:
+
+```python
+from coleman.corpus.hcs_contracts import HCSJob
+from coleman.corpus.hcs_trace import parse_hcs_ctest_trace, validate_hcs_ctest_trace
+from coleman.corpus.hcs_trace_contracts import HCSTraceEvidence
+
+raw = b"""Test project /owned/ci/build
+1/3 Test #1: unit ................ Passed 0.00 sec
+2/3 Test #2: integration .........***Failed 2.00 sec
+3/3 Test #3: system ..............***Not Run 0.00 sec
+33% tests passed, 2 tests failed out of 3
+Total Test time (real) = 2.04 sec
+"""
+job = HCSJob(
+    job_id=1,
+    pipeline_id=101,
+    commit_id="a" * 40,
+    variant="owned-linux",
+    status="failed",
+    started_at="2026-01-01T00:00:00Z",
+    finished_at="2026-01-01T00:01:00Z",
+)
+trace = parse_hcs_ctest_trace(raw, job)
+validate_hcs_ctest_trace(trace, raw)
+assert HCSTraceEvidence.from_json(trace.to_json()) == trace
+run = trace.runs[0]
+assert run.state == "complete"
+assert [row.binary_verdict for row in run.executions] == [0, 1, None]
+assert run.executions[0].elapsed.value == 0
+assert trace.predecision_membership == "unverified"
+assert trace.outcome_availability == "unverified"
+print(trace.fingerprint)
+for row in run.executions:
+    print(trace.execution_id("owned-ci", run.ordinal, row.index), row.status, row.elapsed.value)
+```
+
+These dates and tests are authored mechanism examples, not observed CI history.
+A complete **CTest invocation** is distinct from a complete CI job or an admitted
+benchmark source. Job metadata is an explicit source declaration; a log cannot
+authenticate its own job identity.
+
+## Verify a log from the original licensed release
+
+The dataset's original CC0-1.0 release includes `logs.zip`, independently of
+live GitLab hosting terms. First materialize the CSV and job JSON following the
+[LibSSH instructions](hcs-parquet-etl.md), using `/tmp/coleman-hcs-cache`.
+Then download the original archive outside Git:
+
+```bash
+cd "$COLEMAN_TRACE_HOME"
+curl --fail --silent --show-error --location --max-time 300 --max-filesize 97363308 \
+  'https://dataverse.harvard.edu/api/access/datafile/4378426?format=original' \
+  --output logs.zip
+```
+
+The bundled specification pins all **97,363,308 bytes** with SHA-256
+`41037ef8678e644a3d935fcafaad28d2c42e208b352ee21dea380ec52760f35e`.
+The release's MD5 is `e6d1719783e595665cd9c27a50fdb9a5`; acquisition and
+verification use SHA-256. Its selected job 63565028 member has 32,780 bytes and
+SHA-256 `bae05293a3a9a134b1893cd17b02f6d7cd562790c9f7c773916e2e599eb3dbce`.
+These pins identify the released copy; they do not transfer its terms to a live
+provider endpoint.
+
+Save this complete example as `corroborate_archive.py` and run
+`"$COLEMAN_TRACE_HOME/installed/bin/python" corroborate_archive.py`:
+
+```python
+from functools import partial
+from importlib.resources import files
+from pathlib import Path
+
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus.hcs_archive_trace import (
+    load_hcs_archive_log_spec,
+    publish_hcs_archive_trace,
+    validate_hcs_archive_trace,
+)
+from coleman.corpus.hcs_contracts import HCSRecipe
+from coleman.corpus.materialization import SourceCache, materialize_source
+
+recipe = HCSRecipe.from_json(
+    files("coleman.corpus.resources").joinpath("libssh-first16-pipelines-v1.json").read_bytes()
+)
+spec = load_hcs_archive_log_spec()
+cache = SourceCache(Path("/tmp/coleman-hcs-cache"))
+materialize_source(spec.container, cache, partial(Path("logs.zip").open, "rb"))
+writer = ArtifactWriter(Path("archived-corroboration"))
+completion = publish_hcs_archive_trace(recipe, spec, cache, writer)
+receipt = validate_hcs_archive_trace(completion, recipe, cache)
+assert receipt.corroboration.log_spec.terms.license_id == "CC0-1.0"
+assert receipt.admission == "not_granted"
+assert publish_hcs_archive_trace(recipe, spec, cache, writer) == completion
+print(completion)
+```
+
+The explicit `classic-zip-16384-ctest-logs-v1` profile supports at most 16,384
+entries and 2 MiB of central metadata, checked before standard ZIP allocation.
+It validates every local header and the selected member's CRC, size and SHA-256;
+unselected payloads are not decoded. ZIP64, links, prefixed archives, unsafe or
+aliased names and unsupported metadata reject. The original archive has 10,053
+entries. Existing archive profiles and their smaller bounds remain unchanged.
+The selected filename must agree with the original pipeline/commit/job metadata.
+
+The child `hcs-trace/.../complete.json` certifies log/CSV correspondence. The
+additional `hcs-archive-trace/.../complete.json` is written last and binds the
+verified whole container, member, reviewed terms and child receipt. A child
+alone cannot certify the archive. A process stopped between these receipts can
+retry without replacing completed evidence. Validation rechecks actual source
+bytes offline; copied namespaces, altered outputs and unknown producers reject.
+Keep the recorded package to verify older producers; no migration is implicit.
+No raw log is exported and historical availability/membership remain unverified.
+
+```mermaid
+flowchart LR
+  Archive["Pinned original CC0 logs.zip"] --> Verify["Bounded headers + exact selected member"]
+  Metadata["Pinned CSV + job metadata"] --> Child["Existing CTest corroboration receipt"]
+  Verify --> Child
+  Child --> Wrapper["Original-archive receipt written last"]
+  Archive --> Wrapper
+  Wrapper --> Limits["Integrity and terms verified; historical admission pending"]
+```
+
+## Compare with original archived observations
+
+First materialize the original CSV and job JSON using the
+[existing LibSSH instructions](hcs-parquet-etl.md). Keep their verified cache
+outside Git. A log needs its own complete-byte SHA-256/size pin, source version,
+citation and component-terms record. Do not copy the archived CSV's CC0 terms
+onto an upstream log without reviewing that component.
+
+The following example uses `/tmp/coleman-hcs-cache`, the cache in that guide.
+Return to the new installed example's working directory and fetch this separately
+pinned original public log, outside Git:
+
+```bash
+cd "$COLEMAN_TRACE_HOME"
+curl --fail --silent --show-error --location --max-time 30 --max-filesize 2097152 \
+  'https://gitlab.com/libssh/libssh-mirror/-/jobs/63565028/raw' --output job.log
+```
+
+Save this complete metadata as `log-spec.json`:
+
+```json
+{
+  "schema_version": 1,
+  "job_id": 63565028,
+  "source": {
+    "uri": "https://gitlab.com/libssh/libssh-mirror/-/jobs/63565028/raw",
+    "version": "job-63565028-content-sha256-bae05293a3a9a134",
+    "citation": "LibSSH public GitLab CI job 63565028 original CTest log; pinned snapshot",
+    "sha256": "sha256:bae05293a3a9a134b1893cd17b02f6d7cd562790c9f7c773916e2e599eb3dbce",
+    "size_bytes": 32780,
+    "availability": "verified_local"
+  },
+  "terms": {
+    "status": "pending",
+    "license_id": null,
+    "terms_uri": null,
+    "terms_sha256": null,
+    "reviewed_at": null,
+    "redistribution": "unverified"
+  }
+}
+```
+
+The specification
+is an `HCSLogSpec` v1 JSON record: `job_id`, `source` (`SourceArtifact`) and `terms`
+(`LicenseReview`). Its locator is descriptive and is never fetched by this API.
+Terms marked pending remain pending; explicitly prohibited use rejects. No raw
+log is redistributed by the export.
+
+```python
+from importlib.resources import files
+from pathlib import Path
+
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus.hcs_contracts import HCSRecipe
+from coleman.corpus.hcs_trace_artifacts import (
+    HCSLogSpec,
+    publish_hcs_trace_evidence,
+    validate_hcs_trace_completion,
+)
+from coleman.corpus.materialization import SourceCache
+
+recipe = HCSRecipe.from_json(
+    files("coleman.corpus.resources").joinpath("libssh-first16-pipelines-v1.json").read_bytes()
+)
+spec = HCSLogSpec.from_json(Path("log-spec.json").read_bytes())
+raw = Path("job.log").read_bytes()
+cache = SourceCache(Path("/tmp/coleman-hcs-cache"))
+writer = ArtifactWriter(Path("corroboration"))
+completion = publish_hcs_trace_evidence(recipe, spec, raw, cache, writer)
+receipt = validate_hcs_trace_completion(completion, recipe, raw, cache)
+assert receipt.admission == "not_granted"
+assert publish_hcs_trace_evidence(recipe, spec, raw, cache, writer) == completion
+print(completion)
+```
+
+Both original cache files are reverified on every validation/retry. The parser
+and source/storage implementation digest selects the export namespace. Inside
+it, `trace.json` retains typed process outcomes and `correspondence.json` records
+the exact match, source fingerprints, original CSV record positions and duplicate
+counts. `physical_positions` retains the original reader's one-based data-record
+ordinals, with the header excluded; trace `source_line` counts physical log lines.
+`complete.json` is written last, after both immutable files. A stopped process
+can leave an evidence file; it cannot establish a completed export without the
+receipt. Identical concurrent retries converge; conflicting bytes reject.
+
+```mermaid
+flowchart LR
+  CSV["Pinned original CSV + job JSON"] --> Slice["Existing HCS source reader"]
+  Log["Separately pinned original CTest log"] --> Trace["Versioned trace evidence"]
+  Slice --> Match["Exact identity, seconds and legacy nonpass correspondence"]
+  Trace --> Match
+  Match --> Files["Immutable trace + correspondence"]
+  Files --> Complete["Local corroboration receipt written last"]
+  Complete --> Limits["Availability / predecision membership still unverified"]
+```
+
+## Units, states and compatibility
+
+- Executable durations use `s / ctest-reported-executable-elapsed-seconds-v1`;
+  wall envelopes use `s / ctest-reported-run-wall-envelope-seconds-v1`. Their
+  sums are not equated. Neither is a whole-runner occupancy measurement.
+- Reported zero remains zero. A not-run record may report zero elapsed seconds;
+  that does not assert execution. Only Passed and Failed map to binary reported
+  executable verdicts. Timeout, exception, skipped and not-run remain null there.
+- The archived CSV's separate legacy mapping is explicitly any non-Passed
+  status → nonpass 1. Corroboration preserves that collapsed definition; it does
+  not rewrite old 1s as assertion failures or turn missing records into passes.
+- Summary percentages must agree with the reported counts: round halves up and
+  cap at 99% when any failure is reported, following the
+  [CTest summary formatter](https://github.com/Kitware/CMake/blob/v3.10.3/Source/CTest/cmCTestTestHandler.cxx#L494-L501).
+  Contradictory percentages reject before evidence publication. This display
+  percentage is separate from executable verdicts and calibrated probabilities.
+- A printed N/M denominator describes post-execution trace coverage. It is not
+  proof of a predecision required-test universe. Missing final summary/wall data
+  yields `partial`; missing CTest headers yield no invocations. Repeated
+  invocations retain separate ordinals and cannot corroborate an ambiguous
+  single-job/test CSV table by choosing a convenient attempt.
+- Parallel CTest output has two separate numbers: the completion-position
+  counter before `/` and the original test index after `#`. They may differ.
+  Both are retained; the original index supplies logical execution identity.
+  Filtered invocations may retain sparse original indices larger than the number
+  of selected tests; only completion positions must cover the printed denominator.
+- Original bytes determine the source digest. Logical execution identity uses
+  project/pipeline/job/invocation/index, independently of measurement values,
+  formatting, worker or arrival order. The richer evidence digest retains
+  physical line provenance and changes when those original bytes change.
+- Inputs are bounded to 2 MiB UTF-8, 16 KiB per line, 131,072 physical lines,
+  sixteen invocations and 10,000 total results. Finite nonnegative exact decimal
+  seconds accept at most twelve fractional places and a 10^12-second bound.
+  Unknown result forms, conflicting counts/duplicates and nonfinite values reject.
+- All new persisted contracts require integer schema version 1. Missing, coerced,
+  future and unknown versions reject. Another producer requires its recorded
+  package for verification; derive a new namespace explicitly instead of
+  overwriting old artifacts. Core parsing/comparison never imports CLI or MCP.
+
+All **78 original public job logs** in the pinned sixteen-pipeline metadata
+snapshot were retrieved and interpreted. The **45 jobs represented in the CSV**
+corroborate all **885 selected observations**, including the 29 executions retained
+separately as another attempt by the old replay adapter. The logs additionally
+contain **187 result lines across six jobs absent from the CSV**: five jobs have
+repeated invocations, and one canceled job has a partial invocation. Those lines
+remain additional evidence; they do not fill or rewrite the old table. The
+remaining 27 logs have no supported CTest project header, which does not prove
+that no tests were planned.
+
+Examples include original jobs
+[62621051](https://gitlab.com/libssh/libssh-mirror/-/jobs/62621051),
+[62771472](https://gitlab.com/libssh/libssh-mirror/-/jobs/62771472) and
+[63565028](https://gitlab.com/libssh/libssh-mirror/-/jobs/63565028).
+This bounded snapshot does not establish upstream completeness beyond the
+released metadata, source-purpose admission or independent-project evidence.
+It supplies no policy comparison.
