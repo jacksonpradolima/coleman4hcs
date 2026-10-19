@@ -142,9 +142,17 @@ evidence-based comparison into one Python platform. Choose a policy, learn from
 execution feedback, explore its parameters and inspect the resulting test order,
 fault-detection quality and modeled execution cost.
 
-The approach is grounded in the [original TCPCI study](https://doi.org/10.1109/TSE.2020.2992428),
-the [SPLC configurable-software study](https://doi.org/10.1145/3382025.3414967)
+The approach is grounded in the [original TCPCI study](https://doi.org/10.1109/TSE.2020.2992428)
+(**IEEE Transactions on Software Engineering, TSE**), the
+[SPLC configurable-software study](https://doi.org/10.1145/3382025.3414967)
 and its [Empirical Software Engineering extension](https://doi.org/10.1007/s10664-021-10093-3).
+
+Since these studies, COLEMAN has evolved into a reusable **CI Intelligence
+platform**. It now combines [37 policies](#mab-policies-available),
+[parameter sweeps](#sweep-engine), [source-to-Parquet workflows](#datasets),
+resumable checkpoints and [protected comparisons](docs/protected-evaluation.md)
+with [versioned result records](docs/domain-results.md) and explicit
+[provenance](#provenance). **TCPCI remains its core.**
 
 The platform connects **source data → reproducible experiments → inspectable
 results → evidence for a decision**. Use it as a Python library or through the CLI;
@@ -389,7 +397,7 @@ is directly connected to the workflows above:
 
 | Original publication | Research contribution | Explore it in COLEMAN |
 | --- | --- | --- |
-| Prado Lima and Vergilio. [*A Multi-Armed Bandit Approach for Test Case Prioritization in Continuous Integration Environments*](https://doi.org/10.1109/TSE.2020.2992428). **IEEE TSE 48(2), 453–465, 2022.** | Adaptive prioritization with feedback across changing CI test suites | [Bandit loop](docs/concepts.md), [policies](docs/policies.md), [experiments](docs/experiments.md) |
+| Prado Lima and Vergilio. [*A Multi-Armed Bandit Approach for Test Case Prioritization in Continuous Integration Environments*](https://doi.org/10.1109/TSE.2020.2992428). **IEEE Transactions on Software Engineering (TSE) 48(2), 453–465, 2022.** | Adaptive prioritization with feedback across changing CI test suites | [Bandit loop](docs/concepts.md), [policies](docs/policies.md), [experiments](docs/experiments.md) |
 | Prado Lima, Mendonça, Vergilio and Assunção. [*Learning-based prioritization of test cases in continuous integration of highly-configurable software*](https://doi.org/10.1145/3382025.3414967). **SPLC, 2020.** | Learning-based prioritization in highly configurable software | [Whole-test-set and variant-test-set strategies](docs/highly-configurable.md) |
 | The same authors. [*Cost-effective learning-based strategies for test case prioritization in continuous integration of highly-configurable software*](https://doi.org/10.1007/s10664-021-10093-3). **Empirical Software Engineering 27, article 133, 2022.** | Extended evaluation of WTS/VTS across variants and budgets | [LibSSH data and replay](docs/hcs-parquet-etl.md), [original CTest evidence](docs/hcs-trace-evidence.md) |
 
