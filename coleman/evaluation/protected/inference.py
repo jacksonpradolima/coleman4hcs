@@ -83,31 +83,11 @@ def _estimate(
     """Align independent units and estimate one pair without complete-case selection."""
     left = observations[hypothesis.candidate_id]
     right = observations[hypothesis.baseline_id]
-    if set(left) != set(right):
-        raise ValueError("Candidates must have the same paired independent units")
-    units = tuple(sorted(left))
-    differences = []
-    exact_differences = []
-    for unit in units:
-        if left[unit].metadata != right[unit].metadata:
-            raise ValueError("Paired unit metadata must agree across candidates")
-        first = left[unit].record.measurement(frozen.protocol.metric_name)
-        second = right[unit].record.measurement(frozen.protocol.metric_name)
-        left[unit].record.require_compatible(right[unit].record, frozen.protocol.metric_name)
-        if first.value is not None and second.value is not None:
-            if isinstance(frozen.protocol, BoundedMeanProtocol):
-                exact_differences.append(Fraction(first.value) - Fraction(second.value))
-            else:
-                difference = first.value - second.value
-                if not math.isfinite(difference):
-                    raise ValueError("Paired difference exceeds finite numeric range")
-                differences.append(difference)
+    units, differences, exact_differences = _paired_differences(left, right, frozen.protocol)
     if isinstance(frozen.protocol, BoundedMeanProtocol):
-        summary = summarize_bounded(
-            tuple(exact_differences), frozen.protocol, len(frozen.comparison_family), len(units)
-        )
+        summary = summarize_bounded(exact_differences, frozen.protocol, len(frozen.comparison_family), len(units))
     else:
-        summary = _summarize(tuple(differences), frozen.protocol, len(frozen.comparison_family), len(units))
+        summary = _summarize(differences, frozen.protocol, len(frozen.comparison_family), len(units))
     return ComparisonResult(
         hypothesis_id=hypothesis.hypothesis_id,
         independent_units=units,
@@ -121,6 +101,40 @@ def _estimate(
         conclusion="insufficient_evidence",
         reason=summary.reason,
     )
+
+
+def _paired_differences(
+    left: dict[str, PairedObservation],
+    right: dict[str, PairedObservation],
+    protocol: EvaluationProtocol | BoundedMeanProtocol,
+) -> tuple[tuple[str, ...], tuple[float, ...], tuple[Fraction, ...]]:
+    """Align every paired unit and retain missing pairs outside both numeric collections.
+
+    Metadata and quantity compatibility must agree before arithmetic. Legacy
+    subtraction stays binary64; the bounded method subtracts exact rationals.
+    Invalid pairing or unrepresentable legacy differences raise ValueError.
+    """
+    if set(left) != set(right):
+        raise ValueError("Candidates must have the same paired independent units")
+    units = tuple(sorted(left))
+    differences = []
+    exact_differences = []
+    for unit in units:
+        if left[unit].metadata != right[unit].metadata:
+            raise ValueError("Paired unit metadata must agree across candidates")
+        first = left[unit].record.measurement(protocol.metric_name)
+        second = right[unit].record.measurement(protocol.metric_name)
+        left[unit].record.require_compatible(right[unit].record, protocol.metric_name)
+        if first.value is None or second.value is None:
+            continue
+        if isinstance(protocol, BoundedMeanProtocol):
+            exact_differences.append(Fraction(first.value) - Fraction(second.value))
+            continue
+        difference = first.value - second.value
+        if not math.isfinite(difference):
+            raise ValueError("Paired difference exceeds finite numeric range")
+        differences.append(difference)
+    return units, tuple(differences), tuple(exact_differences)
 
 
 def _summarize(

@@ -73,7 +73,8 @@ def test_known_positive_negative_zero_and_minimization_effects(tmp_path):
     result = positive.results[0]
     assert result.raw_mean_difference == result.improvement == 0.5
     assert result.conclusion == "evidence_of_benefit"
-    assert result.ci_lower > 0.01 and result.ci_upper < 1
+    assert result.ci_lower > 0.01
+    assert result.ci_upper < 1
     negative, _, _ = evaluate_owned(tmp_path / "negative", differences=(-0.5,) * 100, baseline=0.75)
     opposite = negative.results[0]
     assert opposite.conclusion == "evidence_of_harm"
@@ -109,7 +110,8 @@ def test_missing_pair_is_not_zero_or_selective_complete_case_mean(tmp_path):
     rows = observations(frozen, (0.5,) * 100, baseline=0.25, unavailable_index=17)
     report = evaluate(frozen, EvaluationAudit(tmp_path), lambda: rows, actor="owned-missing")
     result = report.results[0]
-    assert result.observed_pairs == 99 and len(result.independent_units) == 100
+    assert result.observed_pairs == 99
+    assert len(result.independent_units) == 100
     assert result.raw_mean_difference is result.improvement is result.p_value is None
     assert result.ci_lower is result.ci_upper is None
     assert result.reason == "incomplete_outcomes"
@@ -231,15 +233,18 @@ def test_radius_and_tail_metamorphisms_and_invalid_exact_inputs():
     assert bounded_radius(2, 11, alpha) == 2
     assert bounded_tail_upper(Fraction(3)) > bounded_tail_upper(Fraction(4))
     for bad in (float("nan"), float("inf"), True, -1):
+        invalid = cast(Any, bad)
         with pytest.raises(ValueError):
-            bounded_tail_upper(cast(Any, bad))
+            bounded_tail_upper(invalid)
     for counts in ((0, 1), (1, 0), (True, 1), (1, False)):
         with pytest.raises(ValueError):
             bounded_radius(*counts, alpha)
+    invalid_alpha = cast(Any, 0.05)
     with pytest.raises(ValueError):
-        bounded_radius(20, 1, cast(Any, 0.05))
+        bounded_radius(20, 1, invalid_alpha)
+    invalid_endpoint = cast(Any, 0.5)
     with pytest.raises(ValueError):
-        outward_binary64(cast(Any, 0.5), upper=True)
+        outward_binary64(invalid_endpoint, upper=True)
 
 
 def test_outward_subnormal_zero_and_overflow_behavior():
@@ -248,8 +253,9 @@ def test_outward_subnormal_zero_and_overflow_behavior():
     assert outward_binary64(tiny, upper=False) == 0.0
     assert outward_binary64(-tiny, upper=False) == -math.ulp(0.0)
     assert math.copysign(1.0, outward_binary64(Fraction(0), upper=True)) == 1.0
+    overflowing = Fraction(10**400)
     with pytest.raises(OverflowError):
-        outward_binary64(Fraction(10**400), upper=True)
+        outward_binary64(overflowing, upper=True)
 
 
 def test_exact_mean_extremes_and_numerically_unrepresentable_uncertainty():
@@ -263,8 +269,10 @@ def test_exact_mean_extremes_and_numerically_unrepresentable_uncertainty():
     assert result.reason == "numerically_unstable_uncertainty"
     with pytest.raises(ValueError, match="mean difference exceeds"):
         summarize_bounded((differences[0],) * 2, protocol, 1, 2)
+    outside = (Fraction(10),)
+    narrow = bounded_contract().protocol
     with pytest.raises(ValueError, match="frozen outcome bounds"):
-        summarize_bounded((Fraction(10),), bounded_contract().protocol, 1, 1)
+        summarize_bounded(outside, narrow, 1, 1)
 
 
 def test_report_recomputation_rejects_even_one_ulp_narrowed_bound_and_forged_equivalence(tmp_path):
@@ -343,7 +351,9 @@ def test_exact_affine_units_and_row_permutations_preserve_normalized_evidence():
     assert isinstance(original, BoundedMeanProtocol)
     differences = (Fraction(1, 2), Fraction(1, 4), Fraction(3, 4), Fraction(1, 4)) * 25
     first = summarize_bounded(differences, original, 3, len(differences))
-    assert first.mean is not None and first.low is not None and first.high is not None
+    assert first.mean is not None
+    assert first.low is not None
+    assert first.high is not None
     permuted = summarize_bounded(tuple(reversed(differences)), original, 3, len(differences))
     assert first == permuted
     scaled = BoundedMeanProtocol.model_validate(
@@ -393,5 +403,6 @@ def test_bounded_holm_cannot_round_a_conservative_probability_downward():
     assert Fraction(adjusted[0]) >= exact_first
     assert adjusted == (0.9, 0.9, 0.9)
     assert holm_adjust((), outward=True) == ()
+    invalid_rounding = cast(Any, "true")
     with pytest.raises(ValueError, match="selector"):
-        holm_adjust(probabilities, outward=cast(Any, "true"))
+        holm_adjust(probabilities, outward=invalid_rounding)

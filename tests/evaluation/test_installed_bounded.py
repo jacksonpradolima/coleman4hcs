@@ -45,7 +45,8 @@ print('installed-bounded-domain')
     before = {str(path.relative_to(native)): path.read_bytes() for path in native.rglob("*") if path.is_file()}
     assert before
     second = json.loads(command(args, outside, env).stdout.splitlines()[-1])
-    assert second["raw_cells"] == 16 and second["independent_units"] == 1
+    assert second["raw_cells"] == 16
+    assert second["independent_units"] == 1
     assert second["conclusion"] == "insufficient_evidence"
     assert not FamilyReport.from_json(Path(second["comparison"]).read_bytes()).confirmatory_eligible
     assert before == {str(path.relative_to(native)): path.read_bytes() for path in native.rglob("*") if path.is_file()}
@@ -70,4 +71,5 @@ print('installed-bounded-domain')
         text=True,
         timeout=30,
     )
-    assert rejected.returncode != 0 and "ValidationError" in rejected.stderr
+    assert rejected.returncode != 0
+    assert "ValidationError" in rejected.stderr

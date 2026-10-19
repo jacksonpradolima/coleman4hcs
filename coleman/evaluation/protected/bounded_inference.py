@@ -101,6 +101,11 @@ def bounded_tail_upper(exponent: Fraction) -> Fraction:
     return min(Fraction(1), 2 / total)
 
 
+def _positive_count(value: object) -> bool:
+    """Accept a positive integer count while rejecting booleans and nonintegral inputs, without coercion."""
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
 def bounded_radius(units: int, family_size: int, alpha: Fraction) -> Fraction:
     """Return a conservative normalized two-sided simultaneous radius on a fixed dyadic grid.
 
@@ -112,10 +117,8 @@ def bounded_radius(units: int, family_size: int, alpha: Fraction) -> Fraction:
     """
     if (
         not isinstance(alpha, Fraction)
-        or type(units) is not int
-        or units < 1
-        or type(family_size) is not int
-        or family_size < 1
+        or not _positive_count(units)
+        or not _positive_count(family_size)
         or not 0 < alpha < 1
     ):
         raise ValueError("Bounded radius requires positive counts and alpha in (0,1)")

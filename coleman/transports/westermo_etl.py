@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from functools import partial
 from pathlib import Path
 from typing import cast
@@ -20,12 +21,16 @@ from coleman.corpus.westermo_etl import (
 from coleman.transports.corpus_http import public_https_source
 
 
-def _recipe(path: Path | None) -> WestermoRecipe:
-    """Read bounded v1 metadata, defaulting to the packaged pinned source; never acquire data implicitly."""
-    if path is None:
+def _recipe(from_stdin: bool) -> WestermoRecipe:
+    """Read at most 1 MiB of stdin recipe bytes or the packaged pin, without accepting a metadata path.
+
+    Caller-provided bytes are validated as versioned metadata, never interpreted
+    as a filename. Unknown versions, malformed or oversized input raise ValueError.
+    No source acquisition or policy execution occurs.
+    """
+    if not from_stdin:
         return load_westermo_recipe()
-    with path.open("rb") as stream:
-        payload = stream.read(1024**2 + 1)
+    payload = sys.stdin.buffer.read(1024**2 + 1)
     if len(payload) > 1024**2:
         raise ValueError("Westermo recipe exceeds 1 MiB")
     return WestermoRecipe.from_json(payload)
@@ -41,14 +46,14 @@ def main(argv: list[str] | None = None) -> int:
     availability, policy result or admission is invented. Errors propagate.
     """
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--recipe", type=Path)
+    parser.add_argument("--recipe-stdin", action="store_true", help="Read a bounded versioned recipe from stdin")
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--source", type=Path)
     source.add_argument("--fetch", action="store_true")
     parser.add_argument("--cache", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
-    recipe = _recipe(args.recipe)
+    recipe = _recipe(args.recipe_stdin)
     cache_root, output = args.cache.resolve(), args.output.resolve()
     preflight_westermo_etl(recipe, cache_root, output)
     reader = None

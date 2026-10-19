@@ -110,8 +110,9 @@ def test_unknown_recipe_and_receipt_versions_reject(tmp_path, version):
             value.pop("schema_version")
         else:
             value["schema_version"] = version
+        payload = json.dumps(value)
         with pytest.raises(ValueError):
-            contract.from_json(json.dumps(value))
+            contract.from_json(payload)
 
 
 @pytest.mark.parametrize("field,unit", [("test_duration", "s"), ("session_duration", "ms")])
@@ -149,8 +150,9 @@ def test_invalid_source_values_fail_without_false_completion(tmp_path, field, va
     rows = owned_rows()
     rows[0][field] = value
     recipe, cache = prepare_westermo(tmp_path, rows)
+    writer = ArtifactWriter(tmp_path / "output")
     with pytest.raises(ValueError):
-        export_westermo_parquet(recipe, cache, ArtifactWriter(tmp_path / "output"))
+        export_westermo_parquet(recipe, cache, writer)
     assert not list((tmp_path / "output").rglob("complete.json"))
 
 
@@ -162,8 +164,9 @@ def test_duplicates_conflicts_missing_selection_and_unselected_invalid_rows(tmp_
         ("outside", [{**r, "result": "4"} if r["jid"] == "22" else r for r in owned_rows()]),
     ):
         recipe, cache = prepare_westermo(tmp_path / name, rows)
+        writer = ArtifactWriter(tmp_path / (name + "-out"))
         with pytest.raises(ValueError):
-            export_westermo_parquet(recipe, cache, ArtifactWriter(tmp_path / (name + "-out")))
+            export_westermo_parquet(recipe, cache, writer)
 
 
 def test_completed_receipt_cannot_launder_source_or_remove_blockers(tmp_path):
@@ -178,8 +181,9 @@ def test_completed_receipt_cannot_launder_source_or_remove_blockers(tmp_path):
     with pytest.raises(ValueError, match="blockers"):
         changed(receipt, blockers=())
     for fields in ({"producer_sha256": "sha256:" + "0" * 64}, {"arrow_writer": "unknown"}):
+        invalid = changed(receipt, **fields)
         with pytest.raises(ValueError, match="recorded implementation"):
-            validate_westermo_etl(changed(receipt, **fields), cache, complete.parent)
+            validate_westermo_etl(invalid, cache, complete.parent)
     blob = cache.member_path(
         MaterializationReceipt(schema_version=1, spec=recipe.source), recipe.source.members[0].name
     )
@@ -198,8 +202,9 @@ def test_interrupted_second_file_resumes_without_false_completion(tmp_path):
             return super().write_immutable_stream(path, chunks, maximum_bytes=maximum_bytes)
 
     output = tmp_path / "output"
+    writer = InterruptedWriter(output)
     with pytest.raises(OSError, match="owned interruption"):
-        export_westermo_parquet(recipe, cache, InterruptedWriter(output))
+        export_westermo_parquet(recipe, cache, writer)
     assert not list(output.rglob("complete.json"))
     staged = next(output.rglob("observations.parquet"))
     digest = hashlib.sha256(staged.read_bytes()).hexdigest()
@@ -213,11 +218,13 @@ def test_preflight_overlap_git_symlinks_and_no_side_effects(tmp_path):
     recipe, _ = owned_recipe()
     cache, output = tmp_path / "cache", tmp_path / "output"
     root = preflight_westermo_etl(recipe, cache, output)
-    assert not output.exists() and not cache.exists()
+    assert not output.exists()
+    assert not cache.exists()
     with pytest.raises(ValueError, match="remain separate"):
         preflight_westermo_etl(recipe, cache, cache / "output")
+    git_output = Path(__file__).parents[2] / "never-written-westermo"
     with pytest.raises(ValueError, match="outside a repository"):
-        preflight_westermo_etl(recipe, cache, Path(__file__).parents[2] / "never-written-westermo")
+        preflight_westermo_etl(recipe, cache, git_output)
     root.mkdir(parents=True)
     (root / "observations.parquet").symlink_to(tmp_path / "elsewhere")
     with pytest.raises(ValueError, match="escapes"):
@@ -266,8 +273,9 @@ def test_source_and_recipe_resource_bounds_and_original_default(tmp_path):
     other = changed(recipe, source=source_spec("malformed.tsv", bad_payload))
     cache = SourceCache(tmp_path / "cache")
     materialize_source(other.source, cache, lambda: io.BytesIO(bad_payload))
+    writer = ArtifactWriter(tmp_path / "out")
     with pytest.raises(ValueError, match="TSV schema"):
-        export_westermo_parquet(other, cache, ArtifactWriter(tmp_path / "out"))
+        export_westermo_parquet(other, cache, writer)
     assert not list((tmp_path / "out").rglob("complete.json"))
 
 
@@ -283,8 +291,9 @@ def test_malformed_quoted_source_fails_with_actionable_error_and_no_completion(t
     recipe = changed(recipe, source=source_spec("malformed.tsv", malformed))
     cache = SourceCache(tmp_path / "cache")
     materialize_source(recipe.source, cache, lambda: io.BytesIO(malformed))
+    writer = ArtifactWriter(tmp_path / "out")
     with pytest.raises(ValueError, match="Malformed Westermo") as error:
-        export_westermo_parquet(recipe, cache, ArtifactWriter(tmp_path / "out"))
+        export_westermo_parquet(recipe, cache, writer)
     assert error.value.__cause__ is not None
     assert not list((tmp_path / "out").rglob("complete.json"))
 
@@ -293,8 +302,9 @@ def test_selected_row_limit_retains_no_false_completion(tmp_path):
     row = owned_rows()[0]
     rows = [{**row, "oid": str(i + 1)} for i in range(20_001)]
     recipe, cache = prepare_westermo(tmp_path, rows)
+    writer = ArtifactWriter(tmp_path / "out")
     with pytest.raises(ValueError, match="20000"):
-        export_westermo_parquet(recipe, cache, ArtifactWriter(tmp_path / "out"))
+        export_westermo_parquet(recipe, cache, writer)
     assert not list((tmp_path / "out").rglob("complete.json"))
 
 
@@ -319,13 +329,15 @@ def test_receipt_counts_roles_and_legacy_artifacts_cannot_be_reinterpreted(tmp_p
         values["counts"].update(changes)
         with pytest.raises(ValueError):
             WestermoReceipt.model_validate(values)
+    reversed_files = tuple(reversed(receipt.files))
     with pytest.raises(ValueError, match="roles"):
-        changed(receipt, files=tuple(reversed(receipt.files)))
+        changed(receipt, files=reversed_files)
     with pytest.raises(ValueError, match="verdict conservation"):
         changed(receipt.counts, passed=0)
     legacy = Path(__file__).with_name("fixtures") / "hcs-owned-completion-v1.json"
     original = HCSReceipt.from_json(legacy.read_bytes())
     assert original.schema_version == 1
     assert original.recipe.duration_semantics.unit == "s"
+    legacy_payload = legacy.read_bytes()
     with pytest.raises(ValueError):
-        WestermoReceipt.from_json(legacy.read_bytes())
+        WestermoReceipt.from_json(legacy_payload)

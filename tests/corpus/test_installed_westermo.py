@@ -74,8 +74,7 @@ print(r.logical_rows_sha256)
         str(python),
         "-m",
         "coleman.transports.westermo_etl",
-        "--recipe",
-        "recipe.json",
+        "--recipe-stdin",
         "--source",
         "source.tsv",
         "--cache",
@@ -83,11 +82,25 @@ print(r.logical_rows_sha256)
         "--output",
         "cli-output",
     ]
-    first = json.loads(command(args, outside, env).stdout)
+
+    def invoke():
+        """Pass owned recipe bytes to the real installed CLI, independently of its source/archive filename."""
+        return subprocess.run(
+            args,
+            input=recipe.to_json(),
+            cwd=outside,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=60,
+        )
+
+    first = json.loads(invoke().stdout)
     args.remove("--source")
     args.remove("source.tsv")
     (outside / "source.tsv").unlink()
-    second = json.loads(command(args, outside, env).stdout)
+    second = json.loads(invoke().stdout)
     assert first == second
     assert first["counts"]["selected_rows"] == 5
     assert first["logical_rows"] == completed.stdout.strip()

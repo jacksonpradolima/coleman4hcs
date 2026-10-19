@@ -34,8 +34,17 @@ The build uses the checked-out revision's version metadata; it does not install
 the older published wheel. Use a fresh distribution directory containing exactly
 one wheel and install that wheel. Keep all source/cache/output paths
 outside Git. `--source /path/to/test-results.zip` explicitly verifies a local
-original archive instead of fetching. `--recipe /path/to/recipe.json` selects a
-compatible frozen session set. No URL is opened without `--fetch`.
+original archive instead of fetching. To select a compatible frozen session set,
+pass `--recipe-stdin` and redirect the JSON recipe on stdin:
+
+```bash
+/tmp/coleman-westermo-env/bin/python -m coleman.transports.westermo_etl \
+  --recipe-stdin --cache /tmp/coleman-westermo-cache \
+  --output /tmp/coleman-westermo-custom-output < /path/to/recipe.json
+```
+
+Recipe bytes are bounded and schema-checked; they are never interpreted as a
+filename. No URL is opened without `--fetch`.
 
 The packaged example selects the first sixteen nightly sessions on `system13`
 by the publisher's shifted start labels, with their exact `(jid, system)` keys
