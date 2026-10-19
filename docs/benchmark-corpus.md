@@ -29,6 +29,12 @@ For the separate source-specific ETL workflows, see [Karaf](lrts-parquet-etl.md)
 views](lrts-stage-views.md). Those exports preserve their own provenance and
 admission blockers; they do not silently add admitted registrations to this registry.
 
+The current source revision also adds [original Westermo analytical Parquet](westermo-parquet-etl.md):
+explicit pinned sessions, all four original outcomes, session-envelope seconds and
+unverified per-test units. Build this revision's wheel; the previously published
+4.17 wheel does not include it. An export does not change source admission or the
+four uncovered historical/HCS regimes.
+
 For controlled Java sources, the published 4.17 wheel includes a separate [CLI/Codec
 matrix](java-fault-matrix.md) using the existing controlled/JUnit producer.
 Its typed index preserves all selected outcomes and incomplete evidence. It does
