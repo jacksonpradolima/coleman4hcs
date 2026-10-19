@@ -106,6 +106,11 @@ def _positive_count(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
+def _valid_alpha(value: object) -> bool:
+    """Require an exact significance level in (0,1), comparing normalized rational integers without coercion."""
+    return isinstance(value, Fraction) and 0 < value.numerator < value.denominator
+
+
 def bounded_radius(units: int, family_size: int, alpha: Fraction) -> Fraction:
     """Return a conservative normalized two-sided simultaneous radius on a fixed dyadic grid.
 
@@ -115,12 +120,7 @@ def bounded_radius(units: int, family_size: int, alpha: Fraction) -> Fraction:
     Unit interval bounds are transformed by the caller; no data-dependent bound
     selection, stopping or numerical optimization is performed.
     """
-    if (
-        not isinstance(alpha, Fraction)
-        or not _positive_count(units)
-        or not _positive_count(family_size)
-        or not 0 < alpha < 1
-    ):
+    if not _valid_alpha(alpha) or not _positive_count(units) or not _positive_count(family_size):
         raise ValueError("Bounded radius requires positive counts and alpha in (0,1)")
     target = alpha / family_size
     low, high = Fraction(0), Fraction(2)

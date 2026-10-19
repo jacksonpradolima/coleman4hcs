@@ -242,6 +242,9 @@ def test_radius_and_tail_metamorphisms_and_invalid_exact_inputs():
     invalid_alpha = cast(Any, 0.05)
     with pytest.raises(ValueError):
         bounded_radius(20, 1, invalid_alpha)
+    for invalid_level in (Fraction(0), Fraction(1), Fraction(-1, 3), Fraction(2)):
+        with pytest.raises(ValueError, match="alpha in"):
+            bounded_radius(20, 1, invalid_level)
     invalid_endpoint = cast(Any, 0.5)
     with pytest.raises(ValueError):
         outward_binary64(invalid_endpoint, upper=True)
