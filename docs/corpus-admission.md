@@ -388,3 +388,9 @@ not permission to rewrite them. Broader producer/runtime reproducibility remains
 part of the final corpus audit. The new baseline matrix separately freezes its
 source sum before selection and verifies equal mathematical evidence across
 thread settings.
+
+## Continue the workflow
+
+Choose another source path in [datasets](datasets.md). For admitted observations, follow the
+[evaluation guide](evaluation-guide.md); check [evidence status](roadmap.md) for the unfinished
+historical confirmation.

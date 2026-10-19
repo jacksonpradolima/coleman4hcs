@@ -1,8 +1,7 @@
 # Bounded ZIP64 selected-file integrity
 
-**COLEMAN 4.8** adds an explicit ZIP64 recipe to the existing verified source
-cache through [#314](https://github.com/jacksonpradolima/coleman/pull/314) for
-[#301](https://github.com/jacksonpradolima/coleman/issues/301).
+Select declared members from a large ZIP64 source while verifying the complete
+pinned archive. This workflow reuses the source cache and explicit resource limits.
 The feature verifies selected-file membership and supports the
 [real RTPTorrent Parquet/replay workflow](rtptorrent-parquet-etl.md).
 Legacy package-v1 ZIP behavior remains unchanged.
@@ -206,3 +205,8 @@ reverify the real source cache without network:
 COLEMAN_RTPTORRENT_ZIP64_REAL_CACHE=/tmp/coleman-rtptorrent-source-cache \
   uv run pytest tests/corpus/test_installed_zip64.py --no-cov -q
 ```
+
+## Continue the workflow
+
+Return to [source materialization](corpus-materialization.md) for shared cache/terms rules, or run
+the [RTPTorrent adapter](rtptorrent-parquet-etl.md) for a complete source workflow.

@@ -154,3 +154,8 @@ SELECT reward_function,
 FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
 GROUP BY reward_function;
 ```
+
+## Continue the workflow
+
+Use the [analysis playbook](analysis-playbook.md) to inspect final results and the [integration
+guide](integration-guide.md) to distinguish monitoring from operational evidence.

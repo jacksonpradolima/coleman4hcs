@@ -17,9 +17,9 @@ OUT = ROOT / "llms.txt"
 def _discover_sources() -> list[Path]:
     """Return deterministic source list for llms.txt generation.
 
-    Includes README plus every markdown file under docs/, recursively.
+    Includes README, contributor guidance and every Markdown file under docs/.
     """
-    sources = [ROOT / "README.md"]
+    sources = [ROOT / "README.md", ROOT / "CONTRIBUTING.md"]
     docs_root = ROOT / "docs"
     docs_md_files = sorted(docs_root.rglob("*.md"))
     sources.extend(docs_md_files)

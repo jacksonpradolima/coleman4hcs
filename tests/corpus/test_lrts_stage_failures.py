@@ -211,7 +211,12 @@ def test_published_legacy_v1_receipt_stays_readable_and_validates_original_artif
     fixture = Path(__file__).with_name("fixtures") / "lrts-etl-owned-completion-v1.json"
     receipt = LRTSETLReceipt.from_json(fixture.read_bytes())
     assert receipt.recipe == recipe
-    assert path.read_bytes() == fixture.read_bytes()
+    legacy_bytes = fixture.read_bytes()
+    current = LRTSETLReceipt.from_json(path.read_bytes())
+    assert (receipt.to_json() + "\n").encode() == legacy_bytes
+    assert current.producer_sha256 != receipt.producer_sha256
+    assert legacy_bytes.count(receipt.producer_sha256.encode()) == 1
+    assert path.read_bytes() == legacy_bytes.replace(receipt.producer_sha256.encode(), current.producer_sha256.encode())
     validate_lrts_etl(receipt, cache, path.parent)
     legacy_payload = recipe.to_json()
     with pytest.raises(ValueError):

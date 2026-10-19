@@ -332,3 +332,9 @@ admission, repeated-measures inference and cross-corpus claims remain with the
 The [original CTest evidence guide](hcs-trace-evidence.md#verify-a-log-from-the-original-licensed-release)
 also verifies a selected job log against the complete released CC0 `logs.zip`,
 with separate complete-last archive provenance. This does not grant historical admission.
+
+## Continue the workflow
+
+Review [WTS and VTS concepts](highly-configurable.md), corroborate [original CTest
+outcomes](hcs-trace-evidence.md), then retain grouping in [repeated
+observations](corpus-evaluation.md).

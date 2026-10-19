@@ -387,3 +387,9 @@ flowchart LR
     Native --> Extension[Existing native CI extension / collector]
     Extension --> CI[Native scheduling, reward, metrics and sinks]
 ```
+
+## Continue the workflow
+
+Return to the actual decision contract in [finite coverage](finite-coverage.md) or [scenario
+allocation](scenario-payoffs.md). Use the [evaluation guide](evaluation-guide.md) for empirical
+claims beyond correctness.

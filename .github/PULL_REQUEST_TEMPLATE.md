@@ -1,59 +1,28 @@
-<!-- Preambule -->
+## Problem and resulting behavior
 
-## Please follow the guide below
+<!-- Describe the concrete trigger, what happens today and what this change enables. -->
 
-- You will be asked some questions, please read them **carefully** and answer honestly
-- Put an `x` into all the boxes [ ] relevant to your *pull request* (like that [x])
-- Use *Preview* tab to see how your *pull request* will actually look like
+## Contracts and compatibility
 
----
+<!-- Identify affected APIs, units, schemas, provenance, checkpoints or producer identities.
+     State migrations or limits explicitly; omit this section when it is irrelevant. -->
 
-### Before submitting a *pull request* make sure you have:
-- [ ] The *pull request* title contains a meaningful title
-  - Short and informative: serves as a summary 
-- [ ] At least skimmed through the coding conventions used in the project
-- [ ] Checked the code with [flake8](https://pypi.python.org/pypi/flake8)
-- [ ] Performed a self-review of my own code
-- [ ] The code is commented, particularly in hard-to-understand areas
-- [ ] The documentation associated was created or updated
-- [ ] The changes generate no new warnings
-- [ ] Add tests that prove the change is effective or that the feature works
-- [ ] New and existing unit tests pass locally with the changes
-- [ ] Any dependent changes have been merged and published in downstream modules
+## Validation
 
+<!-- List commands and actual results. Include installed-package or source evidence when relevant.
+     Instrumented tests are not performance benchmarks. -->
 
----
-<!-- Describe what you've done -->
+- [ ] Reviewed the complete diff from the merge-base, including tests and Markdown.
+- [ ] Relevant tests, formatting, lint, typing and strict documentation checks pass.
+- [ ] Public parameter docstrings follow NumPy style, with units and meaningful errors/side effects.
+- [ ] Examples include prerequisites, complete inputs, expected output and the next step.
+- [ ] Compatibility, missing evidence and negative/inconclusive outcomes remain explicit.
 
-# Contents of the *Pull Request*
+## Local review evidence
 
-Explanation of your *pull request* in arbitrary form goes here. Please make sure the description explains the purpose and effect of your *pull request* and is worded well enough to be understood. Provide as much context and examples as possible. For instance, how this *pull request* contributes to the project.
+<!-- Maintainer pushes: record local OpenCodeReview delegation/rules, manual file coverage,
+     confirmed findings and fixes. Do not send code to an external review endpoint. -->
 
-# Stacked PR Chains (Optional)
+## Limits and follow-up
 
-Please include list of stacked PR chains, and showing the dependency tree.
-
-# Recording (Optional)
-
-Provide a video that contains a summary of the change.
-
-You can use [Loom](https://www.loom.com/).
-
-# How Has This Been Tested? (Required)
-
-It can be useful also to tell the testers or reviewers how to deal with the feature, how to test it or if there is some new environment setup that should be done to test the feature.
-
-In this sense, please describe the tests or the test plan that you ran to verify your changes. Provide instructions so we can reproduce. Please also list any relevant details for your test configuration
-
-- [ ] Test A
-- [ ] Test B
-
-**Test Configuration**:
-* Firmware version:
-* Hardware:
-* Toolchain:
-* SDK:
-
-# Other Notes
-
-(Add any additional information that would be useful)
+<!-- Describe real remaining limitations or dependencies. Link an existing issue when applicable. -->

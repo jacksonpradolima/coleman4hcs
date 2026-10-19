@@ -290,3 +290,9 @@ example outside checkout. All 322 installed SDK files match the tag; sixteen raw
 cells retain one constructed family and insufficient evidence. The immutable
 member/seed swap guards reject, and retry preserves all 24 native files. The
 original 4.16 qualification above remains historical evidence.
+
+## Continue the workflow
+
+Choose [bounded paired inference](bounded-paired-evaluation.md) or the supported [protected
+protocol](protected-evaluation.md) according to the declared assumptions. The [evaluation
+guide](evaluation-guide.md) connects the full path.

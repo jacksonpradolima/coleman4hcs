@@ -183,7 +183,7 @@ study, not certifications inferred by the library.
 
 The implementation applies a one-sample t procedure to paired differences,
 equivalent to [SciPy's paired t procedure](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ttest_rel.html).
-Holm's step-down Bonferroni adjustment controls family-wise p-value error across the
+[Holm's original step-down procedure](https://www.jstor.org/stable/4615733) controls family-wise error across the
 entire frozen family; unavailable comparisons remain in that family as p=1.
 See the [reference Holm implementation](https://github.com/statsmodels/statsmodels/blob/main/statsmodels/stats/multitest.py).
 Intervals use the conservative simultaneous Bonferroni level `1 - alpha/m`, where
@@ -259,7 +259,14 @@ Reports retain the complete consumed record payload and recompute estimates on
 validation; their size and verification cost grow with the paired input. Record
 hashes and recomputation establish internal consistency, not authenticity of an
 externally supplied dataset or proof of independent sampling.
-Keep confirmatory access scarce and predeclared. Larger benchmark/corpus methodology
-and mathematical/performance validation remain separate roadmap work.
+Keep confirmatory access scarce and predeclared. Use the
+[independent decision benchmarks](decision-benchmarks.md) for mathematical checks.
+The final historical cross-corpus confirmation remains [unfinished](roadmap.md).
 
 ::: coleman.evaluation.protected
+
+## Continue the workflow
+
+Prepare [repeated inference units](corpus-evaluation.md), consider the supported [bounded
+protocol](bounded-paired-evaluation.md), and interpret conclusions through the [evaluation
+guide](evaluation-guide.md).

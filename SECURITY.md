@@ -1,50 +1,41 @@
-# Security Policy
+# Security policy
 
-## Supported Versions
+## Supported versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| latest  | :white_check_mark: |
+The latest stable release is supported for security fixes. Older pinned wheels
+remain useful for reproducing an experiment, but that does not imply ongoing
+security support. Published artifacts and versions are listed in
+[GitHub releases](https://github.com/jacksonpradolima/coleman/releases).
 
-## Reporting a Vulnerability
+## Report a vulnerability privately
 
-If you discover a security vulnerability in **Coleman**, please report it
-responsibly.
-
-**Do not open a public GitHub issue.**
-
-Instead, please send an email to
-[jacksonpradolima@gmail.com](mailto:jacksonpradolima@gmail.com) with:
-
-- A description of the vulnerability.
-- Steps to reproduce the issue.
-- Any potential impact or severity assessment.
+Please do not open a public issue for a vulnerability. Email
+[jacksonpradolima@gmail.com](mailto:jacksonpradolima@gmail.com) with a description,
+minimal reproduction, affected version and potential impact. Keep credentials
+and private datasets out of public discussions.
 
 We will acknowledge receipt within **48 hours** and aim to provide a fix or
-mitigation plan within **7 days** of confirmation.
+mitigation plan within **7 days** of confirmation. We follow coordinated
+disclosure; security fixes are published as patch releases, with a GitHub advisory
+once the fix is available.
 
-## Disclosure Policy
+## Scope and dependency maintenance
 
-- We follow [coordinated disclosure](https://en.wikipedia.org/wiki/Coordinated_vulnerability_disclosure).
-- Security fixes will be released as patch versions.
-- A security advisory will be published on GitHub once the fix is available.
+This policy covers the `coleman` Python package and dependencies distributed
+through this repository. The committed `uv.lock` pins the dependency graph;
+optional capture runtimes and third-party source/data components have their own
+explicit identities and terms.
 
-## Scope
+[Dependency security maintenance](docs/dependency-security.md) explains lock-wide
+auditing, optional extras, platform markers and update verification. Use current
+[security alerts](https://github.com/jacksonpradolima/coleman/security) and audit
+results to assess advisories. A static dependency table is not a lasting claim
+that a version has no vulnerabilities.
 
-This policy applies to the `coleman` Python package and its dependencies as
-distributed through this repository. Third-party dependencies are managed via
-`uv` and pinned in `uv.lock`.
+YAML configuration uses `yaml.safe_load()`. Native checkpoints use Python pickle
+and must come from a source you trust; they are executable state, unlike JSON
+measurement records. Source integrity checks bind bytes and declared identities;
+they do not themselves grant permission to execute third-party code.
 
-### New dependencies
-
-The experiment system adds two new direct dependencies:
-
-| Dependency | Purpose | Advisory status |
-|-----------|---------|-----------------|
-| `pydantic>=2.12.5` | Typed run-spec models & validation | No known advisories |
-| `pyyaml>=6.0.3` | YAML config loading (safe_load only) | No known advisories |
-
-All YAML loading uses `yaml.safe_load()` — untrusted YAML with arbitrary
-Python constructors is never evaluated.
-
-Thank you for helping keep Coleman safe.
+For ordinary bugs and documentation improvements, use the public issue templates
+and [contributor guide](CONTRIBUTING.md).

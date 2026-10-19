@@ -1,236 +1,72 @@
-# Public CI Intelligence roadmap
+# Evidence status and future work
 
-COLEMAN 4.0 established versioned domain results, protected temporal evaluation,
-finite coverage and scenario-payoff decisions, independent solver benchmarks and
-a bounded application API. These foundations supplement its native TCPCI runner.
-A completed foundation is not evidence that the remaining roadmap is implemented.
+COLEMAN has a reusable native TCPCI runner and working source, replay, measurement
+and evaluation paths. This page distinguishes available capabilities from
+scientific conclusions that have not been established. Use the
+[documentation map](index.md) to learn the platform and the
+[compatibility archive](release-history.md) to investigate individual deliveries.
 
-**4.1.0** delivers the bounded operational CI
-pilot in [#257](https://github.com/jacksonpradolima/coleman/issues/257). Its
-claim is auditable accounting and honest evidence, including negative/inconclusive
-findings. It does not promise production savings from a synthetic example.
+## Available foundations
 
-**4.2.0** groups two reviewed public increments: point-in-time observations and
-versioned decision signals in [#258](https://github.com/jacksonpradolima/coleman/issues/258),
-and the first corpus foundation in [#261](https://github.com/jacksonpradolima/coleman/issues/261).
-The foundation includes typed manifests/data cards, two tiny known-answer sources,
-metadata inventory and installed native workflows. It does not complete source
-admission, corpus diversity or the full benchmark program; all seven required
-diversity regimes remain uncovered.
+| Capability | Where to use it |
+| --- | --- |
+| Typed native experiments, sweeps and checkpoints | [First experiment](getting-started.md), [configuration](configuration.md) |
+| Original-source analytical/native data paths | [Dataset workflows](datasets.md) |
+| Controlled Java/Python observations and a constructed C weakness | [Controlled observations](controlled-faults.md) |
+| Known-answer difficult CI cases | [Stress laboratory](ci-stress-laboratory.md) |
+| Source integrity and production-reality assessment | [Source admission](corpus-admission.md) |
+| Comparable candidates and repeated observations | [Baselines](comparable-baselines.md), [corpus evaluation](corpus-evaluation.md) |
+| Protected normal or bounded paired comparisons | [Protected evaluation](protected-evaluation.md), [bounded means](bounded-paired-evaluation.md) |
+| Time-aware observations and prospective integration studies | [Integration guide](integration-guide.md) |
+| Finite selection/allocation contracts and correctness checks | [Coverage](finite-coverage.md), [allocation](scenario-payoffs.md), [benchmarks](decision-benchmarks.md) |
 
-**4.3.0** groups #259's exact CI resource accounting and cost-aware replay with
-#260's frozen shadow evaluation. Both reuse the native runner and checkpoints.
-The shadow fixture demonstrates functional recovery, with zero collected forward
-builds and insufficient evidence for adoption.
+These are implemented capabilities with their own documented contracts and limits.
+They are not a declaration that every dataset is scientifically admitted or that
+one policy is universally superior.
 
-**4.4.0** groups the reviewed next two #261 slices: bounded native profiles and a
-reproducible inventory in [#284](https://github.com/jacksonpradolima/coleman/pull/284),
-and licensed source-package materialization in
-[#285](https://github.com/jacksonpradolima/coleman/pull/285). Typed integrity receipts,
-external caches, bounded archive validation and installed native recovery workflows
-reuse the existing runner/artifacts/checkpoints. All ten existing native registrations
-retain their admission blockers; all seven required diversity regimes remain
-uncovered.
+## Historical corpus status
 
-**4.5.0** publishes the reviewed RTPTorrent and LRTS source-assessment adapters,
-with explicit missing temporal evidence and reproducible admission blockers.
+The diversified corpus phase delivered twelve native subtasks and several source
+qualification increments through the verified 4.19.0 release. The maintainer chose
+to close [#261](https://github.com/jacksonpradolima/coleman/issues/261#issuecomment-6271942313)
+and [#313](https://github.com/jacksonpradolima/coleman/issues/313#issuecomment-6271940884)
+as **not planned**, with unmet criteria preserved. This is administrative closure,
+not completed historical cross-corpus confirmation.
 
-**4.6.0** publishes [controlled fault observations](controlled-faults.md) and
-[pinned JUnit3 source capture](junit-source-capture.md), with raw evidence,
-interruption recovery and negative outcomes. The published wheel reproduces the
-Java pair and reopens its committed observations outside the checkout. This is
-source reproduction, not completed benchmark admission.
+Four required regimes remain unqualified:
 
-**4.7.0** publishes the [real LRTS ETL](lrts-parquet-etl.md):
-explicit download, pinned nested-member conversion, analytical/native Parquet,
-conserved exclusions and actual native replay/checkpoint continuation. Native
-execution declares its post-hoc serial assumptions; protected historical
-admission and cross-corpus confirmation remain separate unfinished gates.
-Later steps cover admitted real-fault matrices, HCS/variant expansion
-and synthetic stress, comparable baselines/statistics, frozen confirmatory execution
-and the final evidence report. Compatible deliveries continue in later **4.x**
-releases. #261 stays open until its admission, diversity, execution and evidence
-gates pass. Inaccessible or unlicensed sources remain visible blockers. Security
-fixes remain independently shippable.
+- Small volatile historical CI.
+- Medium historical CI.
+- Long-running or large-suite historical CI.
+- Highly configurable historical systems.
 
-## Remaining corpus subtasks
+The missing source-specific evidence includes availability clocks, expected
+pre-execution test membership, continuity, execution grouping/topology and
+independence. A final eligible frozen multi-corpus execution, its raw/per-project/
+cross-corpus report and full confirmatory reproduction tutorial were not completed.
+Existing installed workflows remain useful at their declared scopes.
 
-The public #261 umbrella has native GitHub sub-issues. #301 and #302 shipped in
-4.8; #303's [larger LRTS stage views](lrts-stage-views.md) shipped in 4.9 through
-[#318](https://github.com/jacksonpradolima/coleman/pull/318).
-#304's [controlled Java matrix](java-fault-matrix.md) shipped in 4.10 through
-[#320](https://github.com/jacksonpradolima/coleman/pull/320).
-#305's [controlled Python producer](python-source-capture.md) shipped in 4.11 through
-[#322](https://github.com/jacksonpradolima/coleman/pull/322). #306's
-[constructed C source slice](c-seeded-source-capture.md) shipped in 4.12 through
-[#324](https://github.com/jacksonpradolima/coleman/pull/324). #307's
-[LibSSH HCS workflow](hcs-parquet-etl.md) shipped in 4.13 through
-[#326](https://github.com/jacksonpradolima/coleman/pull/326). #308's deterministic
-[interaction-covering stress laboratory](ci-stress-laboratory.md) shipped in 4.14
-through [#328](https://github.com/jacksonpradolima/coleman/pull/328). #309's
-[source admission and production reality](corpus-admission.md) shipped in 4.15
-through [#330](https://github.com/jacksonpradolima/coleman/pull/330). #310's [metric references and repeated CI protocol](corpus-evaluation.md) shipped
-in 4.16 through [#332](https://github.com/jacksonpradolima/coleman/pull/332).
-The [comparable baseline matrix](comparable-baselines.md) shipped in 4.17 through
-[#334](https://github.com/jacksonpradolima/coleman/pull/334). Together with the bounded study below, twelve of the thirteen public subtasks are delivered.
-[#312's bounded public CI feasibility study](public-ci-feasibility.md) supplies a standalone
-example using the same wheel; it does not establish forward TCPCI evidence. #313
-remains dependent on the complete scientific gates. Source conversion does not establish historical admission.
+The [original-source investigation](https://github.com/jacksonpradolima/coleman/issues/313#issuecomment-6270541363)
+recovers numeric build links for 1,578 of 1,662 HikariCP jobs from three verified
+TravisTorrent snapshots, with 84 unlinked and version-dependent number labels for
+279 jobs. This research is not a released admission contract. The inspected LRTS
+processed release did not resolve the requested original metadata/console evidence.
+The public [upstream data request](https://github.com/lrtsuser/LRTS/issues/4) records
+that dependency; a later response requires renewed verification.
 
-The published HCS workflow preserves raw pipeline/job correspondence, WTS/VTS
-Parquet, all 208 sparse cells and isolated multi-budget checkpoints. Its declared
-cost projection preserves original decimal observations. Installed validation
-checks 416 native rows independently against original source bytes; six
-metadata-only labels remain absent evidence. Admission and comparisons remain
-later gates.
+## Conditions for resuming that work
 
-| Stage | Subtasks | Dependency |
-| --- | --- | --- |
-| RTPTorrent source path — delivered in 4.8 | [#301 ZIP64 integrity](https://github.com/jacksonpradolima/coleman/issues/301), [#302 real Parquet ETL/replay](https://github.com/jacksonpradolima/coleman/issues/302) | #302 requires #301 |
-| LRTS source expansion — delivered in 4.9 | [#303 larger histories and explicit stage views](https://github.com/jacksonpradolima/coleman/issues/303) | Existing reviewed main; temporal blockers remain explicit |
-| Java source matrix — delivered in 4.10 | [#304 controlled CLI/Codec faults](https://github.com/jacksonpradolima/coleman/issues/304) | Existing JUnit producer; admission remains separate |
-| Python source — delivered in 4.11 | [#305 non-Java fault reproduction](https://github.com/jacksonpradolima/coleman/issues/305) | Existing generic controlled observations; one fix, two correlated locale contexts |
-| Seeded C source — delivered in 4.12 | [#306 permitted Juliet slice](https://github.com/jacksonpradolima/coleman/issues/306) | One synthetic template/function pair; six correlated inputs, no empirical admission |
-| HCS source — delivered in 4.13 | [#307 LibSSH WTS/VTS and variant accounting](https://github.com/jacksonpradolima/coleman/issues/307) | Original pipeline/job identities; 13 known labels, seven with parsed tests; temporal admission remains blocked |
-| Synthetic laboratory — delivered in 4.14 | [#308 interaction-covering stress generator](https://github.com/jacksonpradolima/coleman/issues/308) | Tiny oracle/resource bounds; explicit synthetic dependence and native eligibility |
-| Evidence integration — delivered in 4.15 | [#309 admission and production reality](https://github.com/jacksonpradolima/coleman/issues/309) | Three scoped regimes covered; four historical/HCS regimes remain uncovered |
-| Comparison protocol — delivered in 4.16 | [#310 metric references/statistics](https://github.com/jacksonpradolima/coleman/issues/310) | #309; one fold/budget and one paired mean per reviewed repository family |
-| Comparable baselines — delivered in 4.17 | [#311 candidate matrix](https://github.com/jacksonpradolima/coleman/issues/311) | #309 and #310 |
-| Public feasibility — bounded study | [#312 prospective source feasibility](https://github.com/jacksonpradolima/coleman/issues/312) | #309 |
-| Final execution/report | [#313 confirmatory corpus](https://github.com/jacksonpradolima/coleman/issues/313) | #309–#312 and the complete parent gates |
+Reopen the existing issues if permitted, version-pinned original evidence resolves
+the admission prerequisites, or if the maintainer explicitly approves a revised
+scientific scope. Revalidate source meaning, terms and identities before freezing
+the candidate grid, split, metrics, inference units and resource protocol. Preserve
+negative and inconclusive findings. More conversions, seeds or favorable averages
+alone do not satisfy these gates.
 
-Work started with #301 and #302, one reviewed slice at a time. Their compatible
-source deliveries were collected in a release branch and published together in
-**4.8** through [#316](https://github.com/jacksonpradolima/coleman/pull/316).
-No release number or subtask closure substitutes for an actual source-integrity,
-diversity, temporal-admission or scientific evidence gate.
+## Current improvement priorities
 
-**4.8.0** delivers #301's reviewed ZIP64 selection and complete RTPTorrent
-archive/member integrity through [#314](https://github.com/jacksonpradolima/coleman/pull/314),
-plus #302's [full analytical/native Parquet workflow](rtptorrent-parquet-etl.md),
-explicit eight-source-job simulation and checkpoint recovery through
-[#315](https://github.com/jacksonpradolima/coleman/pull/315). The signed published
-wheel was exercised outside checkout with the actual source cache, native runs
-and checkpoint continuation. Remaining source admission, diversity and
-confirmatory work continues through the public subtasks. #303's new profiles
-preserve all raw/processed stages and use exact context/node bindings, while
-retaining explicit missing temporal evidence. Remaining expansion follows through
-the sequential public source subtasks.
-
-**4.9.0** publishes the stage-view contracts and three frozen presets: ActiveMQ,
-Log4j Ubuntu and Log4j Windows. All raw observations/processed stages remain
-analytical evidence; exact context/node bindings select one native view. The
-Log4j views share original source identities. Installed real-source workflows
-exercise native replay and checkpoints while keeping all temporal blockers.
-Existing single-stage LRTS producers, recipes and artifacts retain their semantics.
-
-**4.10.0** publishes #304's [bounded Java fault matrix](java-fault-matrix.md)
-on the existing source producer: CLI-13, CLI-51 and an explicitly partial CODEC-65
-fixture. Typed plans, raw/context verification, honest incomplete indices and
-offline recovery preserve all negative outcomes. Source qualification collected
-714 role observations / 357 same-test pairs across two codebases. Controlled
-source collection remains separate from admission and policy comparison in #309
-onward; the remaining source subtasks follow sequentially.
-
-**4.11.0** publishes #305's [controlled Python capture](python-source-capture.md).
-An unchanged PySnooper fixture reproduces a Unicode exception/fix under ASCII;
-the generic result remains inconclusive. Both revisions pass in the predeclared
-UTF-8 contrast. Whole-wheel component terms, actual runtime provenance, installed
-process interruption and offline recovery remain explicit. These two contexts
-share one curated fix, and source admission remains in #309.
-
-**4.12.0** publishes [constructed C source capture](c-seeded-source-capture.md)
-with individually pinned permitted Juliet inputs, GCC/ABI provenance, a frozen
-arithmetic oracle and six correlated boundary-input pairs from one 2017 synthetic
-template. The qualification retains five both-pass and one output-assertion
-failure/pass pair; it does not establish six independent faults. The actual signed wheel
-was qualified outside checkout with source collection, offline replay and real
-process-interruption recovery. Shared transport guards and strict JUnit v2
-ownership retain cleanup after output relocation; an actual published 4.11 v1
-marker was also checked without rewriting its bytes. Existing generic datasets
-and native learning checkpoints keep their contracts. This source delivery does
-not admit a new empirical diversity regime or complete #261.
-
-**4.13.0** publishes #307's [original-data HCS workflow](hcs-parquet-etl.md).
-The frozen sixteen-pipeline slice retains 856 test executions, explicitly excludes
-29 other-attempt records and preserves 208 cells across thirteen known job labels.
-Seven labels have parsed tests; six remain metadata-only, without inferred test
-semantics or fabricated native executions. Independent original-byte checks
-validate all cells and 240 WTS / 176 VTS result rows. Native checkpoint scopes
-separate exact budgets, reject ambiguous nested legacy paths and verify result
-ownership before reconciling uncommitted tails. The actual signed published wheel
-retains the previous source workflows and resumes completed published-4.12
-single-budget results without changing their bytes; ownership metadata adoption
-is explicit. This is a post-hoc test-only simulation, not protected admission or
-evidence of a policy advantage.
-
-**4.14.0** publishes #308's [deterministic stress laboratory](ci-stress-laboratory.md).
-Its 32-case covering design exposes eleven factors, explicit constructed truth,
-completion-bound feedback clocks and native Parquet. Installed qualification runs
-actual agents, checks a 50,000-test history and resumes a genuinely interrupted
-process. Rare failures survive churn; zero-work cases retain typed traces while
-native replay rejects their undefined cost metric. Existing 4.13 native results
-and checkpoints resume without changing protected bytes. This owned synthetic
-family supports mechanism checks; it does not admit empirical diversity regimes
-or establish independent faults.
-
-**4.15.0** adds [source admission and production reality](corpus-admission.md)
-on the existing registry, profiles, source receipts and immutable publication.
-Original raw-capture verification uses an explicit application boundary; domain
-imports remain independent of transports. A 35-axis matrix distinguishes observed,
-reconstructed, missing, synthetic and inapplicable facts. Functional/mechanism
-qualification cannot grant historical confirmation. The signed published wheel
-revalidates 61 actual bindings / 63 cards, all six original raw-capture proofs and
-the complete 39-case stress family. Three scoped regimes are covered; four
-historical/HCS regimes stay uncovered. Actual 4.14 native results resume without
-changing protected bytes. #309 is delivered; its original 4.15 qualification remains historical evidence.
-
-**4.16.0** adds [metric references and repeated CI observations](corpus-evaluation.md).
-Versioned raw grids bind every immutable candidate/build/seed key, preserve
-unavailable attempts and average seeds within builds, then builds within reviewed
-repository families. Existing protected evaluation receives one paired mean per
-family. Native metric conventions, original artifacts and checkpoints retain
-their semantics; no implicit migration grants source eligibility. The published
-wheel runs the complete native example and retains insufficient evidence for its
-one constructed family. #310 is delivered; its 4.16 qualification remains historical evidence.
-
-**4.17.0** adds the [comparable native baseline matrix](comparable-baselines.md).
-Versioned source/plan/cell and attempt records retain explicit units, full rankings,
-failed and incompatible runs, independently checked metrics and checkpoint recovery.
-Stable source sums protect native budgets from parallel reduction order; legacy
-loaders retain their existing sums. The published wheel executes all twelve built-in
-candidates in the owned example and preserves its artifacts on retry. #311 is
-delivered. The separate [public CI feasibility study](public-ci-feasibility.md) addresses
-#312 using that published SDK. #261 stays open, with #313 dependent on all remaining
-scientific gates.
-
-The existing public adapter issues now have consciously revised generic CI
-specifications in **M4 — Point-in-time CI adapters and prospective evaluation**:
-
-- [#258](https://github.com/jacksonpradolima/coleman/issues/258): point-in-time CI
-  observations and versioned decision signals; implemented for 4.2 through existing
-  temporal contracts and native extensions.
-- [#259](https://github.com/jacksonpradolima/coleman/issues/259): deterministic CI
-  resource accounting and cost-aware replay; implemented for 4.3 on top of #258
-  and existing allocation/evaluation/benchmark foundations.
-- [#260](https://github.com/jacksonpradolima/coleman/issues/260): prospective shadow
-  evaluation of frozen CI candidates; implemented for 4.3 on top of #259 and
-  protected evaluation, without fabricating prospective observations.
-
-Continue the remaining public corpus phases sequentially in later 4.x releases,
-with reusable core contracts and CI-centered fixtures. Provider dependencies stay
-outside the core. Generic mechanisms, native CI integration, functional recovery
-and actual prospective evidence each need explicit validation; offline replay
-must never masquerade as a forward observation.
-
-Compatible features use subsequent **4.x minor** versions; compatible fixes use
-**4.x patch** versions. A major version requires an actual breaking public contract,
-not a large issue count. Release branches may group related reviewed PRs where
-needed, while security fixes remain independently shippable. Only implemented,
-reviewed, tested behavior belongs in published release notes.
-
-Every slice reuses existing runner, results, artifact and checkpoint interfaces;
-includes installed-package examples and independent correctness evidence; passes
-local review and repository checks; and receives PR review before integration.
-No source admission, performance result, prospective observation, independence
-assumption or commercial value is inferred from a planned feature.
+The [maintainability review](maintainability.md) records the architectural,
+complexity and docstring findings. The immediate direction is to make working
+capabilities easier to learn and compose, preserve bounded domain boundaries,
+and improve public contract documentation. A wholesale rewrite is not justified
+by the current structural measurements.

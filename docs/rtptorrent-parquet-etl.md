@@ -1,6 +1,6 @@
 # Turn RTPTorrent CI history into Parquet and native TCPCI replays
 
-**COLEMAN 4.8** provides a complete installed-package HikariCP workflow: verified
+Run a complete installed-package HikariCP workflow: verified
 real archive → full analytical history → bounded native-compatible Parquet →
 Random/UCB → checkpoint recovery. Delivered in
 [#315](https://github.com/jacksonpradolima/coleman/pull/315) for
@@ -131,8 +131,8 @@ Evidence is `posthoc-source-job-serial-simulation`, admission is
 `blocked_missing_temporal_evidence`, and generalization is `insufficient_evidence`.
 Use this delivery to prepare and reproduce modeled CI experiments. Protected
 temporal evaluation needs verified event/outcome clocks and logical build/job
-mapping. The source-admission and confirmatory gates in
-[#261](https://github.com/jacksonpradolima/coleman/issues/261) remain open.
+mapping. The source-admission and confirmatory requirements remain unmet;
+[evidence status](roadmap.md#historical-corpus-status) explains the tracking closure.
 
 ## Typed API and a custom bounded slice
 
@@ -240,3 +240,8 @@ Source pins and data terms are documented in the
 and owned fixtures; standalone example scripts are downloaded separately above.
 Third-party archive/rows stay outside the repository. Dataset terms remain
 separate from enclosed subject-code rights, and this workflow reads reported CI observations rather than executing the archived subject repositories.
+
+## Continue the workflow
+
+Inspect [RTPTorrent source meaning](rtptorrent.md), then retain class/job grouping through [source
+admission](corpus-admission.md) and [repeated observations](corpus-evaluation.md).

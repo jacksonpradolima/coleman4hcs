@@ -1,7 +1,6 @@
 # Bounded CI application API and optional MCP
 
-COLEMAN 4.0 provides a bounded application API while remaining a CI test
-prioritization and selection platform. The application layer makes its existing
+Expose bounded CI operations through shared application services. The application layer makes its existing
 native services available through reusable, bounded commands. It does not introduce a new runner,
 an LLM decision algorithm, or a hosted service.
 
@@ -319,3 +318,8 @@ stdio, then repeat the stdio lifecycle from an installed noneditable wheel outsi
 the checkout. They also verify base installation without MCP, real two-build
 native execution, CLI/library/tool mathematics, caller isolation, races, immutable
 publication, golden fixtures, portability, expiry, malicious inputs and saturation.
+
+## Continue the workflow
+
+Choose your integration boundary in the [integration guide](integration-guide.md), or return to the
+[native experiment API](api/experiment-api.md) when a registered application session is unnecessary.

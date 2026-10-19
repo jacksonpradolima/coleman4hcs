@@ -5,21 +5,20 @@ CSV and job metadata. It retains passed, failed, timeout, exception, skipped and
 not-run states separately. A successful comparison verifies this correspondence;
 it does not supply missing historical availability or predecision test membership.
 
-This workflow requires a wheel built from this source revision after **4.18.0**.
+Use the pinned published wheel below for the complete trace and archive APIs.
 It is an optional source-qualification step alongside the existing
 [LibSSH Parquet and WTS/VTS workflow](hcs-parquet-etl.md). Old receipts, raw verdicts,
 Parquet and native checkpoints retain their existing meaning.
 
 ## Install outside the checkout
 
-Run these commands from the COLEMAN checkout, with Python 3.14 and uv available:
+Use Python 3.14 and uv. These commands create a fresh environment outside Git:
 
 ```bash
 export COLEMAN_TRACE_HOME="$(mktemp -d "${TMPDIR:-/tmp}/coleman-ctest.XXXXXX")"
-uv build --wheel --out-dir "$COLEMAN_TRACE_HOME/dist"
 uv venv "$COLEMAN_TRACE_HOME/installed" --python 3.14
 uv pip install --python "$COLEMAN_TRACE_HOME/installed/bin/python" \
-  "$COLEMAN_TRACE_HOME"/dist/coleman-*.whl
+  "https://github.com/jacksonpradolima/coleman/releases/download/v4.19.0/coleman-4.19.0-py3-none-any.whl#sha256=070e21c19fb7e3f2e392bd68706c354ed5ab7f76b86db80f5f1bdc5721b767bd"
 cd "$COLEMAN_TRACE_HOME"
 ```
 
@@ -304,3 +303,9 @@ Examples include original jobs
 This bounded snapshot does not establish upstream completeness beyond the
 released metadata, source-purpose admission or independent-project evidence.
 It supplies no policy comparison.
+
+## Continue the workflow
+
+Use this evidence alongside the [LibSSH WTS/VTS data path](hcs-parquet-etl.md). Assess remaining
+source requirements in [source admission](corpus-admission.md), rather than treating correspondence
+as admission.

@@ -1,137 +1,116 @@
-# Setup & Architecture
+# Architecture and setup
 
-## Default run (no Docker required)
+COLEMAN's reusable decision contracts support a focused product: adaptive test
+prioritization and selection for CI. The native runner remains the execution
+engine. Data adapters, evidence checks and integrations compose around it.
 
-Coleman is framework-first: the default installation works without any
-external services. Use Python 3.14 or later in an activated virtual environment.
-Install this repository's GitHub release wheel, pinned to its published SHA-256.
-Pip verifies the complete wheel against this digest before installation:
-
-```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.17.0/coleman-4.17.0-py3-none-any.whl#sha256=e5a272ddc0edf72bd909a743fa2b3bc0dfeb8a02871c487ab22683cddeea40ca"
-```
-
-Use the library API or the `coleman` CLI to run experiments:
-
-```python
-from coleman.api import run, load_spec
-
-spec = load_spec("my-experiment.yaml")
-result = run(spec)
-print(result.run_id, result.artifacts_dir)
-```
-
-```bash
-coleman run --config my-experiment.yaml
-```
-
-Results are written as **partitioned Parquet files** (zstd compressed) under
-`./runs/` by default.  You can query them directly with DuckDB or Polars
-without loading everything into RAM.
-
-Repeated runs append new result files by default. They do not replace previous
-results unless you explicitly remove `./runs/` or choose another `out_dir`.
+For a working experiment, start with [getting started](getting-started.md).
+For extension points, use [the extension guide](extensibility.md).
 
 ## Architecture overview
 
-Coleman separates three concerns:
-
-| Layer | Purpose | Default | Optional |
-|-------|---------|---------|----------|
-| **Results** | Persist experiment facts (NAPFD, APFDc, …) | Partitioned Parquet | DuckDB sink, ClickHouse sink |
-| **Checkpoints** | Crash-safe resume | Local filesystem (pickle + progress.json) | — |
-| **Telemetry** | Observability (latency, throughput) | Disabled (NoOp) | OpenTelemetry + Collector |
-
-### Null adapters
-
-When a layer is disabled its module resolves to a **Null implementation**
-with near-zero overhead:
-
-* `NullSink` — discards result rows
-* `NullCheckpointStore` — never saves/loads checkpoints
-* `NoOpTelemetry` — all instrument calls are instant no-ops
-
-## Configuration system
-
-For registered, bounded CI workflows, the [application API and optional local MCP
-tools](application-api.md) share native services across library, CLI and tool
-clients. This capability is available in COLEMAN 4.x and adds no dependency to the
-base installation. Its bounded session lifecycle is separate from direct native
-runner checkpoint continuation.
-
-Coleman uses **YAML configuration files** validated against typed
-Pydantic v2 models.  See the [Configuration guide](configuration.md) for
-the full schema reference, config packs, sweep engine, and determinism
-contract.
-
-### Quick example
-
-```yaml
-# experiment.yaml
-packs:
-  - policy/linucb
-  - reward/rnfail
-  - results/parquet
-
-experiment:
-  datasets: ["alibaba@druid"]
-
-execution:
-  independent_executions: 30
+```mermaid
+flowchart TD
+    L[Python caller] --> A[coleman.api: RunSpec experiments]
+    C[CLI adapter] --> A
+    M[Optional MCP adapter] --> S[Bounded application services]
+    S --> A
+    A --> R[Native runner]
+    P[Source/process adapters] --> D[Typed corpus and analytical evidence]
+    D --> N[Explicit native projection]
+    N --> R
+    R --> F[Agent, policy, reward and scenarios]
+    R --> O[Native results sinks]
+    R --> K[Checkpoint store]
+    R --> T[Optional telemetry]
+    D --> E[Observation and evaluation contracts]
+    O --> E
+    F --> V[Versioned extension measurements]
+    V --> E
+    E --> B[Protected comparison and evidence reports]
 ```
+
+Arrows show calls or data flow, not a requirement to import a transport. Core
+measurement, observation, selection and evaluation code does not need CLI or MCP.
+Network and process execution remain in adapters. The corpus package's
+`__main__` module is an executable boundary, rather than a domain import path.
+
+## Where responsibilities live
+
+| Boundary | Responsibility | Start reading |
+| --- | --- | --- |
+| `coleman.api`, `coleman.spec` | Resolve/validate configuration, identify and execute native runs | [Experiment API](api/experiment-api.md), [configuration](configuration.md) |
+| Runner, scenarios, agents, policies, rewards | Native prioritization, modeled budgets and feedback updates | [Concepts](concepts.md), [extensions](extensibility.md) |
+| `coleman.results`, `coleman.checkpoint`, `coleman.artifacts` | Native facts, resumable state and contract-specific file publication | [Result records](domain-results.md), [artifact API](api/artifacts.md) |
+| `coleman.corpus` | Source contracts, cache, analytical views, projections and qualification | [Dataset guide](datasets.md), [materialization API](api/materialization.md) |
+| Observations and evaluation | Availability/lineage, protected access, repeated units and justified comparisons | [Evaluation guide](evaluation-guide.md) |
+| Selection and allocation | Finite coverage and scenario-payoff decisions under explicit assumptions | [Coverage](finite-coverage.md), [allocation](scenario-payoffs.md) |
+| Application services and transports | Bounded workflows and CLI/HTTP/process/MCP adapters | [Integration guide](integration-guide.md) |
+
+## Three independent operational concerns
+
+| Concern | Default | Optional or disabled behavior |
+| --- | --- | --- |
+| Results | Partitioned Parquet | DuckDB/ClickHouse sinks; `NullSink` discards rows |
+| Checkpoints | Local progress markers and pickle state when enabled | `NullCheckpointStore` disables persistence |
+| Telemetry | Disabled | OpenTelemetry exporters and optional local monitoring stack |
+
+Native checkpoints are trusted executable Python state. Load only checkpoints
+you control. Versioned immutable domain artifacts use different contracts and do
+not replace the native checkpoint format.
+
+## Identity and reproducibility
+
+The run ID is a compatibility-aware hash prefix of the resolved configuration.
+It is not a complete hash of external data, environment or all input artifacts.
+Resolved configuration and provenance help inspect those facts; source-specific
+receipts bind the actual source, producer and output bytes separately.
+
+Some source producers fingerprint the installed version and all SDK package
+bytes. A docstring or unrelated module change therefore creates a new producer
+identity too. Keep original producer/runtime pins when validating those old
+receipts; do not retag them as a new generation. Other contracts use an explicitly
+reviewed dependency closure, as documented by their producer API.
+
+Versioned result records distinguish logical identity from content digest. Source
+and capture workflows publish their own complete-last receipts where documented.
+An ordinary run directory, operational manifest or partially written temporary
+file must not be interpreted as one of those receipts.
+
+The mutable JSON/CSV artifact helpers are single-writer exports. The immutable
+writer handles identical cooperative concurrent publication and conflicting bytes
+explicitly. Read [the artifact API](api/artifacts.md) before choosing a helper.
+
+## Installation options
+
+### Default run (no Docker required)
+
+Follow [the verified-wheel installation](getting-started.md#1-install-in-a-virtual-environment).
+The base package includes the library, CLI and local analytical dependencies.
+
+### Optional integrations
+
+Install an extra against the **same pinned wheel URL** used for the base install.
+For example, the telemetry distribution requirement uses this form:
 
 ```bash
-coleman run --config experiment.yaml
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.19.0/coleman-4.19.0-py3-none-any.whl#sha256=070e21c19fb7e3f2e392bd68706c354ed5ab7f76b86db80f5f1bdc5721b767bd"
 ```
 
-### Key concepts
+Use `clickhouse` for that result sink or `mcp` for the optional transport. Optional
+controlled-capture recipes have additional pinned native runtime requirements,
+listed in their [source guides](datasets.md).
 
-| Concept | Description |
-|---------|-------------|
-| **RunSpec** | Typed Pydantic v2 model describing one complete experiment run |
-| **Config packs** | Composable YAML fragments (`packs/<category>/<name>.yaml`) merged left-to-right |
-| **Sweep engine** | Grid (Cartesian) or zip (paired) expansion of parameter ranges into multiple specs |
-| **Deterministic run_id** | `sha256(canonical_json(spec))[:12]` — same config always produces the same ID |
-| **Provenance** | `spec.resolved.json` + `provenance.json` (git, Python version, `uv.lock` hash) per run |
+### Development checkout
 
-## Optional extras
+Use [contributing](contributing.md) for the locked development environment,
+formatting, typing, tests and strict documentation build. Documentation and source
+examples can evolve ahead of a published wheel; install your built distribution
+when validating a change from a branch.
 
-```bash
-# Telemetry (OpenTelemetry SDK)
-python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.17.0/coleman-4.17.0-py3-none-any.whl#sha256=e5a272ddc0edf72bd909a743fa2b3bc0dfeb8a02871c487ab22683cddeea40ca"
+## Continue exploring
 
-# ClickHouse sink
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.17.0/coleman-4.17.0-py3-none-any.whl#sha256=e5a272ddc0edf72bd909a743fa2b3bc0dfeb8a02871c487ab22683cddeea40ca"
-```
-
-## Optional observability stack
-
-See the [Observability guide](observability.md) for a Docker Compose stack
-with OTel Collector + Grafana (ClickHouse under a profile).
-
-## How to query results
-
-Results are written as Hive-partitioned Parquet files under `./runs/`.  You
-can query them directly with DuckDB (already a project dependency):
-
-```sql
--- Average NAPFD per policy
-SELECT policy, AVG(fitness) AS avg_napfd
-FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
-GROUP BY policy
-ORDER BY avg_napfd DESC;
-
--- Cost distribution per reward function
-SELECT reward_function,
-       PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY cost) AS median_cost
-FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
-GROUP BY reward_function;
-```
-
-For a guided end-to-end walkthrough, see the official [workflow notebook](workflow.py).
-
-## Additive measurement artifacts
-
-The native result schemas remain unchanged. See [versioned domain results](domain-results.md)
-for the typed observation contract, Mermaid commit/recovery diagram and local-sink
-sidecars that join to CI decisions without replacing the runner or checkpoint store.
+[API reference](api-reference.md) locates symbols.
+[Maintainability](maintainability.md) records current measurements and targeted
+improvement priorities. [Observability](observability.md) explains optional
+monitoring, and [the analysis playbook](analysis-playbook.md) covers result queries.

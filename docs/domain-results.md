@@ -236,3 +236,8 @@ A future schema must add an explicit reader and migration with versioned fixture
 rewriting v1 files at the same logical key is never an implicit migration.
 
 ::: coleman.results.domain
+
+## Continue the workflow
+
+Inspect the [measurement API](api/results.md) and [artifact publication contract](api/artifacts.md),
+then connect observations to the [evaluation path](evaluation-guide.md).

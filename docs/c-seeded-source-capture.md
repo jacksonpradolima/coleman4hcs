@@ -234,3 +234,8 @@ qualification separately exercises the [owned controlled/native CI example](cont
 and checkpoint continuation twice. Controlled source records remain
 `constructed` / `not_evaluated` / `insufficient_evidence`; temporal admission raises.
 No source-collection result closes the broader benchmark program in #261.
+
+## Continue the workflow
+
+Compare this constructed template with [controlled fault observations](controlled-faults.md), then
+retain its separate scope in [source admission](corpus-admission.md).

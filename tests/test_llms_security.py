@@ -65,3 +65,13 @@ def test_normal_generation_is_deterministic_and_replaces_a_complete_file(tmp_pat
     assert (root / "llms.txt").read_text() == first
     assert "Prioritize CI tests." in first
     assert list(root.glob("*.tmp")) == []
+
+
+def test_contributor_guidance_is_consolidated_beyond_the_site_snippet(tmp_path, monkeypatch):
+    root = repository(tmp_path, monkeypatch)
+    (root / "CONTRIBUTING.md").write_text("# Contribute\nDocument CI units and parameters.\n")
+    (root / "docs" / "contributing.md").write_text('--8<-- "CONTRIBUTING.md"\n')
+    generated = generator.generate()
+    assert "### FILE: CONTRIBUTING.md" in generated
+    assert "Document CI units and parameters." in generated
+    assert generator.generate() == generated

@@ -1,6 +1,5 @@
 # Comparable CI baseline matrices
 
-**Available in the published COLEMAN 4.17 wheel.**
 Execute a frozen candidate matrix through COLEMAN's existing RunSpec runner,
 policies, Parquet results and per-build checkpoints. The application API retains
 raw complete rankings, selected prefixes, failed attempts and incompatible methods.
@@ -212,8 +211,9 @@ Qualification remains explicitly blocked:
 
 The incompatible result is an honest outcome of the investigation, not evidence
 against the method. No superiority, paper reproduction or algorithm-equivalence
-claim follows. Public provider feasibility and final corpus reporting continue in #312/#313;
-the four historical admission gaps documented in #309 remain open.
+claim follows. [Public provider feasibility](public-ci-feasibility.md) is available;
+final historical confirmation remains unfinished and
+the four historical admission gaps documented in [evidence status](roadmap.md) remain unresolved.
 
 ## Published 4.17 qualification
 
@@ -235,3 +235,8 @@ An actual published 4.16 native run continues at checkpoint 8 and retries with a
 using their original producer configuration; legacy stage-ETL byte profiles can
 reject after a thread-setting change in both 4.16 and 4.17. No old receipt is
 rewritten or silently migrated.
+
+## Continue the workflow
+
+Interpret raw repetitions using [corpus metrics and repository-family means](corpus-evaluation.md),
+then follow the [evaluation guide](evaluation-guide.md) before selecting an inference protocol.

@@ -242,3 +242,8 @@ It vendors no benchmark data or external implementation. Source admission,
 production-reality coverage, protected statistics, comparable baselines and
 confirmatory corpus execution remain separate #261 gates. A synthetic stress
 case cannot fill an uncovered real-evidence cell.
+
+## Continue the workflow
+
+Run candidates under shared conditions with [comparable baselines](comparable-baselines.md). Keep
+the synthetic mechanism scope visible in the [evaluation guide](evaluation-guide.md).

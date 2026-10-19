@@ -1,15 +1,13 @@
 # Point-in-time CI observations and decision signals
 
-COLEMAN 4.2 implements
-[#258](https://github.com/jacksonpradolima/coleman/issues/258). CI durations/outcomes
+Preserve what each CI decision could know. CI durations/outcomes
 retain their original availability and revision lineage, so later corrections do
 not rewrite the information used by an earlier decision. The base package needs
 no provider SDK, credential, hosted service or optional MCP dependency.
 
-Install the wheel attached to [COLEMAN 4.2](https://github.com/jacksonpradolima/coleman/releases/tag/v4.2.0),
-or build a development wheel from reviewed source. Run examples outside the
-checkout. [ADR 001](decisions/001-point-in-time-observations.md) records the
-module/dependency/extension decisions.
+Use the [installed-package setup](getting-started.md) for the base SDK.
+Run source examples outside the checkout. [ADR 001](decisions/001-point-in-time-observations.md)
+records the module, dependency and extension decisions.
 
 ## Observation and revision contract
 
@@ -255,3 +253,9 @@ flowchart LR
   N --> C[Existing native checkpoint]
   D --> C
 ```
+
+## Continue the workflow
+
+Use these availability boundaries in [protected evaluation](protected-evaluation.md) or [shadow
+evaluation](prospective-shadow.md). The [glossary](glossary.md) distinguishes source availability
+from first receipt.

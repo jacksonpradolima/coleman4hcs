@@ -6,26 +6,28 @@ and its equally weighted repository-family mean lie in `[0, 1]`. The method
 compares paired means, controls the full declared family, and reports benefit,
 harm, practical equivalence or insufficient/inconclusive evidence.
 
-This additive method is available in the source revision containing this guide.
-The earlier published **4.17 wheel** retains the existing Student-t method.
-Build this revision's wheel for the new protocol and `--bounded` example below.
-Old frozen contracts and reports retain their exact serialized bytes and method.
+Use the pinned published wheel below for this protocol. Old frozen contracts
+and reports retain their exact serialized bytes and declared method.
 
 ## Run a complete installed native CI example
 
-From the COLEMAN checkout, with Python 3.14+ and uv:
+With Python 3.14+ and uv, from any working directory:
 
 ```bash
 task_bounded_work="$(mktemp -d /tmp/coleman-bounded-XXXXXX)"
-uv build --wheel --out-dir "$task_bounded_work/dist"
 uv venv "$task_bounded_work/installed" --python 3.14
 uv pip install --python "$task_bounded_work/installed/bin/python" \
-  "$task_bounded_work"/dist/coleman-*.whl
-cp examples/corpus-evaluation/ci.py "$task_bounded_work/ci.py"
+  "https://github.com/jacksonpradolima/coleman/releases/download/v4.19.0/coleman-4.19.0-py3-none-any.whl#sha256=070e21c19fb7e3f2e392bd68706c354ed5ab7f76b86db80f5f1bdc5721b767bd"
+curl --fail --location \
+  https://raw.githubusercontent.com/jacksonpradolima/coleman/v4.19.0/examples/corpus-evaluation/ci.py \
+  --output "$task_bounded_work/ci.py"
 cd "$task_bounded_work"
 
-"$task_bounded_work/installed/bin/python" -I ci.py ./output --bounded
-"$task_bounded_work/installed/bin/python" -I ci.py ./output --bounded
+# Check the example bytes before execution.
+"$task_bounded_work/installed/bin/python" -c \
+  'import hashlib, sys; from pathlib import Path; sys.exit(0 if hashlib.sha256(Path("ci.py").read_bytes()).hexdigest() == "80fba6db84da73e4e006058452e312e10cdbfb2a21c4cfdc15ec0195dd942dcb" else "Example SHA-256 mismatch")' &&
+  "$task_bounded_work/installed/bin/python" -I ci.py ./output --bounded &&
+  "$task_bounded_work/installed/bin/python" -I ci.py ./output --bounded
 ```
 
 This authored CI example uses the actual Random/UCB runner, independent rational
@@ -86,7 +88,7 @@ metric, not merely the particular values seen in a sample.
 
 If both candidate measurements lie in `[L, U]`, each paired difference lies in
 `[-S, S]`, where `S = U - L`. For `n` independent units, the two-sided
-[Hoeffding bound](https://www.cs.rpi.edu/academics/courses/spring06/random/hoefding.pdf)
+[Hoeffding bound](https://doi.org/10.1080/01621459.1963.10500830)
 is `min(1, 2 exp(-n t² / (2 S²)))` for deviation `t` of the sample mean from its
 expectation. The original paper's Theorem 1, inequality (2.3), gives the bounded
 independent-sum result; the two-sided statement follows by applying both tails.
@@ -148,3 +150,8 @@ An analyst must freeze the appropriate method before outcomes; trying methods
 until one is favorable is holdout reuse. The existing audit records reuse and
 removes confirmatory eligibility. Review each project's raw results, missingness,
 effect/uncertainty, runtime and source limitations alongside aggregate comparisons.
+
+## Continue the workflow
+
+Prepare the paired inference units with [repeated observations](corpus-evaluation.md). Use the
+[evaluation guide](evaluation-guide.md) to check what claim the resulting uncertainty can support.

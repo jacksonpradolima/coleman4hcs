@@ -263,3 +263,8 @@ class outcomes; that behavior does not make its results available before a
 historical decision. See the [original source assessment](lrts.md) for snapshot,
 filtering and clock boundaries. No author baseline, algorithm win, independent
 fault count or prospective production improvement is claimed.
+
+## Continue the workflow
+
+Keep stage/source dimensions from the [LRTS assessment](lrts.md), and carry their shared build
+groups into [repeated observations](corpus-evaluation.md).

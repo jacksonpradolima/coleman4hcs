@@ -1,5 +1,5 @@
 name: Bug report
-description: Report an issue or bug with this library
+description: Report reproducible CI replay, source-adapter or library behavior
 labels: ['bug']
 body:
   - type: markdown
@@ -52,13 +52,20 @@ body:
     id: language-version
     attributes:
       label: Python version
-      placeholder: Python v3.11.4
+      placeholder: Python 3.14.x
     validations:
       required: true
   - type: input
     id: lib-version
     attributes:
       label: Library version
-      placeholder: coleman v1.0.0
+      placeholder: Installed COLEMAN version and wheel/source revision
     validations:
       required: true
+  - type: textarea
+    id: experiment-context
+    attributes:
+      label: Experiment or source context
+      description: Include a minimal redacted RunSpec or command, source preset, and relevant artifact/schema/producer identities when available. Do not attach credentials or private datasets.
+    validations:
+      required: false

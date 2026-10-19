@@ -60,11 +60,31 @@ RESERVED_METRICS = frozenset(
 
 
 def canonical_json(payload: Any) -> str:
-    """Encode JSON values with sorted keys, UTF-8 and finite numbers only.
+    """Encode JSON values deterministically with finite numbers only.
 
-    Non-string object keys and non-JSON Python objects raise ``ValueError`` or
-    ``TypeError``. Array order is significant; no rounding or ``default=str``
-    coercion occurs. This is COLEMAN JSON v1, not RFC 8785 cross-language JCS.
+    Parameters
+    ----------
+    payload : object
+        JSON values: string-keyed dictionaries, lists, strings, booleans,
+        integers, finite floats or null. Array order remains significant.
+
+    Returns
+    -------
+    str
+        Compact JSON with sorted keys and unescaped UTF-8 text.
+
+    Raises
+    ------
+    ValueError
+        If an object key is not a string or a float is non-finite.
+    TypeError
+        If an input contains a non-JSON Python object.
+
+    Notes
+    -----
+    Performs no filesystem access, rounding or ``default=str`` coercion.
+    This is COLEMAN JSON v1, not RFC 8785 cross-language JCS. The caller must
+    bound payload size/depth before using untrusted data.
     """
     if isinstance(payload, dict):
         for key, value in payload.items():
@@ -80,12 +100,33 @@ def canonical_json(payload: Any) -> str:
 
 
 def decode_json(payload: str | bytes, *, exact_decimals: bool = False) -> Any:
-    """Parse JSON without silently overwriting duplicate object keys.
+    """Parse JSON while rejecting duplicate object keys at every depth.
 
-    Syntax/duplicate-key failures raise ``ValueError``. Exact mode preserves
-    numeric decimal literals until typed validation, avoiding binary64 underflow
-    or rounding in decimal contracts. The default preserves the existing
-    binary64 domain-record reader. No files are accessed.
+    Parameters
+    ----------
+    payload : str or bytes
+        Complete JSON document. Callers must impose their own byte/depth limits.
+    exact_decimals : bool, optional
+        Preserve non-integral numeric literals as ``decimal.Decimal`` until
+        typed validation. The default retains the legacy binary64 parser.
+
+    Returns
+    -------
+    object
+        Decoded JSON value; no domain/schema validation is performed here.
+
+    Raises
+    ------
+    ValueError
+        If syntax or duplicate keys make the document invalid.
+    UnicodeDecodeError
+        If input bytes cannot be decoded by the standard JSON reader.
+
+    Notes
+    -----
+    Accesses no files. Non-standard numeric constants and contract-specific
+    finite-number, shape and version constraints must be rejected by the
+    consuming typed contract; this helper is not their replacement.
     """
 
     def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -101,7 +142,30 @@ def decode_json(payload: str | bytes, *, exact_decimals: bool = False) -> Any:
 
 
 def fingerprint(payload: Any) -> str:
-    """Hash canonical JSON input using identified SHA-256; no filesystem access."""
+    """Hash canonical JSON input with an identified SHA-256 digest.
+
+    Parameters
+    ----------
+    payload : object
+        JSON-compatible input accepted by ``canonical_json``.
+
+    Returns
+    -------
+    str
+        ``sha256:`` followed by 64 lowercase hexadecimal characters.
+
+    Raises
+    ------
+    ValueError
+        If canonical encoding rejects a key or non-finite value.
+    TypeError
+        If the input contains a non-JSON object.
+
+    Notes
+    -----
+    Performs no filesystem access. Hashes content rather than authenticating
+    its producer, license, temporal availability or scientific eligibility.
+    """
     return "sha256:" + hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
 
 
@@ -112,13 +176,37 @@ class _Contract(BaseModel):  # pylint: disable=too-few-public-methods
 
 
 class Measurement(_Contract):  # pylint: disable=too-few-public-methods
-    """One signed raw observation in an explicit unit and versioned meaning.
+    """Represent one signed observation with explicit units and meaning.
 
-    ``value`` is required, even when null. Observed values are finite and may be
-    zero or negative. Unknown, unavailable and not-applicable states require
-    null; omission means the measurement was not declared at all. ``minimum``
-    optionally declares a physical lower bound in the same unit. No implicit
-    constraint is imposed on custom units. A reward is never a measurement.
+    Attributes
+    ----------
+    name : str
+        Unique measurement name within its record; native metric names are reserved.
+    value : float or None
+        Required raw value. Observations are finite and may be zero or negative.
+        Other statuses require explicit null; omitting a measurement is distinct.
+    unit : str
+        Case-sensitive unit identifier; no conversion is implicit.
+    meaning : str
+        Versioned semantic identifier specifying what was measured.
+    direction : {"minimize", "maximize", "none"}
+        Declared objective direction, without performing a comparison.
+    status : {"observed", "unknown", "unavailable", "not_applicable"}
+        Observation state. Only ``observed`` permits a numeric value.
+    minimum : float or None, optional
+        Optional finite lower bound in the same unit. No implicit bound is
+        imposed on arbitrary custom units.
+
+    Raises
+    ------
+    pydantic.ValidationError
+        If required fields, finite values, reserved names or state/bound
+        invariants are violated.
+
+    Notes
+    -----
+    Frozen and strict. A learning reward is a separate transformed signal;
+    this model preserves the raw observation and performs no I/O.
     """
 
     name: Identifier
@@ -142,10 +230,21 @@ class Measurement(_Contract):  # pylint: disable=too-few-public-methods
 
 
 class LearningReward(_Contract):  # pylint: disable=too-few-public-methods
-    """Finite transformed learning signal, separate from raw outcomes.
+    """Keep a finite transformed learning signal separate from raw outcomes.
 
-    ``transform_id`` identifies a versioned transformation; ``unit`` declares
-    its output scale. A positive reward cannot erase a negative raw outcome.
+    Attributes
+    ----------
+    value : float
+        Finite transformed value; its sign does not change raw observations.
+    unit : str
+        Explicit output-scale identifier.
+    transform_id : str
+        Versioned identifier of the transformation that produced the signal.
+
+    Notes
+    -----
+    Frozen and strict; no transformation, comparison or I/O is performed.
+    Invalid or missing fields raise ``pydantic.ValidationError``.
     """
 
     value: Finite
@@ -154,12 +253,26 @@ class LearningReward(_Contract):  # pylint: disable=too-few-public-methods
 
 
 class ResultProvenance(_Contract):  # pylint: disable=too-few-public-methods
-    """Producer and canonical spec/evaluation fingerprints for reproducible joins.
+    """Identify a producer and the configuration/evaluation it actually used.
 
-    Hash the actual resolved spec used, and the declared evaluation context
-    (metric definition, protocol and dataset interpretation). These identifiers
-    record provenance, not proof that observations are statistically independent.
-    ``source_revision`` is optional and is never collected from the environment.
+    Attributes
+    ----------
+    producer : str
+        Explicit producer identifier.
+    producer_version : str
+        Explicit producer version, not inferred from the running environment.
+    spec_fingerprint : str
+        Identified SHA-256 of the resolved specification used for the observation.
+    evaluation_fingerprint : str
+        Identified SHA-256 of the declared metric/protocol/data interpretation.
+    source_revision : str or None, optional
+        Explicit source revision; absence remains absence.
+
+    Notes
+    -----
+    Frozen metadata with no environment collection or I/O. Fingerprints record
+    provenance, not proof of independent observations or scientific admission.
+    Invalid fields raise ``pydantic.ValidationError``.
     """
 
     producer: Identifier
@@ -170,15 +283,43 @@ class ResultProvenance(_Contract):  # pylint: disable=too-few-public-methods
 
 
 class DomainRecord(_Contract):
-    """Versioned immutable measurement bundle with a stable logical decision key.
+    """Bundle immutable versioned measurements for one logical decision.
 
-    Identity is (namespace, run_id, execution_id, decision_id), excluding schema
-    version and content. Execution IDs must identify the same logical execution
-    after resume; never include worker IDs or random retry suffixes. Decision IDs
-    distinguish policy/reward/build/variant when applicable. ``available_at`` is
-    outcome availability, not ingestion time, normalized to UTC. Naive times,
-    duplicate measurement names and versions other than integer 1 are rejected.
-    Tuple measurements are sorted by name for deterministic serialization.
+    Attributes
+    ----------
+    schema_version : int
+        Exact supported integer version, currently 1; unknown versions reject.
+    namespace : str
+        Extension namespace; ``coleman`` and its dotted descendants are reserved.
+    run_id : str
+        Stable logical run identity.
+    execution_id : str
+        Logical execution identity preserved on resume, not a worker/retry ID.
+    decision_id : str
+        Decision identity distinguishing relevant policy/reward/build/variant keys.
+    data_fingerprint : str
+        Identified SHA-256 of the interpreted input data.
+    available_at : datetime
+        Aware outcome-availability timestamp, normalized to UTC. This is not
+        automatically the application's ingestion/first-receipt time.
+    provenance : ResultProvenance
+        Producer, resolved specification and evaluation identity.
+    measurements : tuple[Measurement, ...]
+        Named observations, sorted by name after validation; duplicates reject.
+    learning_reward : LearningReward or None, optional
+        Separate transformed signal, without replacing raw measurements.
+
+    Raises
+    ------
+    pydantic.ValidationError
+        If fields, version, timestamps, namespace or measurement invariants fail.
+
+    Notes
+    -----
+    The stable logical key is namespace/run/execution/decision, excluding schema
+    version and contents. Value changes alter the content digest, not that key.
+    Legacy native rows require their existing reader; no migration invents
+    missing units, availability or provenance. Construction performs no I/O.
     """
 
     schema_version: Annotated[int, Field(strict=True)]
@@ -262,10 +403,28 @@ class DomainRecord(_Contract):
 
     @classmethod
     def from_json(cls, payload: str | bytes) -> Self:
-        """Read v1 only; unknown fields, duplicate keys and unknown versions fail.
+        """Read and validate a v1 record without migrating legacy native rows.
 
-        Legacy native rows must be read with their existing APIs. No automatic
-        migration invents missing units, timestamps or provenance.
+        Parameters
+        ----------
+        payload : str or bytes
+            Complete JSON document. Its acquisition layer owns byte/depth limits.
+
+        Returns
+        -------
+        DomainRecord
+            Validated frozen record with normalized timestamp and measurement order.
+
+        Raises
+        ------
+        ValueError
+            If JSON syntax, duplicate keys, root shape, fields or schema version
+            are invalid. Pydantic validation errors are included in this category.
+
+        Notes
+        -----
+        Performs no I/O and invents no missing unit, timestamp or provenance.
+        Unknown versions and unknown fields reject rather than receiving defaults.
         """
         raw = decode_json(payload)
         if not isinstance(raw, dict):
@@ -273,28 +432,78 @@ class DomainRecord(_Contract):
         return cls.model_validate(raw)
 
     def measurement(self, name: str) -> Measurement:
-        """Query a declared measurement by name; omission raises ``KeyError``."""
+        """Look up one declared observation without inventing missing values.
+
+        Parameters
+        ----------
+        name : str
+            Exact case-sensitive declared measurement name.
+
+        Returns
+        -------
+        Measurement
+            Matching frozen measurement, including its explicit status and units.
+
+        Raises
+        ------
+        KeyError
+            If the measurement was omitted from the record.
+        """
         for item in self.measurements:
             if item.name == name:
                 return item
         raise KeyError(name)
 
     def require_comparable(self, other: DomainRecord, name: str) -> None:
-        """Require compatible metadata and observed values; perform no inference.
+        """Require compatible metadata and observed values without inference.
 
-        Unknown/unavailable outcomes fail explicitly. Use ``require_compatible``
-        to validate only metadata when reporting incomplete evidence.
+        Parameters
+        ----------
+        other : DomainRecord
+            Record to compare against the current record's declared evaluation.
+        name : str
+            Exact measurement name required in both records.
+
+        Raises
+        ------
+        KeyError
+            If either record omits the measurement.
+        ValueError
+            If metadata differs or either value is unknown, unavailable or not applicable.
+
+        Notes
+        -----
+        Returns ``None`` on success and mutates neither record. Performs no unit
+        conversion, ranking, probability estimation or statistical test. Use
+        ``require_compatible`` to validate metadata while reporting incomplete evidence.
         """
         self.require_compatible(other, name)
         if self.measurement(name).status != "observed" or other.measurement(name).status != "observed":
             raise ValueError("Comparison requires observed values")
 
     def require_compatible(self, other: DomainRecord, name: str) -> None:
-        """Reject incompatible units, meanings, objectives, data or evaluations.
+        """Validate measurement and evaluation metadata without comparing values.
 
-        This validates metadata only, without calculating a ranking, probability
-        or statistical comparison. Missing values are allowed for metadata validation.
-        Different producers/specs may be compared within the same evaluation.
+        Parameters
+        ----------
+        other : DomainRecord
+            Record whose schema, namespace, data and evaluation must agree.
+        name : str
+            Exact measurement name required in both records.
+
+        Raises
+        ------
+        KeyError
+            If either record omits the named measurement.
+        ValueError
+            If units, meanings, directions, lower bounds, data, schema, namespace
+            or evaluation identities are incompatible.
+
+        Notes
+        -----
+        Returns ``None`` on success and mutates neither record. Missing values are
+        allowed. Producers/specifications may differ within the same declared
+        evaluation; compatibility does not establish statistical comparability.
         """
         left, right = self.measurement(name), other.measurement(name)
 

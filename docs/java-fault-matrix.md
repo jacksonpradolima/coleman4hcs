@@ -262,3 +262,8 @@ elapsed counters are not substituted for CI costs. Actual historical-CI ETL/repl
 remains available in the [Karaf](lrts-parquet-etl.md),
 [ActiveMQ/Log4j](lrts-stage-views.md) and
 [RTPTorrent](rtptorrent-parquet-etl.md) workflows.
+
+## Continue the workflow
+
+Read [controlled-observation semantics](controlled-faults.md), then retain source/context dependence
+in [source admission](corpus-admission.md) and [evaluation](evaluation-guide.md).

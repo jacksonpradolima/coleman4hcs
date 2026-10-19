@@ -58,8 +58,17 @@ old=LRTSETLRecipe.from_json(Path('old-recipe.json').read_bytes());old_cache=Sour
 materialize_source(old.metadata,old_cache,lambda:Path('old-dataset.csv').open('rb'))
 materialize_selected_packages(old.reports,old_cache,lambda:Path('old-outer.zip').open('rb'))
 old_path=export_lrts_parquet(old,old_cache,ArtifactWriter('old-etl'))
-assert old_path.read_bytes()==Path('old-completion.json').read_bytes()
-validate_lrts_etl(LRTSETLReceipt.from_json(Path('old-completion.json').read_bytes()),old_cache,old_path.parent)
+legacy_bytes=Path('old-completion.json').read_bytes()
+legacy_receipt=LRTSETLReceipt.from_json(legacy_bytes)
+current_receipt=LRTSETLReceipt.from_json(old_path.read_bytes())
+# Implementation pins include materialization source bytes, including docstrings.
+# A new producer identity must not rewrite the old wire record or its table bytes.
+assert (legacy_receipt.to_json()+'\\n').encode()==legacy_bytes
+assert current_receipt.producer_sha256!=legacy_receipt.producer_sha256
+assert legacy_bytes.count(legacy_receipt.producer_sha256.encode())==1
+assert old_path.read_bytes()==legacy_bytes.replace(
+    legacy_receipt.producer_sha256.encode(),current_receipt.producer_sha256.encode())
+validate_lrts_etl(legacy_receipt,old_cache,old_path.parent)
 recipe=LRTSStageRecipe.from_json(Path('recipe.json').read_bytes())
 cache=SourceCache('cache')
 materialize_source(recipe.source.metadata,cache,lambda:Path('dataset.csv').open('rb'))

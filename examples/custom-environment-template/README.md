@@ -2,6 +2,12 @@
 
 This starter template provides two tracks for custom environment projects that extend Coleman without reimplementing runner orchestration.
 
+Read the [extension guide](https://jacksonpradolima.github.io/coleman/extensibility/)
+for callback and worker boundaries, and the
+[input guide](https://jacksonpradolima.github.io/coleman/input-data/) before selecting
+your own dataset paths. The [integration map](https://jacksonpradolima.github.io/coleman/integration-guide/)
+shows when this native extension route is useful.
+
 ## Tracks
 
 - `minimal/`: single dataset, single policy, local sequential execution
