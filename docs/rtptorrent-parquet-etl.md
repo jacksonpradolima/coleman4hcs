@@ -2,10 +2,9 @@
 
 Run a complete installed-package HikariCP workflow: verified
 real archive → full analytical history → bounded native-compatible Parquet →
-Random/UCB → checkpoint recovery. Delivered in
-[#315](https://github.com/jacksonpradolima/coleman/pull/315) for
-[#302](https://github.com/jacksonpradolima/coleman/issues/302), it uses the
-existing native runner. The 4.7 wheel does not contain this ETL API.
+Random/UCB → checkpoint recovery. The adapter prepares the inputs and calls the
+existing native runner; analytical records and replay projections remain linked
+by the source/output receipts.
 
 The preset keeps **46,995 source class executions and 1,662 source jobs** in
 analytical Parquet. It projects **18 executions from eight declared jobs** into

@@ -215,7 +215,7 @@ predate the access receipt or consumed outcomes. Exported comparison records use
 this completion time as `available_at`, never the earlier access request time.
 Use the embedded records to verify results against immutable sink records; reserve a
 test/verification access before inspecting protected raw outcomes again.
-`FamilyReport.domain_records(run_id)` exports typed #251 measurements with explicit
+`FamilyReport.domain_records(run_id)` exports [versioned measurements](domain-results.md) with explicit
 units/signs/unavailable states and no synthetic learning reward. The full report
 retains statistical conclusions and access context that a scalar alone cannot convey.
 
@@ -233,7 +233,7 @@ python ci.py ./protected-ci-output
 The standalone script freezes Greedy/Random RunSpecs before invoking
 `run_with_extension`. Four synthetic repository units exercise the real native
 runner, RNFail reward, NAPFD metric and Parquet sink. It traces candidate fingerprints
-to saved specs, publishes a queryable report and #251 records, and generates a
+to saved specs, publishes a queryable report and versioned measurement records, and generates a
 manifest. It intentionally returns `insufficient_evidence` for four units under a
 20-unit minimum. A repeated access is recorded as reuse before the final manifest
 is generated, so both receipts appear in its inventory. These synthetic repositories

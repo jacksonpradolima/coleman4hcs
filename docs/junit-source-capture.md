@@ -197,7 +197,7 @@ pair counts, then repeats the same trial to verify byte-identical recovery. It
 mocks no source compiler, JVM, cache, converter or artifact writer. It establishes
 functional reproduction only. Chronological benchmark admission, additional
 languages/faults, independent observations, fair baselines and all seven diversity
-regimes remain work in [#261](https://github.com/jacksonpradolima/coleman/issues/261).
+regimes require additional source evidence and comparative evaluation.
 
 New v2 container ownership includes the resolved output namespace. Equal logical
 trials in separate output roots cannot collide or clean each other's containers;

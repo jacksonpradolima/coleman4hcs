@@ -13,19 +13,52 @@ interpreting the value of a more elaborate method. The
 [original COLEMAN study](https://doi.org/10.1109/TSE.2020.2992428)
 provides the research context for bandit-based TCPCI.
 
-| Family | Examples implemented in COLEMAN | Question to investigate |
-| --- | --- | --- |
-| Random and greedy | `Random`, `Greedy`, `EpsilonGreedy`, `OptimisticGreedy` | Does adaptation improve on simple rankings under the same feedback? |
-| Confidence-based | `UCB`, `UCB1`, `UCB2`, `KLUCB`, `UCBTuned`, `UCBV`, `MOSSUCB` | How does exploration respond to limited observations? |
-| Stochastic and adversarial | `ThompsonSampling`, `BayesianUCB`, `Softmax`, `EXP3`, `EXP3IX` | How do different selection mechanisms behave on this history? |
-| Changing-history | `SlidingWindowUCB`, `DiscountedUCB`, `ChangeDetectionUCB`, `FRRMAB`, `SlMAB` | What happens when old feedback becomes less relevant? |
-| Contextual | `LinUCB`, `SWLinUCB`, `LinTS`, contextual epsilon-greedy variants | Do features available before the decision add useful information? |
-| Structured and meta-policy | Combinatorial, dueling/ranking and `PortfolioUCB` policies | Does the additional structure justify its assumptions and cost? |
+## Available native policies
 
-This is a guide to families, not a claim that each implementation inherits every
-theoretical guarantee of the original algorithm. Exact names and constructors
-are in the [policy API](api/policy.md); configuration examples are in the
-[configuration reference](configuration.md).
+The native runner recognizes these **37 names**. Required constructor parameters
+belong in the corresponding reward branch of `algorithm`; some windowed methods
+also require `window_sizes`. Use the [configuration reference](configuration.md)
+and [constructor API](api/policy.md) for the exact fields. A configuration pack
+is a preset for a subset of these names, not the complete policy inventory.
+
+| Family | Native configuration names | What changes in the ranking |
+| --- | --- | --- |
+| Random and greedy | `Random`, `Greedy`, `EpsilonGreedy`, `DecayEpsilonGreedy`, `OptimisticGreedy`, `EpsilonDecreasing` | Start with random order, exploit accumulated value, or vary explicit exploration |
+| Confidence-based | `UCB`, `UCB1`, `UCB2`, `KLUCB`, `UCBTuned`, `UCBV`, `MOSSUCB` | Combine accumulated value with different exploration/confidence constructions |
+| Bayesian and stochastic | `ThompsonSampling`, `BayesianUCB`, `BootstrappedThompson`, `Softmax`, `Pursuit`, `PHE` | Sample, randomize or update selection preferences using the observed feedback |
+| Adversarial | `EXP3`, `EXP3IX` | Use exponential-weight exploration mechanisms |
+| Changing-history | `SlidingWindowUCB`, `DiscountedUCB`, `ChangeDetectionUCB`, `FRRMAB`, `SlMAB` | Adapt the use of older feedback through windows, discounting, detected changes or rank-based credit |
+| Contextual | `LinUCB`, `SWLinUCB`, `LinTS`, `SWLinTS`, `ContextualEpsilonGreedy`, `SWContextualEpsilonGreedy` | Condition a test's score on configured feature vectors |
+| Combinatorial | `CombinatorialUCB`, `CombinatorialThompson` | Prioritize a subset while retaining the native full-ranking interface |
+| Dueling/ranking | `DuelingUCB`, `PairwiseThompsonRanking` | Build a ranking using pairwise preference estimates |
+| Portfolio | `PortfolioUCB` | Select among declared candidate policies online |
+
+The policy families expose different hypotheses to test. Keep their actual native
+reward/update and feedback contracts visible: sharing an algorithm name does not
+establish the regret guarantee or feedback model of the original publication.
+
+## Connect a policy to its research
+
+| Research foundation | What it helps you understand | Start with |
+| --- | --- | --- |
+| Auer, Cesa-Bianchi and Fischer, [*Finite-time Analysis of the Multiarmed Bandit Problem*](https://doi.org/10.1023/A:1013689704352), 2002 | Classical exploration through confidence bounds under the paper's reward assumptions | `UCB1`, then compare the configurable UCB variants |
+| Li, Chu, Langford and Schapire, [*A Contextual-Bandit Approach to Personalized News Article Recommendation*](https://arxiv.org/abs/1003.0146), 2010 | Linear contextual exploration | `LinUCB`, with features actually available before the CI decision |
+| Chen, Wang and Yuan, [*Combinatorial Multi-Armed Bandit: General Framework and Applications*](https://proceedings.mlr.press/v28/chen13a.html), 2013 | How subset actions, their observed components and reward structure affect a bandit problem | Combinatorial policy interfaces and their actual subset/full-ranking behavior |
+| Prado Lima and Vergilio, [*A Multi-Armed Bandit Approach for Test Case Prioritization in Continuous Integration Environments*](https://doi.org/10.1109/TSE.2020.2992428), 2022 | Applying adaptive feedback to volatile CI test suites | Native policies, RNFail/TimeRank, scheduling budgets and repeated builds |
+
+For complete citations and the HCS/dataset/evaluation studies, follow the
+[research guide](research.md). Evaluate extensions under the actual CI workload,
+source availability, feedback and cost protocol.
+
+## Compare exploration settings
+
+The [README sweep example](https://github.com/jacksonpradolima/coleman#sweep-engine)
+runs three UCB exploration coefficients across two seeds using the existing sweep
+engine. Compare configuration choices on a declared validation period, retain
+simple baselines, and freeze the evaluation protocol before protected outcomes.
+[Comparable baseline matrices](comparable-baselines.md) bind the candidate grid,
+observations and execution costs; [protected evaluation](protected-evaluation.md)
+provides the separate inference path.
 
 ## Rewards and quality metrics serve different purposes
 

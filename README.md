@@ -1,22 +1,27 @@
 # COLEMAN
 
-**Learn which CI tests to run first. Keep the evidence behind every decision.**
+**Adaptive CI test prioritization, from 37 bandit policies to reproducible experiments and auditable evidence.**
 
 [![Documentation](https://img.shields.io/badge/docs-start_here-4051b5)](https://jacksonpradolima.github.io/coleman/)
 [![Python](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 Your test suite changes, failures are rare, and the CI budget is finite. COLEMAN
-lets you study how adaptive prioritization responds: rank tests with multi-armed
-bandits, simulate budgeted execution, learn from feedback, and compare the results
-with simple baselines. It supports ordinary suites and highly configurable systems.
+brings adaptive ranking, budgeted test replay, configurable-system testing and
+evidence-based comparison into one Python platform. Choose a policy, learn from
+execution feedback, explore its parameters and inspect the resulting test order,
+fault-detection quality and modeled execution cost.
+
+The approach is grounded in the [original TCPCI study](https://doi.org/10.1109/TSE.2020.2992428),
+the [SPLC configurable-software study](https://doi.org/10.1145/3382025.3414967)
+and its [Empirical Software Engineering extension](https://doi.org/10.1007/s10664-021-10093-3).
 
 The platform connects **source data → reproducible experiments → inspectable
 results → evidence for a decision**. Use it as a Python library or through the CLI;
 Parquet results and local checkpoints work without external services.
 
-[Run your first experiment](docs/getting-started.md) · [Choose a dataset](docs/datasets.md) ·
-[Understand the method](docs/concepts.md) · [Read the research](docs/research.md) ·
+[Run your first experiment](#quick-start) · [Explore the policies](#mab-policies-available) ·
+[Choose a dataset](#datasets) · [Read the research](#research-background) ·
 [Contribute](CONTRIBUTING.md)
 
 ## One platform, connected workflows
@@ -35,6 +40,62 @@ flowchart TD
     R --> V
 ```
 
+## What you can build with COLEMAN
+
+| Your goal | Available workflow |
+| --- | --- |
+| Compare adaptive CI prioritization policies | The native TCPCI runner, [37 policies](#mab-policies-available), RNFail/TimeRank rewards, contextual inputs and [parameter sweeps](#sweep-engine) |
+| Stress a difficult CI decision | [32 deterministic interaction-covering cases](docs/ci-stress-laboratory.md), explicit truth and feedback clocks, native Parquet and resumable agents |
+| Audit what a source actually supports | [Source admission](docs/corpus-admission.md): original evidence, explicit units and a 35-axis production-reality matrix |
+| Compare repeated CI experiments | [Raw build/seed records and paired repository-family means](docs/corpus-evaluation.md), explicit missingness and protected access |
+| Compare metrics with known limits | [Conservative bounded paired means](docs/bounded-paired-evaluation.md), full-family uncertainty and practical equivalence under declared independent-unit assumptions |
+| Assess public CI collection | [Bounded public Actions collection](docs/public-ci-feasibility.md), typed receipts and reality-axis accounting that retains missing test and physical-cost evidence |
+| Develop comparable baseline matrices | [Frozen native-policy and heuristic matrices](docs/comparable-baselines.md), explicit incompatibilities, raw costs and checkpoint recovery |
+| Evaluate configurable software | [Original LibSSH → WTS/VTS Parquet and checkpointed replay](docs/hcs-parquet-etl.md), [CTest corroboration](docs/hcs-trace-evidence.md) and [whole-set/variant strategies](docs/highly-configurable.md) |
+| Collect real-fault observations | [Controlled Java matrices](docs/java-fault-matrix.md) and [Python source capture](docs/python-source-capture.md), pinned source/runtime recipes, raw process evidence and offline recovery |
+| Inspect a constructed C weakness | [Pinned Juliet/GCC capture](docs/c-seeded-source-capture.md), an independent arithmetic oracle, raw process evidence and interruption recovery |
+| Reproduce and inspect an experiment | [Typed RunSpec and the library API](#library-api), [configuration identity and provenance](#provenance), Parquet results and resumable checkpoints |
+| Select finite coverage under a budget | [Coverage selection](docs/finite-coverage.md), explicit costs and solver-specific certificates and limits |
+| Allocate resources under declared scenarios | [Scenario-payoff allocation](docs/scenario-payoffs.md), signed outcomes, resource constraints and conservative evidence handling |
+| Check a CI decision before adoption | [Independent mathematical benchmarks](docs/decision-benchmarks.md), [protected comparisons](docs/protected-evaluation.md) and [operational accounting](docs/operational-pilot.md) |
+| Extend or integrate the platform | [Library API](#library-api), [application API and optional MCP](docs/application-api.md), [versioned domain results](docs/domain-results.md), hooks and [runner extensions](docs/extensibility.md) |
+
+The workflows retain their own assumptions: a source conversion, controlled fault,
+mathematical check and historical policy comparison answer different questions.
+Follow the linked guide for a complete example and the evidence it supports.
+
+## MAB policies available
+
+**37 selectable policies** cover simple comparators, confidence bounds, Bayesian
+sampling, changing histories, contextual features, subsets, pairwise rankings and
+policy portfolios. These are the actual native configuration names:
+
+| Family | Available policies |
+| --- | --- |
+| Random and greedy | `Random`, `Greedy`, `EpsilonGreedy`, `DecayEpsilonGreedy`, `OptimisticGreedy`, `EpsilonDecreasing` |
+| Confidence-based exploration | `UCB`, `UCB1`, `UCB2`, `KLUCB`, `UCBTuned`, `UCBV`, `MOSSUCB` |
+| Bayesian and stochastic exploration | `ThompsonSampling`, `BayesianUCB`, `BootstrappedThompson`, `Softmax`, `Pursuit`, `PHE` |
+| Adversarial exploration | `EXP3`, `EXP3IX` |
+| Changing histories and recent feedback | `SlidingWindowUCB`, `DiscountedUCB`, `ChangeDetectionUCB`, `FRRMAB`, `SlMAB` |
+| Contextual | `LinUCB`, `SWLinUCB`, `LinTS`, `SWLinTS`, `ContextualEpsilonGreedy`, `SWContextualEpsilonGreedy` |
+| Combinatorial | `CombinatorialUCB`, `CombinatorialThompson` |
+| Dueling and ranking | `DuelingUCB`, `PairwiseThompsonRanking` |
+| Portfolio meta-policy | `PortfolioUCB` |
+
+Use the [policy guide](docs/policies.md) to understand the families, reward choices,
+required parameters and contextual feature availability. The
+[constructor reference](docs/api/policy.md) gives the exact API; configuration packs
+cover a subset of the policies. The [baseline workflow](docs/comparable-baselines.md)
+adds history-based heuristic comparators under a declared common protocol.
+
+The original [bandit analysis](https://doi.org/10.1023/A:1013689704352),
+[LinUCB study](https://arxiv.org/abs/1003.0146) and
+[combinatorial framework](https://proceedings.mlr.press/v28/chen13a.html) explain
+important foundations. A policy name alone does not establish that a CI adaptation
+satisfies the original theorem's assumptions or outperforms the simple comparators.
+
+## Choose your path
+
 | Start with a question | Follow this path |
 | --- | --- |
 | How does the feedback loop work? | [Concepts](docs/concepts.md) → [policies and rewards](docs/policies.md) → [first experiment](docs/getting-started.md) |
@@ -49,8 +110,10 @@ Use Python 3.14+ in a virtual environment. This command pins a published wheel
 and verifies its SHA-256 before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.19.0/coleman-4.19.0-py3-none-any.whl#sha256=070e21c19fb7e3f2e392bd68706c354ed5ab7f76b86db80f5f1bdc5721b767bd"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.19.1/coleman-4.19.1-py3-none-any.whl#sha256=ca470ba2be14ca755952f0bb3bc92615d76b90f95ebdd41dc1cdc9847713cc93"
 ```
+
+### Library API
 
 Save the following as `first_run.py` in an empty directory. It creates a tiny
 authored history, runs the actual Random and UCB policies, and prints the result
@@ -99,24 +162,46 @@ The [complete tutorial](docs/getting-started.md) explains the output, queries it
 with DuckDB, enables checkpoint continuation, and runs the same experiment from
 YAML. The [configuration reference](docs/configuration.md) covers packs and sweeps.
 
-## What you can do
+## Sweep engine
 
-- **Experiment with adaptive ranking.** Classical, contextual and changing-history
-  policies share the runner, rewards, budgets and result sinks. Configure sweeps
-  across candidates and seeds without replacing orchestration.
-- **Work with configurations.** WTS prioritizes a union of tests; VTS maintains
-  separate variant experiments. Preserve the grouping when interpreting evidence.
-- **Inspect and recover experiments.** Typed RunSpec, resolved configuration,
-  provenance, Parquet results and local checkpoints make inputs and progress visible.
-- **Keep measurements meaningful.** Versioned records distinguish units, semantics,
-  observed zero, signed values and unavailable measurements.
-- **Evaluate before adopting.** Independent metric checks, source audits, repeated
-  observations, protected comparisons and conservative outcomes support review.
-- **Extend a focused platform.** Hooks, custom policies, finite coverage selection,
-  scenario allocation and an optional MCP transport build on the same CI foundations.
+Compare UCB exploration settings without writing another execution loop. After
+the example above, reuse its `spec` and append this code to `first_run.py`:
 
-See the [architecture](docs/setup.md), [API reference](docs/api-reference.md) and
-[integration guide](docs/integration-guide.md) for the boundaries and supported use.
+```python
+from coleman.api import run_many, sweep
+from coleman.spec.sweep import SweepAxis, SweepSpec
+
+base = spec.model_copy(deep=True)
+base.experiment.policies = ["UCB"]
+candidates = sweep(base, SweepSpec(
+    axes=[SweepAxis(params={"algorithm.ucb.rnfail.c": [0.5, 1.0, 2.0]})],
+    seeds=[42, 43],
+))
+results = run_many(candidates, max_workers=1)
+print(f"Completed {len(results)} UCB runs")
+```
+
+This expands three exploration settings × two seeds into six specifications,
+each with its own run directory and checkpoint namespace. Grid and zip axes are
+supported. Seeds repeat algorithmic randomness; use
+[protected evaluation](docs/protected-evaluation.md) to separate parameter tuning
+from evaluation and preserve the actual independent observation units.
+See [configuration and CLI sweeps](docs/configuration.md) for complete YAML forms.
+
+## Provenance
+
+A run retains its resolved specification, configuration-derived identity,
+environment provenance, Parquet results and enabled checkpoints. Inspect and query
+them using the [first-run tutorial](docs/getting-started.md) and
+[analysis playbook](docs/analysis-playbook.md). The run ID identifies configuration;
+source-adapter receipts separately bind original input and output bytes.
+
+For extensions and integrations, [versioned measurement records](docs/domain-results.md)
+retain units, semantics, logical identity, provenance and explicit missing states.
+[Point-in-time observations](docs/point-in-time-observations.md) preserve what was
+available at each decision even after late results or corrections arrive.
+The [architecture guide](docs/setup.md) explains how these contracts connect to
+the runner, result sinks, telemetry and artifact publication.
 
 ## Datasets
 
@@ -140,15 +225,21 @@ historical cross-corpus confirmation has **not** been completed; see
 
 ## Research background
 
-COLEMAN began as a research approach to **test case prioritization in continuous
-integration (TCPCI)**. The [TSE article](https://doi.org/10.1109/TSE.2020.2992428)
-describes its bandit-based approach. The [HCS study](https://doi.org/10.1007/s10664-021-10093-3)
-examines whole-test-set and variant-test-set strategies. These studies ground the
-method; their results do not establish superiority for every later extension or dataset.
+COLEMAN (*Combinatorial VOlatiLE Multi-Armed BANdit*) originated in **test case
+prioritization in continuous integration (TCPCI)** and expanded to highly
+configurable software. Its scientific lineage
+is directly connected to the workflows above:
 
-The [research guide](docs/research.md) explains which papers inform the feedback
-loop, contextual policies, configurable systems and evaluation, with links back
-to the corresponding workflows.
+| Original publication | Research contribution | Explore it in COLEMAN |
+| --- | --- | --- |
+| Prado Lima and Vergilio. [*A Multi-Armed Bandit Approach for Test Case Prioritization in Continuous Integration Environments*](https://doi.org/10.1109/TSE.2020.2992428). **IEEE TSE 48(2), 453–465, 2022.** | Adaptive prioritization with feedback across changing CI test suites | [Bandit loop](docs/concepts.md), [policies](docs/policies.md), [experiments](docs/experiments.md) |
+| Prado Lima, Mendonça, Vergilio and Assunção. [*Learning-based prioritization of test cases in continuous integration of highly-configurable software*](https://doi.org/10.1145/3382025.3414967). **SPLC, 2020.** | Learning-based prioritization in highly configurable software | [Whole-test-set and variant-test-set strategies](docs/highly-configurable.md) |
+| The same authors. [*Cost-effective learning-based strategies for test case prioritization in continuous integration of highly-configurable software*](https://doi.org/10.1007/s10664-021-10093-3). **Empirical Software Engineering 27, article 133, 2022.** | Extended evaluation of WTS/VTS across variants and budgets | [LibSSH data and replay](docs/hcs-parquet-etl.md), [original CTest evidence](docs/hcs-trace-evidence.md) |
+
+The [research guide](docs/research.md) also connects the original algorithm,
+dataset, data-leakage and statistical-method papers to their corresponding
+features. Findings from an original study apply to its subjects and protocol;
+later policies and datasets need their own comparable evaluation.
 
 ## Citation
 

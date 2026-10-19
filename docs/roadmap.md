@@ -1,72 +1,70 @@
-# Evidence status and future work
+# What the current evidence supports
 
-COLEMAN has a reusable native TCPCI runner and working source, replay, measurement
-and evaluation paths. This page distinguishes available capabilities from
-scientific conclusions that have not been established. Use the
-[documentation map](index.md) to learn the platform and the
-[compatibility archive](release-history.md) to investigate individual deliveries.
+Choose a workflow by the question you need to answer. A reproducible source
+conversion, a controlled fault observation, a mathematical correctness check and
+a historical comparison provide different kinds of evidence.
 
-## Available foundations
+## What you can use today
 
-| Capability | Where to use it |
-| --- | --- |
-| Typed native experiments, sweeps and checkpoints | [First experiment](getting-started.md), [configuration](configuration.md) |
-| Original-source analytical/native data paths | [Dataset workflows](datasets.md) |
-| Controlled Java/Python observations and a constructed C weakness | [Controlled observations](controlled-faults.md) |
-| Known-answer difficult CI cases | [Stress laboratory](ci-stress-laboratory.md) |
-| Source integrity and production-reality assessment | [Source admission](corpus-admission.md) |
-| Comparable candidates and repeated observations | [Baselines](comparable-baselines.md), [corpus evaluation](corpus-evaluation.md) |
-| Protected normal or bounded paired comparisons | [Protected evaluation](protected-evaluation.md), [bounded means](bounded-paired-evaluation.md) |
-| Time-aware observations and prospective integration studies | [Integration guide](integration-guide.md) |
-| Finite selection/allocation contracts and correctness checks | [Coverage](finite-coverage.md), [allocation](scenario-payoffs.md), [benchmarks](decision-benchmarks.md) |
+| Your question | Available workflow | Interpretation |
+| --- | --- | --- |
+| Can I execute and inspect a CI prioritization experiment? | [Native experiments, policies, sweeps and checkpoints](experiments.md) | Reproducible execution under your declared inputs and budgets |
+| Can I replay original public CI observations? | [LRTS, RTPTorrent and LibSSH data paths](datasets.md) | Source-specific analytical/native projections with explicit grouping, exclusions and qualification limits |
+| Can I reproduce a source fault? | [Controlled Java and Python observations](controlled-faults.md) | Behavior under a frozen source, observer and runtime; the constructed C workflow has its own narrower scope |
+| Can I test drift, churn or delayed feedback? | [CI stress laboratory](ci-stress-laboratory.md) | Known-answer mechanism checks under authored conditions |
+| Can I audit source suitability? | [Source admission](corpus-admission.md) | Byte/provenance checks and explicit scientific eligibility; missing evidence remains visible |
+| Can I compare methods? | [Baselines](comparable-baselines.md), [repeated observations](corpus-evaluation.md), [protected comparisons](protected-evaluation.md) | A declared comparison, with valid outcomes including benefit, harm, equivalence and insufficient evidence |
+| Can I check operational costs before adoption? | [Operational pilot](operational-pilot.md), [resource replay](resource-replay.md), [shadow evaluation](prospective-shadow.md) | Explicit observed versus modeled costs and declared deployment assumptions |
 
-These are implemented capabilities with their own documented contracts and limits.
-They are not a declaration that every dataset is scientifically admitted or that
-one policy is universally superior.
+The [dataset guide](datasets.md) connects each available source to its executable
+workflow, original terms and evidence type. The [research guide](research.md)
+connects the underlying publications to their original questions and subjects.
 
 ## Historical corpus status
 
-The diversified corpus phase delivered twelve native subtasks and several source
-qualification increments through the verified 4.19.0 release. The maintainer chose
-to close [#261](https://github.com/jacksonpradolima/coleman/issues/261#issuecomment-6271942313)
-and [#313](https://github.com/jacksonpradolima/coleman/issues/313#issuecomment-6271940884)
-as **not planned**, with unmet criteria preserved. This is administrative closure,
-not completed historical cross-corpus confirmation.
+A final admitted historical cross-corpus confirmation has not been completed.
+The runnable source paths do not yet establish a broad comparison across all of
+these historical settings:
 
-Four required regimes remain unqualified:
+| Setting | Evidence needed for a defensible comparison |
+| --- | --- |
+| Small volatile CI | Pre-decision membership, appearance/removal of tests, outcome availability and independent project/group identity |
+| Medium CI | Continuous source coverage, stable testcase identity, feedback timing and comparable budgets |
+| Long-running or large suites | Original execution grouping, late results, expected test inventory and observed versus modeled physical costs |
+| Highly configurable software | Variant membership, shared executions, sparse cells, attempt identity and independent-family accounting |
 
-- Small volatile historical CI.
-- Medium historical CI.
-- Long-running or large-suite historical CI.
-- Highly configurable historical systems.
+A processed dataset's build number alone does not establish a source clock or
+prove which tests were known before execution. A complete archive can still lack
+those facts. The [RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) source assessments
+explain the specific boundaries; the [LibSSH workflow](hcs-parquet-etl.md) retains
+variant evidence and [original CTest correspondence](hcs-trace-evidence.md).
 
-The missing source-specific evidence includes availability clocks, expected
-pre-execution test membership, continuity, execution grouping/topology and
-independence. A final eligible frozen multi-corpus execution, its raw/per-project/
-cross-corpus report and full confirmatory reproduction tutorial were not completed.
-Existing installed workflows remain useful at their declared scopes.
+No final eligible frozen multi-corpus execution, complete confirmatory report and
+end-to-end confirmatory reproduction tutorial are currently established. The
+existing installed replay and evaluation examples remain usable at their declared
+scopes. Controlled and synthetic observations cannot fill missing historical facts.
 
-The [original-source investigation](https://github.com/jacksonpradolima/coleman/issues/313#issuecomment-6270541363)
-recovers numeric build links for 1,578 of 1,662 HikariCP jobs from three verified
-TravisTorrent snapshots, with 84 unlinked and version-dependent number labels for
-279 jobs. This research is not a released admission contract. The inspected LRTS
-processed release did not resolve the requested original metadata/console evidence.
-The public [upstream data request](https://github.com/lrtsuser/LRTS/issues/4) records
-that dependency; a later response requires renewed verification.
+## What a stronger comparison would require
 
-## Conditions for resuming that work
+1. **Verify source meaning.** Retain original bytes, component terms, units,
+   grouping, expected test membership and information availability.
+2. **Establish eligible observations.** Apply source-specific admission and
+   [point-in-time selection](point-in-time-observations.md); preserve exclusions.
+3. **Freeze a comparable experiment.** Fix candidate configurations, data/splits,
+   metrics, budget/resource protocol and the full hypothesis family before access.
+4. **Use the correct inference unit.** Aggregate dependent builds, variants and
+   seeds within the reviewed family; require justified independent units.
+5. **Publish the evidence.** Retain raw records, per-project/family results,
+   comparison reports, runtime/resource observations and reproduction commands.
 
-Reopen the existing issues if permitted, version-pinned original evidence resolves
-the admission prerequisites, or if the maintainer explicitly approves a revised
-scientific scope. Revalidate source meaning, terms and identities before freezing
-the candidate grid, split, metrics, inference units and resource protocol. Preserve
-negative and inconclusive findings. More conversions, seeds or favorable averages
-alone do not satisfy these gates.
+More seeds do not create additional independent projects. A favorable average
+on one subject does not establish a generally better policy. Negative and
+inconclusive findings remain valid outcomes, including a conservative fallback
+when the required evidence is unavailable.
 
-## Current improvement priorities
+## Engineering improvements with a clear boundary
 
-The [maintainability review](maintainability.md) records the architectural,
-complexity and docstring findings. The immediate direction is to make working
-capabilities easier to learn and compose, preserve bounded domain boundaries,
-and improve public contract documentation. A wholesale rewrite is not justified
-by the current structural measurements.
+The [maintainability review](maintainability.md) records measured complexity,
+public-contract documentation and identity/continuation priorities. The direction
+is to make available capabilities easier to understand and compose while
+preserving the reusable native engine and its compatibility contracts.

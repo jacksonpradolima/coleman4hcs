@@ -70,12 +70,11 @@ of becoming successful tests. The CLI also accepts a bounded versioned recipe vi
 
 ## Frozen source and environment
 
-The [public pre-execution protocol](https://github.com/jacksonpradolima/coleman/issues/305#issuecomment-6233689817)
-was recorded before observing subject outcomes. Both profiles use these inputs:
+The source and environment were frozen before observing subject outcomes.
+Both profiles use the inputs listed below.
 
-An explicit [observer hardening amendment](https://github.com/jacksonpradolima/coleman/issues/305#issuecomment-6234316313)
-pins the updated harness before its qualification. It changes dependency storage
-to an atomically allocated mode0700 temporary directory in container tmpfs.
+The qualified observer pins its harness and uses an atomically allocated
+mode0700 temporary directory in container tmpfs for dependency storage.
 Subject/fixture/test, wheel, image and locale declarations remain unchanged;
 original packets and their original producer are retained without reinterpretation.
 
@@ -255,8 +254,8 @@ rewrite or copy of old observations into a new identity is performed.
 Native CI/checkpoint integration is tested separately with the owned exact-answer
 [controlled CI example](controlled-faults.md). Controlled Python timing is never
 fabricated into a historical build or native scheduling-cost dataset. Broader
-source admission, diversity and comparative evidence remain in the [public
-roadmap](roadmap.md) and #261's remaining subtasks.
+source admission, diversity and comparative evidence have their own
+[evidence requirements](roadmap.md).
 
 Multi-case raw replay compares observations in the generic domain's canonical
 logical-key order. This validation correction preserves original raw/report
@@ -267,6 +266,9 @@ trials in separate output roots cannot collide or clean each other's containers;
 observation identities retain their original meaning. Keep incomplete ownership
 state at its original output location for recovery, and retain the original
 reviewed producer package when reopening older captures.
+
+[Pre-execution protocol records](release-history.md#pre-execution-protocol-records)
+retain the historical declaration evidence for audit.
 
 ## Continue the workflow
 

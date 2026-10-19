@@ -60,8 +60,8 @@ state/receipt paths, statuses, unobserved pairs and classifications.
 
 ## Source selection and terms
 
-[Public source assessment](https://github.com/jacksonpradolima/coleman/issues/306#issuecomment-6236007670)
-preceded subject execution. The SIR site is archived; its retired license says
+Source selection and terms were assessed before subject execution.
+The SIR site is archived; its retired license says
 it is no longer in force. Current component/data permission for the original
 Siemens sources, modified faults and test pools was not established. No SIR
 archive was acquired or counted as admitted coverage.
@@ -123,14 +123,14 @@ not six independent faults. [Unsigned C arithmetic wraps modulo its width](https
 the last mismatch does not rely on undefined signed overflow. Signed, malformed
 and out-of-range scanf inputs are outside this v1 oracle's scope.
 
-The [pre-execution protocol](https://github.com/jacksonpradolima/coleman/issues/306#issuecomment-6236145420)
-records the source, selectors, pool, oracle and observer pins before qualification.
-The first attempt compiled but could not execute in Docker's default noexec tmpfs;
-its raw errors and zero-case incomplete result were preserved. The explicit
-[executable-scratch amendment](https://github.com/jacksonpradolima/coleman/issues/306#issuecomment-6236219189)
-preceded the first observed cases. A subsequent canonical-order validation fix
-compares normalized observations in the generic domain's established logical-key
-order; it changes no raw packet or outcome and also fixes multi-case Python replay.
+The frozen execution protocol records the source, selectors, pool, oracle and
+observer pins before qualification.
+Use the declared executable-scratch runtime profile when reproducing the capture.
+With a noexec tmpfs, compilation can succeed while execution fails; those
+attempts retain their raw errors and incomplete zero-case result.
+
+Offline replay compares normalized observations in the generic domain's
+established logical-key order. It preserves the original packets and outcomes.
 
 ## Runtime, guards and units
 
@@ -233,7 +233,10 @@ independently declared; do not convert observer ns into Duration. The installed
 qualification separately exercises the [owned controlled/native CI example](controlled-faults.md)
 and checkpoint continuation twice. Controlled source records remain
 `constructed` / `not_evaluated` / `insufficient_evidence`; temporal admission raises.
-No source-collection result closes the broader benchmark program in #261.
+Source collection alone does not establish cross-corpus effectiveness.
+
+[Pre-execution protocol records](release-history.md#pre-execution-protocol-records)
+retain the historical declaration evidence for audit.
 
 ## Continue the workflow
 

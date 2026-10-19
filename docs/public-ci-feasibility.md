@@ -118,13 +118,13 @@ A future collector migration must be explicit, retaining original bytes and
 semantics rather than rewriting a completed v1 capture.
 
 `snapshot.history()` uses the **materialized snapshot as the source producer**:
-only observed completed job intervals enter #258 observations, with availability
-and receipt at snapshot assembly. The original HTTP receipts remain separate.
+only observed completed job intervals enter the point-in-time observation history,
+with availability and receipt at snapshot assembly. The original HTTP receipts remain separate.
 This conservative offline projection never asserts when the provider first
 exposed a field. An unfinished interval produces no completed observation.
 Each poll is a distinct predeclared source; this is not an appendable receiver
-with global first-receipt/correction lineage. It does not synthesize #260 build
-admissions, feedback or a decision seal.
+with global first-receipt/correction lineage. It does not synthesize prospective
+build admissions, feedback or a decision seal.
 
 Every snapshot also supplies all **35 existing production-reality axes**. Source
 identities, trigger, current attempt and runner labels can be reported; explicit

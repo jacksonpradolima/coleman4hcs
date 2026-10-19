@@ -1,57 +1,104 @@
-# ADR 001: point-in-time observations and decision signals
+# Why CI histories retain late results and corrections
 
-Status: accepted in the 4.2 feature line; implements the boundary requested in
-[#258](https://github.com/jacksonpradolima/coleman/issues/258).
+A policy should rank tests using information that was available when the decision
+was made. CI systems often publish results late, correct a duration or attach a
+final outcome after an earlier report. If an experiment simply reads the latest
+row, it can give a past decision information from the future.
 
-## Context
+COLEMAN retains the revisions and their availability so that you can reconstruct
+the decision's actual input. This matters when preparing contextual features,
+replaying a history and auditing an experiment after its source has changed.
 
-CI outcomes and durations may arrive late or be corrected. Replacing a stored row
-would erase what a policy could know at an earlier decision. The protected
-`Timestamp`, `TemporalObservation` and `TemporalPlan` contracts already validate
-UTC instants, revisions, groups and temporal eligibility. The native runner already
-owns lifecycle, processes, result sinks and checkpoints.
+## A correction must not rewrite an earlier decision
 
-## Decision
+Suppose a test ran at 10:00 UTC. The source first reports a duration of three
+seconds, then corrects it to nine seconds five minutes later:
 
-Add `coleman.observations` as a transport-independent typed boundary. Immutable
-revision histories preserve source availability, first local receipt and explicit
-predecessors. As-of selection uses only eligible revisions. Source adapter SDKs,
-credentials, collection permissions, clock reconciliation and source-specific
-identity rules stay in provider-owned packages implementing `ObservationProvider`.
-The base package supplies an offline provider for repository-owned CI fixtures.
-No dynamic provider import, network fetch, CLI/MCP dependency or new runner exists.
+| Event | UTC time | What the local experiment can use |
+| --- | --- | --- |
+| Test execution occurs | 10:00:00 | No duration observation has arrived |
+| Source publishes the first duration | 10:00:02 | Three seconds is public, but not yet received locally |
+| Local collector receives it | 10:00:04 | Three seconds becomes eligible |
+| Policy makes a decision | 10:00:05 | The eligible duration is three seconds |
+| Corrected duration is received | 10:05:01 | Nine seconds becomes eligible for later decisions |
 
-Reuse protected time/split validation and #251 measurements/provenance. Fit a simple
-nonnegative quantity mean only on eligible training observations, frozen before
-use. Preserve its evidence and explicit rounding; label outputs as estimates or
-priority scores, never calibrated probabilities or inference results. Freshness
-uses source event age at the decision and remains an explicit policy parameter.
+A query at 10:00:03 still has no locally available duration. Repeating the
+10:00:05 query after the correction must still return three seconds. A query
+after 10:05:01 can use nine seconds. Event time, source availability and first
+local receipt answer different questions; none substitutes for the others.
 
-Use `RunnerExtension.build_environment_fn` for the native example's policy and
-monitor integration. Emit typed signals and domain sidecars before the existing
-checkpoint advances. Reuse `ArtifactWriter` immutable publication and native
-manifest discovery. No second state/checkpoint store is introduced.
+This example assumes comparable UTC clocks. A provider with contradictory clock
+information must resolve its source contract before producing an eligible history.
+COLEMAN does not invent an offset to make a record appear available earlier.
 
-## Assumptions and consequences
+## How the data reaches a decision
 
-- The initial source is owned, offline, synthetic CI data. It establishes functional
-  behavior, not provider completeness, independence, prospective evidence or value.
-- Providers attest identities and complete bounded lineages. First receipt remains
-  fixed across duplicate deliveries. UTC source/local clocks must be comparable;
-  impossible chronology fails. Existing Python datetime semantics have microsecond
-  resolution; providers must declare normalization for finer source clocks.
-- Complete single-parent lineages allow out-of-order delivery and timestamp ties.
-  Missing parents, forks, conflicting duplicates and changed units/identity fail.
-  Truncated histories cannot silently become complete histories.
-- Selected input fingerprints exclude future values; whole-source artifact hashes
-  remain separate. Later evaluation must still apply the complete protected fold
-  grouping protocol; fitting a past view cannot inspect future group memberships.
-- Generic signal readers validate metadata/chronology, without executing a producer
-  by its name/fingerprint. Mean artifacts rederive training estimates; use the
-  frozen model's `verify_signal` when consuming its serialized signals.
-- Provider scraping/authentication, signal calibration, sophisticated forecasting,
-  streaming retention and external deployment remain outside this issue. Base
-  dependencies and native orchestration remain sufficient for the installed demo.
+```mermaid
+flowchart TD
+    S[Original CI result] --> H[Revision history]
+    C[Later correction] --> H
+    H --> V[View at the decision cutoff]
+    V --> F[Eligible features or frozen training]
+    F --> D[Typed decision signal]
+```
 
-The [human guide](../point-in-time-observations.md) defines the actual v1 API,
-limits, compatibility, recovery and complete CI examples.
+Each logical observation has an immutable revision lineage. A correction names
+its predecessor, retains the source identity and units, and records when it became
+available. Repeated delivery preserves the first receipt. Out-of-order delivery
+can be accepted when the complete lineage is supplied; missing predecessors,
+forks and conflicting duplicates are rejected.
+
+The selected view identifies only the revisions eligible at its cutoff. A
+whole-history digest can change when later evidence is appended while the earlier
+selected view remains stable. Retain both identities when you need to explain
+which source was stored and which information a particular decision actually used.
+
+## What this changes in an experiment
+
+- **Contextual features:** the current execution's eventual verdict or duration
+  cannot become a pre-decision input merely because it exists in today's export.
+- **Training:** eligible history is selected at the training boundary and model
+  evidence is frozen before use. A later correction does not silently refit it.
+- **Freshness:** a newly delivered correction does not make an old execution
+  recent. The declared age rule uses the source event time.
+- **Missing information:** no eligible observation remains explicitly missing;
+  it does not become a duration or score of zero.
+- **Interpretation:** a duration estimate, priority score, calibrated probability
+  and statistical comparison have different meanings. Signals retain the declared
+  unit, meaning, producer and input/model identities.
+
+The supplied quantity-mean helper is a transparent baseline for nonnegative
+physical quantities. It retains its eligible inputs and rounding rule. More
+elaborate forecasting can use the same observation boundary, but needs its own
+assumptions and evaluation.
+
+## Connect your CI source
+
+A source adapter supplies stable observation and execution-group identities,
+original units, source availability, first receipts and complete bounded lineages.
+The core validates and queries these records offline. Provider authentication,
+network collection and source-specific clock normalization belong to the adapter.
+
+The native runner, result sinks, artifact writer and checkpoints remain the
+execution path. An extension can publish typed signals and their provenance
+beside native results before checkpoint advancement. The installed example uses
+owned synthetic CI data to demonstrate that integration.
+
+An eligible historical view establishes which supplied data a decision could
+use. Independent project/grouping evidence, source completeness and the protected
+evaluation protocol still determine which scientific conclusions are justified.
+
+## Read the implementation as a user
+
+[Point-in-time observations](../point-in-time-observations.md) provides the complete
+installed example, exact fields, rounding, revision limits and recovery behavior.
+[Contextual policies](../policies.md#contextual-policies) explains feature use;
+[protected evaluation](../protected-evaluation.md) explains temporal splits,
+group boundaries and frozen comparisons.
+
+For the research motivation, see Kaufman, Rosset, Perlich and Stitelman,
+[*Leakage in data mining*](https://doi.org/10.1145/2382577.2382579),
+ACM Transactions on Knowledge Discovery from Data 6(4), 2012. Their analysis
+explains why information unavailable at prediction time can compromise an
+experiment. The [research guide](../research.md) connects this problem to CI
+prioritization and evaluation.
