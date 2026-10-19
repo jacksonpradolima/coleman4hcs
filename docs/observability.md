@@ -1,161 +1,232 @@
-# Observability
+# Follow experiment progress and resource usage
 
-This page describes the **optional** local observability stack for
-debugging and profiling Coleman experiments.
+See which experiments are active, how far they have progressed, and how much
+CPU time and memory the COLEMAN process uses. Keep results in local Parquet or
+DuckDB, or send native result rows to ClickHouse. Add OpenTelemetry, Prometheus
+and Grafana when you want a live view of longer experiments and sweeps.
 
-!!! note "Framework-first guarantee"
-    `coleman run --config run.yaml` works without Docker or any of these services.
-    The observability stack is **optional** for local installs, but
-    **enabled automatically** in the DevContainer.
+**Start locally:** the [first experiment](getting-started.md) needs none of these
+services. Process resource samples are persisted even with telemetry disabled.
 
-## DevContainer: zero-step setup
-
-If you develop inside the DevContainer, **everything is already running**.
-The container automatically:
-
-1. Installs the `telemetry` and `clickhouse` pip extras
-2. Starts OTel Collector + Prometheus + Grafana + ClickHouse via Docker Compose
-3. Telemetry can be enabled via the `telemetry/local` pack in `run.yaml`
-
-Just run your experiment:
-
-```bash
-coleman run --config run.yaml
-# Open http://localhost:3000 → Grafana shows metrics in real-time
+```mermaid
+flowchart LR
+    R[Native CI replay] --> S[Configured result sink]
+    S --> P[Parquet or DuckDB files]
+    S --> C[ClickHouse native results]
+    R --> T[Optional OpenTelemetry export]
+    T --> O[OTel Collector]
+    O --> M[Prometheus]
+    M --> G[Grafana overview]
+    O -. ClickHouse collector configuration .-> H[ClickHouse telemetry tables]
 ```
 
-Grafana datasource and dashboard are provisioned automatically.
-ClickHouse is also available at `http://localhost:8123`.
+Result storage and telemetry export are configured separately. Selecting the
+ClickHouse result sink does not enable telemetry; starting the ClickHouse
+container does not select either exporter.
 
-Parallel execution is also telemetry-safe now: each worker builds an isolated
-environment and emits its own `execution_id` and `worker_id`, so concurrent
-runs can be separated in Grafana and in persisted results.
+## Understand resource measurements
 
-The default dashboard now includes top-level filters for dataset, execution,
-and policy, so you can slice one live run without visually mixing it with the
-others.
+Native result rows contain the following process observations. CPU and memory
+instruments also reach the collector when telemetry is enabled.
 
-The top row also includes a "Current Cycle By Active Experiment" panel next to
-"Active Runs", so you can see optimization stage progression while runs are
-still active.
+| Result column | Unit and interpretation |
+| --- | --- |
+| `process_memory_rss_mib` | MiB of resident memory at the sample; currently read from Linux `/proc/self/statm`; unavailable platforms retain `NULL` |
+| `process_memory_peak_rss_mib` | MiB, the process lifetime high-water mark from `getrusage`; supported on Linux and macOS; may include earlier work in a reused worker |
+| `process_cpu_utilization_percent` | CPU time / wall time between consecutive samples × 100; can exceed 100% with multiple active threads |
+| `process_cpu_time_seconds` | Process CPU seconds accumulated since the execution attempt's tracker was created |
+| `wall_time_seconds` | Monotonic elapsed seconds since that tracker was created |
 
-The dashboard includes a dedicated `budget_value` filter
-so you can isolate runs by execution-budget configuration.
+These samples measure **the COLEMAN worker process**, which can execute several
+policies. They do not attribute memory or CPU exclusively to an individual
+policy, include every child process, or measure the subject's CI infrastructure.
+The tracker restarts on a new attempt, including a checkpoint continuation; do
+not sum cumulative samples or assume the counters span attempts. A sampled RSS
+can miss a short-lived spike; the peak RSS is process-wide rather than a
+per-build allocation measurement. Missing readings are `NULL`, not zero.
 
-For operational analysis, use the snapshot panels that focus on current
-iteration/stage instead of time-based curves:
+The legacy `cost` column is **APFDc**, a quality metric; it is not CPU time,
+elapsed seconds or a monetary cost. Use [operational accounting](operational-pilot.md)
+and [resource replay](resource-replay.md) for declared subject-workload evidence.
+For deeper framework profiling, follow [Scalene and py-spy](code-cost.md#2-runtime-cost).
+The [energy workflow](code-cost.md#3-energy-cost) is separate developer tooling;
+the runner does not emit energy measurements by default.
 
-* `Current Cycle By Active Experiment`
-* `Progress To Target Steps (%)`
-* `Convergence Signal (Current NAPFD)`
-* `Checkpoint Save Rate (last 5m)`
+## Watch a run
 
-The agent/system panels in the overview are also configured as instant
-snapshots (table/gauge/stat), which removes the time-axis dependency when the
-goal is to inspect current simulation stage.
+### 1. Install the optional client
 
-Snapshot table panels now include an explicit current-step column (merged from
-`cycles_total`) beside the metric value, so each metric row can be interpreted
-in the context of the current simulation iteration.
-
-## Live behavior vs. final results
-
-Grafana answers: "what is happening right now?"
-
-For final experiment results, use the persisted outputs instead:
-
-* `./runs/` for partitioned Parquet datasets
-* `coleman_results` in ClickHouse when the ClickHouse sink is enabled
-* `./checkpoints/` to inspect resume/recovery progress files
-
-The complete guided workflow is available in [workflow.py](workflow.py).
-
-## Local setup (without DevContainer)
+Use the virtual environment from the [first experiment](getting-started.md).
+Install telemetry support from a pinned release wheel:
 
 ```bash
-# Base stack (OTel Collector + Prometheus + Grafana)
-cd examples/observability
-docker compose up -d
-
-# Install telemetry extras
-uv pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.17.0/coleman-4.17.0-py3-none-any.whl#sha256=e5a272ddc0edf72bd909a743fa2b3bc0dfeb8a02871c487ab22683cddeea40ca"
-
-# Enable telemetry — use the telemetry/local pack in your run.yaml:
-#   packs:
-#     - telemetry/local
-
-# Run your experiment
-coleman run --config run.yaml
+python -m pip install "coleman[telemetry] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.19.1/coleman-4.19.1-py3-none-any.whl#sha256=ca470ba2be14ca755952f0bb3bc92615d76b90f95ebdd41dc1cdc9847713cc93"
 ```
 
-## Endpoints
+### 2. Start the optional local services
 
-* Grafana: `http://localhost:3000`
-* Prometheus UI: `http://localhost:9090`
-* Collector exporter (scrape target): `http://localhost:8889/metrics`
-
-## With ClickHouse
+Clone the repository to obtain the Compose and dashboard configuration, then run
+this command from the checkout root with Docker Compose available:
 
 ```bash
-docker compose --profile clickhouse up -d
-python -m pip install "coleman[clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.17.0/coleman-4.17.0-py3-none-any.whl#sha256=e5a272ddc0edf72bd909a743fa2b3bc0dfeb8a02871c487ab22683cddeea40ca"
+docker compose -f examples/observability/docker-compose.yaml up -d
 ```
 
-## Tear down
+This starts the collector, Prometheus and Grafana. The checked-in configuration
+is a local development stack with anonymous Grafana admin access; use it in a
+trusted local environment. Deployment authentication, retention and network
+access need their own configuration.
+
+The [DevContainer](https://github.com/jacksonpradolima/coleman/tree/main/.devcontainer)
+installs the telemetry and ClickHouse extras and attempts to start the services
+with the ClickHouse profile automatically. It still requires telemetry to be
+enabled in the experiment; its default collector uses the base export routes.
+
+### 3. Enable export for your experiment
+
+Return to the directory containing the tutorial's `first_run.py` and `data/`.
+Before its `result = run(spec)` line, add:
+
+```python
+spec.telemetry.enabled = True
+spec.telemetry.otlp_endpoint = "http://localhost:4318"
+spec.telemetry.export_interval_millis = 1000
+```
+
+Run `python first_run.py`. For a YAML experiment, set the same `telemetry` keys
+in `run.yaml`, then use `coleman run --config run.yaml`. In a repository checkout,
+the existing `telemetry/local` [configuration pack](configuration.md) supplies
+the endpoint and enable flag. Set the endpoint to a reachable collector address
+when the experiment runs in another container or host.
+
+### 4. Inspect the dashboard and final results
+
+| Endpoint | What to inspect |
+| --- | --- |
+| `http://localhost:3000` | Grafana → Dashboards → **Coleman Overview**, provisioned with a Prometheus datasource |
+| `http://localhost:9090` | Prometheus UI and scrape status |
+| `http://localhost:8889/metrics` | Collector's Prometheus exporter |
+
+The overview includes active runs, cycle throughput, current cycle, NAPFD/APFDc,
+prioritization/evaluation latency, CPU, resident memory and checkpoint save rate.
+Filters cover dataset, execution ID, policy and budget value. The progress panel's
+`target_steps` is a dashboard input: set it to your intended number of steps.
+The panel named “Convergence Signal” summarizes observed NAPFD; it does not
+establish statistical convergence or policy superiority.
+
+Allow time for export and Prometheus scraping. A three-build tutorial may finish
+before a scrape observes an active run. Several dashboard panels deliberately
+filter to currently active experiments and can be empty after completion; use a
+longer real workload for live monitoring and query stored rows for final facts.
+
+The public run API retains local files under `runs/<run_id>/`: resolved
+specification, provenance, `results/` for local sinks and `checkpoints/` when
+enabled. A run directory alone does not certify successful completion.
+
+## Choose result storage
+
+| `results.sink` | Persisted native results | Dependency and concurrency notes |
+| --- | --- | --- |
+| `parquet` (default) | Compressed partitioned files under `runs/<run_id>/results/` | No service; atomic shard publication and native local checkpoint reconciliation |
+| `duckdb` | `coleman_results` in local `.duckdb` files under the same results directory | Embedded dependency; process-parallel executions get separate files by default to avoid writer conflicts |
+| `clickhouse` | `coleman_results` in the configured server/database | Requires the `clickhouse` extra and a reachable server; this sink appends rows and does not provide the local Parquet checkpoint reconciliation guarantee |
+
+For embedded DuckDB, add this before `run(spec)` in the tutorial:
+
+```python
+spec.results.sink = "duckdb"
+spec.results.duckdb = {"file_count": 1, "base_name": "results"}
+```
+
+With one sequential execution, inspect `runs/<run_id>/results/results.duckdb`:
+
+```python
+from pathlib import Path
+import duckdb
+
+for path in sorted(Path("runs").glob("*/results/*.duckdb")):
+    with duckdb.connect(str(path), read_only=True) as connection:
+        print(path, connection.sql("SELECT policy, step, fitness, cost FROM coleman_results"))
+```
+
+Do not assume retries into DuckDB or ClickHouse remove uncommitted/duplicate
+native rows. Keep attempts distinguishable and choose Parquet when you need the
+native local result/checkpoint reconciliation contract. Typed
+[domain records](domain-results.md) have a separate compatibility and publication
+contract; ClickHouse does not currently implement that capability.
+
+## Use ClickHouse for native results or telemetry
+
+Install both optional clients if you want both workflows:
 
 ```bash
-docker compose --profile clickhouse down -v
+python -m pip install "coleman[telemetry,clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.19.1/coleman-4.19.1-py3-none-any.whl#sha256=ca470ba2be14ca755952f0bb3bc92615d76b90f95ebdd41dc1cdc9847713cc93"
 ```
 
-## Metric names
+From the checkout root, start ClickHouse and select the collector configuration
+that also stores telemetry in it:
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `coleman.cycles_total` | Counter | Total experiment cycles processed |
-| `coleman.bandit_update_latency` | Histogram (s) | Bandit arm-update latency |
-| `coleman.prioritization_latency` | Histogram (s) | Test-case prioritization latency |
-| `coleman.evaluation_latency` | Histogram (s) | Evaluation step latency |
-| `coleman.napfd` | Histogram | NAPFD score distribution |
-| `coleman.apfdc` | Histogram | APFDc score distribution |
-| `coleman.process_memory_rss` | Histogram (MiB) | Resident memory sampled during execution |
-| `coleman.process_memory_peak_rss` | Histogram (MiB) | Peak resident memory seen by the process |
-| `coleman.process_cpu_utilization` | Histogram (%) | CPU utilization sampled during execution |
-| `coleman.experiment_wall_time` | Histogram (s) | End-to-end elapsed time of one experiment |
-| `coleman.experiment_cpu_time` | Histogram (s) | CPU time consumed by one experiment |
+```bash
+OTEL_COLLECTOR_CONFIG=otel-collector-config-clickhouse.yaml \
+  docker compose -f examples/observability/docker-compose.yaml --profile clickhouse up -d
+```
 
-### Cardinality rules
+Wait for `http://localhost:8123/ping` to return `Ok.` before running an experiment.
+The collector also continues exporting metrics to Prometheus. Grafana provisions
+a ClickHouse datasource for querying the server.
 
-* **No `step` label** in metrics (would create unbounded cardinality).
-* `execution_id` and `worker_id` are metric labels on purpose so parallel runs stay separable.
-* Per-step detail is available in **traces** (span attributes).
+To store **native result rows**, add these settings before `run(spec)`:
 
-## Resource metrics and energy
+```python
+spec.results.sink = "clickhouse"
+spec.results.clickhouse = {"host": "localhost", "port": 8123, "database": "default"}
+```
 
-The default stack now exposes CPU and memory cost directly in telemetry and in
-persisted results.
-
-Energy is intentionally not emitted by default because, in containers and
-Codespaces, reliable hardware counters are often unavailable. If you want
-energy metrics, the recommended next step is to integrate host-specific sources
-such as Intel RAPL, NVIDIA NVML, or a node exporter running on the host.
-
-## Example DuckDB queries over Parquet results
+`ClickHouseSink` creates its `coleman_results` table. Query it with a ClickHouse
+SQL client or Grafana Explore:
 
 ```sql
--- Average NAPFD per policy
-SELECT policy, AVG(fitness) AS avg_napfd
-FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
+SELECT policy, count() AS observations,
+       max(process_memory_peak_rss_mib) AS process_peak_rss_mib
+FROM coleman_results
 GROUP BY policy
-ORDER BY avg_napfd DESC;
-
--- Cost distribution per reward function
-SELECT reward_function,
-       PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY cost) AS median_cost
-FROM read_parquet('./runs/**/*.parquet', hive_partitioning=1)
-GROUP BY reward_function;
+ORDER BY policy;
 ```
 
-## Continue the workflow
+Telemetry uses separate `otel_*` tables managed by the pinned collector exporter.
+Use `SHOW TABLES` and `DESCRIBE TABLE` to inspect its metric-type-specific schema
+before querying it. The collector can accept OTLP logs, but COLEMAN's telemetry
+facade exports metrics and traces; it does not automatically ship Python logs.
+Starting only the ClickHouse profile with the base collector configuration starts
+the database without enabling telemetry persistence.
 
-Use the [analysis playbook](analysis-playbook.md) to inspect final results and the [integration
-guide](integration-guide.md) to distinguish monitoring from operational evidence.
+## Stop the local services
+
+From the checkout root:
+
+```bash
+docker compose -f examples/observability/docker-compose.yaml --profile clickhouse down
+```
+
+This retains the named ClickHouse data volume. The example does not provision a
+persistent Prometheus data volume, so recreating that container loses its local
+history. Treat result artifacts as the durable experiment output.
+
+## Instrument names and labels
+
+The telemetry facade exports `coleman.run_active`, `coleman.cycles_total`,
+`coleman.checkpoint_saves_total`, `coleman.napfd`, `coleman.apfdc`, and latency
+histograms `coleman.bandit_update_latency`, `coleman.prioritization_latency` and
+`coleman.evaluation_latency` (seconds).
+
+Resource histograms are `coleman.process_memory_rss`,
+`coleman.process_memory_peak_rss` (MiB), `coleman.process_cpu_utilization` (%),
+`coleman.experiment_wall_time` and `coleman.experiment_cpu_time` (seconds).
+Prometheus names are normalized by the collector; inspect its exporter endpoint
+for the exact series names and histogram suffixes.
+
+Metrics avoid a per-step label; traces carry step detail. Execution/worker IDs
+remain intentional metric labels for isolation, so cardinality grows with
+executions. Limit retained runs and label expansion to match your backend budget.
+Continue with the [analysis playbook](analysis-playbook.md) for final result
+queries and the [integration guide](integration-guide.md) for CI adoption.

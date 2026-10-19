@@ -67,6 +67,9 @@ The links below provide the same routes as the graph, including keyboard access.
 | Your goal | Available workflow |
 | --- | --- |
 | Compare adaptive CI prioritization policies | The native TCPCI runner, [37 policies](policies.md), RNFail/TimeRank rewards, contextual inputs and [parameter sweeps](configuration.md) |
+| Watch experiments while they run | [Provisioned Grafana dashboards](observability.md#watch-a-run): active executions, cycle progress, NAPFD/APFDc, checkpoint activity and ranking/evaluation latency |
+| Understand the framework's resource footprint | [Persisted CPU and memory samples](observability.md#understand-resource-measurements), plus [Scalene and py-spy profiling](code-cost.md#2-runtime-cost) for investigating hotspots |
+| Query results with your analytical tools | [Parquet, embedded DuckDB or optional ClickHouse](observability.md#choose-result-storage), SQL and Polars analysis, with configuration and provenance retained locally |
 | Stress a difficult CI decision | [32 deterministic interaction-covering cases](ci-stress-laboratory.md), explicit truth and feedback clocks, native Parquet and resumable agents |
 | Audit what a source actually supports | [Source admission](corpus-admission.md): original evidence, explicit units and a 35-axis production-reality matrix |
 | Compare repeated CI experiments | [Raw build/seed records and paired repository-family means](corpus-evaluation.md), explicit missingness and protected access |
@@ -92,7 +95,10 @@ A typed specification fixes the experiment configuration. The native runner
 prioritizes tests, simulates the declared budget, updates learning state and
 writes Parquet results. Resolved configuration and provenance accompany the
 run; enabled checkpoints support continuation after interruption. You can query
-results locally with DuckDB or Polars.
+results locally with DuckDB or Polars, or select an embedded DuckDB or shared
+ClickHouse result sink. The optional [OpenTelemetry, Prometheus and Grafana
+workflow](observability.md) connects live progress, ranking latency, CPU and memory
+measurements to the experiment outputs.
 
 [See the data flow and architecture](setup.md) · [Inspect a complete workflow](workflow.md)
 
