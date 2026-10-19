@@ -70,6 +70,87 @@ A complete **CTest invocation** is distinct from a complete CI job or an admitte
 benchmark source. Job metadata is an explicit source declaration; a log cannot
 authenticate its own job identity.
 
+## Verify a log from the original licensed release
+
+The dataset's original CC0-1.0 release includes `logs.zip`, independently of
+live GitLab hosting terms. First materialize the CSV and job JSON following the
+[LibSSH instructions](hcs-parquet-etl.md), using `/tmp/coleman-hcs-cache`.
+Then download the original archive outside Git:
+
+```bash
+cd "$COLEMAN_TRACE_HOME"
+curl --fail --silent --show-error --location --max-time 300 --max-filesize 97363308 \
+  'https://dataverse.harvard.edu/api/access/datafile/4378426?format=original' \
+  --output logs.zip
+```
+
+The bundled specification pins all **97,363,308 bytes** with SHA-256
+`41037ef8678e644a3d935fcafaad28d2c42e208b352ee21dea380ec52760f35e`.
+The release's MD5 is `e6d1719783e595665cd9c27a50fdb9a5`; acquisition and
+verification use SHA-256. Its selected job 63565028 member has 32,780 bytes and
+SHA-256 `bae05293a3a9a134b1893cd17b02f6d7cd562790c9f7c773916e2e599eb3dbce`.
+These pins identify the released copy; they do not transfer its terms to a live
+provider endpoint.
+
+Save this complete example as `corroborate_archive.py` and run
+`"$COLEMAN_TRACE_HOME/installed/bin/python" corroborate_archive.py`:
+
+```python
+from functools import partial
+from importlib.resources import files
+from pathlib import Path
+
+from coleman.artifacts import ArtifactWriter
+from coleman.corpus.hcs_archive_trace import (
+    load_hcs_archive_log_spec,
+    publish_hcs_archive_trace,
+    validate_hcs_archive_trace,
+)
+from coleman.corpus.hcs_contracts import HCSRecipe
+from coleman.corpus.materialization import SourceCache, materialize_source
+
+recipe = HCSRecipe.from_json(
+    files("coleman.corpus.resources").joinpath("libssh-first16-pipelines-v1.json").read_bytes()
+)
+spec = load_hcs_archive_log_spec()
+cache = SourceCache(Path("/tmp/coleman-hcs-cache"))
+materialize_source(spec.container, cache, partial(Path("logs.zip").open, "rb"))
+writer = ArtifactWriter(Path("archived-corroboration"))
+completion = publish_hcs_archive_trace(recipe, spec, cache, writer)
+receipt = validate_hcs_archive_trace(completion, recipe, cache)
+assert receipt.corroboration.log_spec.terms.license_id == "CC0-1.0"
+assert receipt.admission == "not_granted"
+assert publish_hcs_archive_trace(recipe, spec, cache, writer) == completion
+print(completion)
+```
+
+The explicit `classic-zip-16384-ctest-logs-v1` profile supports at most 16,384
+entries and 2 MiB of central metadata, checked before standard ZIP allocation.
+It validates every local header and the selected member's CRC, size and SHA-256;
+unselected payloads are not decoded. ZIP64, links, prefixed archives, unsafe or
+aliased names and unsupported metadata reject. The original archive has 10,053
+entries. Existing archive profiles and their smaller bounds remain unchanged.
+The selected filename must agree with the original pipeline/commit/job metadata.
+
+The child `hcs-trace/.../complete.json` certifies log/CSV correspondence. The
+additional `hcs-archive-trace/.../complete.json` is written last and binds the
+verified whole container, member, reviewed terms and child receipt. A child
+alone cannot certify the archive. A process stopped between these receipts can
+retry without replacing completed evidence. Validation rechecks actual source
+bytes offline; copied namespaces, altered outputs and unknown producers reject.
+Keep the recorded package to verify older producers; no migration is implicit.
+No raw log is exported and historical availability/membership remain unverified.
+
+```mermaid
+flowchart LR
+  Archive["Pinned original CC0 logs.zip"] --> Verify["Bounded headers + exact selected member"]
+  Metadata["Pinned CSV + job metadata"] --> Child["Existing CTest corroboration receipt"]
+  Verify --> Child
+  Child --> Wrapper["Original-archive receipt written last"]
+  Archive --> Wrapper
+  Wrapper --> Limits["Integrity and terms verified; historical admission pending"]
+```
+
 ## Compare with original archived observations
 
 First materialize the original CSV and job JSON using the
@@ -149,7 +230,9 @@ print(completion)
 Both original cache files are reverified on every validation/retry. The parser
 and source/storage implementation digest selects the export namespace. Inside
 it, `trace.json` retains typed process outcomes and `correspondence.json` records
-the exact match, source fingerprints, physical CSV positions and duplicate counts.
+the exact match, source fingerprints, original CSV record positions and duplicate
+counts. `physical_positions` retains the original reader's one-based data-record
+ordinals, with the header excluded; trace `source_line` counts physical log lines.
 `complete.json` is written last, after both immutable files. A stopped process
 can leave an evidence file; it cannot establish a completed export without the
 receipt. Identical concurrent retries converge; conflicting bytes reject.

@@ -328,3 +328,7 @@ cost boundary difference remains visible. No original benchmark bytes are bundle
 Scientific source
 admission, repeated-measures inference and cross-corpus claims remain with the
 [remaining public roadmap](roadmap.md).
+
+The [original CTest evidence guide](hcs-trace-evidence.md#verify-a-log-from-the-original-licensed-release)
+also verifies a selected job log against the complete released CC0 `logs.zip`,
+with separate complete-last archive provenance. This does not grant historical admission.
