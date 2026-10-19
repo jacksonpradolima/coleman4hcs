@@ -38,6 +38,11 @@ The platform connects **source data → reproducible experiments → inspectable
 results → evidence for a decision**. Use it as a Python library or through the CLI;
 Parquet results and local checkpoints work without external services.
 
+**Follow the experiment from decision to resource cost.** Query results with
+DuckDB or Polars, persist native results in ClickHouse, and watch progress,
+ranking latency, CPU and memory through the optional OpenTelemetry → Prometheus →
+Grafana stack. [Explore results and monitoring](#results-and-live-observability).
+
 [Run your first experiment](#quick-start) · [Explore the policies](#mab-policies-available) ·
 [Choose a dataset](#datasets) · [Read the research](#research-background) ·
 [Inspect quality and security](#quality-you-can-inspect) · [Contribute](CONTRIBUTING.md)
@@ -90,6 +95,9 @@ flowchart TD
 | Your goal | Available workflow |
 | --- | --- |
 | Compare adaptive CI prioritization policies | The native TCPCI runner, [37 policies](#mab-policies-available), RNFail/TimeRank rewards, contextual inputs and [parameter sweeps](#sweep-engine) |
+| Watch experiments while they run | [Provisioned Grafana dashboards](docs/observability.md#watch-a-run): active executions, cycle progress, NAPFD/APFDc, checkpoint activity and ranking/evaluation latency |
+| Understand the framework's resource footprint | [Persisted CPU and memory samples](docs/observability.md#understand-resource-measurements), plus [Scalene and py-spy profiling](docs/code-cost.md) for investigating hotspots |
+| Query results with your analytical tools | [Parquet, embedded DuckDB or optional ClickHouse](#results-and-live-observability), SQL and Polars analysis, with configuration and provenance retained locally |
 | Stress a difficult CI decision | [32 deterministic interaction-covering cases](docs/ci-stress-laboratory.md), explicit truth and feedback clocks, native Parquet and resumable agents |
 | Audit what a source actually supports | [Source admission](docs/corpus-admission.md): original evidence, explicit units and a 35-axis production-reality matrix |
 | Compare repeated CI experiments | [Raw build/seed records and paired repository-family means](docs/corpus-evaluation.md), explicit missingness and protected access |
@@ -148,6 +156,7 @@ satisfies the original theorem's assumptions or outperforms the simple comparato
 | How do I compare methods fairly? | [Evaluation guide](docs/evaluation-guide.md) → [comparable baselines](docs/comparable-baselines.md) → [protected comparisons](docs/protected-evaluation.md) |
 | What about configurations and variants? | [WTS and VTS](docs/highly-configurable.md) → [original LibSSH workflow](docs/hcs-parquet-etl.md) → [CTest evidence](docs/hcs-trace-evidence.md) |
 | How would this fit into CI? | [Integration guide](docs/integration-guide.md) → [operational pilot](docs/operational-pilot.md) → [shadow evaluation](docs/prospective-shadow.md) |
+| How do I see progress and resource usage? | [Results and monitoring](#results-and-live-observability) → [live dashboard setup](docs/observability.md) → [runtime profiling](docs/code-cost.md) |
 
 ## Quick start
 
@@ -232,6 +241,53 @@ supported. Seeds repeat algorithmic randomness; use
 [protected evaluation](docs/protected-evaluation.md) to separate parameter tuning
 from evaluation and preserve the actual independent observation units.
 See [configuration and CLI sweeps](docs/configuration.md) for complete YAML forms.
+
+## Results and live observability
+
+**Analyze the outcome and the cost of producing it.** COLEMAN records native CI
+quality metrics alongside process CPU time, elapsed time and available memory
+measurements. Keep experiments local, or connect the optional monitoring stack
+when running longer experiments and parameter sweeps.
+
+| Tool or workflow | What you can do |
+| --- | --- |
+| **Parquet + DuckDB / Polars** | Keep the default compressed, partitioned results; query build-level observations directly with SQL or DataFrames, with no database server |
+| **Embedded DuckDB sink** | Select `results.sink: duckdb` to write a local `coleman_results` table; process workers use separate database files by default |
+| **ClickHouse sink** | Select `results.sink: clickhouse` and install the `clickhouse` extra to send native result rows to a shared analytical database |
+| **OpenTelemetry + Prometheus + Grafana** | Export native metrics, add trace instrumentation, inspect live progress, filter by dataset/execution/policy/budget, and follow CPU, RSS memory and latency in a provisioned dashboard |
+| **Runtime profiling** | Investigate CPU and memory hotspots with the developer workflows for [Scalene and py-spy](docs/code-cost.md) |
+
+After the [quick start](#quick-start), inspect the framework's recorded footprint
+from the same directory:
+
+```python
+import duckdb
+
+with duckdb.connect() as connection:
+    print(connection.sql("""
+        SELECT policy, COUNT(*) AS observations,
+               MAX(process_memory_peak_rss_mib) AS process_peak_rss_mib,
+               AVG(process_cpu_utilization_percent) AS mean_sampled_cpu_percent,
+               MAX(process_cpu_time_seconds) AS sampled_cpu_seconds,
+               MAX(wall_time_seconds) AS sampled_elapsed_seconds
+        FROM read_parquet('runs/*/results/**/*.parquet', hive_partitioning=1)
+        GROUP BY policy
+        ORDER BY policy
+    """))
+```
+
+These are **COLEMAN process measurements**: CPU time and elapsed time accumulate
+within an execution attempt; peak RSS is the process lifetime high-water mark.
+Several policies can share a process, so grouping samples by policy does not
+isolate that policy's resource cost. Unavailable readings remain `NULL`.
+The [measurement guide](docs/observability.md#understand-resource-measurements)
+explains platform support and sampling limits.
+
+The [observability guide](docs/observability.md) connects a complete runnable
+example to Docker Compose, dashboard filters, result-sink configuration and SQL.
+Live telemetry complements stored results; [operational accounting](docs/operational-pilot.md)
+and [resource replay](docs/resource-replay.md) address evidence about the subject
+CI workload and its physical costs.
 
 ## Provenance
 
