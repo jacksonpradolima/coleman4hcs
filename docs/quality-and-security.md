@@ -106,10 +106,10 @@ to report a vulnerability privately.
 | Strict site build | Zensical documentation generation | [Documentation workflow](https://github.com/jacksonpradolima/coleman/actions/workflows/docs.yml) |
 | Deterministic documentation bundle | Exact regeneration of `llms.txt` from reviewed Markdown | [Bundle workflow](https://github.com/jacksonpradolima/coleman/actions/workflows/llms-txt.yml) |
 
-The workflow file named `pylint.yml` currently runs **Ruff and the NumPy parameter
-gate**. Pylint is a separate local qualification step. The contributor workflow
-also uses Pyright and ty, Interrogate for docstring presence, package builds,
-outside-checkout examples and manual inspection of rendered documentation.
+The workflow file named `pylint.yml` runs **Ruff and the NumPy parameter gate**.
+The contributor workflow also uses Pyright and ty, Interrogate for docstring
+presence, package builds, outside-checkout examples and manual inspection of
+rendered documentation.
 The [maintainability review](maintainability.md) records the broader docstring
 backlog; a passing bounded parameter gate does not certify every public signature.
 

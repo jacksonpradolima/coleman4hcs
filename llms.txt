@@ -177,7 +177,7 @@ scope and results:
 The [quality and security guide](docs/quality-and-security.md) explains how to read
 the badges, reproduce checks and verify release artifacts. The coverage badge
 states the enforced threshold; current measured coverage is in the test log.
-Additional local qualification covers typing, Pylint, docstring presence and
+Additional local qualification covers typing, docstring presence and
 installed-package examples. Engineering checks complement the
 [scientific comparison protocol](docs/evaluation-guide.md).
 
@@ -11285,10 +11285,10 @@ to report a vulnerability privately.
 | Strict site build | Zensical documentation generation | [Documentation workflow](https://github.com/jacksonpradolima/coleman/actions/workflows/docs.yml) |
 | Deterministic documentation bundle | Exact regeneration of `llms.txt` from reviewed Markdown | [Bundle workflow](https://github.com/jacksonpradolima/coleman/actions/workflows/llms-txt.yml) |
 
-The workflow file named `pylint.yml` currently runs **Ruff and the NumPy parameter
-gate**. Pylint is a separate local qualification step. The contributor workflow
-also uses Pyright and ty, Interrogate for docstring presence, package builds,
-outside-checkout examples and manual inspection of rendered documentation.
+The workflow file named `pylint.yml` runs **Ruff and the NumPy parameter gate**.
+The contributor workflow also uses Pyright and ty, Interrogate for docstring
+presence, package builds, outside-checkout examples and manual inspection of
+rendered documentation.
 The [maintainability review](maintainability.md) records the broader docstring
 backlog; a passing bounded parameter gate does not certify every public signature.
 

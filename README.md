@@ -57,7 +57,7 @@ scope and results:
 The [quality and security guide](docs/quality-and-security.md) explains how to read
 the badges, reproduce checks and verify release artifacts. The coverage badge
 states the enforced threshold; current measured coverage is in the test log.
-Additional local qualification covers typing, Pylint, docstring presence and
+Additional local qualification covers typing, docstring presence and
 installed-package examples. Engineering checks complement the
 [scientific comparison protocol](docs/evaluation-guide.md).
 
