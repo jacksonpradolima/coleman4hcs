@@ -34,6 +34,9 @@ from coleman.spec.runtime_identity import InstalledRuntime
 
 API = "https://api.github.com"
 API_VERSION = "2022-11-28"
+_SHA256 = "sha256:"
+_COMPLETE = "complete.json"
+_SNAPSHOT = "snapshot.json"
 MAXIMUM_BYTES = 2 * 1024**2
 MAXIMUM_JOBS = 100
 MAXIMUM_STEPS = 256
@@ -154,7 +157,7 @@ class Response(VersionedContract):
     def _bytes(self) -> Self:
         """Verify exact response bytes, strict JSON and the supported selected API version."""
         payload = self.body.encode("utf-8")
-        if len(payload) > MAXIMUM_BYTES or "sha256:" + hashlib.sha256(payload).hexdigest() != self.body_sha256:
+        if len(payload) > MAXIMUM_BYTES or _SHA256 + hashlib.sha256(payload).hexdigest() != self.body_sha256:
             raise ValueError("Captured response byte bound or digest differs")
         if self.selected_api_version not in {None, API_VERSION}:
             raise ValueError("Unsupported selected provider API version")
@@ -487,7 +490,7 @@ def fetch_response(url: str, part: Literal["run", "jobs"]) -> Response:
         received_at=datetime.now(UTC),
         selected_api_version=selected,
         body=payload.decode("utf-8"),
-        body_sha256="sha256:" + hashlib.sha256(payload).hexdigest(),
+        body_sha256=_SHA256 + hashlib.sha256(payload).hexdigest(),
     )
 
 
@@ -555,8 +558,8 @@ def read_capture(root: Path) -> Snapshot:
     The recorded example/runtime are required for reproduction; metadata/digests
     alone never prove authentic upstream execution or legal reuse rights.
     """
-    receipt = read_contract(root / "complete.json", Completion)
-    snapshot = read_contract(root / "snapshot.json", Snapshot)
+    receipt = read_contract(root / _COMPLETE, Completion)
+    snapshot = read_contract(root / _SNAPSHOT, Snapshot)
     request = read_contract(root / "request.json", Request)
     responses = tuple(read_contract(root / (part + ".json"), Response) for part in ("run", "jobs"))
     run, jobs = _validate_responses(request, *responses)
@@ -567,7 +570,7 @@ def read_capture(root: Path) -> Snapshot:
         (receipt.request_fingerprint, receipt.snapshot_fingerprint, receipt.responses)
         != (request.fingerprint, snapshot.fingerprint, pins)
         or snapshot.responses != pins
-        or (root / "snapshot.json").stat().st_size != receipt.snapshot_bytes
+        or (root / _SNAPSHOT).stat().st_size != receipt.snapshot_bytes
     ):
         raise ValueError("Capture completion differs from its actual immutable inventory")
     if snapshot.created_at < max(response.received_at for response in responses):
@@ -588,7 +591,7 @@ def capture(request: Request, output: Path, *, fetch: bool = False) -> tuple[Pat
     """
     request = Request.model_validate(request)
     runtime = InstalledRuntime.capture()
-    example = "sha256:" + hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    example = _SHA256 + hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     root = output.resolve() / "public-ci-feasibility" / request.fingerprint[7:] / runtime.fingerprint[7:] / example[7:]
     validate_source_storage(root)
     try:
@@ -600,7 +603,7 @@ def capture(request: Request, output: Path, *, fetch: bool = False) -> tuple[Pat
 
 def _capture_locked(request: Request, runtime: InstalledRuntime, example: str, root: Path, fetch: bool):
     """Publish staged responses/snapshot before completion while holding the existing local ownership lock."""
-    if (root / "complete.json").exists():
+    if (root / _COMPLETE).exists():
         snapshot = read_capture(root)
         if (snapshot.request, snapshot.runtime, snapshot.example_sha256) != (request, runtime, example):
             raise ValueError("Completed capture differs from its requested runtime or example scope")
@@ -614,7 +617,7 @@ def _capture_locked(request: Request, runtime: InstalledRuntime, example: str, r
     run, jobs = _validate_responses(request, run_response, jobs_response)
     writer.write_immutable(root / "jobs.json", jobs_response.to_json() + "\n")
     pins = (run_response.fingerprint, jobs_response.fingerprint)
-    path = root / "snapshot.json"
+    path = root / _SNAPSHOT
     if path.exists():
         snapshot = read_contract(path, Snapshot)
         if (snapshot.request, snapshot.runtime, snapshot.example_sha256, snapshot.responses) != (
@@ -647,7 +650,7 @@ def _capture_locked(request: Request, runtime: InstalledRuntime, example: str, r
         snapshot_bytes=path.stat().st_size,
         responses=pins,
     )
-    writer.write_immutable(root / "complete.json", receipt.to_json() + "\n")
+    writer.write_immutable(root / _COMPLETE, receipt.to_json() + "\n")
     return root, read_capture(root)
 
 

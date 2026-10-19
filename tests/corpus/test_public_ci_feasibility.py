@@ -90,8 +90,9 @@ def test_source_receipt_projection_does_not_backdate_a_label_or_claim_shadow_fee
 def test_unknown_or_untyped_artifact_versions_reject(module, version):
     payload = json.loads(snapshot(module).to_json())
     payload["schema_version"] = version
+    encoded = json.dumps(payload)
     with pytest.raises(ValueError):
-        module.Snapshot.from_json(json.dumps(payload))
+        module.Snapshot.from_json(encoded)
 
 
 @pytest.mark.parametrize("mutation", ["unit", "meaning", "nonfinite", "negative", "physical_inference", "test_verdict"])
