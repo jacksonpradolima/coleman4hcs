@@ -3,25 +3,67 @@
 from __future__ import annotations
 
 import math
-from typing import Any, NamedTuple, cast
+from fractions import Fraction
+from typing import Any, cast
 
 import numpy as np
 from scipy import stats
 
 from coleman.evaluation.protected.audit import AccessReceipt
+from coleman.evaluation.protected.bounded_inference import (
+    BoundedMeanProtocol,
+    _outward_holm,
+    summarize_bounded,
+)
+from coleman.evaluation.protected.bounded_inference import (
+    MeanStatistics as _Statistics,
+)
 from coleman.evaluation.protected.contracts import ComparisonHypothesis, EvaluationProtocol, FrozenEvaluation
 from coleman.evaluation.protected.observations import ComparisonResult, PairedObservation
 from coleman.evaluation.protected.temporal import TemporalObservation
 
 
-def holm_adjust(p_values: tuple[float, ...]) -> tuple[float, ...]:
+def _supports_protocol(protocol: EvaluationProtocol | BoundedMeanProtocol) -> bool:
+    """Require independent units and the explicitly supported method-specific assumptions."""
+    return protocol.dependence == "independent" and (
+        isinstance(protocol, BoundedMeanProtocol) or protocol.normal_differences_assumed
+    )
+
+
+def _bounded_equivalence(protocol: EvaluationProtocol | BoundedMeanProtocol, lower: float, upper: float) -> bool:
+    """Require a new-method simultaneous interval wholly inside the frozen closed equivalence region."""
+    return (
+        isinstance(protocol, BoundedMeanProtocol)
+        and -protocol.practical_effect <= lower <= upper <= protocol.practical_effect
+    )
+
+
+def holm_adjust(p_values: tuple[float, ...], *, outward: bool = False) -> tuple[float, ...]:
     """Return Holm-Bonferroni adjusted p-values controlling family-wise error.
 
     Uses all predeclared hypotheses, with unavailable tests supplied as p=1 by
     the evaluator. Finite values in [0,1] are required. Sorting is internal and
     original ordering is preserved; empty input returns an empty tuple. No RNG,
     independence-between-hypotheses or additional optional dependency is needed.
+    ``outward=True`` uses rational products and upward output rounding for the
+    bounded method's conservative probabilities. The default preserves legacy
+    binary64 results exactly. A nonboolean rounding selector raises ValueError.
     """
+    _validate_holm_inputs(p_values, outward)
+    if outward:
+        return _outward_holm(p_values)
+    adjusted = [0.0] * len(p_values)
+    running = 0.0
+    for rank, index in enumerate(sorted(range(len(p_values)), key=lambda index: p_values[index])):
+        running = max(running, min(1.0, (len(p_values) - rank) * p_values[index]))
+        adjusted[index] = running
+    return tuple(adjusted)
+
+
+def _validate_holm_inputs(p_values: tuple[float, ...], outward: bool) -> None:
+    """Reject invalid probabilities and unknown rounding selectors before either versioned arithmetic path."""
+    if type(outward) is not bool:
+        raise ValueError("Holm outward rounding selector must be boolean")
     if any(
         isinstance(value, bool)
         or not isinstance(value, int | float)
@@ -31,12 +73,6 @@ def holm_adjust(p_values: tuple[float, ...]) -> tuple[float, ...]:
         for value in p_values
     ):
         raise ValueError("P-values must be finite and within [0,1]")
-    adjusted = [0.0] * len(p_values)
-    running = 0.0
-    for rank, index in enumerate(sorted(range(len(p_values)), key=lambda index: p_values[index])):
-        running = max(running, min(1.0, (len(p_values) - rank) * p_values[index]))
-        adjusted[index] = running
-    return tuple(adjusted)
 
 
 def _estimate(
@@ -51,6 +87,7 @@ def _estimate(
         raise ValueError("Candidates must have the same paired independent units")
     units = tuple(sorted(left))
     differences = []
+    exact_differences = []
     for unit in units:
         if left[unit].metadata != right[unit].metadata:
             raise ValueError("Paired unit metadata must agree across candidates")
@@ -58,15 +95,23 @@ def _estimate(
         second = right[unit].record.measurement(frozen.protocol.metric_name)
         left[unit].record.require_compatible(right[unit].record, frozen.protocol.metric_name)
         if first.value is not None and second.value is not None:
-            difference = first.value - second.value
-            if not math.isfinite(difference):
-                raise ValueError("Paired difference exceeds finite numeric range")
-            differences.append(difference)
-    summary = _summarize(tuple(differences), frozen.protocol, len(frozen.comparison_family), len(units))
+            if isinstance(frozen.protocol, BoundedMeanProtocol):
+                exact_differences.append(Fraction(first.value) - Fraction(second.value))
+            else:
+                difference = first.value - second.value
+                if not math.isfinite(difference):
+                    raise ValueError("Paired difference exceeds finite numeric range")
+                differences.append(difference)
+    if isinstance(frozen.protocol, BoundedMeanProtocol):
+        summary = summarize_bounded(
+            tuple(exact_differences), frozen.protocol, len(frozen.comparison_family), len(units)
+        )
+    else:
+        summary = _summarize(tuple(differences), frozen.protocol, len(frozen.comparison_family), len(units))
     return ComparisonResult(
         hypothesis_id=hypothesis.hypothesis_id,
         independent_units=units,
-        observed_pairs=len(differences),
+        observed_pairs=len(differences) + len(exact_differences),
         raw_mean_difference=summary.mean,
         improvement=summary.improvement,
         ci_lower=summary.low,
@@ -76,17 +121,6 @@ def _estimate(
         conclusion="insufficient_evidence",
         reason=summary.reason,
     )
-
-
-class _Statistics(NamedTuple):
-    """Finite scalar summary in metric units; unavailable uncertainty remains null."""
-
-    mean: float | None = None
-    improvement: float | None = None
-    low: float | None = None
-    high: float | None = None
-    p_value: float | None = None
-    reason: str = "too_few_independent_units"
 
 
 def _summarize(
@@ -171,6 +205,8 @@ def _validate_record(
         frozen.protocol.direction,
     ):
         raise ValueError("Measurement differs from the frozen metric contract")
+    if isinstance(frozen.protocol, BoundedMeanProtocol):
+        frozen.protocol.require_observed_value(measurement.value)
 
 
 def _conclude(
@@ -183,6 +219,8 @@ def _conclude(
         payload["conclusion"] = "inconclusive"
         if receipt.prior_test_accesses:
             payload["reason"] = "reused_holdout_no_confirmatory_claim"
+        elif _bounded_equivalence(frozen.protocol, result.ci_lower, result.ci_upper):
+            payload["conclusion"] = "evidence_of_practical_equivalence"
         elif corrected <= frozen.protocol.alpha:
             if result.ci_lower > frozen.protocol.practical_effect:
                 payload["conclusion"] = "evidence_of_benefit"
@@ -196,7 +234,10 @@ def _compute_results(
 ) -> tuple[ComparisonResult, ...]:
     """Calculate the complete frozen family without access reservations or publication."""
     results = tuple(_estimate(frozen, hypothesis, observations) for hypothesis in frozen.comparison_family)
-    adjusted = holm_adjust(tuple(result.p_value if result.p_value is not None else 1.0 for result in results))
+    adjusted = holm_adjust(
+        tuple(result.p_value if result.p_value is not None else 1.0 for result in results),
+        outward=isinstance(frozen.protocol, BoundedMeanProtocol),
+    )
     return tuple(
         _conclude(frozen, result, receipt, corrected) for result, corrected in zip(results, adjusted, strict=True)
     )

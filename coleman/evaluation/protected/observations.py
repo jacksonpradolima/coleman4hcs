@@ -53,7 +53,13 @@ class ComparisonResult(BaseModel):  # pylint: disable=too-few-public-methods
     ci_upper: Finite | None
     p_value: Annotated[Finite, Field(ge=0, le=1)] | None
     adjusted_p_value: Annotated[Finite, Field(ge=0, le=1)] | None
-    conclusion: Literal["evidence_of_benefit", "evidence_of_harm", "inconclusive", "insufficient_evidence"]
+    conclusion: Literal[
+        "evidence_of_benefit",
+        "evidence_of_harm",
+        "evidence_of_practical_equivalence",
+        "inconclusive",
+        "insufficient_evidence",
+    ]
     reason: Identifier
 
     @field_validator("independent_units")

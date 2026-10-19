@@ -24,6 +24,7 @@ and checkpoint. Inspect the inputs, decisions and evidence behind each result.
 | Stress a difficult CI decision | [32 deterministic interaction-covering cases](docs/ci-stress-laboratory.md), explicit truth and feedback clocks, native Parquet and resumable agents |
 | Audit what a source actually supports | [Source-admission API](docs/corpus-admission.md): verify original evidence, retain explicit units and inspect a 35-axis production-reality matrix |
 | Compare repeated CI experiments | [Versioned raw build/seed records and paired repository-family means](docs/corpus-evaluation.md), explicit missingness and protected access |
+| Compare metrics with known limits | [Conservative bounded paired means](docs/bounded-paired-evaluation.md), full-family uncertainty and practical equivalence without normality; requires this source revision's wheel |
 | Assess public CI collection | [Bounded public Actions example](docs/public-ci-feasibility.md), typed receipts and 35 reality axes; explicitly reports missing test and physical-cost evidence |
 | Develop comparable baseline matrices | [Frozen native-policy and heuristic matrix](docs/comparable-baselines.md), explicit incompatibilities, raw costs and checkpoint recovery; available in 4.17 |
 | Compare adaptive CI prioritization policies | Native TCPCI runner, configurable policies/rewards, contextual inputs and [parameter sweeps](#sweep-engine) |

@@ -1,6 +1,7 @@
 """Library-first protected temporal evaluation and versioned paired reports."""
 
 from coleman.evaluation.protected.audit import AccessReceipt, EvaluationAudit
+from coleman.evaluation.protected.bounded_inference import BoundedMeanProtocol
 from coleman.evaluation.protected.comparison import FamilyReport, evaluate
 from coleman.evaluation.protected.contracts import (
     ComparisonHypothesis,
@@ -16,6 +17,7 @@ from coleman.evaluation.protected.temporal import SplitDecision, TemporalObserva
 
 __all__ = [
     "AccessReceipt",
+    "BoundedMeanProtocol",
     "ComparisonHypothesis",
     "EvaluationAudit",
     "EvaluationProtocol",

@@ -13,6 +13,11 @@ For a frozen corpus with repeated builds and seeds, use the published
 prepare equal-build/seed repository-family means before paired inference. Its
 source leakage groups remain separate from independent inference units.
 
+The current source revision additionally supports [bounded paired means](bounded-paired-evaluation.md)
+through an explicitly versioned `BoundedMeanProtocol`. It requires independent
+units and known metric limits instead of normal differences. The published 4.17
+Student-t workflow below retains its original contract and numerical behavior.
+
 ## Temporal eligibility
 
 ```python
@@ -146,7 +151,11 @@ flowchart TD
     Reserve --> Load[Typed protected outcome loader]
     Records --> Load
     Load --> Check[Unit, provenance, pairing and temporal validation]
-    Check --> Compare[Paired effects, Holm p-values, simultaneous intervals]
+    Check --> Method[Frozen method and assumptions]
+    Method --> Student[Legacy paired Student t]
+    Method --> Bounded[Known-bound independent paired means]
+    Student --> Compare[Paired effects, Holm p-values, simultaneous intervals]
+    Bounded --> Compare
     Compare --> Report[Versioned report with embedded raw records, keys and digests]
     Report --> Artifacts[Existing ArtifactWriter, local sinks and manifest]
 ```
@@ -164,7 +173,7 @@ are required. The evaluator verifies frozen dataset/configuration/context
 fingerprints, observed availability and metric units/meaning/objective before
 calculating a comparison. Unpaired units and incompatible measurements fail.
 
-Version 1 provides paired Student-t inference for a **declared normal population of
+The legacy `EvaluationProtocol` provides paired Student-t inference for a **declared normal population of
 independent pair differences**. Serial/clustered units or an undeclared normality
 assumption raise `NotImplementedError` before loading outcomes. Adjacent builds from
 one real repository generally need a justified dependence model; labeling them with
@@ -240,8 +249,10 @@ behavior. Existing domain records can be evaluated only if they already carry th
 matching frozen context and candidate configuration; never relabel old artifacts
 silently to claim protected evidence.
 
-Version 1 intentionally excludes serial/block/cluster inference, robust/nonparametric
-intervals, sequential testing/alpha spending, unknown external state verification,
+The legacy method excludes serial/block/cluster and distribution-free inference;
+the new [bounded method](bounded-paired-evaluation.md) adds conservative independent
+paired means and explicit practical equivalence. Neither method implements
+serial/block/cluster inference, rank/bootstrap intervals, sequential testing/alpha spending, unknown external state verification,
 remote artifact transactions and policy activation. Access-history scanning is
 linear in scope history, and contention retries are bounded at 1000 publications.
 Reports retain the complete consumed record payload and recompute estimates on

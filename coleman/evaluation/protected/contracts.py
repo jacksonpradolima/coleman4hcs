@@ -7,6 +7,7 @@ from typing import Annotated, Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from coleman.evaluation.protected.bounded_inference import BoundedMeanProtocol
 from coleman.evaluation.protected.temporal import TemporalPlan
 from coleman.results.domain import Fingerprint, Finite, Identifier, canonical_json, decode_json, fingerprint
 from coleman.results.versioned import VersionedContract
@@ -106,7 +107,7 @@ class FrozenEvaluation(EvaluationContract):
 
     data_fingerprint: Fingerprint
     plan: TemporalPlan
-    protocol: EvaluationProtocol
+    protocol: EvaluationProtocol | BoundedMeanProtocol
     candidates: tuple[FrozenCandidate, ...]
     comparison_family: tuple[ComparisonHypothesis, ...]
 
@@ -149,7 +150,7 @@ def freeze(
     candidates: tuple[FrozenCandidate, ...],
     data_fingerprint: str,
     plan: TemporalPlan,
-    protocol: EvaluationProtocol,
+    protocol: EvaluationProtocol | BoundedMeanProtocol,
     comparison_family: tuple[ComparisonHypothesis, ...],
 ) -> FrozenEvaluation:
     """Validate and freeze the complete protocol before reading protected outcomes.
