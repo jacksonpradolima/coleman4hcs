@@ -25,6 +25,11 @@ from coleman.corpus.materialization import SourceCache, validate_cache_separatio
 from coleman.results.domain import Fingerprint, fingerprint
 from coleman.results.versioned import VersionedContract
 
+_TRACE_FILE = "trace.json"
+_CORRESPONDENCE_FILE = "correspondence.json"
+_COMPLETE_FILE = "complete.json"
+_SHA256_PREFIX = "sha256:"
+
 
 class HCSLogSpec(VersionedContract):
     """A pinned log locator, job identity and separately recorded component terms.
@@ -71,7 +76,7 @@ class HCSTraceCompletion(VersionedContract):
     @model_validator(mode="after")
     def _files(self) -> Self:
         """Fix artifact roles; a receipt cannot replace or omit either typed evidence file."""
-        if tuple(file.path for file in self.files) != ("trace.json", "correspondence.json"):
+        if tuple(file.path for file in self.files) != (_TRACE_FILE, _CORRESPONDENCE_FILE):
             raise ValueError("CTest corroboration requires exactly the two recorded evidence roles")
         if self.files[1].rows != 1:
             raise ValueError("CTest corroboration contains exactly one source correspondence")
@@ -112,9 +117,9 @@ def _destination(writer: ArtifactWriter, cache: SourceCache, recipe: HCSRecipe, 
     identity = fingerprint(
         ["hcs-ctest-local-corroboration-v1", recipe.fingerprint, spec.fingerprint, hcs_trace_producer()]
     )
-    root = writer.run_root / "hcs-trace" / identity.removeprefix("sha256:")
+    root = writer.run_root / "hcs-trace" / identity.removeprefix(_SHA256_PREFIX)
     validate_cache_separation(cache.root, writer.run_root)
-    for name in ("trace.json", "correspondence.json", "complete.json"):
+    for name in (_TRACE_FILE, _CORRESPONDENCE_FILE, _COMPLETE_FILE):
         target = root / name
         if target.is_symlink() or not target.resolve().is_relative_to(writer.run_root.resolve()):
             raise ValueError("CTest corroboration output escapes its trusted tree")
@@ -126,7 +131,7 @@ def _evidence(recipe: HCSRecipe, spec: HCSLogSpec, payload: bytes, cache: Source
     """Rehash original log and cached sources before deterministic typed correspondence."""
     if not isinstance(payload, bytes) or len(payload) != spec.source.size_bytes:
         raise ValueError("CTest original log byte count differs from its pin")
-    if "sha256:" + hashlib.sha256(payload).hexdigest() != spec.source.sha256:
+    if _SHA256_PREFIX + hashlib.sha256(payload).hexdigest() != spec.source.sha256:
         raise ValueError("CTest original log digest differs from its pin")
     source = read_hcs_slice(recipe, cache)
     job = next((job for job in source.jobs if job.job_id == spec.job_id), None)
@@ -143,11 +148,11 @@ def _receipt(recipe: HCSRecipe, spec: HCSLogSpec, evidence: tuple[str, str, int]
     records = tuple(
         ETLFile(
             path=name,
-            sha256="sha256:" + hashlib.sha256(text.encode()).hexdigest(),
+            sha256=_SHA256_PREFIX + hashlib.sha256(text.encode()).hexdigest(),
             size_bytes=len(text.encode()),
             rows=rows,
         )
-        for name, text, rows in (("trace.json", trace, count), ("correspondence.json", correspondence, 1))
+        for name, text, rows in ((_TRACE_FILE, trace, count), (_CORRESPONDENCE_FILE, correspondence, 1))
     )
     return HCSTraceCompletion(
         schema_version=1,
@@ -181,7 +186,7 @@ def publish_hcs_trace_evidence(
     receipt = _receipt(recipe, spec, evidence)
     for file, text in zip(receipt.files, evidence[:2], strict=True):
         writer.write_immutable(root / file.path, text)
-    path = root / "complete.json"
+    path = root / _COMPLETE_FILE
     writer.write_immutable(path, receipt.to_json() + "\n")
     return path
 
@@ -212,7 +217,7 @@ def validate_hcs_trace_completion(
     if receipt.producer_sha256 != hcs_trace_producer() or receipt.recipe_fingerprint != recipe.fingerprint:
         raise ValueError("CTest completion requires its recorded recipe/producer implementation")
     root = _destination(ArtifactWriter(path.parent.parent.parent), cache, recipe, receipt.log_spec)
-    if path.resolve() != (root / "complete.json").resolve():
+    if path.resolve() != (root / _COMPLETE_FILE).resolve():
         raise ValueError("CTest completion differs from its recorded namespace")
     evidence = _evidence(recipe, receipt.log_spec, payload, cache)
     if receipt != _receipt(recipe, receipt.log_spec, evidence):

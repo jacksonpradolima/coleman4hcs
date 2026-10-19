@@ -259,6 +259,11 @@ flowchart LR
 - The archived CSV's separate legacy mapping is explicitly any non-Passed
   status → nonpass 1. Corroboration preserves that collapsed definition; it does
   not rewrite old 1s as assertion failures or turn missing records into passes.
+- Summary percentages must agree with the reported counts: round halves up and
+  cap at 99% when any failure is reported, following the
+  [CTest summary formatter](https://github.com/Kitware/CMake/blob/v3.10.3/Source/CTest/cmCTestTestHandler.cxx#L494-L501).
+  Contradictory percentages reject before evidence publication. This display
+  percentage is separate from executable verdicts and calibrated probabilities.
 - A printed N/M denominator describes post-execution trace coverage. It is not
   proof of a predecision required-test universe. Missing final summary/wall data
   yields `partial`; missing CTest headers yield no invocations. Repeated

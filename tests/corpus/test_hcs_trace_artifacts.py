@@ -108,7 +108,9 @@ def test_modified_output_or_forged_completion_cannot_validate_or_be_silently_ove
         publish_hcs_trace_evidence(recipe, spec, OWNED, cache, writer)
 
 
-@pytest.mark.parametrize("kind", ["log_digest", "log_size", "job", "partial", "prohibited", "unknown_version"])
+@pytest.mark.parametrize(
+    "kind", ["log_digest", "log_size", "job", "partial", "percentage", "prohibited", "unknown_version"]
+)
 def test_invalid_or_unreviewed_claims_fail_before_false_completion(tmp_path, kind):
     recipe, cache = prepare_hcs(tmp_path)
     spec, payload = owned_log_spec(), OWNED
@@ -118,8 +120,10 @@ def test_invalid_or_unreviewed_claims_fail_before_false_completion(tmp_path, kin
         payload += b"\n"
     elif kind == "job":
         spec = changed(spec, job_id=999)
-    elif kind == "partial":
-        payload = b"Test project /owned\n"
+    elif kind in {"partial", "percentage"}:
+        payload = (
+            b"Test project /owned\n" if kind == "partial" else OWNED.replace(b"67% tests passed", b"100% tests passed")
+        )
         source = changed(spec.source, size_bytes=len(payload), sha256="sha256:" + hashlib.sha256(payload).hexdigest())
         spec = changed(spec, source=source)
     elif kind == "prohibited":
@@ -130,26 +134,30 @@ def test_invalid_or_unreviewed_claims_fail_before_false_completion(tmp_path, kin
     else:
         wire = json.loads(spec.to_json())
         wire["schema_version"] = 2
+        encoded = json.dumps(wire)
         with pytest.raises(ValueError):
-            HCSLogSpec.from_json(json.dumps(wire))
+            HCSLogSpec.from_json(encoded)
         return
     root = tmp_path / "output"
+    writer = ArtifactWriter(root)
     with pytest.raises(ValueError):
-        publish_hcs_trace_evidence(recipe, spec, payload, cache, ArtifactWriter(root))
+        publish_hcs_trace_evidence(recipe, spec, payload, cache, writer)
     assert not list(root.rglob("complete.json"))
 
 
 def test_source_cache_overlap_and_output_symlinks_reject_before_writing(tmp_path):
     recipe, cache = prepare_hcs(tmp_path)
     spec = owned_log_spec()
+    overlapping = ArtifactWriter(cache.root)
     with pytest.raises(ValueError):
-        publish_hcs_trace_evidence(recipe, spec, OWNED, cache, ArtifactWriter(cache.root))
+        publish_hcs_trace_evidence(recipe, spec, OWNED, cache, overlapping)
     root, escape = tmp_path / "output", tmp_path / "escape"
     root.mkdir()
     escape.mkdir()
     (root / "hcs-trace").symlink_to(escape, target_is_directory=True)
+    writer = ArtifactWriter(root)
     with pytest.raises(ValueError):
-        publish_hcs_trace_evidence(recipe, spec, OWNED, cache, ArtifactWriter(root))
+        publish_hcs_trace_evidence(recipe, spec, OWNED, cache, writer)
     assert not list(escape.iterdir())
 
 

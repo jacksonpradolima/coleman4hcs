@@ -87,7 +87,7 @@ def test_zero_is_reported_while_nonbinary_process_states_remain_unavailable(raw,
     payload = (
         "Test project /owned\n"
         f"1/1 Test #1: a ..............{raw} 0.00 sec\n"
-        f"0% tests passed, {failed} tests failed out of 1\n"
+        f"{0 if failed else 100}% tests passed, {failed} tests failed out of 1\n"
         "Total Test time (real) = 0.00 sec\n"
     ).encode()
     row = parse_hcs_ctest_trace(payload, owned_job()).runs[0].executions[0]
@@ -98,9 +98,10 @@ def test_zero_is_reported_while_nonbinary_process_states_remain_unavailable(raw,
 
 @pytest.mark.parametrize("seconds", ["NaN", "inf", "Infinity", "-1", "-0.0", "1e3", "0.0000000000001"])
 def test_nonfinite_negative_and_unsupported_precision_do_not_become_zero(seconds):
+    job = owned_job()
     payload = OWNED.replace(b"0.00 sec", seconds.encode() + b" sec")
     with pytest.raises(ValueError):
-        parse_hcs_ctest_trace(payload, owned_job())
+        parse_hcs_ctest_trace(payload, job)
 
 
 def test_every_interrupted_line_prefix_remains_partial_until_the_wall_summary():
@@ -123,14 +124,16 @@ def test_every_interrupted_line_prefix_remains_partial_until_the_wall_summary():
         OWNED.replace(b"#2: B", b"#2: A"),
         OWNED.replace(b"***Failed", b"Unknown"),
         OWNED.replace(b"1 tests failed", b"0 tests failed"),
+        OWNED.replace(b"1 tests failed", b"4 tests failed"),
         OWNED.replace(b"1/3 Test #1:", b"1/3 Test #1:" * 2),
         OWNED + b"1/3 Test #1: A .... Passed 0.00 sec\n",
         OWNED + b"Total Test time (real) = 0.00 sec\n",
     ],
 )
 def test_conflicting_duplicate_malformed_and_reordered_evidence_reject(payload):
+    job = owned_job()
     with pytest.raises(ValueError):
-        parse_hcs_ctest_trace(payload, owned_job())
+        parse_hcs_ctest_trace(payload, job)
 
 
 def test_ansi_noise_and_parallel_result_order_preserve_value_independent_execution_identity():
@@ -209,11 +212,12 @@ def test_incompatible_units_forged_state_and_raw_status_cannot_survive_reading()
 
 
 def test_resource_and_encoding_bounds_reject_before_claiming_a_completed_result():
+    job = owned_job()
     for payload in [b"x" * (2 * 1024**2 + 1), b"x" * 16385, b"\n" * 131073, b"\x00", OWNED * 17]:
         with pytest.raises(ValueError):
-            parse_hcs_ctest_trace(payload, owned_job())
+            parse_hcs_ctest_trace(payload, job)
     with pytest.raises(UnicodeDecodeError):
-        parse_hcs_ctest_trace(b"\xff", owned_job())
+        parse_hcs_ctest_trace(b"\xff", job)
 
 
 def test_actual_raw_bytes_are_required_to_validate_evidence_not_self_declared_hashes():
@@ -274,7 +278,11 @@ def test_correspondence_rejects_unknown_or_ambiguous_original_evidence(tmp_path,
     if kind == "duration":
         payload = payload.replace(b"2.00 sec", b"2.01 sec")
     elif kind == "verdict":
-        payload = payload.replace(b"***Failed", b"Passed").replace(b"1 tests failed", b"0 tests failed")
+        payload = (
+            payload.replace(b"***Failed", b"Passed")
+            .replace(b"1 tests failed", b"0 tests failed")
+            .replace(b"67% tests passed", b"100% tests passed")
+        )
     elif kind == "coverage":
         payload = payload.replace(b"#1: A", b"#1: unknown")
     elif kind == "partial":
@@ -298,3 +306,55 @@ def test_source_positions_do_not_coerce_boolean_float_or_text_into_provenance(tm
     positions = (position,) + proof.physical_positions[1:]
     with pytest.raises(ValueError):
         changed(proof, physical_positions=positions)
+
+
+@pytest.mark.parametrize("seconds", ["١.٠", "１.０"])
+def test_source_numeric_tokens_reject_non_ascii_decimal_digits(seconds):
+    job = owned_job()
+    payload = OWNED.replace(b"0.00 sec", seconds.encode() + b" sec")
+    with pytest.raises(ValueError, match="decimal"):
+        parse_hcs_ctest_trace(payload, job)
+
+
+def test_unicode_whitespace_does_not_change_run_values_or_execution_identity():
+    job = owned_job()
+    baseline = parse_hcs_ctest_trace(OWNED, job)
+    payload = OWNED.replace(b"1/3 Test", "\u20031/3 Test".encode()).replace(b"out of 3\n", "out of 3\u2003\n".encode())
+    trace = parse_hcs_ctest_trace(payload, job)
+    assert trace.runs == baseline.runs
+    assert trace.execution_id("owned", 1, 1) == baseline.execution_id("owned", 1, 1)
+    assert trace.source_sha256 != baseline.source_sha256
+
+
+@pytest.mark.parametrize("original,replacement", [("#1:", "#١:"), ("out of 3", "out of ٣")])
+def test_non_ascii_result_indices_and_summary_counts_never_alias_ascii_identities(original, replacement):
+    job = owned_job()
+    payload = OWNED.replace(original.encode(), replacement.encode())
+    with pytest.raises(ValueError, match="Malformed"):
+        parse_hcs_ctest_trace(payload, job)
+
+
+@pytest.mark.parametrize("percentage", ["0", "66", "68", "100"])
+def test_contradictory_summary_percentage_cannot_certify_a_complete_invocation(percentage):
+    job = owned_job()
+    payload = OWNED.replace(b"67% tests passed", percentage.encode() + b"% tests passed")
+    with pytest.raises(ValueError, match="summary percentage"):
+        parse_hcs_ctest_trace(payload, job)
+
+
+@pytest.mark.parametrize("total,failed,percentage", [(8, 7, 13), (3, 1, 67), (200, 1, 99), (1, 0, 100), (1, 1, 0)])
+def test_summary_percentage_uses_ctest_half_up_rounding_and_positive_failure_cap(total, failed, percentage):
+    results = [
+        f"{index}/{total} Test #{index}: test-{index} .... {'***Failed' if index <= failed else 'Passed'} 0.00 sec\n"
+        for index in range(1, total + 1)
+    ]
+    payload = (
+        "Test project /owned\n"
+        + "".join(results)
+        + f"{percentage}% tests passed, {failed} tests failed out of {total}\n"
+        + "Total Test time (real) = 0.00 sec\n"
+    ).encode()
+    run = parse_hcs_ctest_trace(payload, owned_job()).runs[0]
+    assert run.state == "complete"
+    assert run.summary_failed == failed
+    assert len(run.executions) == total

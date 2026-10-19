@@ -116,8 +116,9 @@ def test_changed_member_metadata_and_unreviewed_or_unknown_contracts_reject(tmp_
     if kind == "future":
         wire = json.loads(spec.to_json())
         wire["schema_version"] = 2
+        encoded = json.dumps(wire)
         with pytest.raises(ValueError):
-            HCSArchiveLogSpec.from_json(json.dumps(wire))
+            HCSArchiveLogSpec.from_json(encoded)
         return
     if kind == "digest":
         spec = changed(spec, member=changed(spec.member, sha256="sha256:" + "0" * 64))
@@ -131,8 +132,9 @@ def test_changed_member_metadata_and_unreviewed_or_unknown_contracts_reject(tmp_
         with pytest.raises(ValueError):
             read_hcs_archive_log(spec, cache)
     root = tmp_path / "output"
+    writer = ArtifactWriter(root)
     with pytest.raises(ValueError):
-        publish_hcs_archive_trace(recipe, spec, cache, ArtifactWriter(root))
+        publish_hcs_archive_trace(recipe, spec, cache, writer)
     assert not list(root.rglob("complete.json"))
 
 
@@ -209,8 +211,9 @@ def test_interrupted_archive_wrapper_retains_child_and_concurrent_retry_converge
             return super().write_immutable(path, content)
 
     root = tmp_path / "output"
+    interrupted = Interrupted(root)
     with pytest.raises(OSError, match="archive-wrapper"):
-        publish_hcs_archive_trace(recipe, spec, cache, Interrupted(root))
+        publish_hcs_archive_trace(recipe, spec, cache, interrupted)
     child = next((root / "hcs-trace").rglob("complete.json"))
     before = child.read_bytes()
     assert not list((root / "hcs-archive-trace").rglob("complete.json"))
@@ -231,8 +234,9 @@ def test_archive_profile_rejects_wrong_container_and_member_bounds_before_io(tmp
         wire["container"]["source"]["uri"] += "#selected.log"
     else:
         wire["member"]["size_bytes"] = 2 * 1024**2 + 1
+    encoded = json.dumps(wire)
     with pytest.raises(ValueError):
-        HCSArchiveLogSpec.from_json(json.dumps(wire))
+        HCSArchiveLogSpec.from_json(encoded)
 
 
 @pytest.mark.parametrize("kind", ["symlink", "oversized", "future", "changed_child"])

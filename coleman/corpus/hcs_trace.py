@@ -25,9 +25,10 @@ from coleman.corpus.hcs_trace_contracts import (
 from coleman.selection.contracts import Quantity, UnitSemantics
 
 _CSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
-_RESULT_PREFIX = re.compile(r"^\s*[0-9]+/[0-9]+\s+Test\s+#")
-_RESULT = re.compile(r"^\s*([0-9]{1,5})/([0-9]{1,5}) Test\s+#([0-9]{1,5}): (.*)$")
-_SUMMARY = re.compile(r"^(?:100|[0-9]{1,2})% tests passed, ([0-9]{1,5}) tests failed out of ([0-9]{1,5})\s*$")
+# Scope ASCII to numeric tokens, retaining the existing Unicode whitespace behavior.
+_RESULT_PREFIX = re.compile(r"^\s*(?a:\d+/\d+)\s+Test\s+#")
+_RESULT = re.compile(r"^\s*(?a:(\d{1,5})/(\d{1,5})) Test\s+#(?a:(\d{1,5})): (.*)$")
+_SUMMARY = re.compile(r"^(?a:(100|\d{1,2})% tests passed, (\d{1,5}) tests failed out of (\d{1,5}))\s*$")
 _WALL = re.compile(r"^Total Test time \(real\) =\s*(\S+) sec\s*$")
 
 
@@ -68,7 +69,7 @@ def _result_parts(match: re.Match[str]) -> _ResultParts:
 
 def _quantity(text: str, semantics: UnitSemantics) -> Quantity:
     """Parse at most 64 ASCII decimal characters; nonfinite/negative/exponent forms reject."""
-    if len(text) > 64 or re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", text) is None:
+    if len(text) > 64 or re.fullmatch(r"\d+(?:\.\d+)?", text, flags=re.ASCII) is None:
         raise ValueError("CTest reported seconds require bounded nonnegative decimal text")
     quantity = Quantity(value=Decimal(text), semantics=semantics)
     if quantity.value > 10**12:
@@ -136,11 +137,18 @@ class _Invocation:
         )
 
     def summary(self, match: re.Match[str]) -> None:
-        """Require exactly one terminal summary before the wall measurement."""
+        """Require one consistent summary, with CTest half-up rounding and a 99% cap when failures exist."""
         if self.failed is not None or self.wall is not None:
             raise ValueError("Duplicate or reordered CTest summary")
-        self.denominator(int(match[2]))
-        self.failed = int(match[1])
+        percentage, failed, total = map(int, match.groups())
+        self.denominator(total)
+        if failed > total:
+            raise ValueError("CTest summary failure count exceeds its denominator")
+        expected = (200 * (total - failed) + total) // (2 * total)
+        expected = min(expected, 99) if failed else expected
+        if percentage != expected:
+            raise ValueError("CTest summary percentage disagrees with reported counts")
+        self.failed = failed
 
     def wall_measurement(self, text: str) -> None:
         """Accept bounded wall seconds only after a summary and without a duplicate measurement."""
