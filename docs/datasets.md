@@ -64,9 +64,9 @@ pre-execution test membership or other admission prerequisites. Controlled
 captures establish observations under their frozen conditions. Synthetic cases
 establish mechanism behavior. None supplies a universal performance claim.
 
-The historical cross-corpus confirmation remains unfinished. Its tracking phase
-was [closed with explicit unmet criteria](roadmap.md#historical-corpus-status),
-rather than declared complete. The [research guide](research.md#datasets-and-source-studies)
+The historical cross-corpus confirmation remains unfinished. The
+[evidence requirements](roadmap.md#historical-corpus-status) explain what is still
+needed for that claim. The [research guide](research.md#datasets-and-source-studies)
 links the source papers; their empirical findings and this platform's later
 qualification claims should be read separately.
 

@@ -252,7 +252,7 @@ and power-loss limits apply; incomplete writes expose no completed JSON. The cor
 does not write files unless this adapter is explicitly called.
 
 `allocation_record(result, run_id=..., available_at=...)` projects selected modeled
-summaries to existing #251 sinks. Exact JSON is authoritative; each projected
+summaries to the existing versioned measurement sinks. Exact JSON is authoritative; each projected
 meaning ends in `binary64-projection-v1` and identifies a modeled quantity. Signed
 losses remain negative, variance has squared units, and no selection yields
 unavailable measurements. Supply actual zoned availability after calculation and

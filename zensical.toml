@@ -78,6 +78,7 @@ nav = [
   ] },
   { "Reference" = [
     { "Architecture and setup" = "setup.md" },
+    { "Late results and historical corrections" = "decisions/001-point-in-time-observations.md" },
     { "Glossary" = "glossary.md" },
     { "Versioned result records" = "domain-results.md" },
     { "API overview" = "api-reference.md" },
@@ -109,8 +110,7 @@ nav = [
     { "Maintainability review" = "maintainability.md" },
     { "Complexity and profiling" = "code-cost.md" },
     { "Dependency security" = "dependency-security.md" },
-    { "Evidence status and future work" = "roadmap.md" },
-    { "Architecture decisions" = [{ "Point-in-time boundary" = "decisions/001-point-in-time-observations.md" }] },
+    { "Evidence limits and next steps" = "roadmap.md" },
     { "Release preparation" = "releases.md" },
     { "Compatibility archive" = [
       { "Read release history" = "release-history.md" },

@@ -98,9 +98,8 @@ Those labels were checked against the pinned Defects4J metadata revision
 and [Codec](https://github.com/rjust/defects4j/blob/8c16da8230843cdc918eaf4ddb449637f02b83c6/framework/projects/Codec/active-bugs.csv).
 
 Codec retains all 25 production Java files per role, 15 fixed fixture Java files,
-and original `LICENSE.txt`/`NOTICE.txt`. Fixture selection was recorded in
-[#304](https://github.com/jacksonpradolima/coleman/issues/304) **before observing
-new source outcomes**:
+and original `LICENSE.txt`/`NOTICE.txt`. Fixture selection was frozen
+**before observing new source outcomes**. The source exclusions are explicit:
 
 - `DoubleMetaphoneTest.java` embeds separately noticed aspell data and non-UTF8
   bytes. It is outside the existing homogeneous-terms/UTF8 source-view profile.
@@ -245,7 +244,8 @@ assert outcome.receipt.admission == "not_evaluated"
 
 Use `--recipe /absolute/path/matrix.json` for another reviewed typed plan. The
 generic controlled domain stays independent of CLI, Docker transports and MCP.
-Protected source admission and policy evaluation remain later #261 subtasks.
+Protected source admission and policy evaluation require separate evidence;
+source collection alone does not establish either.
 
 Normal tests use owned small fixtures with no downloads. With the image prepared
 and all three recipes acquired into an external cache, repeat installed real-source
@@ -262,6 +262,9 @@ elapsed counters are not substituted for CI costs. Actual historical-CI ETL/repl
 remains available in the [Karaf](lrts-parquet-etl.md),
 [ActiveMQ/Log4j](lrts-stage-views.md) and
 [RTPTorrent](rtptorrent-parquet-etl.md) workflows.
+
+[Pre-execution protocol records](release-history.md#pre-execution-protocol-records)
+retain the historical declaration evidence for audit.
 
 ## Continue the workflow
 

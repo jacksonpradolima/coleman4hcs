@@ -247,7 +247,7 @@ uncovered. Jenkins single/stage views are one source model; reviewed observed
 GitLab pipeline/job/variant reports provide a different structure without
 flattening identities. At least two are required; constructed capture runtimes
 and synthetic workers cannot satisfy this gate. Model presence alone does not
-grant historical admission or close [#261](https://github.com/jacksonpradolima/coleman/issues/261).
+grant historical admission or establish cross-corpus effectiveness.
 
 ## Add a source without changing the runner
 
@@ -359,7 +359,7 @@ It identifies this frozen source/review snapshot, not a universal dataset or an
 efficacy result. Full reports stay outside Git because embedded controlled
 observations retain their recipe-only component restrictions. Original phase-one
 fixture readiness still leaves all seven regimes uncovered; this separate scoped
-audit does not rewrite that artifact or close #261.
+audit does not rewrite that artifact or establish cross-corpus effectiveness.
 
 ### Published 4.16 compatibility
 

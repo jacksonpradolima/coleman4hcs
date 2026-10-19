@@ -196,7 +196,7 @@ assert csv_path.stat().st_size == 2825388
 
 This is real source acquisition and selected-member validation. The
 [Parquet workflow](rtptorrent-parquet-etl.md) adds complete analytical history,
-a bounded native projection and a declared replay bridge in #302.
+a bounded native projection and a declared [replay bridge](rtptorrent-parquet-etl.md).
 Protected temporal evaluation remains blocked by missing source clocks and
 logical build/job mapping. A fresh installed-wheel regression can additionally
 reverify the real source cache without network:

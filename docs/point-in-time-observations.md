@@ -6,15 +6,17 @@ not rewrite the information used by an earlier decision. The base package needs
 no provider SDK, credential, hosted service or optional MCP dependency.
 
 Use the [installed-package setup](getting-started.md) for the base SDK.
-Run source examples outside the checkout. [ADR 001](decisions/001-point-in-time-observations.md)
-records the module, dependency and extension decisions.
+Run source examples outside the checkout.
+[Why histories retain late results and corrections](decisions/001-point-in-time-observations.md)
+explains the CI problem and the design through a concrete timeline.
 
 ## Observation and revision contract
 
 `ObservationRevision` schema v1 contains protected `TemporalObservation` metadata,
 a logical entity ID, first local `received_at`, explicit predecessor `supersedes`
-and a typed #251 `Measurement`. Event, source availability and first receipt are
-separate instants. Effective availability is their later availability/receipt;
+and a typed [`Measurement`](domain-results.md). Event, source availability and
+first receipt are separate instants. Effective availability is their later
+availability/receipt;
 receipt cannot precede declared source availability. Source/local clocks must be
 comparable; clock disagreement is rejected, never silently adjusted.
 
@@ -35,7 +37,7 @@ lexically ranked. A newer revision can arrive before its predecessor; a late
 older delivery cannot replace it. Unknown/unavailable values retain their states
 rather than reviving an obsolete earlier value.
 
-For the issue's CI fixture, event time is `10:00:00Z`, r1 becomes available at
+For the CI example below, event time is `10:00:00Z`, r1 becomes available at
 `10:00:02Z`, and r2 at `10:05:00Z`:
 
 | Query cutoff | Visible revision |
@@ -79,8 +81,9 @@ independent observations.
 `fit_quantity_mean` implements a simple baseline for nonnegative physical
 quantities, not a claim of superior forecasting. Inputs must be finite, between
 0 and 10^12, in exactly the declared units/meaning. It sums exact rational forms
-of the #251 binary64 inputs and rounds the mean **up to 10^-9 of that unit**,
-independently of Decimal context. For example, `(0, 1, 0)` gives `0.333333334`.
+of the versioned measurement inputs in binary64 and rounds the mean
+**up to 10^-9 of that unit**, independently of Decimal context. For example,
+`(0, 1, 0)` gives `0.333333334`.
 Binary64 `0.1` is slightly above mathematical 0.1 and therefore rounds up to
 `0.100000001`; this rule does not recover an unknown original decimal spelling.
 Exact rounded `Quantity` values remain in the model; signal values declare their

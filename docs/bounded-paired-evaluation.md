@@ -133,7 +133,7 @@ The method, estimand, arithmetic profile, metric limits, practical threshold and
 family are frozen into identity. Report reads recompute every result and require
 identical binary64 bounded-method outputs; a one-ULP narrowed endpoint rejects.
 Legacy Student-t reports retain their existing numerical-library tolerance.
-Both methods retain signed effects, explicit null uncertainty and #251 provenance.
+Both methods retain signed effects, explicit null uncertainty and [versioned provenance](domain-results.md).
 
 ## Compatibility and limits
 

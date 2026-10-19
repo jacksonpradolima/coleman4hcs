@@ -6,10 +6,10 @@ under the declared execution conditions? COLEMAN can retain that evidence,
 including unexpected and inconclusive results, without presenting a reconstructed
 sequence as historical CI.
 
-This source slice of [#261](https://github.com/jacksonpradolima/coleman/issues/261)
-adds an offline typed observation adapter. It does not complete source admission,
-fault diversity, baseline comparisons or the cross-corpus benchmark. The registry's
-seven required diversity cells remain uncovered. Source assessments for
+The offline typed observation adapter retains this controlled evidence.
+Source admission, fault diversity, baseline comparisons and cross-corpus
+evaluation require additional evidence. The registry's seven required diversity
+cells remain uncovered. Source assessments for
 [RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) remain separate.
 
 The optional [pinned JUnit3 producer](junit-source-capture.md) now provides a

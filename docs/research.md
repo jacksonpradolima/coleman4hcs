@@ -35,6 +35,33 @@ Read this for classical confidence-based exploration under its stated reward
 assumptions. The [policy guide](policies.md) distinguishes that theoretical setting
 from a particular CI history, reward transformation or implementation.
 
+## Structured policies and subset feedback
+
+**Chen, Wang and Yuan. _Combinatorial Multi-Armed Bandit: General Framework and
+Applications._ ICML, PMLR 28(1), 151–159, 2013.**
+[Original proceedings and paper](https://proceedings.mlr.press/v28/chen13a.html).
+
+This provides a foundation for thinking about subset actions, component feedback
+and reward structure. Read it alongside [the policy families](policies.md) and
+[finite coverage selection](finite-coverage.md). A native full-ranking adaptation
+or a finite solver is not automatically the paper's online feedback/oracle model;
+check the actual assumptions before applying a guarantee.
+
+## Information availability and data leakage
+
+**Kaufman, Rosset, Perlich and Stitelman. _Leakage in data mining._
+ACM Transactions on Knowledge Discovery from Data 6(4), 2012.**
+[Publisher and DOI](https://doi.org/10.1145/2382577.2382579).
+
+This explains how information unavailable at prediction time can compromise an
+experiment. In CI, an eventual verdict, corrected duration or late report can be
+present in a later export without being available to an earlier policy.
+[Late results and corrections](decisions/001-point-in-time-observations.md)
+explains that problem through an execution timeline.
+[Point-in-time observations](point-in-time-observations.md) provides the complete
+API example, while [protected evaluation](protected-evaluation.md) adds the temporal
+and grouped comparison protocol.
+
 ## Configurations and variants
 
 **Prado Lima, Mendonça, Vergilio and Assunção. _Learning-based prioritization of
@@ -84,7 +111,7 @@ choosing an analysis by name.
 [Repeated observations](corpus-evaluation.md) explains why builds, seeds and
 variants cannot be pooled as independent projects. [Source admission](corpus-admission.md)
 separates source integrity from scientific eligibility. [Evidence status](roadmap.md)
-records the incomplete historical cross-corpus confirmation and its closure note.
+explains the missing prerequisites for historical cross-corpus confirmation.
 
 The [independent decision benchmarks](decision-benchmarks.md) validate bounded
 mathematical routines against independent references. Such checks establish

@@ -212,7 +212,7 @@ publication makes identical retries/concurrent publication idempotent and reject
 conflicts; incomplete temporary files are not completed artifacts. Manifests list
 these results. Local hard-link/fsync and power-loss limitations are unchanged.
 
-`coverage_record(result, run_id=..., available_at=...)` creates #251 measurements
+`coverage_record(result, run_id=..., available_at=...)` creates [versioned measurements](domain-results.md)
 for existing sinks. Exact decimal JSON remains authoritative. The scalar adapter
 explicitly projects to binary64, names measurements `selection_cost`,
 `coverage_objective`, `coverage_upper_bound`, `coverage_absolute_gap`, and suffixes

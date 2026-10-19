@@ -119,23 +119,28 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 
 # COLEMAN
 
-**Learn which CI tests to run first. Keep the evidence behind every decision.**
+**Adaptive CI test prioritization, from 37 bandit policies to reproducible experiments and auditable evidence.**
 
 [![Documentation](https://img.shields.io/badge/docs-start_here-4051b5)](https://jacksonpradolima.github.io/coleman/)
 [![Python](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 Your test suite changes, failures are rare, and the CI budget is finite. COLEMAN
-lets you study how adaptive prioritization responds: rank tests with multi-armed
-bandits, simulate budgeted execution, learn from feedback, and compare the results
-with simple baselines. It supports ordinary suites and highly configurable systems.
+brings adaptive ranking, budgeted test replay, configurable-system testing and
+evidence-based comparison into one Python platform. Choose a policy, learn from
+execution feedback, explore its parameters and inspect the resulting test order,
+fault-detection quality and modeled execution cost.
+
+The approach is grounded in the [original TCPCI study](https://doi.org/10.1109/TSE.2020.2992428),
+the [SPLC configurable-software study](https://doi.org/10.1145/3382025.3414967)
+and its [Empirical Software Engineering extension](https://doi.org/10.1007/s10664-021-10093-3).
 
 The platform connects **source data → reproducible experiments → inspectable
 results → evidence for a decision**. Use it as a Python library or through the CLI;
 Parquet results and local checkpoints work without external services.
 
-[Run your first experiment](docs/getting-started.md) · [Choose a dataset](docs/datasets.md) ·
-[Understand the method](docs/concepts.md) · [Read the research](docs/research.md) ·
+[Run your first experiment](#quick-start) · [Explore the policies](#mab-policies-available) ·
+[Choose a dataset](#datasets) · [Read the research](#research-background) ·
 [Contribute](CONTRIBUTING.md)
 
 ## One platform, connected workflows
@@ -154,6 +159,62 @@ flowchart TD
     R --> V
 ```
 
+## What you can build with COLEMAN
+
+| Your goal | Available workflow |
+| --- | --- |
+| Compare adaptive CI prioritization policies | The native TCPCI runner, [37 policies](#mab-policies-available), RNFail/TimeRank rewards, contextual inputs and [parameter sweeps](#sweep-engine) |
+| Stress a difficult CI decision | [32 deterministic interaction-covering cases](docs/ci-stress-laboratory.md), explicit truth and feedback clocks, native Parquet and resumable agents |
+| Audit what a source actually supports | [Source admission](docs/corpus-admission.md): original evidence, explicit units and a 35-axis production-reality matrix |
+| Compare repeated CI experiments | [Raw build/seed records and paired repository-family means](docs/corpus-evaluation.md), explicit missingness and protected access |
+| Compare metrics with known limits | [Conservative bounded paired means](docs/bounded-paired-evaluation.md), full-family uncertainty and practical equivalence under declared independent-unit assumptions |
+| Assess public CI collection | [Bounded public Actions collection](docs/public-ci-feasibility.md), typed receipts and reality-axis accounting that retains missing test and physical-cost evidence |
+| Develop comparable baseline matrices | [Frozen native-policy and heuristic matrices](docs/comparable-baselines.md), explicit incompatibilities, raw costs and checkpoint recovery |
+| Evaluate configurable software | [Original LibSSH → WTS/VTS Parquet and checkpointed replay](docs/hcs-parquet-etl.md), [CTest corroboration](docs/hcs-trace-evidence.md) and [whole-set/variant strategies](docs/highly-configurable.md) |
+| Collect real-fault observations | [Controlled Java matrices](docs/java-fault-matrix.md) and [Python source capture](docs/python-source-capture.md), pinned source/runtime recipes, raw process evidence and offline recovery |
+| Inspect a constructed C weakness | [Pinned Juliet/GCC capture](docs/c-seeded-source-capture.md), an independent arithmetic oracle, raw process evidence and interruption recovery |
+| Reproduce and inspect an experiment | [Typed RunSpec and the library API](#library-api), [configuration identity and provenance](#provenance), Parquet results and resumable checkpoints |
+| Select finite coverage under a budget | [Coverage selection](docs/finite-coverage.md), explicit costs and solver-specific certificates and limits |
+| Allocate resources under declared scenarios | [Scenario-payoff allocation](docs/scenario-payoffs.md), signed outcomes, resource constraints and conservative evidence handling |
+| Check a CI decision before adoption | [Independent mathematical benchmarks](docs/decision-benchmarks.md), [protected comparisons](docs/protected-evaluation.md) and [operational accounting](docs/operational-pilot.md) |
+| Extend or integrate the platform | [Library API](#library-api), [application API and optional MCP](docs/application-api.md), [versioned domain results](docs/domain-results.md), hooks and [runner extensions](docs/extensibility.md) |
+
+The workflows retain their own assumptions: a source conversion, controlled fault,
+mathematical check and historical policy comparison answer different questions.
+Follow the linked guide for a complete example and the evidence it supports.
+
+## MAB policies available
+
+**37 selectable policies** cover simple comparators, confidence bounds, Bayesian
+sampling, changing histories, contextual features, subsets, pairwise rankings and
+policy portfolios. These are the actual native configuration names:
+
+| Family | Available policies |
+| --- | --- |
+| Random and greedy | `Random`, `Greedy`, `EpsilonGreedy`, `DecayEpsilonGreedy`, `OptimisticGreedy`, `EpsilonDecreasing` |
+| Confidence-based exploration | `UCB`, `UCB1`, `UCB2`, `KLUCB`, `UCBTuned`, `UCBV`, `MOSSUCB` |
+| Bayesian and stochastic exploration | `ThompsonSampling`, `BayesianUCB`, `BootstrappedThompson`, `Softmax`, `Pursuit`, `PHE` |
+| Adversarial exploration | `EXP3`, `EXP3IX` |
+| Changing histories and recent feedback | `SlidingWindowUCB`, `DiscountedUCB`, `ChangeDetectionUCB`, `FRRMAB`, `SlMAB` |
+| Contextual | `LinUCB`, `SWLinUCB`, `LinTS`, `SWLinTS`, `ContextualEpsilonGreedy`, `SWContextualEpsilonGreedy` |
+| Combinatorial | `CombinatorialUCB`, `CombinatorialThompson` |
+| Dueling and ranking | `DuelingUCB`, `PairwiseThompsonRanking` |
+| Portfolio meta-policy | `PortfolioUCB` |
+
+Use the [policy guide](docs/policies.md) to understand the families, reward choices,
+required parameters and contextual feature availability. The
+[constructor reference](docs/api/policy.md) gives the exact API; configuration packs
+cover a subset of the policies. The [baseline workflow](docs/comparable-baselines.md)
+adds history-based heuristic comparators under a declared common protocol.
+
+The original [bandit analysis](https://doi.org/10.1023/A:1013689704352),
+[LinUCB study](https://arxiv.org/abs/1003.0146) and
+[combinatorial framework](https://proceedings.mlr.press/v28/chen13a.html) explain
+important foundations. A policy name alone does not establish that a CI adaptation
+satisfies the original theorem's assumptions or outperforms the simple comparators.
+
+## Choose your path
+
 | Start with a question | Follow this path |
 | --- | --- |
 | How does the feedback loop work? | [Concepts](docs/concepts.md) → [policies and rewards](docs/policies.md) → [first experiment](docs/getting-started.md) |
@@ -168,8 +229,10 @@ Use Python 3.14+ in a virtual environment. This command pins a published wheel
 and verifies its SHA-256 before installation:
 
 ```bash
-python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.19.0/coleman-4.19.0-py3-none-any.whl#sha256=070e21c19fb7e3f2e392bd68706c354ed5ab7f76b86db80f5f1bdc5721b767bd"
+python -m pip install "https://github.com/jacksonpradolima/coleman/releases/download/v4.19.1/coleman-4.19.1-py3-none-any.whl#sha256=ca470ba2be14ca755952f0bb3bc92615d76b90f95ebdd41dc1cdc9847713cc93"
 ```
+
+### Library API
 
 Save the following as `first_run.py` in an empty directory. It creates a tiny
 authored history, runs the actual Random and UCB policies, and prints the result
@@ -218,24 +281,46 @@ The [complete tutorial](docs/getting-started.md) explains the output, queries it
 with DuckDB, enables checkpoint continuation, and runs the same experiment from
 YAML. The [configuration reference](docs/configuration.md) covers packs and sweeps.
 
-## What you can do
+## Sweep engine
 
-- **Experiment with adaptive ranking.** Classical, contextual and changing-history
-  policies share the runner, rewards, budgets and result sinks. Configure sweeps
-  across candidates and seeds without replacing orchestration.
-- **Work with configurations.** WTS prioritizes a union of tests; VTS maintains
-  separate variant experiments. Preserve the grouping when interpreting evidence.
-- **Inspect and recover experiments.** Typed RunSpec, resolved configuration,
-  provenance, Parquet results and local checkpoints make inputs and progress visible.
-- **Keep measurements meaningful.** Versioned records distinguish units, semantics,
-  observed zero, signed values and unavailable measurements.
-- **Evaluate before adopting.** Independent metric checks, source audits, repeated
-  observations, protected comparisons and conservative outcomes support review.
-- **Extend a focused platform.** Hooks, custom policies, finite coverage selection,
-  scenario allocation and an optional MCP transport build on the same CI foundations.
+Compare UCB exploration settings without writing another execution loop. After
+the example above, reuse its `spec` and append this code to `first_run.py`:
 
-See the [architecture](docs/setup.md), [API reference](docs/api-reference.md) and
-[integration guide](docs/integration-guide.md) for the boundaries and supported use.
+```python
+from coleman.api import run_many, sweep
+from coleman.spec.sweep import SweepAxis, SweepSpec
+
+base = spec.model_copy(deep=True)
+base.experiment.policies = ["UCB"]
+candidates = sweep(base, SweepSpec(
+    axes=[SweepAxis(params={"algorithm.ucb.rnfail.c": [0.5, 1.0, 2.0]})],
+    seeds=[42, 43],
+))
+results = run_many(candidates, max_workers=1)
+print(f"Completed {len(results)} UCB runs")
+```
+
+This expands three exploration settings × two seeds into six specifications,
+each with its own run directory and checkpoint namespace. Grid and zip axes are
+supported. Seeds repeat algorithmic randomness; use
+[protected evaluation](docs/protected-evaluation.md) to separate parameter tuning
+from evaluation and preserve the actual independent observation units.
+See [configuration and CLI sweeps](docs/configuration.md) for complete YAML forms.
+
+## Provenance
+
+A run retains its resolved specification, configuration-derived identity,
+environment provenance, Parquet results and enabled checkpoints. Inspect and query
+them using the [first-run tutorial](docs/getting-started.md) and
+[analysis playbook](docs/analysis-playbook.md). The run ID identifies configuration;
+source-adapter receipts separately bind original input and output bytes.
+
+For extensions and integrations, [versioned measurement records](docs/domain-results.md)
+retain units, semantics, logical identity, provenance and explicit missing states.
+[Point-in-time observations](docs/point-in-time-observations.md) preserve what was
+available at each decision even after late results or corrections arrive.
+The [architecture guide](docs/setup.md) explains how these contracts connect to
+the runner, result sinks, telemetry and artifact publication.
 
 ## Datasets
 
@@ -259,15 +344,21 @@ historical cross-corpus confirmation has **not** been completed; see
 
 ## Research background
 
-COLEMAN began as a research approach to **test case prioritization in continuous
-integration (TCPCI)**. The [TSE article](https://doi.org/10.1109/TSE.2020.2992428)
-describes its bandit-based approach. The [HCS study](https://doi.org/10.1007/s10664-021-10093-3)
-examines whole-test-set and variant-test-set strategies. These studies ground the
-method; their results do not establish superiority for every later extension or dataset.
+COLEMAN (*Combinatorial VOlatiLE Multi-Armed BANdit*) originated in **test case
+prioritization in continuous integration (TCPCI)** and expanded to highly
+configurable software. Its scientific lineage
+is directly connected to the workflows above:
 
-The [research guide](docs/research.md) explains which papers inform the feedback
-loop, contextual policies, configurable systems and evaluation, with links back
-to the corresponding workflows.
+| Original publication | Research contribution | Explore it in COLEMAN |
+| --- | --- | --- |
+| Prado Lima and Vergilio. [*A Multi-Armed Bandit Approach for Test Case Prioritization in Continuous Integration Environments*](https://doi.org/10.1109/TSE.2020.2992428). **IEEE TSE 48(2), 453–465, 2022.** | Adaptive prioritization with feedback across changing CI test suites | [Bandit loop](docs/concepts.md), [policies](docs/policies.md), [experiments](docs/experiments.md) |
+| Prado Lima, Mendonça, Vergilio and Assunção. [*Learning-based prioritization of test cases in continuous integration of highly-configurable software*](https://doi.org/10.1145/3382025.3414967). **SPLC, 2020.** | Learning-based prioritization in highly configurable software | [Whole-test-set and variant-test-set strategies](docs/highly-configurable.md) |
+| The same authors. [*Cost-effective learning-based strategies for test case prioritization in continuous integration of highly-configurable software*](https://doi.org/10.1007/s10664-021-10093-3). **Empirical Software Engineering 27, article 133, 2022.** | Extended evaluation of WTS/VTS across variants and budgets | [LibSSH data and replay](docs/hcs-parquet-etl.md), [original CTest evidence](docs/hcs-trace-evidence.md) |
+
+The [research guide](docs/research.md) also connects the original algorithm,
+dataset, data-leakage and statistical-method papers to their corresponding
+features. Findings from an original study apply to its subjects and protocol;
+later policies and datasets need their own comparable evaluation.
 
 ## Citation
 
@@ -1876,7 +1967,7 @@ The method, estimand, arithmetic profile, metric limits, practical threshold and
 family are frozen into identity. Report reads recompute every result and require
 identical binary64 bounded-method outputs; a one-ULP narrowed endpoint rejects.
 Legacy Student-t reports retain their existing numerical-library tolerance.
-Both methods retain signed effects, explicit null uncertainty and #251 provenance.
+Both methods retain signed effects, explicit null uncertainty and [versioned provenance](domain-results.md).
 
 ## Compatibility and limits
 
@@ -1965,8 +2056,8 @@ state/receipt paths, statuses, unobserved pairs and classifications.
 
 ## Source selection and terms
 
-[Public source assessment](https://github.com/jacksonpradolima/coleman/issues/306#issuecomment-6236007670)
-preceded subject execution. The SIR site is archived; its retired license says
+Source selection and terms were assessed before subject execution.
+The SIR site is archived; its retired license says
 it is no longer in force. Current component/data permission for the original
 Siemens sources, modified faults and test pools was not established. No SIR
 archive was acquired or counted as admitted coverage.
@@ -2028,14 +2119,14 @@ not six independent faults. [Unsigned C arithmetic wraps modulo its width](https
 the last mismatch does not rely on undefined signed overflow. Signed, malformed
 and out-of-range scanf inputs are outside this v1 oracle's scope.
 
-The [pre-execution protocol](https://github.com/jacksonpradolima/coleman/issues/306#issuecomment-6236145420)
-records the source, selectors, pool, oracle and observer pins before qualification.
-The first attempt compiled but could not execute in Docker's default noexec tmpfs;
-its raw errors and zero-case incomplete result were preserved. The explicit
-[executable-scratch amendment](https://github.com/jacksonpradolima/coleman/issues/306#issuecomment-6236219189)
-preceded the first observed cases. A subsequent canonical-order validation fix
-compares normalized observations in the generic domain's established logical-key
-order; it changes no raw packet or outcome and also fixes multi-case Python replay.
+The frozen execution protocol records the source, selectors, pool, oracle and
+observer pins before qualification.
+Use the declared executable-scratch runtime profile when reproducing the capture.
+With a noexec tmpfs, compilation can succeed while execution fails; those
+attempts retain their raw errors and incomplete zero-case result.
+
+Offline replay compares normalized observations in the generic domain's
+established logical-key order. It preserves the original packets and outcomes.
 
 ## Runtime, guards and units
 
@@ -2138,7 +2229,10 @@ independently declared; do not convert observer ns into Duration. The installed
 qualification separately exercises the [owned controlled/native CI example](controlled-faults.md)
 and checkpoint continuation twice. Controlled source records remain
 `constructed` / `not_evaluated` / `insufficient_evidence`; temporal admission raises.
-No source-collection result closes the broader benchmark program in #261.
+Source collection alone does not establish cross-corpus effectiveness.
+
+[Pre-execution protocol records](release-history.md#pre-execution-protocol-records)
+retain the historical declaration evidence for audit.
 
 ## Continue the workflow
 
@@ -2391,7 +2485,7 @@ selection overhead and observed latency remain distinct quantities.
 The laboratory is one owned constructed family under COLEMAN's MIT license.
 It vendors no benchmark data or external implementation. Source admission,
 production-reality coverage, protected statistics, comparable baselines and
-confirmatory corpus execution remain separate #261 gates. A synthetic stress
+confirmatory corpus execution require separate evidence. A synthetic stress
 case cannot fill an uncovered real-evidence cell.
 
 ## Continue the workflow
@@ -3650,10 +3744,10 @@ under the declared execution conditions? COLEMAN can retain that evidence,
 including unexpected and inconclusive results, without presenting a reconstructed
 sequence as historical CI.
 
-This source slice of [#261](https://github.com/jacksonpradolima/coleman/issues/261)
-adds an offline typed observation adapter. It does not complete source admission,
-fault diversity, baseline comparisons or the cross-corpus benchmark. The registry's
-seven required diversity cells remain uncovered. Source assessments for
+The offline typed observation adapter retains this controlled evidence.
+Source admission, fault diversity, baseline comparisons and cross-corpus
+evaluation require additional evidence. The registry's seven required diversity
+cells remain uncovered. Source assessments for
 [RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) remain separate.
 
 The optional [pinned JUnit3 producer](junit-source-capture.md) now provides a
@@ -4136,7 +4230,7 @@ uncovered. Jenkins single/stage views are one source model; reviewed observed
 GitLab pipeline/job/variant reports provide a different structure without
 flattening identities. At least two are required; constructed capture runtimes
 and synthetic workers cannot satisfy this gate. Model presence alone does not
-grant historical admission or close [#261](https://github.com/jacksonpradolima/coleman/issues/261).
+grant historical admission or establish cross-corpus effectiveness.
 
 ## Add a source without changing the runner
 
@@ -4248,7 +4342,7 @@ It identifies this frozen source/review snapshot, not a universal dataset or an
 efficacy result. Full reports stay outside Git because embedded controlled
 observations retain their recipe-only component restrictions. Original phase-one
 fixture readiness still leaves all seven regimes uncovered; this separate scoped
-audit does not rewrite that artifact or close #261.
+audit does not rewrite that artifact or establish cross-corpus effectiveness.
 
 ### Published 4.16 compatibility
 
@@ -4910,9 +5004,9 @@ pre-execution test membership or other admission prerequisites. Controlled
 captures establish observations under their frozen conditions. Synthetic cases
 establish mechanism behavior. None supplies a universal performance claim.
 
-The historical cross-corpus confirmation remains unfinished. Its tracking phase
-was [closed with explicit unmet criteria](roadmap.md#historical-corpus-status),
-rather than declared complete. The [research guide](research.md#datasets-and-source-studies)
+The historical cross-corpus confirmation remains unfinished. The
+[evidence requirements](roadmap.md#historical-corpus-status) explain what is still
+needed for that claim. The [research guide](research.md#datasets-and-source-studies)
 links the source papers; their empirical findings and this platform's later
 qualification claims should be read separately.
 
@@ -5328,63 +5422,110 @@ claims beyond correctness.
 
 ### FILE: docs/decisions/001-point-in-time-observations.md
 
-# ADR 001: point-in-time observations and decision signals
+# Why CI histories retain late results and corrections
 
-Status: accepted in the 4.2 feature line; implements the boundary requested in
-[#258](https://github.com/jacksonpradolima/coleman/issues/258).
+A policy should rank tests using information that was available when the decision
+was made. CI systems often publish results late, correct a duration or attach a
+final outcome after an earlier report. If an experiment simply reads the latest
+row, it can give a past decision information from the future.
 
-## Context
+COLEMAN retains the revisions and their availability so that you can reconstruct
+the decision's actual input. This matters when preparing contextual features,
+replaying a history and auditing an experiment after its source has changed.
 
-CI outcomes and durations may arrive late or be corrected. Replacing a stored row
-would erase what a policy could know at an earlier decision. The protected
-`Timestamp`, `TemporalObservation` and `TemporalPlan` contracts already validate
-UTC instants, revisions, groups and temporal eligibility. The native runner already
-owns lifecycle, processes, result sinks and checkpoints.
+## A correction must not rewrite an earlier decision
 
-## Decision
+Suppose a test ran at 10:00 UTC. The source first reports a duration of three
+seconds, then corrects it to nine seconds five minutes later:
 
-Add `coleman.observations` as a transport-independent typed boundary. Immutable
-revision histories preserve source availability, first local receipt and explicit
-predecessors. As-of selection uses only eligible revisions. Source adapter SDKs,
-credentials, collection permissions, clock reconciliation and source-specific
-identity rules stay in provider-owned packages implementing `ObservationProvider`.
-The base package supplies an offline provider for repository-owned CI fixtures.
-No dynamic provider import, network fetch, CLI/MCP dependency or new runner exists.
+| Event | UTC time | What the local experiment can use |
+| --- | --- | --- |
+| Test execution occurs | 10:00:00 | No duration observation has arrived |
+| Source publishes the first duration | 10:00:02 | Three seconds is public, but not yet received locally |
+| Local collector receives it | 10:00:04 | Three seconds becomes eligible |
+| Policy makes a decision | 10:00:05 | The eligible duration is three seconds |
+| Corrected duration is received | 10:05:01 | Nine seconds becomes eligible for later decisions |
 
-Reuse protected time/split validation and #251 measurements/provenance. Fit a simple
-nonnegative quantity mean only on eligible training observations, frozen before
-use. Preserve its evidence and explicit rounding; label outputs as estimates or
-priority scores, never calibrated probabilities or inference results. Freshness
-uses source event age at the decision and remains an explicit policy parameter.
+A query at 10:00:03 still has no locally available duration. Repeating the
+10:00:05 query after the correction must still return three seconds. A query
+after 10:05:01 can use nine seconds. Event time, source availability and first
+local receipt answer different questions; none substitutes for the others.
 
-Use `RunnerExtension.build_environment_fn` for the native example's policy and
-monitor integration. Emit typed signals and domain sidecars before the existing
-checkpoint advances. Reuse `ArtifactWriter` immutable publication and native
-manifest discovery. No second state/checkpoint store is introduced.
+This example assumes comparable UTC clocks. A provider with contradictory clock
+information must resolve its source contract before producing an eligible history.
+COLEMAN does not invent an offset to make a record appear available earlier.
 
-## Assumptions and consequences
+## How the data reaches a decision
 
-- The initial source is owned, offline, synthetic CI data. It establishes functional
-  behavior, not provider completeness, independence, prospective evidence or value.
-- Providers attest identities and complete bounded lineages. First receipt remains
-  fixed across duplicate deliveries. UTC source/local clocks must be comparable;
-  impossible chronology fails. Existing Python datetime semantics have microsecond
-  resolution; providers must declare normalization for finer source clocks.
-- Complete single-parent lineages allow out-of-order delivery and timestamp ties.
-  Missing parents, forks, conflicting duplicates and changed units/identity fail.
-  Truncated histories cannot silently become complete histories.
-- Selected input fingerprints exclude future values; whole-source artifact hashes
-  remain separate. Later evaluation must still apply the complete protected fold
-  grouping protocol; fitting a past view cannot inspect future group memberships.
-- Generic signal readers validate metadata/chronology, without executing a producer
-  by its name/fingerprint. Mean artifacts rederive training estimates; use the
-  frozen model's `verify_signal` when consuming its serialized signals.
-- Provider scraping/authentication, signal calibration, sophisticated forecasting,
-  streaming retention and external deployment remain outside this issue. Base
-  dependencies and native orchestration remain sufficient for the installed demo.
+```mermaid
+flowchart TD
+    S[Original CI result] --> H[Revision history]
+    C[Later correction] --> H
+    H --> V[View at the decision cutoff]
+    V --> F[Eligible features or frozen training]
+    F --> D[Typed decision signal]
+```
 
-The [human guide](../point-in-time-observations.md) defines the actual v1 API,
-limits, compatibility, recovery and complete CI examples.
+Each logical observation has an immutable revision lineage. A correction names
+its predecessor, retains the source identity and units, and records when it became
+available. Repeated delivery preserves the first receipt. Out-of-order delivery
+can be accepted when the complete lineage is supplied; missing predecessors,
+forks and conflicting duplicates are rejected.
+
+The selected view identifies only the revisions eligible at its cutoff. A
+whole-history digest can change when later evidence is appended while the earlier
+selected view remains stable. Retain both identities when you need to explain
+which source was stored and which information a particular decision actually used.
+
+## What this changes in an experiment
+
+- **Contextual features:** the current execution's eventual verdict or duration
+  cannot become a pre-decision input merely because it exists in today's export.
+- **Training:** eligible history is selected at the training boundary and model
+  evidence is frozen before use. A later correction does not silently refit it.
+- **Freshness:** a newly delivered correction does not make an old execution
+  recent. The declared age rule uses the source event time.
+- **Missing information:** no eligible observation remains explicitly missing;
+  it does not become a duration or score of zero.
+- **Interpretation:** a duration estimate, priority score, calibrated probability
+  and statistical comparison have different meanings. Signals retain the declared
+  unit, meaning, producer and input/model identities.
+
+The supplied quantity-mean helper is a transparent baseline for nonnegative
+physical quantities. It retains its eligible inputs and rounding rule. More
+elaborate forecasting can use the same observation boundary, but needs its own
+assumptions and evaluation.
+
+## Connect your CI source
+
+A source adapter supplies stable observation and execution-group identities,
+original units, source availability, first receipts and complete bounded lineages.
+The core validates and queries these records offline. Provider authentication,
+network collection and source-specific clock normalization belong to the adapter.
+
+The native runner, result sinks, artifact writer and checkpoints remain the
+execution path. An extension can publish typed signals and their provenance
+beside native results before checkpoint advancement. The installed example uses
+owned synthetic CI data to demonstrate that integration.
+
+An eligible historical view establishes which supplied data a decision could
+use. Independent project/grouping evidence, source completeness and the protected
+evaluation protocol still determine which scientific conclusions are justified.
+
+## Read the implementation as a user
+
+[Point-in-time observations](../point-in-time-observations.md) provides the complete
+installed example, exact fields, rounding, revision limits and recovery behavior.
+[Contextual policies](../policies.md#contextual-policies) explains feature use;
+[protected evaluation](../protected-evaluation.md) explains temporal splits,
+group boundaries and frozen comparisons.
+
+For the research motivation, see Kaufman, Rosset, Perlich and Stitelman,
+[*Leakage in data mining*](https://doi.org/10.1145/2382577.2382579),
+ACM Transactions on Knowledge Discovery from Data 6(4), 2012. Their analysis
+explains why information unavailable at prediction time can compromise an
+experiment. The [research guide](../research.md) connects this problem to CI
+prioritization and evaluation.
 
 
 
@@ -6470,7 +6611,7 @@ publication makes identical retries/concurrent publication idempotent and reject
 conflicts; incomplete temporary files are not completed artifacts. Manifests list
 these results. Local hard-link/fsync and power-loss limitations are unchanged.
 
-`coverage_record(result, run_id=..., available_at=...)` creates #251 measurements
+`coverage_record(result, run_id=..., available_at=...)` creates [versioned measurements](domain-results.md)
 for existing sinks. Exact decimal JSON remains authoritative. The scalar adapter
 explicitly projects to binary64, names measurements `selection_cost`,
 `coverage_objective`, `coverage_upper_bound`, `coverage_absolute_gap`, and suffixes
@@ -7497,6 +7638,11 @@ Run adaptive policies against test histories, inspect what each decision knew,
 and evaluate the evidence before changing how your CI runs. The same platform
 supports ordinary test suites and highly configurable systems.
 
+Choose among **37 policies**, including Random, UCB, FRRMAB, SlMAB, LinUCB,
+Thompson sampling and policy portfolios. Work from original-source data or known
+stress cases, retain reproducible outputs, and compare candidates under an explicit
+[policy and evidence protocol](policies.md).
+
 Start with a complete local experiment, then follow the branch that matches your
 question. Each branch connects a practical workflow to its concepts, contracts
 and research background.
@@ -7537,6 +7683,30 @@ The links below provide the same routes as the graph, including keyboard access.
 | How would this enter a CI pipeline? | [Integration guide](integration-guide.md) | [Operational accounting](operational-pilot.md), [shadow evaluation](prospective-shadow.md) |
 | Where is a particular symbol or term? | [API reference](api-reference.md) | [Glossary](glossary.md), [architecture](setup.md) |
 
+## What you can build with COLEMAN
+
+| Your goal | Available workflow |
+| --- | --- |
+| Compare adaptive CI prioritization policies | The native TCPCI runner, [37 policies](policies.md), RNFail/TimeRank rewards, contextual inputs and [parameter sweeps](configuration.md) |
+| Stress a difficult CI decision | [32 deterministic interaction-covering cases](ci-stress-laboratory.md), explicit truth and feedback clocks, native Parquet and resumable agents |
+| Audit what a source actually supports | [Source admission](corpus-admission.md): original evidence, explicit units and a 35-axis production-reality matrix |
+| Compare repeated CI experiments | [Raw build/seed records and paired repository-family means](corpus-evaluation.md), explicit missingness and protected access |
+| Compare metrics with known limits | [Conservative bounded paired means](bounded-paired-evaluation.md), full-family uncertainty and practical equivalence under declared independent-unit assumptions |
+| Assess public CI collection | [Bounded public Actions collection](public-ci-feasibility.md), typed receipts and reality-axis accounting that retains missing test and physical-cost evidence |
+| Develop comparable baseline matrices | [Frozen native-policy and heuristic matrices](comparable-baselines.md), explicit incompatibilities, raw costs and checkpoint recovery |
+| Evaluate configurable software | [Original LibSSH → WTS/VTS Parquet and checkpointed replay](hcs-parquet-etl.md), [CTest corroboration](hcs-trace-evidence.md) and [whole-set/variant strategies](highly-configurable.md) |
+| Collect real-fault observations | [Controlled Java matrices](java-fault-matrix.md) and [Python source capture](python-source-capture.md), pinned source/runtime recipes, raw process evidence and offline recovery |
+| Inspect a constructed C weakness | [Pinned Juliet/GCC capture](c-seeded-source-capture.md), an independent arithmetic oracle, raw process evidence and interruption recovery |
+| Reproduce and inspect an experiment | [Typed RunSpec and the library API](api/experiment-api.md), [configuration identity and provenance](setup.md#identity-and-reproducibility), Parquet results and resumable checkpoints |
+| Select finite coverage under a budget | [Coverage selection](finite-coverage.md), explicit costs and solver-specific certificates and limits |
+| Allocate resources under declared scenarios | [Scenario-payoff allocation](scenario-payoffs.md), signed outcomes, resource constraints and conservative evidence handling |
+| Check a CI decision before adoption | [Independent mathematical benchmarks](decision-benchmarks.md), [protected comparisons](protected-evaluation.md) and [operational accounting](operational-pilot.md) |
+| Extend or integrate the platform | [Library API](api/experiment-api.md), [application API and optional MCP](application-api.md), [versioned domain results](domain-results.md), hooks and [runner extensions](extensibility.md) |
+
+The workflows retain their own assumptions: a source conversion, controlled fault,
+mathematical check and historical policy comparison answer different questions.
+Follow the linked guide for a complete example and the evidence it supports.
+
 ## What a run gives you
 
 A typed specification fixes the experiment configuration. The native runner
@@ -7549,9 +7719,14 @@ results locally with DuckDB or Polars.
 
 ## Research and evidence
 
-The method originates in the [COLEMAN TCPCI study](research.md#adaptive-prioritization)
-and its [configurable-system extensions](research.md#configurations-and-variants).
-The [research guide](research.md) connects publications to the capabilities here.
+The original studies connect the implemented workflows to their research questions:
+
+- **Adaptive CI prioritization:** Prado Lima and Vergilio, [*A Multi-Armed Bandit Approach for Test Case Prioritization in Continuous Integration Environments*](https://doi.org/10.1109/TSE.2020.2992428), IEEE TSE, 2022.
+- **Highly configurable software:** Prado Lima et al., [*Learning-based prioritization of test cases in continuous integration of highly-configurable software*](https://doi.org/10.1145/3382025.3414967), SPLC, 2020.
+- **WTS/VTS evaluation:** the same authors, [*Cost-effective learning-based strategies for test case prioritization in continuous integration of highly-configurable software*](https://doi.org/10.1007/s10664-021-10093-3), Empirical Software Engineering, 2022.
+
+The [research guide](research.md) connects those studies and the original algorithm,
+dataset and statistical-method papers to the corresponding examples.
 
 A successful data conversion or replay demonstrates that a workflow runs. A claim
 about policy effectiveness also needs suitable source evidence, independent
@@ -7809,9 +7984,8 @@ Those labels were checked against the pinned Defects4J metadata revision
 and [Codec](https://github.com/rjust/defects4j/blob/8c16da8230843cdc918eaf4ddb449637f02b83c6/framework/projects/Codec/active-bugs.csv).
 
 Codec retains all 25 production Java files per role, 15 fixed fixture Java files,
-and original `LICENSE.txt`/`NOTICE.txt`. Fixture selection was recorded in
-[#304](https://github.com/jacksonpradolima/coleman/issues/304) **before observing
-new source outcomes**:
+and original `LICENSE.txt`/`NOTICE.txt`. Fixture selection was frozen
+**before observing new source outcomes**. The source exclusions are explicit:
 
 - `DoubleMetaphoneTest.java` embeds separately noticed aspell data and non-UTF8
   bytes. It is outside the existing homogeneous-terms/UTF8 source-view profile.
@@ -7956,7 +8130,8 @@ assert outcome.receipt.admission == "not_evaluated"
 
 Use `--recipe /absolute/path/matrix.json` for another reviewed typed plan. The
 generic controlled domain stays independent of CLI, Docker transports and MCP.
-Protected source admission and policy evaluation remain later #261 subtasks.
+Protected source admission and policy evaluation require separate evidence;
+source collection alone does not establish either.
 
 Normal tests use owned small fixtures with no downloads. With the image prepared
 and all three recipes acquired into an external cache, repeat installed real-source
@@ -7973,6 +8148,9 @@ elapsed counters are not substituted for CI costs. Actual historical-CI ETL/repl
 remains available in the [Karaf](lrts-parquet-etl.md),
 [ActiveMQ/Log4j](lrts-stage-views.md) and
 [RTPTorrent](rtptorrent-parquet-etl.md) workflows.
+
+[Pre-execution protocol records](release-history.md#pre-execution-protocol-records)
+retain the historical declaration evidence for audit.
 
 ## Continue the workflow
 
@@ -8182,7 +8360,7 @@ pair counts, then repeats the same trial to verify byte-identical recovery. It
 mocks no source compiler, JVM, cache, converter or artifact writer. It establishes
 functional reproduction only. Chronological benchmark admission, additional
 languages/faults, independent observations, fair baselines and all seven diversity
-regimes remain work in [#261](https://github.com/jacksonpradolima/coleman/issues/261).
+regimes require additional source evidence and comparative evaluation.
 
 New v2 container ownership includes the resolved output namespace. Equal logical
 trials in separate output roots cannot collide or clean each other's containers;
@@ -9464,15 +9642,17 @@ not rewrite the information used by an earlier decision. The base package needs
 no provider SDK, credential, hosted service or optional MCP dependency.
 
 Use the [installed-package setup](getting-started.md) for the base SDK.
-Run source examples outside the checkout. [ADR 001](decisions/001-point-in-time-observations.md)
-records the module, dependency and extension decisions.
+Run source examples outside the checkout.
+[Why histories retain late results and corrections](decisions/001-point-in-time-observations.md)
+explains the CI problem and the design through a concrete timeline.
 
 ## Observation and revision contract
 
 `ObservationRevision` schema v1 contains protected `TemporalObservation` metadata,
 a logical entity ID, first local `received_at`, explicit predecessor `supersedes`
-and a typed #251 `Measurement`. Event, source availability and first receipt are
-separate instants. Effective availability is their later availability/receipt;
+and a typed [`Measurement`](domain-results.md). Event, source availability and
+first receipt are separate instants. Effective availability is their later
+availability/receipt;
 receipt cannot precede declared source availability. Source/local clocks must be
 comparable; clock disagreement is rejected, never silently adjusted.
 
@@ -9493,7 +9673,7 @@ lexically ranked. A newer revision can arrive before its predecessor; a late
 older delivery cannot replace it. Unknown/unavailable values retain their states
 rather than reviving an obsolete earlier value.
 
-For the issue's CI fixture, event time is `10:00:00Z`, r1 becomes available at
+For the CI example below, event time is `10:00:00Z`, r1 becomes available at
 `10:00:02Z`, and r2 at `10:05:00Z`:
 
 | Query cutoff | Visible revision |
@@ -9537,8 +9717,9 @@ independent observations.
 `fit_quantity_mean` implements a simple baseline for nonnegative physical
 quantities, not a claim of superior forecasting. Inputs must be finite, between
 0 and 10^12, in exactly the declared units/meaning. It sums exact rational forms
-of the #251 binary64 inputs and rounds the mean **up to 10^-9 of that unit**,
-independently of Decimal context. For example, `(0, 1, 0)` gives `0.333333334`.
+of the versioned measurement inputs in binary64 and rounds the mean
+**up to 10^-9 of that unit**, independently of Decimal context. For example,
+`(0, 1, 0)` gives `0.333333334`.
 Binary64 `0.1` is slightly above mathematical 0.1 and therefore rounds up to
 `0.100000001`; this rule does not recover an unknown original decimal spelling.
 Exact rounded `Quantity` values remain in the model; signal values declare their
@@ -9737,19 +9918,52 @@ interpreting the value of a more elaborate method. The
 [original COLEMAN study](https://doi.org/10.1109/TSE.2020.2992428)
 provides the research context for bandit-based TCPCI.
 
-| Family | Examples implemented in COLEMAN | Question to investigate |
-| --- | --- | --- |
-| Random and greedy | `Random`, `Greedy`, `EpsilonGreedy`, `OptimisticGreedy` | Does adaptation improve on simple rankings under the same feedback? |
-| Confidence-based | `UCB`, `UCB1`, `UCB2`, `KLUCB`, `UCBTuned`, `UCBV`, `MOSSUCB` | How does exploration respond to limited observations? |
-| Stochastic and adversarial | `ThompsonSampling`, `BayesianUCB`, `Softmax`, `EXP3`, `EXP3IX` | How do different selection mechanisms behave on this history? |
-| Changing-history | `SlidingWindowUCB`, `DiscountedUCB`, `ChangeDetectionUCB`, `FRRMAB`, `SlMAB` | What happens when old feedback becomes less relevant? |
-| Contextual | `LinUCB`, `SWLinUCB`, `LinTS`, contextual epsilon-greedy variants | Do features available before the decision add useful information? |
-| Structured and meta-policy | Combinatorial, dueling/ranking and `PortfolioUCB` policies | Does the additional structure justify its assumptions and cost? |
+## Available native policies
 
-This is a guide to families, not a claim that each implementation inherits every
-theoretical guarantee of the original algorithm. Exact names and constructors
-are in the [policy API](api/policy.md); configuration examples are in the
-[configuration reference](configuration.md).
+The native runner recognizes these **37 names**. Required constructor parameters
+belong in the corresponding reward branch of `algorithm`; some windowed methods
+also require `window_sizes`. Use the [configuration reference](configuration.md)
+and [constructor API](api/policy.md) for the exact fields. A configuration pack
+is a preset for a subset of these names, not the complete policy inventory.
+
+| Family | Native configuration names | What changes in the ranking |
+| --- | --- | --- |
+| Random and greedy | `Random`, `Greedy`, `EpsilonGreedy`, `DecayEpsilonGreedy`, `OptimisticGreedy`, `EpsilonDecreasing` | Start with random order, exploit accumulated value, or vary explicit exploration |
+| Confidence-based | `UCB`, `UCB1`, `UCB2`, `KLUCB`, `UCBTuned`, `UCBV`, `MOSSUCB` | Combine accumulated value with different exploration/confidence constructions |
+| Bayesian and stochastic | `ThompsonSampling`, `BayesianUCB`, `BootstrappedThompson`, `Softmax`, `Pursuit`, `PHE` | Sample, randomize or update selection preferences using the observed feedback |
+| Adversarial | `EXP3`, `EXP3IX` | Use exponential-weight exploration mechanisms |
+| Changing-history | `SlidingWindowUCB`, `DiscountedUCB`, `ChangeDetectionUCB`, `FRRMAB`, `SlMAB` | Adapt the use of older feedback through windows, discounting, detected changes or rank-based credit |
+| Contextual | `LinUCB`, `SWLinUCB`, `LinTS`, `SWLinTS`, `ContextualEpsilonGreedy`, `SWContextualEpsilonGreedy` | Condition a test's score on configured feature vectors |
+| Combinatorial | `CombinatorialUCB`, `CombinatorialThompson` | Prioritize a subset while retaining the native full-ranking interface |
+| Dueling/ranking | `DuelingUCB`, `PairwiseThompsonRanking` | Build a ranking using pairwise preference estimates |
+| Portfolio | `PortfolioUCB` | Select among declared candidate policies online |
+
+The policy families expose different hypotheses to test. Keep their actual native
+reward/update and feedback contracts visible: sharing an algorithm name does not
+establish the regret guarantee or feedback model of the original publication.
+
+## Connect a policy to its research
+
+| Research foundation | What it helps you understand | Start with |
+| --- | --- | --- |
+| Auer, Cesa-Bianchi and Fischer, [*Finite-time Analysis of the Multiarmed Bandit Problem*](https://doi.org/10.1023/A:1013689704352), 2002 | Classical exploration through confidence bounds under the paper's reward assumptions | `UCB1`, then compare the configurable UCB variants |
+| Li, Chu, Langford and Schapire, [*A Contextual-Bandit Approach to Personalized News Article Recommendation*](https://arxiv.org/abs/1003.0146), 2010 | Linear contextual exploration | `LinUCB`, with features actually available before the CI decision |
+| Chen, Wang and Yuan, [*Combinatorial Multi-Armed Bandit: General Framework and Applications*](https://proceedings.mlr.press/v28/chen13a.html), 2013 | How subset actions, their observed components and reward structure affect a bandit problem | Combinatorial policy interfaces and their actual subset/full-ranking behavior |
+| Prado Lima and Vergilio, [*A Multi-Armed Bandit Approach for Test Case Prioritization in Continuous Integration Environments*](https://doi.org/10.1109/TSE.2020.2992428), 2022 | Applying adaptive feedback to volatile CI test suites | Native policies, RNFail/TimeRank, scheduling budgets and repeated builds |
+
+For complete citations and the HCS/dataset/evaluation studies, follow the
+[research guide](research.md). Evaluate extensions under the actual CI workload,
+source availability, feedback and cost protocol.
+
+## Compare exploration settings
+
+The [README sweep example](https://github.com/jacksonpradolima/coleman#sweep-engine)
+runs three UCB exploration coefficients across two seeds using the existing sweep
+engine. Compare configuration choices on a declared validation period, retain
+simple baselines, and freeze the evaluation protocol before protected outcomes.
+[Comparable baseline matrices](comparable-baselines.md) bind the candidate grid,
+observations and execution costs; [protected evaluation](protected-evaluation.md)
+provides the separate inference path.
 
 ## Rewards and quality metrics serve different purposes
 
@@ -10360,7 +10574,7 @@ predate the access receipt or consumed outcomes. Exported comparison records use
 this completion time as `available_at`, never the earlier access request time.
 Use the embedded records to verify results against immutable sink records; reserve a
 test/verification access before inspecting protected raw outcomes again.
-`FamilyReport.domain_records(run_id)` exports typed #251 measurements with explicit
+`FamilyReport.domain_records(run_id)` exports [versioned measurements](domain-results.md) with explicit
 units/signs/unavailable states and no synthetic learning reward. The full report
 retains statistical conclusions and access context that a scalar alone cannot convey.
 
@@ -10378,7 +10592,7 @@ python ci.py ./protected-ci-output
 The standalone script freezes Greedy/Random RunSpecs before invoking
 `run_with_extension`. Four synthetic repository units exercise the real native
 runner, RNFail reward, NAPFD metric and Parquet sink. It traces candidate fingerprints
-to saved specs, publishes a queryable report and #251 records, and generates a
+to saved specs, publishes a queryable report and versioned measurement records, and generates a
 manifest. It intentionally returns `insufficient_evidence` for four units under a
 20-unit minimum. A repeated access is recorded as reuse before the final manifest
 is generated, so both receipts appear in its inventory. These synthetic repositories
@@ -10540,13 +10754,13 @@ A future collector migration must be explicit, retaining original bytes and
 semantics rather than rewriting a completed v1 capture.
 
 `snapshot.history()` uses the **materialized snapshot as the source producer**:
-only observed completed job intervals enter #258 observations, with availability
-and receipt at snapshot assembly. The original HTTP receipts remain separate.
+only observed completed job intervals enter the point-in-time observation history,
+with availability and receipt at snapshot assembly. The original HTTP receipts remain separate.
 This conservative offline projection never asserts when the provider first
 exposed a field. An unfinished interval produces no completed observation.
 Each poll is a distinct predeclared source; this is not an appendable receiver
-with global first-receipt/correction lineage. It does not synthesize #260 build
-admissions, feedback or a decision seal.
+with global first-receipt/correction lineage. It does not synthesize prospective
+build admissions, feedback or a decision seal.
 
 Every snapshot also supplies all **35 existing production-reality axes**. Source
 identities, trigger, current attempt and runner labels can be reported; explicit
@@ -10701,12 +10915,11 @@ of becoming successful tests. The CLI also accepts a bounded versioned recipe vi
 
 ## Frozen source and environment
 
-The [public pre-execution protocol](https://github.com/jacksonpradolima/coleman/issues/305#issuecomment-6233689817)
-was recorded before observing subject outcomes. Both profiles use these inputs:
+The source and environment were frozen before observing subject outcomes.
+Both profiles use the inputs listed below.
 
-An explicit [observer hardening amendment](https://github.com/jacksonpradolima/coleman/issues/305#issuecomment-6234316313)
-pins the updated harness before its qualification. It changes dependency storage
-to an atomically allocated mode0700 temporary directory in container tmpfs.
+The qualified observer pins its harness and uses an atomically allocated
+mode0700 temporary directory in container tmpfs for dependency storage.
 Subject/fixture/test, wheel, image and locale declarations remain unchanged;
 original packets and their original producer are retained without reinterpretation.
 
@@ -10886,8 +11099,8 @@ rewrite or copy of old observations into a new identity is performed.
 Native CI/checkpoint integration is tested separately with the owned exact-answer
 [controlled CI example](controlled-faults.md). Controlled Python timing is never
 fabricated into a historical build or native scheduling-cost dataset. Broader
-source admission, diversity and comparative evidence remain in the [public
-roadmap](roadmap.md) and #261's remaining subtasks.
+source admission, diversity and comparative evidence have their own
+[evidence requirements](roadmap.md).
 
 Multi-case raw replay compares observations in the generic domain's canonical
 logical-key order. This validation correction preserves original raw/report
@@ -10898,6 +11111,9 @@ trials in separate output roots cannot collide or clean each other's containers;
 observation identities retain their original meaning. Keep incomplete ownership
 state at its original output location for recovery, and retain the original
 reviewed producer package when reopening older captures.
+
+[Pre-execution protocol records](release-history.md#pre-execution-protocol-records)
+retain the historical declaration evidence for audit.
 
 ## Continue the workflow
 
@@ -10929,6 +11145,19 @@ research are summarized in [evidence status](roadmap.md).
 
 Maintainers should use [release preparation](releases.md) for packaging, validation
 and publication, and [dependency security](dependency-security.md) for updates.
+
+## Pre-execution protocol records
+
+These time-stamped public records preserve source-selection and observer decisions
+made before qualification. They supplement the source/runtime pins and retained
+raw evidence when auditing reproducibility. The complete executable procedures
+are in the linked source guides; this archive is supporting provenance.
+
+| Source guide | Recorded protocol evidence |
+| --- | --- |
+| [Java fault matrix](java-fault-matrix.md) | [Frozen fixture-selection record](https://github.com/jacksonpradolima/coleman/issues/304) |
+| [Python source capture](python-source-capture.md) | [Source/runtime protocol](https://github.com/jacksonpradolima/coleman/issues/305#issuecomment-6233689817); [observer storage amendment](https://github.com/jacksonpradolima/coleman/issues/305#issuecomment-6234316313) |
+| [Constructed C capture](c-seeded-source-capture.md) | [Source selection and component terms](https://github.com/jacksonpradolima/coleman/issues/306#issuecomment-6236007670); [frozen selectors, input pool and oracle](https://github.com/jacksonpradolima/coleman/issues/306#issuecomment-6236145420); [executable scratch profile](https://github.com/jacksonpradolima/coleman/issues/306#issuecomment-6236219189) |
 
 
 
@@ -12676,6 +12905,33 @@ Read this for classical confidence-based exploration under its stated reward
 assumptions. The [policy guide](policies.md) distinguishes that theoretical setting
 from a particular CI history, reward transformation or implementation.
 
+## Structured policies and subset feedback
+
+**Chen, Wang and Yuan. _Combinatorial Multi-Armed Bandit: General Framework and
+Applications._ ICML, PMLR 28(1), 151–159, 2013.**
+[Original proceedings and paper](https://proceedings.mlr.press/v28/chen13a.html).
+
+This provides a foundation for thinking about subset actions, component feedback
+and reward structure. Read it alongside [the policy families](policies.md) and
+[finite coverage selection](finite-coverage.md). A native full-ranking adaptation
+or a finite solver is not automatically the paper's online feedback/oracle model;
+check the actual assumptions before applying a guarantee.
+
+## Information availability and data leakage
+
+**Kaufman, Rosset, Perlich and Stitelman. _Leakage in data mining._
+ACM Transactions on Knowledge Discovery from Data 6(4), 2012.**
+[Publisher and DOI](https://doi.org/10.1145/2382577.2382579).
+
+This explains how information unavailable at prediction time can compromise an
+experiment. In CI, an eventual verdict, corrected duration or late report can be
+present in a later export without being available to an earlier policy.
+[Late results and corrections](decisions/001-point-in-time-observations.md)
+explains that problem through an execution timeline.
+[Point-in-time observations](point-in-time-observations.md) provides the complete
+API example, while [protected evaluation](protected-evaluation.md) adds the temporal
+and grouped comparison protocol.
+
 ## Configurations and variants
 
 **Prado Lima, Mendonça, Vergilio and Assunção. _Learning-based prioritization of
@@ -12725,7 +12981,7 @@ choosing an analysis by name.
 [Repeated observations](corpus-evaluation.md) explains why builds, seeds and
 variants cannot be pooled as independent projects. [Source admission](corpus-admission.md)
 separates source integrity from scientific eligibility. [Evidence status](roadmap.md)
-records the incomplete historical cross-corpus confirmation and its closure note.
+explains the missing prerequisites for historical cross-corpus confirmation.
 
 The [independent decision benchmarks](decision-benchmarks.md) validate bounded
 mathematical routines against independent references. Such checks establish
@@ -12957,78 +13213,76 @@ and observed claims separate.
 
 ### FILE: docs/roadmap.md
 
-# Evidence status and future work
+# What the current evidence supports
 
-COLEMAN has a reusable native TCPCI runner and working source, replay, measurement
-and evaluation paths. This page distinguishes available capabilities from
-scientific conclusions that have not been established. Use the
-[documentation map](index.md) to learn the platform and the
-[compatibility archive](release-history.md) to investigate individual deliveries.
+Choose a workflow by the question you need to answer. A reproducible source
+conversion, a controlled fault observation, a mathematical correctness check and
+a historical comparison provide different kinds of evidence.
 
-## Available foundations
+## What you can use today
 
-| Capability | Where to use it |
-| --- | --- |
-| Typed native experiments, sweeps and checkpoints | [First experiment](getting-started.md), [configuration](configuration.md) |
-| Original-source analytical/native data paths | [Dataset workflows](datasets.md) |
-| Controlled Java/Python observations and a constructed C weakness | [Controlled observations](controlled-faults.md) |
-| Known-answer difficult CI cases | [Stress laboratory](ci-stress-laboratory.md) |
-| Source integrity and production-reality assessment | [Source admission](corpus-admission.md) |
-| Comparable candidates and repeated observations | [Baselines](comparable-baselines.md), [corpus evaluation](corpus-evaluation.md) |
-| Protected normal or bounded paired comparisons | [Protected evaluation](protected-evaluation.md), [bounded means](bounded-paired-evaluation.md) |
-| Time-aware observations and prospective integration studies | [Integration guide](integration-guide.md) |
-| Finite selection/allocation contracts and correctness checks | [Coverage](finite-coverage.md), [allocation](scenario-payoffs.md), [benchmarks](decision-benchmarks.md) |
+| Your question | Available workflow | Interpretation |
+| --- | --- | --- |
+| Can I execute and inspect a CI prioritization experiment? | [Native experiments, policies, sweeps and checkpoints](experiments.md) | Reproducible execution under your declared inputs and budgets |
+| Can I replay original public CI observations? | [LRTS, RTPTorrent and LibSSH data paths](datasets.md) | Source-specific analytical/native projections with explicit grouping, exclusions and qualification limits |
+| Can I reproduce a source fault? | [Controlled Java and Python observations](controlled-faults.md) | Behavior under a frozen source, observer and runtime; the constructed C workflow has its own narrower scope |
+| Can I test drift, churn or delayed feedback? | [CI stress laboratory](ci-stress-laboratory.md) | Known-answer mechanism checks under authored conditions |
+| Can I audit source suitability? | [Source admission](corpus-admission.md) | Byte/provenance checks and explicit scientific eligibility; missing evidence remains visible |
+| Can I compare methods? | [Baselines](comparable-baselines.md), [repeated observations](corpus-evaluation.md), [protected comparisons](protected-evaluation.md) | A declared comparison, with valid outcomes including benefit, harm, equivalence and insufficient evidence |
+| Can I check operational costs before adoption? | [Operational pilot](operational-pilot.md), [resource replay](resource-replay.md), [shadow evaluation](prospective-shadow.md) | Explicit observed versus modeled costs and declared deployment assumptions |
 
-These are implemented capabilities with their own documented contracts and limits.
-They are not a declaration that every dataset is scientifically admitted or that
-one policy is universally superior.
+The [dataset guide](datasets.md) connects each available source to its executable
+workflow, original terms and evidence type. The [research guide](research.md)
+connects the underlying publications to their original questions and subjects.
 
 ## Historical corpus status
 
-The diversified corpus phase delivered twelve native subtasks and several source
-qualification increments through the verified 4.19.0 release. The maintainer chose
-to close [#261](https://github.com/jacksonpradolima/coleman/issues/261#issuecomment-6271942313)
-and [#313](https://github.com/jacksonpradolima/coleman/issues/313#issuecomment-6271940884)
-as **not planned**, with unmet criteria preserved. This is administrative closure,
-not completed historical cross-corpus confirmation.
+A final admitted historical cross-corpus confirmation has not been completed.
+The runnable source paths do not yet establish a broad comparison across all of
+these historical settings:
 
-Four required regimes remain unqualified:
+| Setting | Evidence needed for a defensible comparison |
+| --- | --- |
+| Small volatile CI | Pre-decision membership, appearance/removal of tests, outcome availability and independent project/group identity |
+| Medium CI | Continuous source coverage, stable testcase identity, feedback timing and comparable budgets |
+| Long-running or large suites | Original execution grouping, late results, expected test inventory and observed versus modeled physical costs |
+| Highly configurable software | Variant membership, shared executions, sparse cells, attempt identity and independent-family accounting |
 
-- Small volatile historical CI.
-- Medium historical CI.
-- Long-running or large-suite historical CI.
-- Highly configurable historical systems.
+A processed dataset's build number alone does not establish a source clock or
+prove which tests were known before execution. A complete archive can still lack
+those facts. The [RTPTorrent](rtptorrent.md) and [LRTS](lrts.md) source assessments
+explain the specific boundaries; the [LibSSH workflow](hcs-parquet-etl.md) retains
+variant evidence and [original CTest correspondence](hcs-trace-evidence.md).
 
-The missing source-specific evidence includes availability clocks, expected
-pre-execution test membership, continuity, execution grouping/topology and
-independence. A final eligible frozen multi-corpus execution, its raw/per-project/
-cross-corpus report and full confirmatory reproduction tutorial were not completed.
-Existing installed workflows remain useful at their declared scopes.
+No final eligible frozen multi-corpus execution, complete confirmatory report and
+end-to-end confirmatory reproduction tutorial are currently established. The
+existing installed replay and evaluation examples remain usable at their declared
+scopes. Controlled and synthetic observations cannot fill missing historical facts.
 
-The [original-source investigation](https://github.com/jacksonpradolima/coleman/issues/313#issuecomment-6270541363)
-recovers numeric build links for 1,578 of 1,662 HikariCP jobs from three verified
-TravisTorrent snapshots, with 84 unlinked and version-dependent number labels for
-279 jobs. This research is not a released admission contract. The inspected LRTS
-processed release did not resolve the requested original metadata/console evidence.
-The public [upstream data request](https://github.com/lrtsuser/LRTS/issues/4) records
-that dependency; a later response requires renewed verification.
+## What a stronger comparison would require
 
-## Conditions for resuming that work
+1. **Verify source meaning.** Retain original bytes, component terms, units,
+   grouping, expected test membership and information availability.
+2. **Establish eligible observations.** Apply source-specific admission and
+   [point-in-time selection](point-in-time-observations.md); preserve exclusions.
+3. **Freeze a comparable experiment.** Fix candidate configurations, data/splits,
+   metrics, budget/resource protocol and the full hypothesis family before access.
+4. **Use the correct inference unit.** Aggregate dependent builds, variants and
+   seeds within the reviewed family; require justified independent units.
+5. **Publish the evidence.** Retain raw records, per-project/family results,
+   comparison reports, runtime/resource observations and reproduction commands.
 
-Reopen the existing issues if permitted, version-pinned original evidence resolves
-the admission prerequisites, or if the maintainer explicitly approves a revised
-scientific scope. Revalidate source meaning, terms and identities before freezing
-the candidate grid, split, metrics, inference units and resource protocol. Preserve
-negative and inconclusive findings. More conversions, seeds or favorable averages
-alone do not satisfy these gates.
+More seeds do not create additional independent projects. A favorable average
+on one subject does not establish a generally better policy. Negative and
+inconclusive findings remain valid outcomes, including a conservative fallback
+when the required evidence is unavailable.
 
-## Current improvement priorities
+## Engineering improvements with a clear boundary
 
-The [maintainability review](maintainability.md) records the architectural,
-complexity and docstring findings. The immediate direction is to make working
-capabilities easier to learn and compose, preserve bounded domain boundaries,
-and improve public contract documentation. A wholesale rewrite is not justified
-by the current structural measurements.
+The [maintainability review](maintainability.md) records measured complexity,
+public-contract documentation and identity/continuation priorities. The direction
+is to make available capabilities easier to understand and compose while
+preserving the reusable native engine and its compatibility contracts.
 
 
 
@@ -13038,10 +13292,9 @@ by the current structural measurements.
 
 Run a complete installed-package HikariCP workflow: verified
 real archive → full analytical history → bounded native-compatible Parquet →
-Random/UCB → checkpoint recovery. Delivered in
-[#315](https://github.com/jacksonpradolima/coleman/pull/315) for
-[#302](https://github.com/jacksonpradolima/coleman/issues/302), it uses the
-existing native runner. The 4.7 wheel does not contain this ETL API.
+Random/UCB → checkpoint recovery. The adapter prepares the inputs and calls the
+existing native runner; analytical records and replay projections remain linked
+by the source/output receipts.
 
 The preset keeps **46,995 source class executions and 1,662 source jobs** in
 analytical Parquet. It projects **18 executions from eight declared jobs** into
@@ -13343,11 +13596,10 @@ limit cross-job identity and timing comparisons.
 
 The RTPTorrent ZIP64 end record advertises 2,883 entries and 395,312 central-directory
 bytes. This exceeds the existing v1 materializer's entry ceiling and ZIP64 policy.
-That contract remains unchanged. The implementation delivered in 4.8 through
-[#301](https://github.com/jacksonpradolima/coleman/issues/301) adds a separate
-[bounded ZIP64 selection profile](zip64-source-selection.md), without changing
-legacy recipes. The profile is available in the published 4.9 wheel. A real
-selection recipe still requires the complete archive SHA-256; relabeling a partial
+Use the separate [bounded ZIP64 selection profile](zip64-source-selection.md)
+to verify selected members of the original container. Legacy recipes retain
+their existing contract. A selection recipe requires the complete archive
+SHA-256; relabeling a partial
 archive as an already validated ZIP would bypass the existing contract.
 
 ### Observed source discrepancy
@@ -13795,7 +14047,7 @@ and power-loss limits apply; incomplete writes expose no completed JSON. The cor
 does not write files unless this adapter is explicitly called.
 
 `allocation_record(result, run_id=..., available_at=...)` projects selected modeled
-summaries to existing #251 sinks. Exact JSON is authoritative; each projected
+summaries to the existing versioned measurement sinks. Exact JSON is authoritative; each projected
 meaning ends in `binary64-projection-v1` and identifies a modeled quantity. Signed
 losses remain negative, variance has squared units, and no selection yields
 unavailable measurements. Supply actual zoned availability after calculation and
@@ -14698,7 +14950,7 @@ assert csv_path.stat().st_size == 2825388
 
 This is real source acquisition and selected-member validation. The
 [Parquet workflow](rtptorrent-parquet-etl.md) adds complete analytical history,
-a bounded native projection and a declared replay bridge in #302.
+a bounded native projection and a declared [replay bridge](rtptorrent-parquet-etl.md).
 Protected temporal evaluation remains blocked by missing source clocks and
 logical build/job mapping. A fresh installed-wheel regression can additionally
 reverify the real source cache without network:

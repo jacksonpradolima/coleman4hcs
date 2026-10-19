@@ -240,7 +240,7 @@ selection overhead and observed latency remain distinct quantities.
 The laboratory is one owned constructed family under COLEMAN's MIT license.
 It vendors no benchmark data or external implementation. Source admission,
 production-reality coverage, protected statistics, comparable baselines and
-confirmatory corpus execution remain separate #261 gates. A synthetic stress
+confirmatory corpus execution require separate evidence. A synthetic stress
 case cannot fill an uncovered real-evidence cell.
 
 ## Continue the workflow
