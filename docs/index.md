@@ -16,6 +16,18 @@ and research background.
 
 [**Run your first experiment →**](getting-started.md)
 
+## Engineering you can inspect
+
+The CI platform itself has a **configured 95% combined line/branch coverage gate**,
+lock-wide dependency advisory audits, source and secret analysis, complexity and
+maintainability limits, strict documentation builds and signed distributions with
+a CycloneDX SBOM. The [quality and security guide](quality-and-security.md)
+connects each commitment to its workflow, report and reproduction commands.
+
+Use those engineering checks alongside the
+[scientific evaluation protocol](evaluation-guide.md) when deciding how to adopt
+the platform.
+
 ## Find your path
 
 ```mermaid

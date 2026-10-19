@@ -78,6 +78,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/protected-evaluation.md
 - docs/public-ci-feasibility.md
 - docs/python-source-capture.md
+- docs/quality-and-security.md
 - docs/release-history.md
 - docs/releases/3.6.1.md
 - docs/releases/4.0.0.md
@@ -125,6 +126,16 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 [![Python](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
+[![Tests](https://github.com/jacksonpradolima/coleman/actions/workflows/codecov.yml/badge.svg?branch=main&event=push)](https://github.com/jacksonpradolima/coleman/actions/workflows/codecov.yml?query=branch%3Amain)
+[![Configured coverage gate: 95%](https://img.shields.io/badge/coverage_gate-95%25-brightgreen)](docs/quality-and-security.md#tests-and-coverage)
+[![Sonar vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=vulnerabilities)](https://sonarcloud.io/summary/overall?id=jacksonpradolima_coleman4hcs)
+[![Sonar security rating](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=security_rating)](https://sonarcloud.io/summary/overall?id=jacksonpradolima_coleman4hcs)
+
+[![Dependency advisory audit](https://github.com/jacksonpradolima/coleman/actions/workflows/security-audit.yml/badge.svg?branch=main)](https://github.com/jacksonpradolima/coleman/actions/workflows/security-audit.yml)
+[![Lint and NumPy parameter documentation](https://github.com/jacksonpradolima/coleman/actions/workflows/pylint.yml/badge.svg?event=pull_request)](https://github.com/jacksonpradolima/coleman/actions/workflows/pylint.yml?query=event%3Apull_request)
+[![Complexity and maintainability](https://github.com/jacksonpradolima/coleman/actions/workflows/code-cost.yml/badge.svg?event=pull_request)](https://github.com/jacksonpradolima/coleman/actions/workflows/code-cost.yml?query=event%3Apull_request)
+[![Documentation build](https://github.com/jacksonpradolima/coleman/actions/workflows/docs.yml/badge.svg?branch=main&event=push)](https://github.com/jacksonpradolima/coleman/actions/workflows/docs.yml?query=branch%3Amain)
+
 Your test suite changes, failures are rare, and the CI budget is finite. COLEMAN
 brings adaptive ranking, budgeted test replay, configurable-system testing and
 evidence-based comparison into one Python platform. Choose a policy, learn from
@@ -141,7 +152,34 @@ Parquet results and local checkpoints work without external services.
 
 [Run your first experiment](#quick-start) · [Explore the policies](#mab-policies-available) ·
 [Choose a dataset](#datasets) · [Read the research](#research-background) ·
-[Contribute](CONTRIBUTING.md)
+[Inspect quality and security](#quality-you-can-inspect) · [Contribute](CONTRIBUTING.md)
+
+## Quality you can inspect
+
+Research software should make its engineering evidence inspectable too. COLEMAN
+enforces a **configured 95% combined line/branch coverage gate**, checks complexity and
+maintainability, audits every locked dependency, and publishes **Sigstore-signed
+distributions with a CycloneDX SBOM**. Follow the checks to inspect their actual
+scope and results:
+
+| Engineering commitment | Verification and evidence |
+| --- | --- |
+| Test behavior and recovery | [Python 3.14 test suite](https://github.com/jacksonpradolima/coleman/actions/workflows/codecov.yml): unit/integration tests, versioned golden fixtures, deterministic identities, interrupted writes, checkpoint continuation and import boundaries; a failed configured coverage gate fails the run |
+| Audit known dependency vulnerabilities | [Lock-wide advisory audit](https://github.com/jacksonpradolima/coleman/actions/workflows/security-audit.yml): runtime and optional/development packages across platforms, on dependency changes, weekly and on demand; queried pins and JSON results are retained |
+| Review dependency changes | [License and vulnerability review](https://github.com/jacksonpradolima/coleman/actions/workflows/dependency-review.yml) on pull requests, alongside Dependabot updates and [security reporting](SECURITY.md) |
+| Inspect source and credentials | [SonarCloud analysis](https://sonarcloud.io/summary/overall?id=jacksonpradolima_coleman4hcs) and GitGuardian PR checks; inspect the individual check results for the proposed commit |
+| Keep code and API documentation consistent | [Ruff lint/format and NumPy parameter checks](https://github.com/jacksonpradolima/coleman/actions/workflows/pylint.yml) at the documented public entry points |
+| Bound structural complexity | [Xenon and Radon gates](https://github.com/jacksonpradolima/coleman/actions/workflows/code-cost.yml): block/module/average limits C/B/A and maintainability index ≥20 |
+| Keep human and machine documentation usable | [Strict documentation builds](https://github.com/jacksonpradolima/coleman/actions/workflows/docs.yml) and [deterministic `llms.txt` verification](https://github.com/jacksonpradolima/coleman/actions/workflows/llms-txt.yml) |
+| Measure the installed implementation | [Decision observations](https://github.com/jacksonpradolima/coleman/actions/workflows/decision-benchmarks.yml): bounded correctness/performance profiles from an installed wheel, outside the checkout; manual runs and an opt-in weekly schedule |
+| Make releases inspectable | [Published wheel, sdist, Sigstore bundles and SBOM](https://github.com/jacksonpradolima/coleman/releases/latest), produced with locked tooling by the [release workflow](https://github.com/jacksonpradolima/coleman/actions/workflows/release.yml) |
+
+The [quality and security guide](docs/quality-and-security.md) explains how to read
+the badges, reproduce checks and verify release artifacts. The coverage badge
+states the enforced threshold; current measured coverage is in the test log.
+Additional local qualification covers typing, Pylint, docstring presence and
+installed-package examples. Engineering checks complement the
+[scientific comparison protocol](docs/evaluation-guide.md).
 
 ## One platform, connected workflows
 
@@ -400,6 +438,8 @@ For a tour of the product, start with the
 [documentation map](https://jacksonpradolima.github.io/coleman/).
 For current architectural findings and improvement priorities, read
 [maintainability](https://jacksonpradolima.github.io/coleman/maintainability/).
+The [quality and security guide](https://jacksonpradolima.github.io/coleman/quality-and-security/)
+maps automated gates, local qualification and release evidence to their actual scope.
 
 ## Set up a development checkout
 
@@ -7649,6 +7689,18 @@ and research background.
 
 [**Run your first experiment →**](getting-started.md)
 
+## Engineering you can inspect
+
+The CI platform itself has a **configured 95% combined line/branch coverage gate**,
+lock-wide dependency advisory audits, source and secret analysis, complexity and
+maintainability limits, strict documentation builds and signed distributions with
+a CycloneDX SBOM. The [quality and security guide](quality-and-security.md)
+connects each commitment to its workflow, report and reproduction commands.
+
+Use those engineering checks alongside the
+[scientific evaluation protocol](evaluation-guide.md) when deciding how to adopt
+the platform.
+
 ## Find your path
 
 ```mermaid
@@ -11120,6 +11172,181 @@ retain the historical declaration evidence for audit.
 Interpret the pair through [controlled observations](controlled-faults.md), retain its
 source/context lineage in [source admission](corpus-admission.md), and compare evidence types in
 [datasets](datasets.md).
+
+
+
+### FILE: docs/quality-and-security.md
+
+# Inspect COLEMAN's quality and security
+
+You should be able to inspect the engineering behind a CI decision platform as
+readily as its experiment outputs. COLEMAN exposes test results, advisory audit
+receipts, structural limits, documentation checks and signed release artifacts.
+Use this page to find that evidence and understand what each check establishes.
+
+## Read the badges
+
+The README links each badge to its evidence. Workflow badges show the latest
+matching execution: tests and documentation use pushes to `main`, while lint and
+structural checks use pull-request events. A PR badge can therefore describe a
+different commit from the latest published release. Check its commit and event
+before relying on it for a particular revision.
+
+The **coverage gate 95%** badge describes the configured minimum, not a measured
+percentage. Open the test run's log for its actual combined line/branch coverage,
+passed tests and skips. The [coverage configuration](https://github.com/jacksonpradolima/coleman/blob/main/pyproject.toml)
+defines the threshold, included source and exclusions. Coverage.py evaluates
+the gate using its reporting precision; the current configuration uses the
+default whole-percent rounding. Inspect the measured result and configuration
+when a comparison requires finer precision.
+
+Sonar badges report detected source vulnerabilities and a security rating in the
+[COLEMAN dashboard](https://sonarcloud.io/summary/overall?id=jacksonpradolima_coleman4hcs).
+The service retains `coleman4hcs` in its project identifier. This is the dashboard
+linked by current source-analysis checks; its analysis revision and date identify
+the code measured. Dependency advisories have their own audit and are not counted
+by the source-vulnerability badge.
+
+The former Codecov dashboard also retains the old identifier, but its public
+`main` report is historical. It is not used as a current-coverage badge. Current
+coverage qualification uses the pytest coverage gate and the matching Actions log.
+Consult [GitHub's badge semantics](https://docs.github.com/en/actions/how-tos/monitor-workflows/add-a-status-badge)
+for branch and event selection.
+
+## Tests and coverage
+
+The [test workflow](https://github.com/jacksonpradolima/coleman/actions/workflows/codecov.yml)
+runs the Python 3.14 suite with branch measurement and a **configured 95% combined
+line/branch coverage gate**. Its frozen environment includes the optional MCP extra
+for integration tests. The log retains the exact test count, coverage and skips;
+a new test count does not require manually updating the README.
+
+Tests cover native prioritization and source adapters as well as failure modes:
+
+- Versioned result round-trips, golden artifacts, legacy readers and unsupported versions.
+- Units, explicit missingness, valid signed values and non-finite rejection.
+- Deterministic identities and digests, duplicate handling and idempotent replay.
+- Interrupted publication and checkpoint continuation.
+- Application/transport import boundaries and optional integration behavior.
+- Installed-package decision benchmarks and small, owned CI fixtures.
+
+Examples of the executable contracts live in
+[result tests](https://github.com/jacksonpradolima/coleman/tree/main/tests/results),
+[artifact tests](https://github.com/jacksonpradolima/coleman/blob/main/tests/test_artifacts.py),
+[checkpoint tests](https://github.com/jacksonpradolima/coleman/tree/main/tests/checkpoint)
+and [installed benchmark tests](https://github.com/jacksonpradolima/coleman/blob/main/tests/benchmarks/test_installed_benchmarks.py).
+Normal tests use owned fixtures without downloading external corpora.
+
+For a development checkout with the contributor environment installed:
+
+```bash
+uv run --frozen --no-sync python -m pytest
+```
+
+This runs the configured coverage gate too. Follow
+[contributor setup](contributing.md) to install the locked test dependencies.
+Coverage measures exercised code paths; the
+[evaluation guide](evaluation-guide.md) explains the separate evidence needed
+for conclusions about prioritization effectiveness.
+
+## Source, dependencies and secrets
+
+Security evidence comes from complementary checks:
+
+| Check | When it runs | What to inspect |
+| --- | --- | --- |
+| [Complete lock advisory audit](https://github.com/jacksonpradolima/coleman/actions/workflows/security-audit.yml) | Dependency PRs, dependency pushes to `main`, weekly and manual dispatch | Queried package pins, `audit.json`, job conclusion and advisory lookup errors |
+| [Dependency review](https://github.com/jacksonpradolima/coleman/actions/workflows/dependency-review.yml) | Pull requests | Changed dependencies, license compliance and known vulnerabilities |
+| [SonarCloud](https://sonarcloud.io/summary/overall?id=jacksonpradolima_coleman4hcs) | Connected repository analysis | Revision, date, source findings and the PR's analysis check |
+| GitGuardian | Connected PR checks | Secret-detection result for the proposed commit |
+| [Dependabot](https://github.com/jacksonpradolima/coleman/blob/main/.github/dependabot.yml) | Configured update schedule | Dependency update PRs and repository security alerts where access permits |
+
+The lock audit includes optional runtime extras, development/documentation tools
+and packages selected only on other operating systems. It queries advisories
+without installing or executing project dependencies. Known vulnerabilities,
+lookup failures and unsupported package sources fail the job. There is no blanket
+ignore list. Reproduce it with the complete commands in
+[dependency security maintenance](dependency-security.md#reproduce-the-audit).
+
+A zero source-vulnerability count and a clean advisory audit answer different
+questions. Read the revision, scope and collection time of each result; new
+advisories can require another update. Follow the
+[security policy](https://github.com/jacksonpradolima/coleman/blob/main/SECURITY.md)
+to report a vulnerability privately.
+
+## Code, documentation and complexity gates
+
+| Gate | Enforced scope | Evidence |
+| --- | --- | --- |
+| Ruff lint and formatting | Repository Python files under configured rules and exclusions | [Lint workflow](https://github.com/jacksonpradolima/coleman/actions/workflows/pylint.yml) |
+| NumPy parameter documentation | The public entry points listed by `make docstrings`; this is a bounded gate | Same lint workflow and [docstring guidance](contributing.md#write-useful-numpy-style-docstrings) |
+| Xenon complexity | Maximum individual block C, module B, average A | [Structural workflow](https://github.com/jacksonpradolima/coleman/actions/workflows/code-cost.yml) |
+| Radon maintainability | Module maintainability index at least 20; cyclomatic complexity is also reported | Same structural workflow and [measurement guide](code-cost.md) |
+| Strict site build | Zensical documentation generation | [Documentation workflow](https://github.com/jacksonpradolima/coleman/actions/workflows/docs.yml) |
+| Deterministic documentation bundle | Exact regeneration of `llms.txt` from reviewed Markdown | [Bundle workflow](https://github.com/jacksonpradolima/coleman/actions/workflows/llms-txt.yml) |
+
+The workflow file named `pylint.yml` currently runs **Ruff and the NumPy parameter
+gate**. Pylint is a separate local qualification step. The contributor workflow
+also uses Pyright and ty, Interrogate for docstring presence, package builds,
+outside-checkout examples and manual inspection of rendered documentation.
+The [maintainability review](maintainability.md) records the broader docstring
+backlog; a passing bounded parameter gate does not certify every public signature.
+
+Reproduce the automated code/documentation gates from the installed development
+environment:
+
+```bash
+make lint
+make format-check
+make docstrings
+make cost-structural
+make docs
+uv run --frozen --no-sync python scripts/generate_llms_txt.py
+git diff --exit-code -- llms.txt
+```
+
+The [contributor validation commands](contributing.md#validate-a-change) cover the
+additional local checks. PR title validation and labels support review routing;
+the relevant technical checks qualify the proposed change before integration.
+
+## Installed correctness and performance observations
+
+The [decision observations workflow](https://github.com/jacksonpradolima/coleman/actions/workflows/decision-benchmarks.yml)
+builds a wheel with locked tooling, installs that wheel and runs outside the
+checkout. Choose the `correctness` or `performance` profile on manual dispatch.
+The Tuesday schedule executes only when the repository variable
+`ENABLE_DECISION_PERFORMANCE` is `true`; it is not an unconditional PR gate.
+
+The workflow retains reports, including available failed-attempt artifacts.
+Inspect source revision, environment, resource bounds and the selected profile
+before comparing measurements. The [benchmark guide](decision-benchmarks.md)
+explains independent oracles, certificates and timing limits. Neither coverage
+instrumentation timings nor one fast hosted run establish a performance advantage.
+
+## Inspect a published distribution
+
+The [release workflow](https://github.com/jacksonpradolima/coleman/actions/workflows/release.yml)
+uses locked release/build tools and publishes these assets in
+[GitHub releases](https://github.com/jacksonpradolima/coleman/releases):
+
+| Asset | What it lets you inspect |
+| --- | --- |
+| Python wheel and source distribution | The installable package and its corresponding source archive |
+| `*.sigstore.json` bundles | Sigstore signature and identity evidence for each distribution |
+| `sbom.json` | CycloneDX inventory bound to the complete wheel's SHA-256 |
+| `uv.lock` | Exact dependency versions and hashes for the release environment |
+
+The [distribution inventory contract](dependency-security.md#release-distribution-inventory)
+explains the SBOM's scope: it identifies the wheel's package metadata and digest;
+unbundled dependencies are audited separately through the lock. Signing binds
+distribution bytes to a signing identity. Inspect the expected repository,
+workflow identity and release before trusting an artifact.
+
+Start with the [published-wheel installation example](getting-started.md), which
+pins the release and SHA-256. Then inspect the corresponding bundles and lock
+when your adoption process requires them. Engineering checks, artifact identity
+and [scientific evidence](evaluation-guide.md) are all inspectable parts of the
+same decision.
 
 
 

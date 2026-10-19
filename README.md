@@ -6,6 +6,16 @@
 [![Python](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
+[![Tests](https://github.com/jacksonpradolima/coleman/actions/workflows/codecov.yml/badge.svg?branch=main&event=push)](https://github.com/jacksonpradolima/coleman/actions/workflows/codecov.yml?query=branch%3Amain)
+[![Configured coverage gate: 95%](https://img.shields.io/badge/coverage_gate-95%25-brightgreen)](docs/quality-and-security.md#tests-and-coverage)
+[![Sonar vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=vulnerabilities)](https://sonarcloud.io/summary/overall?id=jacksonpradolima_coleman4hcs)
+[![Sonar security rating](https://sonarcloud.io/api/project_badges/measure?project=jacksonpradolima_coleman4hcs&metric=security_rating)](https://sonarcloud.io/summary/overall?id=jacksonpradolima_coleman4hcs)
+
+[![Dependency advisory audit](https://github.com/jacksonpradolima/coleman/actions/workflows/security-audit.yml/badge.svg?branch=main)](https://github.com/jacksonpradolima/coleman/actions/workflows/security-audit.yml)
+[![Lint and NumPy parameter documentation](https://github.com/jacksonpradolima/coleman/actions/workflows/pylint.yml/badge.svg?event=pull_request)](https://github.com/jacksonpradolima/coleman/actions/workflows/pylint.yml?query=event%3Apull_request)
+[![Complexity and maintainability](https://github.com/jacksonpradolima/coleman/actions/workflows/code-cost.yml/badge.svg?event=pull_request)](https://github.com/jacksonpradolima/coleman/actions/workflows/code-cost.yml?query=event%3Apull_request)
+[![Documentation build](https://github.com/jacksonpradolima/coleman/actions/workflows/docs.yml/badge.svg?branch=main&event=push)](https://github.com/jacksonpradolima/coleman/actions/workflows/docs.yml?query=branch%3Amain)
+
 Your test suite changes, failures are rare, and the CI budget is finite. COLEMAN
 brings adaptive ranking, budgeted test replay, configurable-system testing and
 evidence-based comparison into one Python platform. Choose a policy, learn from
@@ -22,7 +32,34 @@ Parquet results and local checkpoints work without external services.
 
 [Run your first experiment](#quick-start) · [Explore the policies](#mab-policies-available) ·
 [Choose a dataset](#datasets) · [Read the research](#research-background) ·
-[Contribute](CONTRIBUTING.md)
+[Inspect quality and security](#quality-you-can-inspect) · [Contribute](CONTRIBUTING.md)
+
+## Quality you can inspect
+
+Research software should make its engineering evidence inspectable too. COLEMAN
+enforces a **configured 95% combined line/branch coverage gate**, checks complexity and
+maintainability, audits every locked dependency, and publishes **Sigstore-signed
+distributions with a CycloneDX SBOM**. Follow the checks to inspect their actual
+scope and results:
+
+| Engineering commitment | Verification and evidence |
+| --- | --- |
+| Test behavior and recovery | [Python 3.14 test suite](https://github.com/jacksonpradolima/coleman/actions/workflows/codecov.yml): unit/integration tests, versioned golden fixtures, deterministic identities, interrupted writes, checkpoint continuation and import boundaries; a failed configured coverage gate fails the run |
+| Audit known dependency vulnerabilities | [Lock-wide advisory audit](https://github.com/jacksonpradolima/coleman/actions/workflows/security-audit.yml): runtime and optional/development packages across platforms, on dependency changes, weekly and on demand; queried pins and JSON results are retained |
+| Review dependency changes | [License and vulnerability review](https://github.com/jacksonpradolima/coleman/actions/workflows/dependency-review.yml) on pull requests, alongside Dependabot updates and [security reporting](SECURITY.md) |
+| Inspect source and credentials | [SonarCloud analysis](https://sonarcloud.io/summary/overall?id=jacksonpradolima_coleman4hcs) and GitGuardian PR checks; inspect the individual check results for the proposed commit |
+| Keep code and API documentation consistent | [Ruff lint/format and NumPy parameter checks](https://github.com/jacksonpradolima/coleman/actions/workflows/pylint.yml) at the documented public entry points |
+| Bound structural complexity | [Xenon and Radon gates](https://github.com/jacksonpradolima/coleman/actions/workflows/code-cost.yml): block/module/average limits C/B/A and maintainability index ≥20 |
+| Keep human and machine documentation usable | [Strict documentation builds](https://github.com/jacksonpradolima/coleman/actions/workflows/docs.yml) and [deterministic `llms.txt` verification](https://github.com/jacksonpradolima/coleman/actions/workflows/llms-txt.yml) |
+| Measure the installed implementation | [Decision observations](https://github.com/jacksonpradolima/coleman/actions/workflows/decision-benchmarks.yml): bounded correctness/performance profiles from an installed wheel, outside the checkout; manual runs and an opt-in weekly schedule |
+| Make releases inspectable | [Published wheel, sdist, Sigstore bundles and SBOM](https://github.com/jacksonpradolima/coleman/releases/latest), produced with locked tooling by the [release workflow](https://github.com/jacksonpradolima/coleman/actions/workflows/release.yml) |
+
+The [quality and security guide](docs/quality-and-security.md) explains how to read
+the badges, reproduce checks and verify release artifacts. The coverage badge
+states the enforced threshold; current measured coverage is in the test log.
+Additional local qualification covers typing, Pylint, docstring presence and
+installed-package examples. Engineering checks complement the
+[scientific comparison protocol](docs/evaluation-guide.md).
 
 ## One platform, connected workflows
 
