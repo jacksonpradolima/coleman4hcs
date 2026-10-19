@@ -155,7 +155,13 @@ uses locked release/build tools and publishes these assets in
 | Python wheel and source distribution | The installable package and its corresponding source archive |
 | `*.sigstore.json` bundles | Sigstore signature and identity evidence for each distribution |
 | `sbom.json` | CycloneDX inventory bound to the complete wheel's SHA-256 |
-| `uv.lock` | Exact dependency versions and hashes for the release environment |
+
+Read the dependency versions and hashes from **`uv.lock` at the corresponding
+release tag**. For example, the installation tutorial's wheel uses
+[the lock committed at `v4.19.1`](https://github.com/jacksonpradolima/coleman/blob/v4.19.1/uv.lock).
+Choose the tag matching your wheel or source distribution when inspecting a
+different release. The lock's repository revision remains directly accessible
+independently of the release asset list.
 
 The [distribution inventory contract](dependency-security.md#release-distribution-inventory)
 explains the SBOM's scope: it identifies the wheel's package metadata and digest;
