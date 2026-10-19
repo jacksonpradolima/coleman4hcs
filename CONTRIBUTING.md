@@ -9,6 +9,8 @@ For a tour of the product, start with the
 [documentation map](https://jacksonpradolima.github.io/coleman/).
 For current architectural findings and improvement priorities, read
 [maintainability](https://jacksonpradolima.github.io/coleman/maintainability/).
+The [quality and security guide](https://jacksonpradolima.github.io/coleman/quality-and-security/)
+maps automated gates, local qualification and release evidence to their actual scope.
 
 ## Set up a development checkout
 
