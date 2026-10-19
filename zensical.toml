@@ -27,6 +27,7 @@ nav = [
   { "Source Admission & Production Reality" = "corpus-admission.md" },
   { "Corpus Metrics & Repeated Observations" = "corpus-evaluation.md" },
   { "Comparable CI Baselines" = "comparable-baselines.md" },
+  { "Public CI Feasibility" = "public-ci-feasibility.md" },
   { "Verified Corpus Materialization" = "corpus-materialization.md" },
   { "Bounded ZIP64 Source Selection" = "zip64-source-selection.md" },
   { "RTPTorrent Source Assessment" = "rtptorrent.md" },
