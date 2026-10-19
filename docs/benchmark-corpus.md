@@ -1,77 +1,21 @@
 # Versioned CI benchmark corpus: foundation and local profiles
 
-This is the first implementation slice of
-[#261](https://github.com/jacksonpradolima/coleman/issues/261), introduced in
-**COLEMAN 4.2**. It implements source manifests, a typed registry and data
-cards, bounded independent correctness references, local validation and native
-integration. COLEMAN **4.4** adds bounded local native-Parquet profiles, a reproducible diversity
-inventory and [licensed source-package materialization](corpus-materialization.md).
-The diversified benchmark program remains open.
+Use versioned manifests, a typed registry and descriptive data cards to inspect
+what a CI source contains. Bounded correctness fixtures, native profiles,
+[verified materialization](corpus-materialization.md) and
+[source admission](corpus-admission.md) connect source identity to explicit limits.
+Start with the [dataset guide](datasets.md) for a complete runnable source path.
 
-**4.15** adds a separate [source-admission and production-reality audit](corpus-admission.md)
-using this same registry/card model and explicit verified source bindings. Its
-published qualification covers three narrow functional/mechanism regimes and
-leaves four historical/HCS regimes uncovered. Original registrations and
-phase-one fixture readiness keep their meanings; they are not silently upgraded.
+[Comparable baselines](comparable-baselines.md) and
+[repeated observations](corpus-evaluation.md) reuse those identities while keeping
+raw attempts, source exclusions and repository-family grouping visible.
+[Westermo analytical Parquet](westermo-parquet-etl.md) provides another original
+source view without inventing duration units or historical availability.
 
-**4.17** adds the [comparable baseline matrix](comparable-baselines.md): twelve
-internal native/heuristic candidates, explicit incompatibilities, raw per-build
-evidence, stable source budgets and checkpoint recovery. It prepares development
-evidence; source admission and protected confirmation remain separate gates.
-
-**4.16** adds [metric references and repeated CI observations](corpus-evaluation.md):
-a frozen complete build/seed grid, explicit native metric conventions and one
-paired mean per reviewed repository family. This preparation preserves raw
-attempts and source-admission blockers; it does not create independent projects.
-
-For the separate source-specific ETL workflows, see [Karaf](lrts-parquet-etl.md),
-[RTPTorrent](rtptorrent-parquet-etl.md) and the published 4.17 [ActiveMQ/Log4j stage
-views](lrts-stage-views.md). Those exports preserve their own provenance and
-admission blockers; they do not silently add admitted registrations to this registry.
-
-The current source revision also adds [original Westermo analytical Parquet](westermo-parquet-etl.md):
-explicit pinned sessions, all four original outcomes, session-envelope seconds and
-unverified per-test units. Build this revision's wheel; the previously published
-4.17 wheel does not include it. An export does not change source admission or the
-four uncovered historical/HCS regimes.
-
-For controlled Java sources, the published 4.17 wheel includes a separate [CLI/Codec
-matrix](java-fault-matrix.md) using the existing controlled/JUnit producer.
-Its typed index preserves all selected outcomes and incomplete evidence. It does
-not silently change this registry's admission or diversity coverage.
-
-The separate [Python source producer](python-source-capture.md) adds an unchanged
-PySnooper fault/fixture pair in two predeclared locale contexts, with whole-wheel
-component terms, real exception evidence and offline/interruption recovery.
-Its ASCII error-to-pass pair remains inconclusive under the strict generic
-classifier; the UTF-8 contrast passes in both roles. These share one curated fix
-and do not silently add independent observations or admitted registry entries.
-
-The published 4.17 wheel also includes a [constructed C function slice](c-seeded-source-capture.md)
-from NIST Juliet 1.3. Its source/component terms were reviewed before acquisition;
-one original template/function pair and six correlated inputs remain explicitly
-synthetic. SIR permission remains unresolved. This workflow adds no registry
-default registry entry or admitted diversity regime by itself.
-
-The published 4.17 wheel includes a separate [LibSSH HCS ETL](hcs-parquet-etl.md): original
-pipeline/job identities, reversible variant aliases, explicit projected test
-costs and native WTS/VTS checkpointed runs. Sparse/absent cells and source
-exclusions remain visible. The installed qualification verifies all 208 declared
-cells and 416 native WTS/VTS results against the original CSV/JSON. Six known
-job labels have metadata only; they do not become observed test configurations
-or fabricated native runs. This workflow does not add an admitted registry entry.
-
-The registry contains two small repository-authored MIT-licensed CI fixtures and
-an inventory of ten existing public example Parquet artifacts. Historical sources
-remain **blocked for evaluation** until their data-specific terms, duration units,
-availability semantics, adapter and conversion evidence are verified. The code
-repository's license is never inferred to license third-party datasets.
-
-Both tiny sources share one constructed build/test family. They are not independent
-CI observations. All seven required diversity regimes remain uncovered, including
-the broad adversarial simulation regime: a three-test fixture is not a stress lab.
-No policy effectiveness, state-of-the-art, production savings or commercial claim
-follows from passing these checks.
+The [historical corpus phase was closed with unmet criteria](roadmap.md#historical-corpus-status).
+Its delivered workflows remain usable at their declared scopes; the final
+historical cross-corpus confirmation was not completed. Original registry and
+phase-one fixture-readiness meanings are unchanged.
 
 ## Installed commands
 
@@ -102,10 +46,11 @@ parents are resolved and checked before publication. This local path check assum
 no concurrent hostile filesystem mutation; it is not an OS sandbox. Library callers
 supply their own trusted `ArtifactWriter` root, independently of CLI/MCP transports.
 
-The profile commands below and [source-package fetch/cache/validation](corpus-materialization.md)
-are also available in 4.4. Source-specific conversion, large stress generation,
-baseline matrices, dependence-aware statistical profiles and confirmatory run/report
-commands remain subsequent slices of #261.
+The profile commands below and [source-package validation](corpus-materialization.md)
+provide shared foundations. Follow the [dataset adapters](datasets.md),
+[stress laboratory](ci-stress-laboratory.md), [baseline matrices](comparable-baselines.md)
+and [evaluation guide](evaluation-guide.md) for their implemented workflows.
+The final historical confirmation remains [unfinished](roadmap.md#historical-corpus-status).
 
 ## Source contract and admission
 
@@ -435,3 +380,8 @@ cache and publishes through the same artifact writer. It does not grant source
 admission or convert collection clocks into historical CI chronology. Direct
 upstream Java/Python reproductions are documented separately from the owned
 synthetic installed example; required diversity cells remain uncovered.
+
+## Continue the workflow
+
+Choose a runnable source in [datasets](datasets.md), then assess its permitted use and evidence with
+[source admission](corpus-admission.md).

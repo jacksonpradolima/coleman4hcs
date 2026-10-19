@@ -191,9 +191,14 @@ leaving protected CI decisions unchanged. The current metadata-only path is
 retain the existing CI order until those contracts are satisfied; do not claim
 savings, calibrated probabilities, causality or algorithm promotion.
 
-This completes the bounded feasibility scope of #312. [#313](https://github.com/jacksonpradolima/coleman/issues/313)
-still owns confirmatory execution and the full [#261](https://github.com/jacksonpradolima/coleman/issues/261)
-acceptance gates. Four required historical/HCS regimes remain unadmitted; the
+This completes the bounded public collection-feasibility scope. The final
+historical confirmation was [closed with unmet criteria](roadmap.md#historical-corpus-status),
+without claiming completion. Four required historical/HCS regimes remain unadmitted; the
 [corpus admission report](corpus-admission.md) and
 [repeated-evaluation protocol](corpus-evaluation.md) remain authoritative. More
 polls, seeds or constructed cases cannot fill those independent-evidence gaps.
+
+## Continue the workflow
+
+Use [point-in-time observations](point-in-time-observations.md) for retained metadata, then follow
+the [integration guide](integration-guide.md) to identify what a prospective study still needs.

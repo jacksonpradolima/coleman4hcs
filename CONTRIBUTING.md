@@ -1,188 +1,194 @@
-# Contributing to Coleman
+# Contribute to COLEMAN
 
-Thank you for your interest in contributing to **Coleman**! This document
-provides guidelines and instructions for contributing.
+Help make adaptive CI experiments understandable, reproducible and useful.
+Contributions can improve a policy, a source adapter, an example, an explanation
+or a contract. Begin with the user question and preserve the evidence behind the
+answer.
 
-## Getting Started
+For a tour of the product, start with the
+[documentation map](https://jacksonpradolima.github.io/coleman/).
+For current architectural findings and improvement priorities, read
+[maintainability](https://jacksonpradolima.github.io/coleman/maintainability/).
 
-### Option A: DevContainer (recommended)
+## Set up a development checkout
 
-The easiest way to get a fully working development environment is with a
-[DevContainer](https://containers.dev/):
-
-1. Open the repo in **VS Code** (or any DevContainer-compatible editor).
-2. When prompted, select **"Reopen in Container"** (or run the
-   `Dev Containers: Reopen in Container` command).
-3. Wait for the container to build — `make install` and pre-commit hooks
-   are set up automatically.
-
-Everything you need (Python, uv, Docker, extensions) is pre-configured.
-
-### Option B: Local setup
-
-#### Prerequisites
-
-- [Python 3.14+](https://www.python.org/downloads/)
-- [UV](https://docs.astral.sh/uv/) — fast Python package manager
-- [GNU Make](https://www.gnu.org/software/make/)
-
-#### Setup
+Use Python 3.14+, uv and Git. From the cloned repository:
 
 ```bash
-# Clone the repository
 git clone https://github.com/jacksonpradolima/coleman.git
 cd coleman
-
-# Install all dependencies (including dev extras)
-make install
-
-# Install pre-commit hooks
-make pre-commit-install
+uv sync --frozen --extra dev --extra docs --extra telemetry --extra mcp --group build
+uv run --frozen --no-sync pre-commit install --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
 ```
 
-## Development Workflow
+This installs the locked development and documentation tools plus the extras used
+by integration tests. Notebook, ClickHouse and controlled-capture work may need
+additional extras or the exact runtime in that guide. `make install` provisions
+the broader development environment; the DevContainer is an optional route with
+its own monitoring services. Read its scripts before choosing that setup.
 
-### Running Tests
+Create a focused branch from updated `main`. Keep source archives, raw capture
+outputs and large datasets outside the Git worktree. Normal tests use small owned
+fixtures and run without network access.
 
-```bash
-make test
+## Choose the right boundary
+
+Reuse the runner, RunSpec, source cache, sinks, artifact writer and checkpoints.
+A new source adapter should retain original meaning and publish an explicit native
+projection, rather than introducing another experiment engine. Keep CLI, HTTP,
+process execution and optional MCP dependencies at their adapter boundaries.
+
+Extend typed models for contracted state. Do not pass undocumented dictionaries
+through the application when a domain contract is needed. Preserve old data
+meanings, schema readers, deterministic identities and golden artifacts. Unknown
+versions should fail according to their contract; a migration must not invent
+missing units or provenance.
+
+See [architecture](https://jacksonpradolima.github.io/coleman/setup/) and
+[extensions](https://jacksonpradolima.github.io/coleman/extensibility/) for concrete paths.
+
+## Write useful NumPy-style docstrings
+
+Public modules, classes and functions need docstrings. Document each public
+parameter using NumPy's `Parameters` section, and describe return values and
+meaningful errors. Document constructor parameters on the class or constructor.
+Include units, invariants, missingness, side effects, concurrency and compatibility
+where they affect use. A one-line description is not evidence that these are covered.
+
+```python
+import math
+
+
+def observed_seconds(value: float) -> float:
+    """Validate an observed elapsed duration.
+
+    Parameters
+    ----------
+    value : float
+        Finite, nonnegative elapsed duration in seconds. Zero is observed;
+        unavailable duration must use the caller's explicit missing state.
+
+    Returns
+    -------
+    float
+        Validated elapsed seconds, without unit conversion or rounding.
+
+    Raises
+    ------
+    ValueError
+        If the duration is negative or non-finite.
+
+    Notes
+    -----
+    Performs no I/O and does not infer physical runner occupancy.
+    """
+    if not math.isfinite(value) or value < 0:
+        raise ValueError("Duration must be finite and nonnegative")
+    return value
 ```
 
-Coverage includes native multiprocessing workers, with branch measurement and
-separate process data combined by pytest-cov. Completed worker processes save
-their data normally. Keep multiprocessing collection enabled for checkpoint tests;
-a parent-only report would miss the principal native execution. For focused
-checks use `uv run python -m pytest tests/corpus/test_baseline_matrix.py`; add
-`--no-cov` only when intentionally skipping the whole-project coverage gate.
-Instrumented timings are test evidence, not benchmark performance measurements.
-
-
-### Linting and Formatting
+This is a documentation pattern, not an additional SDK function.
+Follow the [NumPy style guide](https://numpydoc.readthedocs.io/en/stable/format.html).
+Run `make docstrings` for the currently enforced public entry points. To inspect
+the broader backlog without treating it as a passing global gate:
 
 ```bash
-# Run ruff linter and formatter
+uv run --frozen --no-sync python scripts/audit_docstrings.py > /tmp/coleman-docstring-audit.json
+```
+
+The audit checks signature coverage without importing inspected code. It does not
+certify parameter-description accuracy, complete return/exception documentation or
+which exported names constitute a stable API. `interrogate` separately checks
+whether docstrings exist.
+
+## Write documentation as a connected path
+
+Lead with the reader's goal and a complete working example. Explain prerequisites,
+inputs, expected output and what to do next. Use the central map and topic hubs
+instead of adding another top-level navigation item for each feature.
+
+- Put tutorials in the experiment, data, evaluation or integration path.
+- Keep exact schemas and symbol details in reference pages.
+- Link the relevant original paper where a method or source is explained.
+- Explain a paper's role without claiming it validates later extensions.
+- Keep release chronology in the compatibility archive.
+- Update diagrams when relationships change, and give graph links a plain-text alternative.
+- Add NumPy docstrings when a tutorial exposes a previously undocumented parameter.
+
+Build the site strictly, inspect the generated pages, run the example outside the
+checkout against a built package, and regenerate `llms.txt`. Do not edit that
+generated file by hand.
+
+## Validate a change
+
+```bash
 make lint
-make format
-```
-
-### Type Checking
-
-```bash
+make format-check
 make typecheck
-```
-
-### Building Documentation
-
-```bash
-make docs
-```
-
-### Code Cost Evaluation
-
-Every pull request is checked by CI gates for structural complexity. Before
-submitting, verify your changes locally:
-
-```bash
-# Run all structural cost checks (cyclomatic complexity + maintainability + xenon gate)
+make interrogate
+make docstrings
 make cost-structural
+make docs
+uv run --frozen --no-sync python scripts/generate_llms_txt.py
+uv run --frozen --no-sync python -m pytest
+uv build --no-build-isolation
+git diff --check
 ```
 
-If the CI reports a failure, check specific dimensions:
+Use focused tests while developing; the full relevant suite and installed-package
+checks qualify the final change. Prefer `python -m pytest` from the project
+environment. If intentionally skipping the whole-project coverage gate for a
+focused run, add `--no-cov`. The full suite retains multiprocessing/thread coverage,
+branch measurement and its 95% minimum; instrumentation timings are not performance
+benchmark results.
 
-```bash
-make cost-complexity        # Radon cyclomatic complexity
-make cost-maintainability   # Radon MI gate (fails if any module < 20)
-make cost-xenon             # Xenon complexity gate (same thresholds as CI)
-make cost-wily              # Wily trend analysis across Git history
-```
+The structural limits are Xenon C for an individual block, B for a module and A
+for the project average, plus maintainability index at least 20. Inspect the
+reason for a hotspot before extracting helpers solely to change a score.
+[Code-cost guidance](https://jacksonpradolima.github.io/coleman/code-cost/)
+explains structural and runtime measurements.
 
-The CI thresholds are:
+## Preserve scientific meaning
 
-| Gate | Threshold | Meaning |
-|------|-----------|---------|
-| Xenon `--max-absolute` | **C** | No single block worse than C |
-| Xenon `--max-modules` | **B** | No module average worse than B |
-| Xenon `--max-average` | **A** | Project-wide average must be A |
-| Radon MI | **A** (MI ≥ 20) | All modules must score A or above |
+Keep negative, heterogeneous and inconclusive results. Seeds do not substitute for
+independent observations. Preserve build/job/stage/variant/attempt grouping.
+Distinguish raw outcomes, ranking scores, transformed rewards, calibrated
+probabilities and inference. Compare sophisticated methods with simple baselines
+under comparable source, budget, feedback and resource conditions.
 
-See [Code Cost Evaluation](docs/code-cost.md) for the full guide including
-runtime profiling and energy estimation.
+Observed historical CI, controlled faults and synthetic mechanisms support
+different claims. A successful conversion or a closed issue does not grant source
+admission. When evidence is insufficient, report it and retain a conservative
+fallback. The [evidence guide](https://jacksonpradolima.github.io/coleman/evaluation-guide/)
+connects those rules to supported workflows.
 
-## Code Style
+## Submit a focused pull request
 
-- **Formatter**: [Ruff](https://docs.astral.sh/ruff/)
-- **Linter**: [Ruff](https://docs.astral.sh/ruff/)
-- **Docstrings**: [Numpydoc](https://numpydoc.readthedocs.io/en/latest/format.html) style — all public modules, classes, and functions must have docstrings.
-- **Type annotations**: Encouraged for all public APIs.
-- **Line length**: 120 characters.
+Use Conventional Commits, for example `docs: explain budgeted CI replay` or
+`fix: reject conflicting source identities`. Explain the concrete problem,
+resulting behavior, compatibility and validation in the PR description. Include
+reproduction commands for source or behavior claims. Keep unrelated refactors out.
 
-## Experiment Configuration
+Before a maintainer push, review the whole diff from the merge-base. Use Alibaba
+OpenCodeReview only in local delegation mode, read every applicable returned rule,
+and manually review excluded tests and Markdown. Record file coverage and results;
+fix confirmed critical, high and medium findings. Never configure an external
+code-review endpoint for this workflow. Recheck the complete diff after material
+changes, consolidate review fixes, and resolve valid threads with evidence.
 
-The project uses a **typed run specification system** based on Pydantic v2.
-When working with experiment configuration:
+A PR is ready to merge when required checks pass and blocking review findings are
+resolved. Ordinary tests should not download external corpora or require a private
+service. Installed-package tests should exercise the principal component outside
+the checkout. Package and source identity checks matter when a producer fingerprints
+its implementation; stage new package files before constructing the final wheel.
 
-- Models live in `coleman/spec/models.py` — every new config field should
-  be added as a typed Pydantic field, not a raw dict key.
-- Config packs live under `packs/<category>/<name>.yaml`.  When adding a new
-  pack, follow the existing directory structure (policy, reward, runtime,
-  results, telemetry).
-- The sweep engine (`coleman/spec/sweep.py`) supports grid and zip modes.
-  Zip-mode parameter lists **must** have equal length.
-- `_set_nested()` validates intermediate path components — never silently
-  overwrite a non-dict value.
-- The deterministic `run_id` is `sha256(canonical_json(spec))[:12]`.
-  Any change to models or serialisation **must** preserve backward
-  compatibility of existing `run_id` values — the golden-determinism test
-  guards this contract.
-- Tests for the spec system are in `tests/spec/`.  Use `pytest.approx()` for
-  floating-point comparisons and the `tmp_path` fixture (not `/tmp`) for
-  temporary directories.
+## Report a problem
 
-## Commit Messages
+For a bug, include the smallest reproducible input, command, expected/actual result,
+OS, Python and package version, and relevant artifact identities. Preserve unknown
+values and redact credentials. For a design proposal, explain the CI problem and
+current limitation before suggesting a new abstraction.
 
-We use [Conventional Commits](https://www.conventionalcommits.org/). Commit
-messages are enforced by `pre-commit`:
-
-```
-feat: add support for new policy
-fix: correct NAPFD computation edge case
-docs: update installation instructions
-test: add tests for sliding window agent
-refactor: simplify reward evaluation logic
-```
-
-## Pull Request Process
-
-1. **Fork** the repository and create a feature branch from `main`.
-2. Make your changes following the code style guidelines above.
-3. Add or update tests to cover your changes.
-4. Ensure all checks pass: `make check-precommit`.
-5. Open a pull request against `main`.
-6. A maintainer will review your PR. Please be responsive to feedback.
-
-## Reporting Bugs
-
-Please open an issue on GitHub with:
-
-- A clear title and description.
-- Steps to reproduce the bug.
-- Expected versus actual behavior.
-- Python version and OS information.
-
-## Suggesting Features
-
-Feature requests are welcome! Open an issue describing:
-
-- The problem you want to solve.
-- Your proposed solution (if any).
-- Any alternatives you considered.
-
-## Security
-
-If you discover a security vulnerability, please follow the process described in
-[SECURITY.md](SECURITY.md).
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the
-[MIT License](LICENSE).
+Follow the [security policy](https://github.com/jacksonpradolima/coleman/blob/main/SECURITY.md)
+for vulnerability reports. Contributions use the repository's
+[MIT license](https://github.com/jacksonpradolima/coleman/blob/main/LICENSE).

@@ -68,6 +68,22 @@ class TestExperimentSpec:
 
 
 class TestBudgetSpec:
+    @pytest.mark.parametrize("mode", list(BudgetMode))
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+    def test_nonfinite_values_are_configuration_errors_for_every_mode(self, mode, value):
+        with pytest.raises(ValidationError, match="finite values"):
+            BudgetSpec(mode=mode, values=[1.0, value])
+
+    @pytest.mark.parametrize("mode", list(BudgetMode))
+    @pytest.mark.parametrize("literal", [".nan", ".inf", "-.inf"])
+    def test_yaml_loading_rejects_nonfinite_budgets(self, tmp_path, mode, literal):
+        from coleman.spec.io import load_spec
+
+        config = tmp_path / "run.yaml"
+        config.write_text(f"experiment:\n  budget:\n    mode: {mode.value}\n    values: [{literal}]\n")
+        with pytest.raises(ValidationError, match="finite values"):
+            load_spec(config)
+
     def test_ratio_validation(self):
         spec = BudgetSpec(mode=BudgetMode.RATIO, values=[0.1, 1.0])
         assert spec.values == [0.1, 1.0]

@@ -267,3 +267,9 @@ trials in separate output roots cannot collide or clean each other's containers;
 observation identities retain their original meaning. Keep incomplete ownership
 state at its original output location for recovery, and retain the original
 reviewed producer package when reopening older captures.
+
+## Continue the workflow
+
+Interpret the pair through [controlled observations](controlled-faults.md), retain its
+source/context lineage in [source admission](corpus-admission.md), and compare evidence types in
+[datasets](datasets.md).

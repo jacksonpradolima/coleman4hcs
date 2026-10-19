@@ -338,3 +338,9 @@ Deliver the following report with **uncollected fields left unavailable**:
 
 This template and the offline native fixture are the deliverables here. They do
 not claim that any live prospective CI observations have already been collected.
+
+## Continue the workflow
+
+Check [resource accounting](resource-replay.md) and [public-provider
+feasibility](public-ci-feasibility.md), then revisit the [integration path](integration-guide.md)
+before an adoption decision.

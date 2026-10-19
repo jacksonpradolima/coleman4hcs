@@ -208,3 +208,8 @@ context/trial scope; their missing output namespace cannot be inferred
 retroactively. Retain the original reviewed producer
 package when reopening older captures; changing package bytes changes the source
 context and does not automatically discover an older producer's generation.
+
+## Continue the workflow
+
+Expand a pair through the [Java fault matrix](java-fault-matrix.md), or inspect how its evidence is
+interpreted in [controlled observations](controlled-faults.md).

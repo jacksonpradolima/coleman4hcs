@@ -8,9 +8,14 @@ observability when developing or profiling Coleman experiments.
 
 ## Quick start
 
+Run these commands from the repository root, with Docker Compose available and
+telemetry extras installed as described in the
+[setup guide](https://jacksonpradolima.github.io/coleman/setup/#installation-options).
+Keep your experiment configuration and dataset paths relative to that working directory.
+
 ```bash
 # Base stack (OTel Collector + Prometheus + Grafana)
-docker compose up -d
+docker compose -f examples/observability/docker-compose.yaml up -d
 
 # Use the telemetry/local pack in your run.yaml:
 #   packs:
@@ -54,14 +59,14 @@ remain in the configured results sink:
 * `./checkpoints/` for resume/recovery state
 
 For an end-to-end example covering setup, observability, checkpoints, export,
-and analysis, see [docs/workflow.py](docs/workflow.py).
+and analysis, see [the workflow notebook](../../docs/workflow.py).
 
 ## With ClickHouse
 
 ```bash
 OTEL_COLLECTOR_CONFIG=otel-collector-config-clickhouse.yaml \
-  docker compose --profile clickhouse up -d
-python -m pip install "coleman[telemetry,clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.0.0/coleman-4.0.0-py3-none-any.whl#sha256=80736c9eb2dc8e16bd1db3c6b30e48b0a3160803b2b35ff86a99fd598541a27c"
+  docker compose -f examples/observability/docker-compose.yaml --profile clickhouse up -d
+python -m pip install "coleman[telemetry,clickhouse] @ https://github.com/jacksonpradolima/coleman/releases/download/v4.19.0/coleman-4.19.0-py3-none-any.whl#sha256=070e21c19fb7e3f2e392bd68706c354ed5ab7f76b86db80f5f1bdc5721b767bd"
 ```
 
 When the ClickHouse profile is active:
@@ -107,7 +112,7 @@ LIMIT 50;
 ## Tear down
 
 ```bash
-docker compose --profile clickhouse down -v
+docker compose -f examples/observability/docker-compose.yaml --profile clickhouse down -v
 ```
 
 ## Metric names

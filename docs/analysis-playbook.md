@@ -246,3 +246,8 @@ For each experiment campaign, export:
 4. Scenario sensitivity matrix.
 5. Runtime/resource table.
 6. Hook/extension impact table (if enabled).
+
+## Continue the workflow
+
+Use the [evaluation guide](evaluation-guide.md) to separate descriptive plots from justified
+comparisons, then explore the [workflow notebook](workflow.md) for a complete operational example.

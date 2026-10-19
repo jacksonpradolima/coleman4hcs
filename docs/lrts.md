@@ -1,6 +1,6 @@
 # LRTS: preserve raw method evidence and processed metadata
 
-COLEMAN 4.5 includes an offline LRTS source-assessment reader. It joins one
+Inspect an LRTS source offline before interpreting its replay. It joins one
 selected project/PR/build from pinned metadata with a separately pinned raw
 Jenkins JUnit report. It retains raw suites, node/enclosing-block links and every
 method execution, including repeated labels. Install the verified 4.5 release
@@ -218,6 +218,13 @@ only check model invariants. Immutable publication reuses existing concurrent
 retry, conflict and interrupted-write behavior, without writing a learning
 checkpoint or marking an experiment complete. Filesystem durability/process-kill
 temporary-file limits remain those of the artifact writer. The registry and its
-seven uncovered diversity regimes are unchanged. Controlled faults, stress cases,
-comparable baselines, protected confirmation and modern-CI feasibility remain
-subsequent work under [#261](https://github.com/jacksonpradolima/coleman/issues/261).
+original descriptive readiness meanings are unchanged. Separate
+[controlled captures](controlled-faults.md), [stress cases](ci-stress-laboratory.md),
+[baseline matrices](comparable-baselines.md) and [public CI feasibility](public-ci-feasibility.md)
+are implemented at their documented scopes. The final historical confirmation
+remains [unfinished](roadmap.md#historical-corpus-status).
+
+## Continue the workflow
+
+Run the [Karaf data path](lrts-parquet-etl.md) or choose [larger stage views](lrts-stage-views.md).
+Check [source admission](corpus-admission.md) before making historical effectiveness claims.

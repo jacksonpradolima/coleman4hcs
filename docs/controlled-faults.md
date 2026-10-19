@@ -233,3 +233,8 @@ synthetic function pair with an independent arithmetic oracle, retaining process
 errors, negative outcomes and incomplete recovery. Compiler/runtime acquisition
 and execution remain in optional transports; no C, Docker, CLI or MCP import is
 introduced into this domain. Its elapsed ns never become native CI Duration.
+
+## Continue the workflow
+
+Collect an actual [Java matrix](java-fault-matrix.md) or [Python pair](python-source-capture.md),
+then assess the retained scope with [source admission](corpus-admission.md).

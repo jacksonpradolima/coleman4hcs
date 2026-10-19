@@ -271,10 +271,16 @@ units, source data, constraints or proof coverage. Legacy native results and
 protected-evaluation artifact bytes retain their existing contracts; their strict
 JSON base is shared without changing serialization.
 
-Independent mathematical/performance benchmarks remain #255 work. Temporal claims
+Use the [independent decision benchmarks](decision-benchmarks.md) to check mathematics
+and bounded performance under declared profiles. Temporal claims
 about learned cost/coverage models need the [protected evaluation](protected-evaluation.md)
 protocol, justified independent observations and conservative insufficient-evidence
 handling. Passing the finite fixture proves its declared mathematical decision,
 not effectiveness on a broad CI corpus or commercial value.
 
 ::: coleman.selection
+
+## Continue the workflow
+
+Validate mathematical behavior with [independent decision benchmarks](decision-benchmarks.md). For
+adaptive ranking rather than finite selection, return to [policies](policies.md).

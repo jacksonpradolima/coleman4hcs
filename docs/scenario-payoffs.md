@@ -307,9 +307,15 @@ weights, fees, holdings, uncertainty or execution history. Existing native,
 coverage and protected-evaluation artifact bytes retain their contracts; shared
 decimal conversion keeps its twelve-place default and adds exact product scales.
 
-This finite offline model provides mathematical decisions, not a market connector,
-live execution, learned probability calibration or continuous allocation engine.
-Independent mathematical/performance benchmarking remains #255; broader CI
-generalization needs protected evaluation and diversified-corpus evidence.
+This finite offline model evaluates declared CI resource plans. Use the
+[independent decision benchmarks](decision-benchmarks.md) to check mathematical
+behavior and bounded performance. Operational use needs observed execution and
+resource evidence; broader CI generalization needs protected evaluation and
+qualified corpus observations.
 
 ::: coleman.allocation
+
+## Continue the workflow
+
+Check assumptions with [independent decision benchmarks](decision-benchmarks.md). Use the
+[integration guide](integration-guide.md) when composing a resource decision with the CI workflow.

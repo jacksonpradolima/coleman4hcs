@@ -196,3 +196,8 @@ flowchart LR
   P --> A[Existing ArtifactWriter and manifests]
   P --> E[Descriptive evidence and insufficient-evidence adoption]
 ```
+
+## Continue the workflow
+
+Extend accounting through [resource replay](resource-replay.md), then study [shadow
+recommendations](prospective-shadow.md) with the [integration guide](integration-guide.md).

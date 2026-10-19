@@ -1,11 +1,10 @@
 # Verified source packages for CI benchmarks
 
-COLEMAN **4.4** adds bounded, restartable acquisition and offline integrity
-validation for explicitly licensed, pinned raw files and ZIP packages as part of
-[#261](https://github.com/jacksonpradolima/coleman/issues/261). It reuses the existing
-immutable artifact writer and native runner/checkpoints. Install the wheel attached
-to [COLEMAN 4.9](https://github.com/jacksonpradolima/coleman/releases/tag/v4.9.0)
-in Python 3.14 or newer; 4.3 and earlier wheels retain their previous commands.
+Acquire permitted raw files and ZIP packages with bounded downloads, pinned
+identities and offline integrity checks. Start with [dataset workflows](datasets.md)
+for a source-specific path, or use the API below for a new package. It reuses the
+existing immutable writer and native runner/checkpoints. The pinned example
+below uses its declared published wheel for reproducibility.
 
 A successful materialization means **source integrity only**. It does not admit a
 source for evaluation, verify its CI chronology/units/identity semantics, establish
@@ -242,3 +241,8 @@ flowchart LR
   V --> G[Separate CI schema units identity and temporal gate]
   G --> E[Existing native runner and learning checkpoints]
 ```
+
+## Continue the workflow
+
+Choose a [source adapter](datasets.md), or inspect [large ZIP64
+selection](zip64-source-selection.md) when the source requires that archive profile.

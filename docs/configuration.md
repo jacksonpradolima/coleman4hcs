@@ -490,3 +490,8 @@ coleman validate --config my-experiment.yaml
 # Validate and write the resolved spec
 coleman validate --config my-experiment.yaml --resolve resolved.json
 ```
+
+## Continue the workflow
+
+Choose candidate families in [policies and rewards](policies.md), or run the complete [first
+experiment](getting-started.md) before expanding a sweep.

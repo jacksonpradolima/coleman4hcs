@@ -7,6 +7,7 @@ type-safe defaults and validation.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -17,12 +18,13 @@ from coleman.budget import BudgetMode
 class ExecutionSpec(BaseModel):
     """Execution-level settings.
 
-    Parameters
+    Attributes
     ----------
     parallel_pool_size : int
         Number of parallel worker processes.
     independent_executions : int
-        How many independent repetitions to run.
+        Number of execution repetitions. These repeat algorithmic randomness;
+        they do not create statistically independent source projects.
     seed : int | None
         Random seed for this execution (``None`` = use default/global behavior).
     verbose : bool
@@ -45,14 +47,14 @@ class ExecutionSpec(BaseModel):
 class ExperimentSpec(BaseModel):
     """Experiment-level settings.
 
-    Parameters
+    Attributes
     ----------
     budget : BudgetSpec
         Generic budget definition.
     datasets_dir : str
         Root directory containing dataset files.
     datasets : list[str]
-        Dataset identifiers (``org@project`` format).
+        Dataset directory names, such as ``org@project`` or ``example-ci``.
     experiment_dir : str
         Directory where experiment artefacts are stored.
     rewards : list[str]
@@ -76,12 +78,14 @@ class ExperimentSpec(BaseModel):
 class BudgetSpec(BaseModel):
     """Generic budget model for experiment execution.
 
-    Parameters
+    Attributes
     ----------
     mode : BudgetMode
-        Budget interpretation mode.
+        ``ratio`` for a fraction of recorded total test duration,
+        ``fixed_time`` for seconds, or ``subset_size`` for a test count.
     values : list[float]
-        Budget values for sweep execution.
+        Nonempty finite values: ratios in (0, 1], positive seconds, or
+        positive integral test counts, according to ``mode``.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -94,6 +98,10 @@ class BudgetSpec(BaseModel):
         """Validate values according to selected budget mode."""
         if not self.values:
             msg = "experiment.budget.values must contain at least one value."
+            raise ValueError(msg)
+
+        if any(not math.isfinite(value) for value in self.values):
+            msg = "experiment.budget.values must contain only finite values."
             raise ValueError(msg)
 
         if self.mode == BudgetMode.RATIO:
@@ -130,7 +138,7 @@ class AlgorithmSpec(BaseModel, extra="allow"):
 class HCSConfigurationSpec(BaseModel):
     """HCS-specific flags.
 
-    Parameters
+    Attributes
     ----------
     wts_strategy : bool
         Whether to use the WTS strategy.
@@ -144,7 +152,7 @@ class HCSConfigurationSpec(BaseModel):
 class ContextualFeatureGroupSpec(BaseModel):
     """Feature group configuration.
 
-    Parameters
+    Attributes
     ----------
     feature_group_name : str
         Name of the feature group.
@@ -161,7 +169,7 @@ class ContextualFeatureGroupSpec(BaseModel):
 class ContextualConfigSpec(BaseModel):
     """Contextual information configuration.
 
-    Parameters
+    Attributes
     ----------
     previous_build : list[str]
         Column names from the previous build.
@@ -175,7 +183,7 @@ class ContextualConfigSpec(BaseModel):
 class ContextualInformationSpec(BaseModel):
     """Contextual information settings.
 
-    Parameters
+    Attributes
     ----------
     config : ContextualConfigSpec
         Previous build column configuration.
@@ -192,12 +200,12 @@ class ContextualInformationSpec(BaseModel):
 class ResultsSpec(BaseModel):
     """Results sink settings.
 
-    Parameters
+    Attributes
     ----------
     enabled : bool
         Whether result persistence is active.
     sink : str
-        Sink backend (``"parquet"`` or ``"clickhouse"``).
+        Sink backend, including ``"parquet"``, ``"duckdb"`` or ``"clickhouse"``.
     out_dir : str
         Output directory for result files.
     batch_size : int
@@ -227,14 +235,15 @@ class ResultsSpec(BaseModel):
 class CheckpointSpec(BaseModel):
     """Checkpoint persistence settings.
 
-    Parameters
+    Attributes
     ----------
     enabled : bool
         Whether checkpointing is active.
     interval : int
         Steps between checkpoints.
     base_dir : str
-        Directory for checkpoint files.
+        Base directory used by lower-level native execution. The public
+        experiment API namespaces checkpoints under its own run directory.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -247,7 +256,7 @@ class CheckpointSpec(BaseModel):
 class TelemetrySpec(BaseModel):
     """OpenTelemetry export settings.
 
-    Parameters
+    Attributes
     ----------
     enabled : bool
         Whether telemetry export is active.
@@ -275,7 +284,7 @@ class TelemetrySpec(BaseModel):
 class HooksSpec(BaseModel):
     """Runner lifecycle hook configuration.
 
-    Parameters
+    Attributes
     ----------
     fail_fast : bool
         If ``True``, stop run execution on hook failures.
@@ -298,7 +307,7 @@ class RunSpec(BaseModel):
     result is deterministic and can be hashed to produce a stable
     ``run_id``.
 
-    Parameters
+    Attributes
     ----------
     execution : ExecutionSpec
         Execution-level settings.

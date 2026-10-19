@@ -1,6 +1,6 @@
 # RTPTorrent: source assessment and bounded class-result conversion
 
-The RTPTorrent adapter in COLEMAN 4.5 converts **raw class-result CSV members**,
+The RTPTorrent adapter converts **raw class-result CSV members**,
 using the existing licensed materialization/cache contract. The verified 4.9
 wheel retains this reader and includes the complete
 [real Parquet/replay workflow](rtptorrent-parquet-etl.md).
@@ -243,3 +243,8 @@ Identical concurrent retries converge; interrupted writes produce no completed
 JSON. Process-kill temporary-file and filesystem durability limits are inherited
 from the existing artifact writer. No separate experiment framework, learning
 checkpoint, CLI dependency, MCP dependency or automatic download is introduced.
+
+## Continue the workflow
+
+Run the [HikariCP Parquet/replay path](rtptorrent-parquet-etl.md), or inspect [ZIP64
+integrity](zip64-source-selection.md) before a new bounded selection.

@@ -31,16 +31,27 @@ class _CacheFormat(VersionedContract):
 
 
 def validate_source_storage(root: str | Path) -> None:
-    """Reject source-content storage physically inside a Git worktree, without creating files.
+    """Reject source storage inside a Git worktree without creating files.
 
-    Resolve existing symlink parents and inspect only ancestor Git directory/file
-    markers; reserved .git path components reject case-insensitively before
-    staging can introduce them. No Git process, marker content or sibling tree is
-    read. Cache bytes
-    and raw producer diagnostics need this guard; metadata-only exports retain
-    their existing rules. Invalid roots raise ValueError and filesystem failures
-    propagate. Trusted local parents are required: future Git initialization or
-    concurrent hostile filesystem mutation is outside this preflight's guarantee.
+    Parameters
+    ----------
+    root : str or pathlib.Path
+        Proposed source/cache/diagnostic location, resolved through existing
+        symlink parents before checking ancestor Git markers.
+
+    Raises
+    ------
+    ValueError
+        If the path is Git-backed or includes a reserved Git directory component.
+    OSError
+        If path resolution or filesystem inspection fails.
+
+    Notes
+    -----
+    Reads only ancestor marker existence, not marker contents or sibling trees.
+    No Git process is launched. Metadata-only exports retain their own rules.
+    Trusted parents are required; future Git initialization and hostile concurrent
+    filesystem mutation are outside this preflight guarantee.
     """
     root = Path(root).resolve()
     if any(parent.name.casefold() == ".git" or (parent / ".git").exists() for parent in (root, *root.parents)):
@@ -70,19 +81,39 @@ def _verified_chunks(reader: ByteReader, digest: str, size: int) -> Iterator[byt
 
 
 class SourceCache:
-    """Trusted-local v1 binary cache outside Git repositories, using existing immutable artifacts.
+    """Store content-addressed binary source blobs outside Git repositories.
 
-    Construction resolves the explicit root and creates/verifies its small format
-    marker. Caller owns the root; existing unreferenced files are neither adopted
-    as receipts nor deleted. Unknown marker versions reject. Every accessed blob
-    is size/hash verified; filenames alone never certify completion. Concurrent
-    identical writers converge through hard-link publication; conflicts reject.
-    Private/trusted parent directories and the artifact writer's local filesystem
-    durability limits apply. This is not a hostile-filesystem sandbox/global quota.
+    Parameters
+    ----------
+    root : str or pathlib.Path
+        Caller-owned trusted local cache root. Construction resolves it, validates
+        storage placement and creates/verifies a small v1 format marker.
+
+    Notes
+    -----
+    Every accessed blob is rechecked by size and SHA-256. Unreferenced files are
+    neither adopted as receipts nor deleted; unknown format markers reject.
+    Identical concurrent writers converge through immutable publication, while
+    conflicting bytes reject. Requires the artifact writer's local filesystem
+    operations; process-interruption limits do not guarantee power-loss recovery.
+    This is not a hostile-filesystem sandbox or global disk quota.
     """
 
     def __init__(self, root: str | Path) -> None:
-        """Validate the physical root before creating a deterministic version marker; I/O failures propagate."""
+        """Validate a root and create or verify the deterministic cache marker.
+
+        Parameters
+        ----------
+        root : str or pathlib.Path
+            Trusted local root outside Git; existing symlink parents are resolved.
+
+        Raises
+        ------
+        ValueError
+            If placement or the existing marker is invalid, oversized or unsupported.
+        OSError
+            If marker publication or local filesystem access fails.
+        """
         self._root = Path(root).resolve()
         validate_source_storage(self.root)
         self._writer = ArtifactWriter(self.root)
@@ -115,7 +146,32 @@ class SourceCache:
         return self._contained("blobs/" + digest.removeprefix("sha256:"))
 
     def verify_blob(self, digest: str, size: int) -> Path:
-        """Verify complete cached bytes in bounded chunks; missing/corrupt blobs raise, without repair or network."""
+        """Verify complete cached bytes offline without repair or publication.
+
+        Parameters
+        ----------
+        digest : str
+            Identified lowercase SHA-256: ``sha256:`` plus 64 hexadecimal characters.
+        size : int
+            Exact expected byte count, from zero through 8 GiB; booleans reject.
+
+        Returns
+        -------
+        pathlib.Path
+            Verified blob path beneath the cache.
+
+        Raises
+        ------
+        ValueError
+            If identity, bound, actual size or checksum is invalid.
+        OSError
+            If the blob is missing or cannot be read.
+
+        Notes
+        -----
+        Reads in bounded chunks with no network access. A filename alone does not
+        certify contents, archive membership, permission or source admission.
+        """
         if type(size) is not int or not 0 <= size <= 8 * 1024**3:
             raise ValueError("Source cache requires a bounded nonnegative integer byte count")
         path = self._blob(digest)
@@ -124,12 +180,37 @@ class SourceCache:
         return path
 
     def store_blob(self, digest: str, size: int, reader: ByteReader) -> Path:
-        """Consume a complete verified stream before atomic publication; caller closes its input.
+        """Verify a complete stream before immutable content-addressed publication.
 
-        This low-level content-addressed operation grants no license/admission.
-        Public acquisition must go through materialize_source's frozen terms gate.
-        A replay consumes/verifies the supplied stream even if the blob exists.
-        Size/hash/iterator/I/O failures never publish a partial blob.
+        Parameters
+        ----------
+        digest : str
+            Expected identified SHA-256 of the complete stream.
+        size : int
+            Exact byte count, from zero through 8 GiB; booleans reject.
+        reader : ByteReader
+            Caller-owned binary reader honoring requested chunk sizes. The caller
+            closes it; even an identical replay consumes and verifies the stream.
+
+        Returns
+        -------
+        pathlib.Path
+            Verified immutable blob path.
+
+        Raises
+        ------
+        ValueError
+            If identity, bounds, size, checksum or existing contents conflict.
+        TypeError
+            If the reader returns a non-byte value.
+        OSError
+            If reading or local immutable publication fails.
+
+        Notes
+        -----
+        Interrupted writes do not publish partial blobs. This low-level operation
+        grants no permission/admission; acquisition uses ``materialize_source`` and
+        its frozen component-terms gate. Local filesystem durability limits apply.
         """
         if type(size) is not int or not 0 <= size <= 8 * 1024**3:
             raise ValueError("Source cache requires a bounded nonnegative integer byte count")
@@ -138,11 +219,33 @@ class SourceCache:
         return path
 
     def member_path(self, receipt: MaterializationReceipt, name: str) -> Path:
-        """Return one verified cached member path; names are logical keys, never filesystem paths.
+        """Resolve and verify a declared member blob from a receipt.
 
-        This verifies the selected blob, not the full archive-to-member relation.
-        Use validate_materialization for the complete package proof. Unknown names
-        raise KeyError; changed/missing bytes raise ValueError/OSError.
+        Parameters
+        ----------
+        receipt : MaterializationReceipt
+            Validated v1 source/member declaration; metadata alone is not proof.
+        name : str
+            Exact logical member key, never interpreted as a filesystem path.
+
+        Returns
+        -------
+        pathlib.Path
+            Cache path whose complete selected bytes match the declared size/hash.
+
+        Raises
+        ------
+        KeyError
+            If the declaration does not contain the name.
+        ValueError
+            If metadata, size or checksum validation fails.
+        OSError
+            If cached bytes are missing or unreadable.
+
+        Notes
+        -----
+        Validates only this blob, without writes or network access. Use
+        ``validate_materialization`` to verify the whole archive/member relationship.
         """
         receipt = MaterializationReceipt.model_validate(receipt)
         for member in receipt.spec.members:
@@ -178,17 +281,42 @@ def materialize_source(
     *,
     refresh_source: bool = False,
 ) -> MaterializationReceipt:
-    """Acquire verified raw/ZIP bytes and members, without scientific admission or implicit network access.
+    """Acquire and verify a frozen raw/ZIP package and its declared members.
 
-    Frozen terms/pins/budgets validate before reader/cache access. The optional
-    reader factory is lazy on a verified cache hit; refresh_source=True forces its
-    verification, useful for explicit local files. ZIP source digest is verified
-    before metadata/member decoding. All actual member streams are checked even
-    on cache hits, so an unrelated cached blob cannot certify archive membership.
-    Interrupted operations retain only individually completed blobs; no receipt
-    is returned until all declared members are verified. Retry reuses the frozen
-    source and repeats bounded member verification. No second learning checkpoint
-    or experiment runner is introduced.
+    Parameters
+    ----------
+    spec : MaterializationSpec
+        Versioned source/member identities, component terms and resource bounds.
+    cache : SourceCache
+        Validated external binary cache for immutable source/member bytes.
+    source : ReaderFactory or None, optional
+        Explicit context-managed binary reader factory. Lazy on a verified
+        cache hit; required when the source is absent. No implicit HTTP occurs.
+    refresh_source : bool, optional
+        Force verification of the supplied source even on a cache hit.
+
+    Returns
+    -------
+    MaterializationReceipt
+        Metadata returned only after the whole source and every declared
+        selected member have been verified against actual bytes.
+
+    Raises
+    ------
+    ValueError
+        If terms/pins/bounds, source presence, archive structure, checksums or
+        the boolean refresh flag fail validation.
+    OSError
+        If caller-supplied reading or cache publication fails.
+
+    Notes
+    -----
+    Validates the frozen declaration before reader/cache access. ZIP source
+    identity is checked before metadata/member decoding. Actual member streams
+    are verified even on cached replay; an unrelated blob cannot prove archive
+    membership. Interrupted work leaves only individually completed blobs.
+    Retry reuses the frozen source and repeats bounded member validation.
+    This does not grant scientific admission or create a second runner/checkpoint.
     """
     spec = MaterializationSpec.model_validate(spec)
     if type(refresh_source) is not bool:
@@ -205,12 +333,27 @@ def materialize_source(
 
 
 def validate_materialization(receipt: MaterializationReceipt, cache: SourceCache) -> None:
-    """Verify complete cached source, archive membership and member blobs offline, without publishing or repairing.
+    """Reverify complete cached source and member correspondence offline.
 
-    A receipt is producer metadata, not proof that files still exist. Source and
-    decoded members are rehashed, including their relation to the pinned archive.
-    Missing/changed bytes and unsupported metadata fail closed. No network reader
-    is constructed and no source availability/license declaration is rewritten.
+    Parameters
+    ----------
+    receipt : MaterializationReceipt
+        Versioned package declaration to check against current bytes.
+    cache : SourceCache
+        External source/member cache used by the declaration.
+
+    Raises
+    ------
+    ValueError
+        If metadata, source identity, archive membership or member bytes disagree.
+    OSError
+        If required cached files are missing or unreadable.
+
+    Notes
+    -----
+    Rehashes the complete source and decoded selected members and checks their
+    independently cached copies. Publishes/repairs nothing, constructs no network
+    reader and changes no source-availability or component-terms declaration.
     """
     receipt = MaterializationReceipt.model_validate(receipt)
     spec = receipt.spec
@@ -226,14 +369,28 @@ def validate_materialization(receipt: MaterializationReceipt, cache: SourceCache
 
 
 def validate_cache_separation(cache_root: str | Path, output_root: str | Path) -> None:
-    """Reject physically overlapping cache/export roots before any acquisition or output writes.
+    """Reject overlapping physical cache and publication roots before writes.
 
-    Resolve both roots, including existing symlink parents, without creating files.
-    Equal roots, either ancestor relation or an escaping materialization-family
-    symlink raises ValueError. Callers planning
-    acquisition plus publication must run this preflight before constructing the
-    cache; publication repeats the check. Trusted private parent directories are
-    required: this does not prevent concurrent hostile filesystem mutation.
+    Parameters
+    ----------
+    cache_root : str or pathlib.Path
+        Proposed external source cache, resolved through existing symlink parents.
+    output_root : str or pathlib.Path
+        Proposed metadata publication root, with its own contained artifact family.
+
+    Raises
+    ------
+    ValueError
+        If roots coincide, either contains the other, or the materialization
+        artifact family escapes the publication root.
+    OSError
+        If filesystem resolution fails.
+
+    Notes
+    -----
+    Creates no files. Run this preflight before cache construction when planning
+    acquisition/publication; publication repeats it. Trusted parents are required;
+    hostile concurrent filesystem mutation is outside the guarantee.
     """
     cache = Path(cache_root).resolve()
     output = Path(output_root).resolve()
@@ -244,11 +401,34 @@ def validate_cache_separation(cache_root: str | Path, output_root: str | Path) -
 
 
 def publish_materialization(receipt: MaterializationReceipt, cache: SourceCache, writer: ArtifactWriter) -> Path:
-    """Verify actual offline bytes before publishing metadata-only immutable evidence; replay is idempotent.
+    """Verify cached bytes and publish an immutable metadata-only receipt.
 
-    Source/member data remains in the external cache, including recipe-only data.
-    A failure cannot publish a falsely completed receipt. The same trusted local
-    writer/root and process-interruption/power-loss limits apply.
+    Parameters
+    ----------
+    receipt : MaterializationReceipt
+        Frozen source/member declaration, revalidated against actual cached bytes.
+    cache : SourceCache
+        External binary cache; raw source/member bytes remain here.
+    writer : ArtifactWriter
+        Trusted local metadata writer with a physically separate publication root.
+
+    Returns
+    -------
+    pathlib.Path
+        Deterministic receipt path under ``corpus-materializations``.
+
+    Raises
+    ------
+    ValueError
+        If roots overlap, metadata/bytes fail validation or published contents conflict.
+    OSError
+        If offline reading or local immutable publication fails.
+
+    Notes
+    -----
+    Identical replay is idempotent. No falsely complete receipt is published
+    before verification, and raw source data is not exported. The writer's
+    trusted-parent and process-interruption/power-loss limits apply.
     """
     receipt = MaterializationReceipt.model_validate(receipt)
     validate_cache_separation(cache.root, writer.run_root)

@@ -1,26 +1,38 @@
-# API Reference
+# Find the API you need
 
-## Experiment system
+Start from a workflow when learning the platform. Use this index to find the
+symbol and its contract once you know which boundary you need.
 
-| Module | Description |
-|--------|-------------|
-| [`coleman.api`](api/experiment-api.md) | Library-first API: `run`, `run_many`, `sweep`, `load_spec`, `save_resolved` |
-| [`coleman.spec.models`](api/spec-models.md) | Typed `RunSpec` and sub-spec Pydantic v2 models |
-| [`coleman.spec.sweep`](api/spec-sweep.md) | Sweep engine: `SweepSpec`, `SweepAxis`, `expand_sweep` |
-| [`coleman.spec.packs`](api/spec-packs.md) | Config pack resolution: `resolve_packs` |
-| [`coleman.spec.run_id`](api/spec-run-id.md) | Deterministic `run_id`: `compute_run_id` |
-| [`coleman.spec.io`](api/spec-io.md) | YAML I/O: `load_spec`, `save_resolved` |
-| [`coleman.spec.provenance`](api/spec-provenance.md) | Provenance capture: `save_provenance` |
-| [`coleman.cli`](api/cli.md) | CLI entry-point: `coleman run`, `coleman sweep`, `coleman validate` |
+## Run and configure experiments
 
-## Core framework
+| Entry point | Purpose | Working guide |
+| --- | --- | --- |
+| [Experiment API](api/experiment-api.md) | `run`, `run_many`, `run_with_extension`, `sweep` | [First experiment](getting-started.md) |
+| [Specification models](api/spec-models.md) | `RunSpec` and typed configuration sections | [Configuration](configuration.md) |
+| [YAML I/O](api/spec-io.md) | `load_spec`, `load_sweep_spec`, `save_resolved` | [Configuration](configuration.md) |
+| [Packs](api/spec-packs.md) | Resolve composable configuration fragments | [Configuration](configuration.md) |
+| [Sweep expansion](api/spec-sweep.md) | Grid/zip candidate expansion | [Experiment design](experiments.md) |
+| [Run identity](api/spec-run-id.md) | Compatibility-aware configuration hashing | [Architecture](setup.md#identity-and-reproducibility) |
+| [Environment provenance](api/spec-provenance.md) | Persist run-environment facts | [Architecture](setup.md) |
+| [CLI](api/cli.md) | Native command-line boundary | [First experiment](getting-started.md#4-run-the-same-configuration-through-the-cli) |
 
-The core API is documented by module:
+## Extend native behavior
 
-- [Agent](api/agent.md)
-- [Bandit](api/bandit.md)
-- [Environment](api/environment.md)
-- [Evaluation](api/evaluation.md)
-- [Policy](api/policy.md)
-- [Reward](api/reward.md)
-- [Scenarios](api/scenarios.md)
+[Agents](api/agent.md), [bandits](api/bandit.md), [environments](api/environment.md),
+[policies](api/policy.md), [rewards](api/reward.md),
+[scenarios](api/scenarios.md) and [native evaluation](api/evaluation.md) describe
+the existing runtime. Use [extensions and parallelism](extensibility.md) for lifecycle
+and worker-state guidance.
+
+## Retain source and result evidence
+
+| Contract/API | Purpose | Complete guide |
+| --- | --- | --- |
+| [Measurement records](api/results.md) | Explicit units, states, logical identity and provenance | [Domain results](domain-results.md) |
+| [Artifact publication](api/artifacts.md) | Local mutable and immutable write contracts | [Architecture](setup.md) |
+| [Source materialization](api/materialization.md) | Verified external source cache and immutable receipts | [Materialization workflow](corpus-materialization.md) |
+
+The [dataset guide](datasets.md) indexes source-specific ETL/capture contracts.
+The [evaluation guide](evaluation-guide.md) connects observations, repeated units
+and protected-comparison APIs. [Integration](integration-guide.md) explains the
+bounded application API and optional transport.

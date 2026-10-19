@@ -201,3 +201,9 @@ and requires full-suite native evidence. This is a bounded correctness feature, 
 a throughput benchmark or a second scheduler. Parallel scheduling, automatic external
 unit conversion, billing integration, mutable capacity, live CI cancellation and
 prospective evidence collection remain outside this slice.
+
+## Continue the workflow
+
+Connect resource observations to the [operational pilot](operational-pilot.md) and [shadow
+evaluation](prospective-shadow.md). Use the [evaluation guide](evaluation-guide.md) to keep modeled
+and observed claims separate.

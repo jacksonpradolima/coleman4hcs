@@ -16,7 +16,7 @@ export UV_LINK_MODE ?= copy
 
 .DEFAULT_GOAL := help
 
-.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve docs-export-workflow check-precommit clean interrogate build run cost-structural cost-complexity cost-maintainability cost-xenon cost-wily cost-wily-file cost-profile-scalene cost-profile-pyspy cost-energy
+.PHONY: help ensure-uv setup install pre-commit-install lint format format-check typecheck test test-cov docs docs-serve docs-export-workflow check-precommit clean interrogate docstrings build run cost-structural cost-complexity cost-maintainability cost-xenon cost-wily cost-wily-file cost-profile-scalene cost-profile-pyspy cost-energy
 
 ## —— Coleman Makefile ——————————————————————————————————
 
@@ -65,6 +65,11 @@ typecheck: ensure-uv ## Run pyright and ty type checkers
 
 interrogate: ensure-uv ## Check docstring coverage with interrogate
 	$(UV) run interrogate coleman/ -v
+
+docstrings: ensure-uv ## Check NumPy parameter coverage of documented public entry points
+	$(UV) run --python $(PYTHON) --no-project python scripts/audit_docstrings.py --check \
+		coleman/api.py coleman/artifacts.py coleman/results/domain.py \
+		coleman/corpus/materialization.py coleman/spec/io.py coleman/spec/run_id.py coleman/spec/sweep.py
 
 # ——— Testing ——————————————————————————————————————————————
 
@@ -115,7 +120,7 @@ run: ensure-uv ## Remove runs/checkpoints and execute coleman run
 
 # ——— Pre-commit ———————————————————————————————————————————
 
-check-precommit: test typecheck interrogate ## Run tests, type checks, and docstring coverage (used by pre-commit)
+check-precommit: test typecheck interrogate docstrings ## Run tests, type checks, and docstring checks (used by pre-commit)
 
 # ——— Code Cost ————————————————————————————————————————————
 

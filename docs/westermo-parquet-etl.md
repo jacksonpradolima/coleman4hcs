@@ -5,19 +5,17 @@ without collapsing abnormal outcomes into failures or inventing duration units.
 COLEMAN converts an explicit session selection into observations and session
 tables, verifies both against the pinned original source, and retries offline.
 
-This adapter is available in the source revision containing this guide. It is
-**not included in the previously published 4.17 wheel**. Build/install this
-revision's wheel before using the commands below.
+The published wheel below includes the analytical adapter and its typed contracts.
+Use an explicit source selection and retain the source's unverified semantics.
 
-## Build and run outside the checkout
+## Install and run outside the checkout
 
-From the COLEMAN checkout, with Python 3.14 and uv:
+With Python 3.14 and uv, using paths outside Git:
 
 ```bash
-uv build --wheel --out-dir /tmp/coleman-westermo-dist
 uv venv /tmp/coleman-westermo-env --python 3.14
 uv pip install --python /tmp/coleman-westermo-env/bin/python \
-  /tmp/coleman-westermo-dist/coleman-*.whl
+  "https://github.com/jacksonpradolima/coleman/releases/download/v4.19.0/coleman-4.19.0-py3-none-any.whl#sha256=070e21c19fb7e3f2e392bd68706c354ed5ab7f76b86db80f5f1bdc5721b767bd"
 mkdir -p /tmp/coleman-westermo-work
 cd /tmp/coleman-westermo-work
 
@@ -30,10 +28,8 @@ cd /tmp/coleman-westermo-work
   --cache /tmp/coleman-westermo-cache --output /tmp/coleman-westermo-output
 ```
 
-The build uses the checked-out revision's version metadata; it does not install
-the older published wheel. Use a fresh distribution directory containing exactly
-one wheel and install that wheel. Keep all source/cache/output paths
-outside Git. `--source /path/to/test-results.zip` explicitly verifies a local
+Keep all source/cache/output paths outside Git. The pinned wheel requires no
+checkout for this workflow. `--source /path/to/test-results.zip` explicitly verifies a local
 original archive instead of fetching. To select a compatible frozen session set,
 pass `--recipe-stdin` and redirect the JSON recipe on stdin:
 
@@ -146,3 +142,9 @@ avoid execution-thread chunk layout entering Parquet bytes. Producer source and
 Arrow version are bound into the namespace. Unknown producers require their
 recorded implementation; old exports and unrelated legacy artifacts are never
 rewritten or silently migrated.
+
+## Continue the workflow
+
+Compare evidence types in [datasets](datasets.md), retain original source meaning in [source
+admission](corpus-admission.md), and use the [research
+guide](research.md#datasets-and-source-studies) for the author paper.

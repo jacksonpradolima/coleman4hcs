@@ -34,7 +34,7 @@ result = run_with_extension(spec, extension)
 
 Concrete example entrypoint:
 
-1. [examples/custom-environment-template/advanced/my_project/extension_entrypoint.py](examples/custom-environment-template/advanced/my_project/extension_entrypoint.py)
+1. [examples/custom-environment-template/advanced/my_project/extension_entrypoint.py](https://github.com/jacksonpradolima/coleman/blob/main/examples/custom-environment-template/advanced/my_project/extension_entrypoint.py)
 
 Core-owned responsibilities remain unchanged:
 
@@ -170,7 +170,7 @@ writer.write_json_atomic(path, payload)
 
 Concrete plugin example (class + function hooks):
 
-1. [examples/custom-environment-template/advanced/my_project/hooks.py](examples/custom-environment-template/advanced/my_project/hooks.py)
+1. [examples/custom-environment-template/advanced/my_project/hooks.py](https://github.com/jacksonpradolima/coleman/blob/main/examples/custom-environment-template/advanced/my_project/hooks.py)
 
 Default artifact layout:
 
@@ -339,3 +339,8 @@ coleman sweep --config run.yaml \
 3. Custom artifacts should carry `run_id` and `execution_id`.
 4. New policies/rewards should be covered by deterministic unit tests.
 5. Any Environment/Metric source customization should include integration tests.
+
+## Continue the workflow
+
+Use the [artifact API](api/artifacts.md) for publication semantics and the [architecture
+guide](setup.md) to preserve runner and transport boundaries.

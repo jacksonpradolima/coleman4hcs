@@ -212,5 +212,11 @@ COLEMAN_LRTS_ETL_REAL_CACHE=/tmp/coleman-lrts-source-cache \
 
 This installs a wheel outside the checkout, verifies core import boundaries,
 converts real source bytes and runs/reopens actual native checkpoints. Network
-acquisition remains a separate explicit verification. Other projects, larger
-slices, additional baselines and protected confirmatory evidence remain #261 work.
+acquisition remains a separate explicit verification. For larger histories, use the [stage-view workflow](lrts-stage-views.md), while
+[baseline matrices](comparable-baselines.md) provide comparable candidate preparation.
+Protected historical confirmation remains [unfinished](roadmap.md#historical-corpus-status).
+
+## Continue the workflow
+
+Inspect [LRTS source meaning](lrts.md), expand to [separate stage views](lrts-stage-views.md), then
+assess the evidence through [source admission](corpus-admission.md).

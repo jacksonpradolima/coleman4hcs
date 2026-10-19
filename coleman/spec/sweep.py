@@ -19,7 +19,7 @@ from coleman.spec.models import RunSpec
 class SweepAxis(BaseModel):
     """A single sweep dimension.
 
-    Parameters
+    Attributes
     ----------
     mode : str
         ``"grid"`` for Cartesian product, ``"zip"`` for element-wise
@@ -35,7 +35,7 @@ class SweepAxis(BaseModel):
 class SweepSpec(BaseModel):
     """Multi-axis sweep definition.
 
-    Parameters
+    Attributes
     ----------
     axes : list[SweepAxis]
         Sweep dimensions.  Grid axes are combined via Cartesian product;
