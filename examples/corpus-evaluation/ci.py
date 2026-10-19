@@ -6,9 +6,9 @@ constructed mechanism evidence, not admitted historical repositories or a policy
 comparison establishing generalization. All durations are exact integer seconds.
 """
 
+import argparse
 import json
 import math
-import sys
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -98,8 +98,8 @@ def _design(data, members):
     # Keep a fixed, explicit final cutoff after all assembly below. No historical
     # source clocks are substituted with this analysis-time availability bound.
     plan = TemporalPlan(
-        train_end="2026-01-02T23:59:59Z",
-        validation_end="2026-01-04T23:59:59Z",
+        train_end=datetime(2026, 1, 2, 23, 59, 59, tzinfo=UTC),
+        validation_end=datetime(2026, 1, 4, 23, 59, 59, tzinfo=UTC),
         test_end=now + timedelta(hours=1),
     )
     design = RepetitionDesign(
@@ -109,7 +109,7 @@ def _design(data, members):
         evidence_basis="constructed_mechanism",
         source_admission_fingerprint=None,
         plan=plan,
-        warmup_end="2026-01-01T00:00:00Z",
+        warmup_end=datetime(2026, 1, 1, tzinfo=UTC),
         budget=Quantity(value=Decimal("0.5"), semantics=BUDGET_RATIO),
         seeds=(11, 42),
         builds=tuple(members),
@@ -177,6 +177,8 @@ def _native_rows(specs, data, design, frozen):
     rows = []
     for (policy, seed), spec in specs.items():
         native = run(spec)
+        if native.artifacts_dir is None:
+            raise ValueError("Native CI execution requires published artifacts")
         table = pl.read_parquet(str(Path(native.artifacts_dir) / "results/**/*.parquet"), hive_partitioning=True)
         for raw in table.iter_rows(named=True):
             project, step = raw["scenario"], raw["step"]
@@ -220,7 +222,31 @@ def _native_rows(specs, data, design, frozen):
     return tuple(rows)
 
 
-def main(output):
+def _evaluation_protocol(design, bounded):
+    """Keep the legacy default; opt into independently bounded, non-normal mean inference explicitly."""
+    common = {
+        "protocol_id": "owned-ci-unit-means-v1",
+        "holdout_id": "owned-ci-mechanism-holdout-v1",
+        "metric_name": design.raw_metric,
+        "unit": "1",
+        "meaning": design.raw_semantics.meaning + MEAN_SUFFIX,
+        "direction": "maximize",
+        "independent_unit": design.independent_unit,
+        "dependence": "independent",
+        "practical_effect": 0.05,
+        "minimum_units": 20,
+    }
+    if bounded:
+        # Lazy import preserves the default example's published 4.17 SDK compatibility.
+        from coleman.evaluation.protected import BoundedMeanProtocol
+
+        return BoundedMeanProtocol.model_validate(
+            {"schema_version": 1, "outcome_lower": 0, "outcome_upper": 1, **common}
+        )
+    return EvaluationProtocol.model_validate({"normal_differences_assumed": True, **common})
+
+
+def main(output, *, bounded=False):
     """Freeze and reserve protected access before executing native candidates and publishing evidence."""
     root = Path(output).resolve()
     data, members = _write_inputs(root)
@@ -241,19 +267,7 @@ def main(output):
         candidates,
         design.data_fingerprint,
         plan,
-        EvaluationProtocol(
-            protocol_id="owned-ci-unit-means-v1",
-            holdout_id="owned-ci-mechanism-holdout-v1",
-            metric_name=design.raw_metric,
-            unit="1",
-            meaning=design.raw_semantics.meaning + MEAN_SUFFIX,
-            direction="maximize",
-            independent_unit=design.independent_unit,
-            dependence="independent",
-            normal_differences_assumed=True,
-            practical_effect=0.05,
-            minimum_units=20,
-        ),
+        _evaluation_protocol(design, bounded),
         (ComparisonHypothesis(hypothesis_id="UCB-Random", candidate_id="UCB", baseline_id="Random"),),
     )
     audit = EvaluationAudit(root / "protected")
@@ -291,4 +305,8 @@ def main(output):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("output")
+    parser.add_argument("--bounded", action="store_true", help="Use predeclared [0,1] paired-mean bounds")
+    arguments = parser.parse_args()
+    main(arguments.output, bounded=arguments.bounded)

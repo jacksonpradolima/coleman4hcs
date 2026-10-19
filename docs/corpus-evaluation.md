@@ -172,6 +172,13 @@ assumed normal **unit differences** and independent units. Aggregating dependent
 builds/seeds does not prove independent families or normal differences. Serial or
 clustered units and undeclared normality reject before loading outcomes.
 
+The current source revision also supports [bounded paired means](bounded-paired-evaluation.md)
+with predeclared metric limits and independent repository-family units, without
+normality. The complete installed native example accepts `--bounded` with this
+revision's wheel. The published 4.17/default Student-t workflow below is unchanged.
+Neither protocol turns repeated builds/seeds into independent families or clears
+unverified source-admission/availability evidence.
+
 [SciPy's paired test](https://docs.scipy.org/doc/scipy-1.17.0/reference/generated/scipy.stats.ttest_rel.html)
 compares related observations; its
 [Kruskal-Wallis test](https://docs.scipy.org/doc/scipy-1.17.0/reference/generated/scipy.stats.kruskal.html)

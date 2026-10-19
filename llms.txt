@@ -31,6 +31,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/api-reference.md
 - docs/application-api.md
 - docs/benchmark-corpus.md
+- docs/bounded-paired-evaluation.md
 - docs/c-seeded-source-capture.md
 - docs/ci-stress-laboratory.md
 - docs/code-cost.md
@@ -72,6 +73,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/releases/4.15.0.md
 - docs/releases/4.16.0.md
 - docs/releases/4.17.0.md
+- docs/releases/4.18.0.md
 - docs/releases/4.2.0.md
 - docs/releases/4.3.0.md
 - docs/releases/4.4.0.md
@@ -88,6 +90,7 @@ parallel execution, and extensibility via hooks and namespaced custom config.
 - docs/rtptorrent.md
 - docs/scenario-payoffs.md
 - docs/setup.md
+- docs/westermo-parquet-etl.md
 - docs/workflow.md
 - docs/zip64-source-selection.md
 
@@ -122,6 +125,7 @@ and checkpoint. Inspect the inputs, decisions and evidence behind each result.
 | Stress a difficult CI decision | [32 deterministic interaction-covering cases](docs/ci-stress-laboratory.md), explicit truth and feedback clocks, native Parquet and resumable agents |
 | Audit what a source actually supports | [Source-admission API](docs/corpus-admission.md): verify original evidence, retain explicit units and inspect a 35-axis production-reality matrix |
 | Compare repeated CI experiments | [Versioned raw build/seed records and paired repository-family means](docs/corpus-evaluation.md), explicit missingness and protected access |
+| Compare metrics with known limits | [Conservative bounded paired means](docs/bounded-paired-evaluation.md), full-family uncertainty and practical equivalence without normality; requires this source revision's wheel |
 | Assess public CI collection | [Bounded public Actions example](docs/public-ci-feasibility.md), typed receipts and 35 reality axes; explicitly reports missing test and physical-cost evidence |
 | Develop comparable baseline matrices | [Frozen native-policy and heuristic matrix](docs/comparable-baselines.md), explicit incompatibilities, raw costs and checkpoint recovery; available in 4.17 |
 | Compare adaptive CI prioritization policies | Native TCPCI runner, configurable policies/rewards, contextual inputs and [parameter sweeps](#sweep-engine) |
@@ -809,6 +813,7 @@ controlled reproductions and empirical benchmark corpora have different roles:
 | **Druid and Retrofit** | Bundled native/contextual Parquet examples, native runner and [descriptive profiles](docs/benchmark-corpus.md#local-profiles-and-the-first-diversity-matrix-44) | Runnable legacy experiments. Source terms, duration units and outcome availability still need corpus admission evidence. |
 | **Dune and its variants** | Bundled native Parquet, WTS/VTS workflows and [variant-aware inventory](docs/benchmark-corpus.md) | Runnable HCS examples. Variants/context files may share executions; broad HCS benchmark admission remains unfinished. |
 | **LibSSH historical configurations** | [Published 4.17 wheel → original CSV/JSON → analytical/union/variant/VTS Parquet → native checkpoints](docs/hcs-parquet-etl.md) | Sixteen frozen pipelines, 13 known job labels (seven with parsed tests), 856 retained test executions and 29 explicit other-attempt exclusions. All 208 sparse cells retain missing evidence; metadata-only jobs never become passing tests or native executions. Test-only costs and temporal admission blockers remain explicit. |
+| **Original Westermo nightly results** | [Build this source revision → pinned public ZIP → typed observations/session Parquet](docs/westermo-parquet-etl.md) | Checks 1,063,915 original records and selects 16 sessions / 1,064 observations. Preserves pass/fail/invalid/unmappable, abnormal-session nulls and anonymized dates. Per-test duration units and protected availability remain unverified; analytical export only. Requires this revision's wheel; absent from the older published 4.17 wheel. |
 | **RTPTorrent / HikariCP** | [Verified ZIP64 → full analytical history → native-compatible Parquet → replay/recovery](docs/rtptorrent-parquet-etl.md) | Available in 4.8: 46,995 class executions / 1,662 jobs retained; eight declared jobs provide the bounded native preset. Explicit post-hoc assumptions; temporal admission remains blocked. |
 | **Controlled Java real-fault sources** | Published 4.17 wheel: [CLI-13 producer](docs/junit-source-capture.md) and [three-fix CLI/Codec matrix](docs/java-fault-matrix.md) with typed indices and offline recovery | Two codebases, explicit common fixtures, 357 same-test pairs in the initial qualification. Docker/arm64; negative and inconclusive results remain visible. Controlled evidence, not historical CI or full Defects4J reconstruction. |
 | **Controlled Python real-fault source** | [Published 4.17 wheel → pinned PySnooper capture → offline/interruption recovery](docs/python-source-capture.md) | One unchanged partial fixture, one curated fix, two correlated locales: ASCII error-to-pass remains inconclusive; UTF-8 both-pass. Docker/arm64; component terms and attribution limits retained. |
@@ -2024,6 +2029,12 @@ For the separate source-specific ETL workflows, see [Karaf](lrts-parquet-etl.md)
 views](lrts-stage-views.md). Those exports preserve their own provenance and
 admission blockers; they do not silently add admitted registrations to this registry.
 
+The current source revision also adds [original Westermo analytical Parquet](westermo-parquet-etl.md):
+explicit pinned sessions, all four original outcomes, session-envelope seconds and
+unverified per-test units. Build this revision's wheel; the previously published
+4.17 wheel does not include it. An export does not change source admission or the
+four uncovered historical/HCS regimes.
+
 For controlled Java sources, the published 4.17 wheel includes a separate [CLI/Codec
 matrix](java-fault-matrix.md) using the existing controlled/JUnit producer.
 Its typed index preserves all selected outcomes and incomplete evidence. It does
@@ -2424,6 +2435,161 @@ cache and publishes through the same artifact writer. It does not grant source
 admission or convert collection clocks into historical CI chronology. Direct
 upstream Java/Python reproductions are documented separately from the owned
 synthetic installed example; required diversity cells remain uncovered.
+
+
+
+### FILE: docs/bounded-paired-evaluation.md
+
+# Compare bounded CI metrics without assuming normal differences
+
+Use `BoundedMeanProtocol` when a metric has known limits and your paired
+inference units are independent. For example, a correctly defined NAPFD score
+and its equally weighted repository-family mean lie in `[0, 1]`. The method
+compares paired means, controls the full declared family, and reports benefit,
+harm, practical equivalence or insufficient/inconclusive evidence.
+
+This additive method is available in the source revision containing this guide.
+The earlier published **4.17 wheel** retains the existing Student-t method.
+Build this revision's wheel for the new protocol and `--bounded` example below.
+Old frozen contracts and reports retain their exact serialized bytes and method.
+
+## Run a complete installed native CI example
+
+From the COLEMAN checkout, with Python 3.14+ and uv:
+
+```bash
+task_bounded_work="$(mktemp -d /tmp/coleman-bounded-XXXXXX)"
+uv build --wheel --out-dir "$task_bounded_work/dist"
+uv venv "$task_bounded_work/installed" --python 3.14
+uv pip install --python "$task_bounded_work/installed/bin/python" \
+  "$task_bounded_work"/dist/coleman-*.whl
+cp examples/corpus-evaluation/ci.py "$task_bounded_work/ci.py"
+cd "$task_bounded_work"
+
+"$task_bounded_work/installed/bin/python" -I ci.py ./output --bounded
+"$task_bounded_work/installed/bin/python" -I ci.py ./output --bounded
+```
+
+This authored CI example uses the actual Random/UCB runner, independent rational
+metric checks, immutable raw artifacts, native checkpoints and the existing
+protected access audit. It retains sixteen build/seed results and aggregates the
+two related histories into **one family**, yielding `insufficient_evidence`.
+Retry preserves native files and checkpoints; protected reuse remains recorded
+and cannot produce a new confirmatory claim. These are mechanism observations,
+not independent empirical projects. The default command without `--bounded`
+preserves the original Student-t workflow and works with the published 4.17 SDK.
+
+## Freeze the protocol before outcomes
+
+```python
+from coleman.evaluation.protected import BoundedMeanProtocol
+
+protocol = BoundedMeanProtocol(
+    schema_version=1,
+    protocol_id="ci-napfd-family-means-bounded-v1",
+    holdout_id="reviewed-ci-corpus-protected-holdout-v1",
+    metric_name="verdict_napfd",
+    unit="1",
+    meaning="verdict-napfd-full-universe-v1:equal-build-seed-mean-binary64-v1",
+    direction="maximize",
+    independent_unit="reviewed_repository_family",
+    dependence="independent",
+    outcome_lower=0,
+    outcome_upper=1,
+    practical_effect=0.02,
+    alpha=0.05,
+    minimum_units=20,
+)
+print(protocol.to_json())
+```
+
+Pass this typed protocol to the same `freeze(...)` and `evaluate(...)` APIs
+described in [protected evaluation](protected-evaluation.md). Preserve complete
+candidate configurations, data/provenance identities, temporal plans, the full
+hypothesis family and a stable holdout ID. The [repetition contract](corpus-evaluation.md)
+continues to aggregate seeds/builds within reviewed repository families before
+inference. No second runner, access ledger or result format is introduced.
+
+`outcome_lower` and `outcome_upper` are inclusive limits of **each independent
+unit's metric**, in the declared unit/meaning. Freeze limits justified by the
+metric definition before access. Do not estimate limits from protected outcomes,
+clip offending values, substitute missing values or interpret a ranking/reward
+as a calibrated failure probability. Observations outside the frozen range reject;
+the failed access remains in the audit. Signed bounded metrics and observed zero
+are valid. Any missing pair invalidates that comparison's mean and uncertainty.
+
+## Assumptions and the estimand
+
+The estimand is the average expected paired unit difference. Candidate minus
+baseline is the raw effect; minimization reverses its sign for improvement.
+The units must be independent, while their distributions may differ. Neither
+normality nor a variance estimate is required. Bounds must hold for the random
+metric, not merely the particular values seen in a sample.
+
+If both candidate measurements lie in `[L, U]`, each paired difference lies in
+`[-S, S]`, where `S = U - L`. For `n` independent units, the two-sided
+[Hoeffding bound](https://www.cs.rpi.edu/academics/courses/spring06/random/hoefding.pdf)
+is `min(1, 2 exp(-n t² / (2 S²)))` for deviation `t` of the sample mean from its
+expectation. The original paper's Theorem 1, inequality (2.3), gives the bounded
+independent-sum result; the two-sided statement follows by applying both tails.
+
+Independence is an assumption to justify, not a certificate inferred from IDs.
+The new protocol rejects `serial`/`clustered` unit declarations. Aggregating
+dependent builds/seeds within a genuinely independent family is supported by
+the existing repetition design; inventing additional family names is not.
+The inference does not establish a sampling model, empirical source admission,
+operational savings or generalization to unseen repositories.
+
+## Multiplicity, practical decisions and conservative arithmetic
+
+The complete frozen family contributes to Holm-adjusted conservative p-values.
+Missing hypotheses remain present with adjustment input one. Simultaneous
+confidence bounds use Bonferroni `alpha / m`, where `m` is the whole family size;
+independence between hypotheses is not required.
+
+For a first eligible protected access:
+
+- Benefit/harm requires corrected evidence and an entire simultaneous interval
+  beyond the corresponding practical threshold.
+- Practical equivalence requires the whole interval inside the closed frozen
+  region `[-practical_effect, practical_effect]`. Rejecting zero is unnecessary.
+- Other complete comparisons remain inconclusive. Too few units, incomplete
+  pairs or unrepresentable uncertainty retain insufficient evidence explicitly.
+
+The v1 arithmetic profile uses exact rational differences of input binary64
+measurements. A positive degree-32 Taylor lower sum for `exp(x)` supplies a
+conservative rational upper tail bound; it is **not an exact test p-value**.
+A fixed 32-step dyadic search keeps an upper confidence radius, followed by
+outward rounding of endpoints/probabilities to binary64. When the bound is too
+weak, the full possible parameter range remains the interval. There is no
+platform `exp`/`log` approximation or data-dependent precision/stopping choice.
+Holm products use rational arithmetic and upward output rounding as well; ordinary
+floating multiplication could narrow a conservative probability bound. The public
+`holm_adjust(..., outward=True)` selects this profile, while its default remains
+the legacy arithmetic. Mean effects round once; nonfinite data reject, and unrepresentable uncertainty
+stays null. Finite bounds can be much wider than normal-theory intervals.
+
+The method, estimand, arithmetic profile, metric limits, practical threshold and
+family are frozen into identity. Report reads recompute every result and require
+identical binary64 bounded-method outputs; a one-ULP narrowed endpoint rejects.
+Legacy Student-t reports retain their existing numerical-library tolerance.
+Both methods retain signed effects, explicit null uncertainty and #251 provenance.
+
+## Compatibility and limits
+
+`BoundedMeanProtocol` requires its explicit nested schema version 1. Missing/future
+versions, unknown arithmetic/method identifiers and contradictory assumptions
+reject. Older SDKs reject the new method; they do not reinterpret it as Student-t.
+No old artifact is migrated or silently assigned bounds. Existing Student-t
+normality requirements, golden fixtures, result meanings and conclusions stay
+unchanged. Practical equivalence is an explicit new-method conclusion.
+
+This is a conservative paired-mean alternative. It does not implement rank tests,
+bootstrap/block/hierarchical inference, sequential testing or alpha spending.
+An analyst must freeze the appropriate method before outcomes; trying methods
+until one is favorable is holdout reuse. The existing audit records reuse and
+removes confirmatory eligibility. Review each project's raw results, missingness,
+effect/uncertainty, runtime and source limitations alongside aggregate comparisons.
 
 
 
@@ -4883,6 +5049,13 @@ budget in the existing protocol. Its paired Student procedure requires explicitl
 assumed normal **unit differences** and independent units. Aggregating dependent
 builds/seeds does not prove independent families or normal differences. Serial or
 clustered units and undeclared normality reject before loading outcomes.
+
+The current source revision also supports [bounded paired means](bounded-paired-evaluation.md)
+with predeclared metric limits and independent repository-family units, without
+normality. The complete installed native example accepts `--bounded` with this
+revision's wheel. The published 4.17/default Student-t workflow below is unchanged.
+Neither protocol turns repeated builds/seeds into independent families or clears
+unverified source-admission/availability evidence.
 
 [SciPy's paired test](https://docs.scipy.org/doc/scipy-1.17.0/reference/generated/scipy.stats.ttest_rel.html)
 compares related observations; its
@@ -9974,6 +10147,11 @@ For a frozen corpus with repeated builds and seeds, use the published
 prepare equal-build/seed repository-family means before paired inference. Its
 source leakage groups remain separate from independent inference units.
 
+The current source revision additionally supports [bounded paired means](bounded-paired-evaluation.md)
+through an explicitly versioned `BoundedMeanProtocol`. It requires independent
+units and known metric limits instead of normal differences. The published 4.17
+Student-t workflow below retains its original contract and numerical behavior.
+
 ## Temporal eligibility
 
 ```python
@@ -10107,7 +10285,11 @@ flowchart TD
     Reserve --> Load[Typed protected outcome loader]
     Records --> Load
     Load --> Check[Unit, provenance, pairing and temporal validation]
-    Check --> Compare[Paired effects, Holm p-values, simultaneous intervals]
+    Check --> Method[Frozen method and assumptions]
+    Method --> Student[Legacy paired Student t]
+    Method --> Bounded[Known-bound independent paired means]
+    Student --> Compare[Paired effects, Holm p-values, simultaneous intervals]
+    Bounded --> Compare
     Compare --> Report[Versioned report with embedded raw records, keys and digests]
     Report --> Artifacts[Existing ArtifactWriter, local sinks and manifest]
 ```
@@ -10125,7 +10307,7 @@ are required. The evaluator verifies frozen dataset/configuration/context
 fingerprints, observed availability and metric units/meaning/objective before
 calculating a comparison. Unpaired units and incompatible measurements fail.
 
-Version 1 provides paired Student-t inference for a **declared normal population of
+The legacy `EvaluationProtocol` provides paired Student-t inference for a **declared normal population of
 independent pair differences**. Serial/clustered units or an undeclared normality
 assumption raise `NotImplementedError` before loading outcomes. Adjacent builds from
 one real repository generally need a justified dependence model; labeling them with
@@ -10201,8 +10383,10 @@ behavior. Existing domain records can be evaluated only if they already carry th
 matching frozen context and candidate configuration; never relabel old artifacts
 silently to claim protected evidence.
 
-Version 1 intentionally excludes serial/block/cluster inference, robust/nonparametric
-intervals, sequential testing/alpha spending, unknown external state verification,
+The legacy method excludes serial/block/cluster and distribution-free inference;
+the new [bounded method](bounded-paired-evaluation.md) adds conservative independent
+paired means and explicit practical equivalence. Neither method implements
+serial/block/cluster inference, rank/bootstrap intervals, sequential testing/alpha spending, unknown external state verification,
 remote artifact transactions and policy activation. Access-history scanning is
 linear in scope history, and contention retries are bounded at 1000 publications.
 Reports retain the complete consumed record payload and recompute estimates on
@@ -11386,6 +11570,76 @@ additive test work, not verified whole-runner occupancy or prospective CI
 savings. The release makes no policy-superiority or universal-generalization
 claim. Public provider feasibility and the final corpus audit continue under
 [#261](https://github.com/jacksonpradolima/coleman/issues/261).
+
+
+
+### FILE: docs/releases/4.18.0.md
+
+# COLEMAN 4.18 — Trace the data. Bound the claim.
+
+Bring original industrial test results into reproducible Parquet, and compare
+bounded CI metrics without assuming normal differences. This release strengthens
+the path from source records to an inspectable decision: explicit quantities,
+preserved abnormal outcomes, conservative uncertainty and reliable recovery.
+
+## Explore original industrial CI results
+
+The [Westermo adapter](https://jacksonpradolima.github.io/coleman/westermo-parquet-etl/)
+fetches a pinned, licensed original release only when requested. It verifies the
+archive and decoded file, then writes separate typed observation and session
+tables. Offline retries preserve completed bytes; interruption cannot publish a
+false completion receipt.
+
+The installed-package qualification checks all **1,063,915 original rows** and
+exports **1,064 observations from sixteen frozen sessions**. Pass, fail, invalid
+and unmappable outcomes remain distinct. An independent reference checks every
+selected field, and different Polars thread settings produce identical export
+bytes. No third-party dataset is bundled in the package.
+
+Session duration retains its documented seconds. Per-test duration retains its
+original integer and an explicitly unverified unit. Shifted source dates remain
+naive labels. These distinctions help you inspect the data without accidentally
+claiming physical runner savings or verified historical availability.
+
+## Compare bounded metrics with conservative uncertainty
+
+Use the versioned `BoundedMeanProtocol` for paired means with known metric limits
+and justified independent inference units. The
+[complete native CI example](https://jacksonpradolima.github.io/coleman/bounded-paired-evaluation/)
+adds `--bounded` to the existing Random/UCB runner, repetition records, protected
+access audit and checkpoints.
+
+The method provides full-family Holm adjustment, simultaneous confidence bounds
+and explicit practical equivalence. Rational calculations and outward rounding
+keep numerical approximations conservative. Missing pairs remain incomplete
+evidence; observed zero and valid signed effects retain their meaning.
+
+## Keep existing artifacts and workflows
+
+This is an additive release. Existing Student-t contracts, golden artifacts and
+default native examples retain their behavior. No old result acquires inferred
+bounds, new units or a different statistical interpretation. Unknown versions
+reject; preserve recorded producer/runtime configurations when reading old
+source exports. Older SDKs reject the new inference method explicitly.
+
+Build or install the 4.18 package before using the new adapter and protocol. The
+guides include complete installed-package commands, source attribution, recovery,
+version compatibility and evidence limits. The base package remains independent
+of optional CLI/MCP transports.
+
+## Evidence that stays honest
+
+The native example retains sixteen build/seed observations from **one related
+family** and reports **insufficient evidence**. Repeated seeds do not create
+independent projects. Protected reuse is recorded and cannot create a fresh
+confirmatory claim.
+
+The source conversion is analytical access, not historical benchmark admission.
+Four mandatory historical/HCS diversity regimes still lack qualified evidence.
+The final protected cross-corpus program and its source qualification continue
+under [#313](https://github.com/jacksonpradolima/coleman/issues/313) and
+[#261](https://github.com/jacksonpradolima/coleman/issues/261). This release makes
+no algorithm-superiority or universal-generalization claim.
 
 
 
@@ -13734,6 +13988,159 @@ For a guided end-to-end walkthrough, see the official [workflow notebook](workfl
 The native result schemas remain unchanged. See [versioned domain results](domain-results.md)
 for the typed observation contract, Mermaid commit/recovery diagram and local-sink
 sidecars that join to CI decisions without replacing the runner or checkpoint store.
+
+
+
+### FILE: docs/westermo-parquet-etl.md
+
+# Original Westermo results to typed analytical Parquet
+
+Inspect real nightly, issue-focused and quarantined embedded-system test results
+without collapsing abnormal outcomes into failures or inventing duration units.
+COLEMAN converts an explicit session selection into observations and session
+tables, verifies both against the pinned original source, and retries offline.
+
+This adapter is available in the source revision containing this guide. It is
+**not included in the previously published 4.17 wheel**. Build/install this
+revision's wheel before using the commands below.
+
+## Build and run outside the checkout
+
+From the COLEMAN checkout, with Python 3.14 and uv:
+
+```bash
+uv build --wheel --out-dir /tmp/coleman-westermo-dist
+uv venv /tmp/coleman-westermo-env --python 3.14
+uv pip install --python /tmp/coleman-westermo-env/bin/python \
+  /tmp/coleman-westermo-dist/coleman-*.whl
+mkdir -p /tmp/coleman-westermo-work
+cd /tmp/coleman-westermo-work
+
+# Explicit anonymous public fetch, digest verification, conversion and validation.
+/tmp/coleman-westermo-env/bin/python -m coleman.transports.westermo_etl \
+  --fetch --cache /tmp/coleman-westermo-cache --output /tmp/coleman-westermo-output
+
+# Offline retry: identical completed files and receipt; no additional downloads.
+/tmp/coleman-westermo-env/bin/python -m coleman.transports.westermo_etl \
+  --cache /tmp/coleman-westermo-cache --output /tmp/coleman-westermo-output
+```
+
+The build uses the checked-out revision's version metadata; it does not install
+the older published wheel. Use a fresh distribution directory containing exactly
+one wheel and install that wheel. Keep all source/cache/output paths
+outside Git. `--source /path/to/test-results.zip` explicitly verifies a local
+original archive instead of fetching. To select a compatible frozen session set,
+pass `--recipe-stdin` and redirect the JSON recipe on stdin:
+
+```bash
+/tmp/coleman-westermo-env/bin/python -m coleman.transports.westermo_etl \
+  --recipe-stdin --cache /tmp/coleman-westermo-cache \
+  --output /tmp/coleman-westermo-custom-output < /path/to/recipe.json
+```
+
+Recipe bytes are bounded and schema-checked; they are never interpreted as a
+filename. No URL is opened without `--fetch`.
+
+The packaged example selects the first sixteen nightly sessions on `system13`
+by the publisher's shifted start labels, with their exact `(jid, system)` keys
+frozen in advance. This descriptive example is not a protected evaluation fold.
+Its original-source qualification found:
+
+| Quantity | Count |
+| --- | ---: |
+| Entire input rows checked | 1,063,915 |
+| Selected observations | 1,064 |
+| Outside-selection rows retained in the raw cache | 1,062,851 |
+| Pass / fail / invalid / unmappable | 993 / 31 / 40 / 0 |
+| Selected complete / abnormal sessions | 16 / 0 |
+
+These are dependent executions from one industrial source family. Systems,
+branches, parameter settings and repeated tests do not create independent projects.
+The complete original release contains abnormal sessions and unmappable outcomes;
+their absence from this selected example is not evidence of general absence.
+
+## Original source, terms and modifications
+
+Source: **Per Erik Strandberg (2022), The Westermo test results data set**, version
+1.0, [author paper](https://arxiv.org/abs/2211.13622v1) and
+[original public release](https://github.com/westermo/test-results-dataset/tree/31ca0ab802fd2eecf3455c6622c2c18f5b3fe775).
+The original README explicitly applies **CC BY 4.0** to the data; the
+[pinned license and warranty disclaimer](https://github.com/westermo/test-results-dataset/blob/31ca0ab802fd2eecf3455c6622c2c18f5b3fe775/LICENSE)
+remain applicable. Attribution does not imply author endorsement. Preserve this
+attribution, source/license links and the modification notice when sharing an export.
+
+COLEMAN's modifications are session selection, typed parsing, deterministic row
+ordering, separate session/observation tables and explicit unknown fields. The
+original archive stays unchanged in the local cache. No third-party rows, archive
+or source code are committed. The later enhanced/approximated-duration derivative
+is a different artifact and is not silently substituted.
+
+| Pin | Value |
+| --- | --- |
+| Source commit | `31ca0ab802fd2eecf3455c6622c2c18f5b3fe775` |
+| ZIP bytes | 15,072,956 |
+| ZIP SHA-256 | `7025cc28601fe9aa02095314a297e53059df5bcd9d331749d456b990d8976dd2` |
+| Original TSV bytes | 127,760,900 |
+| Original TSV SHA-256 | `6d5a3936230b5c0ace24a817d6eb9ae12ed5df94bac382635b31f05c840dc461` |
+
+## Quantities, missingness and evidence boundaries
+
+Session duration is reported **seconds of session envelope**; an abnormal session
+has `null` plus `unavailable`, whereas a reported zero stays observed zero.
+It is not physical runner occupancy or additive per-test work. Per-test
+`oduration_raw` retains its nonnegative integer with unit
+`westermo-oduration-unverified`: the original source description does not explicitly
+establish its unit. Negative, fractional and nonfinite durations reject.
+
+Raw outcomes 0/1 map to observed pass/fail. Outcomes 2/3 remain invalid/unmappable
+and produce null binary verdicts with `unavailable`; both raw labels remain
+available. A quarantine label records a suite classification, not a proven flaky
+test or an independent trial. `parameters_raw` preserves the literal source text,
+including `NULL`, without guessing whether it means an unknown or absent parameter.
+
+Dates remain **author-shifted naive strings**, never UTC. First outcome/feature
+availability, the planned test universe and physical topology are unverified.
+Consequently the receipt explicitly retains `blocked_source_evidence`; no native
+second-budget replay or protected empirical comparison is exposed. This export
+does not fill an admitted diversity cell or establish policy superiority.
+
+```mermaid
+flowchart LR
+  Input[Explicit public fetch or local archive] --> Cache[Existing digest-verified source cache]
+  Cache --> Reader[Bounded typed original TSV reader]
+  Reader --> Observations[All four outcomes and original identities]
+  Reader --> Sessions[Session seconds and abnormal-session nulls]
+  Observations --> Writer[Existing immutable artifact writer]
+  Sessions --> Writer
+  Writer --> Complete[Completion receipt published last]
+  Complete --> Verify[Offline source and file revalidation]
+```
+
+## Contracts, recovery and adding a selection
+
+Use `load_westermo_recipe()` from `coleman.corpus.westermo_etl` to inspect the
+packaged `WestermoRecipe`. Construct a new validated recipe with explicit session
+keys to change the selection. Unknown schema versions, duplicate selections,
+missing sessions, repeated outcome IDs and conflicting session metadata reject.
+Every row is decoded, including outside-selection rows. Bounds are 128 MiB
+decoded input, two million rows, 100,000 sessions, 128 selected sessions, 20,000
+selected observations and 1,024 characters per field. Each output is at most 64 MiB.
+
+`export_westermo_parquet(recipe, cache, ArtifactWriter(output))` returns the
+`complete.json` path. Read it with `WestermoReceipt.from_json`, then use
+`validate_westermo_etl(receipt, cache, completion.parent)` for actual offline source
+and output verification. Parsing a receipt alone verifies metadata only.
+
+Interrupted exports retain individually complete files, with no false completion
+marker. Concurrent identical retries converge through the existing writer; edited
+or conflicting files reject. This is source-conversion recovery, separate from
+native policy checkpoints. Logical digests exclude physical row positions and
+remain invariant under a source-row permutation; physical file digests preserve
+those positions. Fixed single-chunk Arrow tables, row groups and writer options
+avoid execution-thread chunk layout entering Parquet bytes. Producer source and
+Arrow version are bound into the namespace. Unknown producers require their
+recorded implementation; old exports and unrelated legacy artifacts are never
+rewritten or silently migrated.
 
 
 

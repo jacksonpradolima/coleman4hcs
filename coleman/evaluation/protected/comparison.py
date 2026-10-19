@@ -10,8 +10,15 @@ from typing import Self
 from pydantic import model_validator
 
 from coleman.evaluation.protected.audit import AccessReceipt, EvaluationAudit
+from coleman.evaluation.protected.bounded_inference import BoundedMeanProtocol
 from coleman.evaluation.protected.contracts import ComparisonHypothesis, EvaluationContract, FrozenEvaluation
-from coleman.evaluation.protected.inference import _compute_results, _validate_observations, holm_adjust
+from coleman.evaluation.protected.inference import (
+    _bounded_equivalence,
+    _compute_results,
+    _supports_protocol,
+    _validate_observations,
+    holm_adjust,
+)
 from coleman.evaluation.protected.observations import ComparisonResult, ObservationReference, PairedObservation
 from coleman.evaluation.protected.temporal import Timestamp
 from coleman.results.domain import DomainRecord, Measurement, ResultProvenance, fingerprint
@@ -91,13 +98,16 @@ class FamilyReport(EvaluationContract):
     @model_validator(mode="after")
     def _inference(self) -> Self:
         """Reject forged confirmatory claims on reused scopes or unsupported assumptions."""
-        adjusted = holm_adjust(tuple(result.p_value if result.p_value is not None else 1.0 for result in self.results))
+        adjusted = holm_adjust(
+            tuple(result.p_value if result.p_value is not None else 1.0 for result in self.results),
+            outward=isinstance(self.frozen.protocol, BoundedMeanProtocol),
+        )
         for result, corrected in zip(self.results, adjusted, strict=True):
             expected = corrected if result.p_value is not None else None
             if result.adjusted_p_value != expected:
                 raise ValueError("Adjusted p-value differs from the complete frozen Holm family")
             self._check_point_estimate(result)
-            if result.conclusion in {"evidence_of_benefit", "evidence_of_harm"}:
+            if result.conclusion in {"evidence_of_benefit", "evidence_of_harm", "evidence_of_practical_equivalence"}:
                 self._check_claim(result)
         return self
 
@@ -109,6 +119,7 @@ class FamilyReport(EvaluationContract):
             if any(value is not None for value in uncertainty) or result.conclusion in {
                 "evidence_of_benefit",
                 "evidence_of_harm",
+                "evidence_of_practical_equivalence",
             }:
                 raise ValueError("Uncertainty and confirmatory claims require non-null point estimates")
             return
@@ -125,33 +136,35 @@ class FamilyReport(EvaluationContract):
     def _check_claim(self, result: ComparisonResult) -> None:
         """Validate access, independent observations and family-wise practical evidence."""
         protocol = self.frozen.protocol
-        if (
-            not self.confirmatory_eligible
-            or protocol.dependence != "independent"
-            or not protocol.normal_differences_assumed
-        ):
+        if not self.confirmatory_eligible or not _supports_protocol(protocol):
             raise ValueError("Unsupported confirmatory access or assumptions")
         if result.observed_pairs != len(result.independent_units) or result.observed_pairs < protocol.minimum_units:
             raise ValueError("Insufficient independent observations for confirmatory conclusion")
-        if (
-            result.adjusted_p_value is None
-            or result.adjusted_p_value > protocol.alpha
-            or result.ci_lower is None
-            or result.ci_upper is None
-        ):
+        if result.adjusted_p_value is None or result.ci_lower is None or result.ci_upper is None:
             raise ValueError("Unsupported confirmatory uncertainty")
-        if result.conclusion == "evidence_of_benefit" and result.ci_lower <= protocol.practical_effect:
+        self._check_practical_claim(result, result.ci_lower, result.ci_upper, result.adjusted_p_value)
+
+    def _check_practical_claim(self, result: ComparisonResult, lower: float, upper: float, corrected: float) -> None:
+        """Validate practical benefit/harm or equivalence without changing legacy t conclusions."""
+        protocol = self.frozen.protocol
+        if result.conclusion == "evidence_of_practical_equivalence":
+            if not _bounded_equivalence(protocol, lower, upper):
+                raise ValueError("Unsupported practical equivalence interval or inference method")
+        elif corrected > protocol.alpha:
+            raise ValueError("Unsupported confirmatory uncertainty")
+        if result.conclusion == "evidence_of_benefit" and lower <= protocol.practical_effect:
             raise ValueError("Benefit does not exceed the practical threshold")
-        if result.conclusion == "evidence_of_harm" and result.ci_upper >= -protocol.practical_effect:
+        if result.conclusion == "evidence_of_harm" and upper >= -protocol.practical_effect:
             raise ValueError("Harm does not exceed the practical threshold")
 
     @model_validator(mode="after")
     def _verified_statistics(self) -> Self:
         """Recompute every estimate from digest-checked embedded records, without I/O.
 
-        Numerical comparisons allow relative 1e-12/absolute 1e-15 floating-point
-        variation across compatible numerical libraries. Discrete conclusions,
-        reasons and counts must match exactly; threshold crossings fail closed.
+        Student-t comparisons retain relative 1e-12/absolute 1e-15 numerical-
+        library tolerance. Bounded rational calculations require identical binary64
+        outputs, including outward endpoints. Discrete conclusions, reasons and
+        counts must match exactly; threshold crossings fail closed.
         Completion cannot predate the access or any consumed raw outcome.
         """
         if self.completed_at < self.access.requested_at or any(
@@ -165,7 +178,9 @@ class FamilyReport(EvaluationContract):
         observations = _validate_observations(self.frozen, rows)
         expected = _compute_results(self.frozen, observations, self.access)
         for actual, recomputed in zip(self.results, expected, strict=True):
-            _require_matching_statistics(actual, recomputed)
+            _require_matching_statistics(
+                actual, recomputed, exact=isinstance(self.frozen.protocol, BoundedMeanProtocol)
+            )
         return self
 
     @property
@@ -248,8 +263,13 @@ class FamilyReport(EvaluationContract):
         return tuple(output)
 
 
-def _require_matching_statistics(actual: ComparisonResult, expected: ComparisonResult) -> None:
-    """Reject statistics inconsistent with raw records and the frozen inference method."""
+def _require_matching_statistics(actual: ComparisonResult, expected: ComparisonResult, *, exact: bool = False) -> None:
+    """Reject statistics inconsistent with raw records and the frozen inference method.
+
+    Legacy Student-t reports retain their specified numerical-library tolerance.
+    The rational bounded method requires identical binary64 endpoints/probabilities;
+    tolerant reads could admit an incorrectly narrowed conservative interval.
+    """
     discrete_fields = ("hypothesis_id", "independent_units", "observed_pairs", "conclusion", "reason")
     if any(getattr(actual, field) != getattr(expected, field) for field in discrete_fields):
         raise ValueError("Report statistics differ from recomputed raw-record evidence")
@@ -258,6 +278,8 @@ def _require_matching_statistics(actual: ComparisonResult, expected: ComparisonR
         first, second = getattr(actual, field), getattr(expected, field)
         if first is None or second is None:
             matches = first is None and second is None
+        elif exact:
+            matches = first.hex() == second.hex()
         else:
             matches = math.isclose(first, second, rel_tol=1e-12, abs_tol=1e-15)
         if not matches:
@@ -273,17 +295,21 @@ def evaluate(
 ) -> FamilyReport:
     """Reserve protected access, load typed records and evaluate the full frozen family.
 
-    Paired t inference requires declared independent units and normal differences;
-    serial/clustered observations and undeclared normality assumptions raise
-    ``NotImplementedError`` before outcome loading. Complete pairing is required;
+    Legacy paired t inference requires independent units and normal differences.
+    The explicitly versioned bounded-mean method instead requires known metric
+    bounds and independent units; normality is not assumed. Unsupported legacy
+    assumptions raise ``NotImplementedError`` before outcome loading. The new
+    protocol rejects serial/clustered declarations at construction. Complete pairing is required;
     repeated seed rows are rejected. Missing outcomes produce insufficient evidence
     rather than selective complete-case tests. Holm p correction and Bonferroni
     simultaneous intervals use the entire predeclared family. Reuse is durably
     recorded and prevents a confirmatory conclusion, even after candidate changes.
+    New-method practical equivalence uses an entire simultaneous interval within
+    the predeclared region; it does not require rejecting a zero-difference null.
     Loader/validation failures leave access reservations visible for honest retries.
     """
     frozen = FrozenEvaluation.model_validate(frozen)
-    if frozen.protocol.dependence != "independent" or not frozen.protocol.normal_differences_assumed:
+    if not _supports_protocol(frozen.protocol):
         raise NotImplementedError("Paired t inference requires independent units and declared normal differences")
     receipt = audit.access(frozen, partition="test", purpose="confirmatory", actor=actor)
     observations = _validate_observations(frozen, load_observations())
