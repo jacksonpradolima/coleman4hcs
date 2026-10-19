@@ -35,8 +35,9 @@ and checkpoint activity. Its active-run panels can be empty after an experiment
 finishes; use persisted results to inspect completed runs.
 
 Native result rows require `results.sink: clickhouse` independently of telemetry
-export. COLEMAN exports metrics and traces; the collector's log receiver does not
-automatically export the application's Python logs.
+export. The native runner emits metrics; the telemetry facade supports explicit
+trace instrumentation. It does not automatically emit per-step spans or forward
+Python logs to the collector.
 
 Stop the services, retaining the named ClickHouse data volume:
 

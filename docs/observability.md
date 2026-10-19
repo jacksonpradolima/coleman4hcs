@@ -179,8 +179,14 @@ To store **native result rows**, add these settings before `run(spec)`:
 
 ```python
 spec.results.sink = "clickhouse"
-spec.results.clickhouse = {"host": "localhost", "port": 8123, "database": "default"}
+spec.results.clickhouse = {
+    "host": "localhost", "port": 8123, "database": "default", "secure": False,
+}
 ```
+
+The local Compose server exposes plain HTTP on port 8123, so this example sets
+`secure: false` explicitly. For a remote TLS endpoint, use its configured port
+and retain the sink's `secure: true` and `verify: true` defaults.
 
 `ClickHouseSink` creates its `coleman_results` table. Query it with a ClickHouse
 SQL client or Grafana Explore:
@@ -195,10 +201,38 @@ ORDER BY policy;
 
 Telemetry uses separate `otel_*` tables managed by the pinned collector exporter.
 Use `SHOW TABLES` and `DESCRIBE TABLE` to inspect its metric-type-specific schema
-before querying it. The collector can accept OTLP logs, but COLEMAN's telemetry
-facade exports metrics and traces; it does not automatically ship Python logs.
+before querying it. The native runner emits metrics. The telemetry facade also
+supports explicit trace instrumentation through `Telemetry.span()`; the runner does not
+automatically emit per-step spans. The collector accepts OTLP logs, but the
+facade does not automatically ship Python logs.
 Starting only the ClickHouse profile with the base collector configuration starts
 the database without enabling telemetry persistence.
+
+## Instrument your own integration
+
+To trace an analysis step, save this as `trace_results.py` beside the tutorial's
+`runs/` directory and run it as a separate Python process with the telemetry
+extra and collector available:
+
+```python
+import duckdb
+from coleman.telemetry import Telemetry
+
+telemetry = Telemetry(otlp_endpoint="http://localhost:4318")
+with telemetry.span("ci.results.inspect", {"scenario": "example-ci"}):
+    with duckdb.connect() as connection:
+        print(connection.sql("""
+            SELECT policy, COUNT(*) AS observations
+            FROM read_parquet('runs/*/results/**/*.parquet', hive_partitioning=1)
+            GROUP BY policy
+        """))
+telemetry.flush()
+```
+
+The base collector writes traces to its debug output. With the ClickHouse
+collector configuration, inspect this span in `otel_traces` or Grafana Explore.
+This is explicit integration instrumentation; it does not add per-step spans
+to the native runner.
 
 ## Stop the local services
 
@@ -225,8 +259,8 @@ Resource histograms are `coleman.process_memory_rss`,
 Prometheus names are normalized by the collector; inspect its exporter endpoint
 for the exact series names and histogram suffixes.
 
-Metrics avoid a per-step label; traces carry step detail. Execution/worker IDs
-remain intentional metric labels for isolation, so cardinality grows with
+Metrics avoid a per-step label; use explicit span instrumentation for step
+detail. Execution/worker IDs remain intentional metric labels for isolation, so cardinality grows with
 executions. Limit retained runs and label expansion to match your backend budget.
 Continue with the [analysis playbook](analysis-playbook.md) for final result
 queries and the [integration guide](integration-guide.md) for CI adoption.

@@ -254,7 +254,7 @@ when running longer experiments and parameter sweeps.
 | **Parquet + DuckDB / Polars** | Keep the default compressed, partitioned results; query build-level observations directly with SQL or DataFrames, with no database server |
 | **Embedded DuckDB sink** | Select `results.sink: duckdb` to write a local `coleman_results` table; process workers use separate database files by default |
 | **ClickHouse sink** | Select `results.sink: clickhouse` and install the `clickhouse` extra to send native result rows to a shared analytical database |
-| **OpenTelemetry + Prometheus + Grafana** | Export metrics and traces, inspect live progress, filter by dataset/execution/policy/budget, and follow CPU, RSS memory and latency in a provisioned dashboard |
+| **OpenTelemetry + Prometheus + Grafana** | Export native metrics, add trace instrumentation, inspect live progress, filter by dataset/execution/policy/budget, and follow CPU, RSS memory and latency in a provisioned dashboard |
 | **Runtime profiling** | Investigate CPU and memory hotspots with the developer workflows for [Scalene and py-spy](docs/code-cost.md) |
 
 After the [quick start](#quick-start), inspect the framework's recorded footprint
