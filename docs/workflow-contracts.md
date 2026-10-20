@@ -51,6 +51,11 @@ WAL workspace validation uses a consistent read snapshot without a writer lock.
 Terminal failure cleanup keeps its bounded fail-fast behavior after expiry.
 Supported local hosts are Linux and macOS.
 
+A child observing the earlier queued snapshot synchronizes with the scheduler's
+transaction before deciding to run. Its inherited kernel ownership is continuous;
+commit starts native work, while rollback/cancellation returns without consuming
+native work. This metadata handshake uses the remaining attempt deadline.
+
 Closing an MCP transport does not delete durable state or cancel an owned worker.
 Explicit cancellation retains checkpoint and attempt evidence. Resume is an
 explicit operation that rechecks input, plan, producer and installed-runtime
@@ -103,7 +108,8 @@ flowchart TD
     Ack --> Ownership
     Ownership -->|Transient SQLite contention| Retry[Keep ownership and retry polling]
     Retry --> Ownership
-    Ownership --> Runner[Existing native runner and sweeps]
+    Ownership --> Startup[Commit-visible worker startup]
+    Startup --> Runner[Existing native runner and sweeps]
     Runner --> Metadata[Attempt-deadline metadata commits]
     Metadata -->|Retry numeric BUSY or LOCKED| Metadata
     Metadata --> Jobs

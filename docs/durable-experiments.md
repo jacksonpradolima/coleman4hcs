@@ -322,6 +322,12 @@ durably admitted; retry the same request and idempotency key instead of creating
 a second experiment. The versioned, bounded coordination counters are operational
 metadata, not independent scientific observations.
 
+A newly spawned worker can see the earlier `queued` WAL snapshot while its
+scheduler is committing the `running` claim. It reads only the immutable plan,
+then synchronizes with that transaction and rereads the state within the attempt
+deadline. A committed claim starts native work; rollback or cancellation does
+not. The inherited worker lock remains held throughout this startup handshake.
+
 The same coordinator keeps its kernel lock and retries transient SQLite
 `BUSY`/`LOCKED` errors during startup and polling. A host's snapshot publication
 may hold the write transaction longer than a connection's one-second wait; this

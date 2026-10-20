@@ -6349,6 +6349,12 @@ durably admitted; retry the same request and idempotency key instead of creating
 a second experiment. The versioned, bounded coordination counters are operational
 metadata, not independent scientific observations.
 
+A newly spawned worker can see the earlier `queued` WAL snapshot while its
+scheduler is committing the `running` claim. It reads only the immutable plan,
+then synchronizes with that transaction and rereads the state within the attempt
+deadline. A committed claim starts native work; rollback or cancellation does
+not. The inherited worker lock remains held throughout this startup handshake.
+
 The same coordinator keeps its kernel lock and retries transient SQLite
 `BUSY`/`LOCKED` errors during startup and polling. A host's snapshot publication
 may hold the write transaction longer than a connection's one-second wait; this
@@ -15599,6 +15605,11 @@ WAL workspace validation uses a consistent read snapshot without a writer lock.
 Terminal failure cleanup keeps its bounded fail-fast behavior after expiry.
 Supported local hosts are Linux and macOS.
 
+A child observing the earlier queued snapshot synchronizes with the scheduler's
+transaction before deciding to run. Its inherited kernel ownership is continuous;
+commit starts native work, while rollback/cancellation returns without consuming
+native work. This metadata handshake uses the remaining attempt deadline.
+
 Closing an MCP transport does not delete durable state or cancel an owned worker.
 Explicit cancellation retains checkpoint and attempt evidence. Resume is an
 explicit operation that rechecks input, plan, producer and installed-runtime
@@ -15651,7 +15662,8 @@ flowchart TD
     Ack --> Ownership
     Ownership -->|Transient SQLite contention| Retry[Keep ownership and retry polling]
     Retry --> Ownership
-    Ownership --> Runner[Existing native runner and sweeps]
+    Ownership --> Startup[Commit-visible worker startup]
+    Startup --> Runner[Existing native runner and sweeps]
     Runner --> Metadata[Attempt-deadline metadata commits]
     Metadata -->|Retry numeric BUSY or LOCKED| Metadata
     Metadata --> Jobs

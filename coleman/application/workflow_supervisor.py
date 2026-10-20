@@ -174,8 +174,8 @@ def _schedule(store: WorkflowStore, supervisor_descriptor: int) -> bool:
                         }
                     )
                     store.save_job(connection, updated)
-                    # The child waits for this transaction; inherited ownership is
-                    # already continuous before running becomes visible to clients.
+                    # A queued child snapshot synchronizes with this commit before
+                    # deciding to run; inherited ownership is already continuous.
                     _spawn(store.root, "work", worker_descriptor, job.job_id)
                     active.append(updated)
                     memory += plan.request.limits.max_memory_bytes

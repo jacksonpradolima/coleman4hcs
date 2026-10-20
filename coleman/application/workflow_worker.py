@@ -288,6 +288,32 @@ def _publish_completion(store, job_id, plan, report, deadline) -> None:
         )
 
 
+def _worker_context(store: WorkflowStore, job_id: str, began: float) -> tuple[JobRecord, ExperimentPlan, float] | None:
+    """Synchronize a queued startup snapshot with the scheduler's commit before deciding.
+
+    The immutable admitted plan may be read while the scheduler owns its write
+    transaction. A queued snapshot then obtains a deadline-bounded write barrier
+    and rereads the job: a committed claim runs; rollback/cancellation does no
+    native work. A running snapshot already witnesses a committed claim. The
+    inherited kernel lock stays owned throughout, without a PID or timing guess.
+    """
+    job = _read_job(store, job_id)
+    if job.state not in ("queued", "running"):
+        return None
+    with closing(store.connect()) as connection:
+        plan = store.plan(connection, job.plan_id, job.owner)
+    deadline = began + plan.request.limits.attempt_seconds
+    if job.state == "queued":
+        with store.transaction(deadline=deadline) as connection:
+            current = next(item for item in store.jobs(connection) if item.job_id == job_id)
+            if (current.plan_id, current.owner) != (job.plan_id, job.owner):
+                raise WorkflowError("Worker startup claim differs from its immutable admitted plan")
+            job = current
+    if job.state != "running":
+        return None
+    return job, plan, deadline
+
+
 def run_job(root: Path, job_id: str, *, progress_hook: Callable[[str, int], None] | None = None) -> None:
     """Execute an already kernel-owned durable job; never acquire work from arbitrary directories.
 
@@ -312,12 +338,10 @@ def run_job(root: Path, job_id: str, *, progress_hook: Callable[[str, int], None
     """
     began = time.monotonic()
     store = WorkflowStore(root)
-    job = _read_job(store, job_id)
-    if job.state != "running":
+    context = _worker_context(store, job_id, began)
+    if context is None:
         return
-    with closing(store.connect()) as connection:
-        plan = store.plan(connection, job.plan_id, job.owner)
-    deadline = began + plan.request.limits.attempt_seconds
+    job, plan, deadline = context
     stopped = threading.Event()
     guard = threading.Thread(target=_guard, args=(store, job_id, plan, deadline, stopped), daemon=True)
     try:
