@@ -145,11 +145,7 @@ class WorkflowCheckpointStore(LocalCheckpointStore):
         ):
             raise WorkflowError("Native checkpoint is not owned by this exact workflow root/execution")
         validate_source_storage(expected)
-        payload = super().load(run_id, experiment)
-        if payload is None or not isinstance(payload.extra.get(_KEY), str):
-            raise WorkflowError(
-                "Native checkpoint lacks compatible workflow RNG state; implicit reseeding is forbidden"
-            )
+        payload = _validated_payload(super().load(run_id, experiment), run_id, experiment, step)
         state = WorkflowRandomState.from_json(payload.extra[_KEY])
         if state.binding != self.binding:
             raise WorkflowError("Native checkpoint workflow/data/configuration/runtime binding is incompatible")
@@ -160,3 +156,19 @@ class WorkflowCheckpointStore(LocalCheckpointStore):
             "uinteger": state.uinteger,
         }
         return payload
+
+
+def _validated_payload(payload, run_id: str, experiment: int, step: int) -> CheckpointPayload:
+    """Require owned identity/frontier and RNG metadata before any global generator mutation."""
+    if payload is None:
+        raise WorkflowError("Native checkpoint lacks compatible workflow RNG state; implicit reseeding is forbidden")
+    if (
+        not isinstance(payload, CheckpointPayload)
+        or type(payload.experiment) is not int
+        or type(payload.step) is not int
+        or (payload.run_id, payload.experiment, payload.step) != (run_id, experiment, step)
+    ):
+        raise WorkflowError("Native checkpoint payload identity/frontier differs from its progress marker")
+    if not isinstance(payload.extra, dict) or not isinstance(payload.extra.get(_KEY), str):
+        raise WorkflowError("Native checkpoint lacks compatible workflow RNG state; implicit reseeding is forbidden")
+    return payload

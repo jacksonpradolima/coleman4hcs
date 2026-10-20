@@ -14,6 +14,8 @@ from coleman.evaluation.protected.observations import ComparisonResult
 from coleman.results.domain import Fingerprint, fingerprint
 from coleman.workflows.contracts import WorkflowContract, WorkflowError, WorkflowId
 
+_FINGERPRINT_PREFIX = "sha256:"
+
 if TYPE_CHECKING:
     from coleman.application.workflows import WorkflowService
 
@@ -125,7 +127,7 @@ class ArtifactChunk(WorkflowContract):
             or self.next_offset != expected
             or (not payload and expected is not None)
             or base64.b64encode(payload).decode("ascii") != self.content_base64
-            or "sha256:" + hashlib.sha256(payload).hexdigest() != self.chunk_sha256
+            or _FINGERPRINT_PREFIX + hashlib.sha256(payload).hexdigest() != self.chunk_sha256
         ):
             raise WorkflowError("Artifact chunk bytes/digest/range are inconsistent")
         return self
@@ -172,7 +174,7 @@ def _membership(service: WorkflowService, job_id: str):
         ("plan.json", "plan", plan.to_json().encode()),
         ("report.json", "report", report.to_json().encode()),
     ):
-        digest = "sha256:" + hashlib.sha256(payload).hexdigest()
+        digest = _FINGERPRINT_PREFIX + hashlib.sha256(payload).hexdigest()
         item = EvidenceArtifact(
             schema_version=1,
             artifact_id=fingerprint([kind, digest])[7:],
@@ -303,6 +305,6 @@ def read_artifact(
         artifact=item,
         offset=offset,
         content_base64=base64.b64encode(payload).decode("ascii"),
-        chunk_sha256="sha256:" + hashlib.sha256(payload).hexdigest(),
+        chunk_sha256=_FINGERPRINT_PREFIX + hashlib.sha256(payload).hexdigest(),
         next_offset=end if end < item.size_bytes else None,
     )

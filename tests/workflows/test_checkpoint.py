@@ -34,24 +34,28 @@ def test_actual_global_generator_and_cached_uint32_restore_exactly(tmp_path, mon
     assert state.to_json() == WorkflowRandomState.from_json(state.to_json()).to_json()
     assert state.increment > 2**64
     before = policy_base._rng.bit_generator.state
+    incompatible_store = WorkflowCheckpointStore(str(tmp_path), "sha256:" + "b" * 64)
     with pytest.raises(ValueError, match="binding"):
-        WorkflowCheckpointStore(str(tmp_path), "sha256:" + "b" * 64).load("owned", 1)
+        incompatible_store.load("owned", 1)
     assert policy_base._rng.bit_generator.state == before
+    future_state = {**state.model_dump(), "schema_version": 2}
     with pytest.raises(ValueError):
-        WorkflowRandomState.model_validate({**state.model_dump(), "schema_version": 2})
+        WorkflowRandomState.model_validate(future_state)
 
 
 def test_ordinary_native_checkpoints_are_not_implicitly_reinterpreted(tmp_path):
     LocalCheckpointStore(str(tmp_path)).save(CheckpointPayload(run_id="ordinary", experiment=1, step=1))
+    legacy_workflow_store = WorkflowCheckpointStore(str(tmp_path), "sha256:" + "a" * 64)
     with pytest.raises(ValueError, match="implicit reseeding"):
-        WorkflowCheckpointStore(str(tmp_path), "sha256:" + "a" * 64).load("ordinary", 1)
+        legacy_workflow_store.load("ordinary", 1)
     assert WorkflowCheckpointStore(str(tmp_path), "sha256:" + "a" * 64).load("not-started", 1) is None
     marker = tmp_path / "ordinary" / "progress_ex1.json"
     raw = json.loads(marker.read_text())
     raw["checkpoint_path"] = str(tmp_path / "elsewhere.pkl")
     marker.write_text(json.dumps(raw))
+    redirected_store = WorkflowCheckpointStore(str(tmp_path), "sha256:" + "a" * 64)
     with pytest.raises(ValueError, match="not owned"):
-        WorkflowCheckpointStore(str(tmp_path), "sha256:" + "a" * 64).load("ordinary", 1)
+        redirected_store.load("ordinary", 1)
 
 
 def test_random_resume_after_consumed_rng_matches_uninterrupted_native_run(tmp_path, monkeypatch):
@@ -83,7 +87,8 @@ def test_random_resume_after_consumed_rng_matches_uninterrupted_native_run(tmp_p
     fresh = service.execute(ExecutePlan(schema_version=1, request_id="random-uninterrupted", plan_id=preview.plan_id))
     wait(service, fresh.job_id)
     assert mathematics(resumed) == mathematics(service.report(fresh.job_id))
-    assert len(resumed.physical_attempts) == 3 and len(resumed.trials) == 2
+    assert len(resumed.physical_attempts) == 3
+    assert len(resumed.trials) == 2
 
 
 def test_descriptive_resume_cannot_reset_a_previously_committed_native_checkpoint(tmp_path, monkeypatch):
@@ -116,13 +121,16 @@ def test_descriptive_resume_cannot_reset_a_previously_committed_native_checkpoin
     marker.unlink()
     service.resume(job.job_id)
     rejected = wait(service, job.job_id, "failed")
-    assert rejected.attempts == 1 and rejected.invocations == 2
-    assert rejected.error is not None and "implicit reset" in rejected.error
+    assert rejected.attempts == 1
+    assert rejected.invocations == 2
+    assert rejected.error is not None
+    assert "implicit reset" in rejected.error
     assert all(path.read_bytes() == value for path, value in native_bytes.items())
     marker.write_bytes(retained)
     service.resume(job.job_id)
     final = wait(service, job.job_id)
-    assert final.attempts == 2 and final.invocations == 3
+    assert final.attempts == 2
+    assert final.invocations == 3
     reference = service.execute(ExecutePlan(schema_version=1, request_id="fresh-reference", plan_id=preview.plan_id))
     wait(service, reference.job_id)
     assert mathematics(service.report(job.job_id)) == mathematics(service.report(reference.job_id))

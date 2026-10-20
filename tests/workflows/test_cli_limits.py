@@ -58,7 +58,8 @@ def test_cli_actual_count_budget_native_lifecycle_and_portable_evidence(tmp_path
     assert all(row["tests_ran"] == 2 for row in inspection["trials"][0]["rows"])
     invoke(tmp_path, "report", "--job", job["job_id"])
     report = json.loads(capsys.readouterr().out)
-    assert len(report["trials"]) == 1 and len(report["physical_attempts"]) == 1
+    assert len(report["trials"]) == 1
+    assert len(report["physical_attempts"]) == 1
     for operation in ("cancel", "resume"):
         invoke(tmp_path, operation, "--job", job["job_id"])
         assert json.loads(capsys.readouterr().out)["state"] == "completed"
@@ -95,24 +96,28 @@ def test_queue_tombstone_registry_and_active_memory_caps(tmp_path, monkeypatch):
     policy = HostPolicy(schema_version=1, max_jobs=2, max_datasets=1, max_running=1, max_queued=0)
     service = WorkflowService(tmp_path, policy=policy)
     manifest = service.register(owned_fixture(tmp_path))
+    another_manifest = manifest.model_copy(update={"dataset_id": "another-label"})
     with pytest.raises(ValueError, match="registry is full"):
-        service.register(manifest.model_copy(update={"dataset_id": "another-label"}))
+        service.register(another_manifest)
     preview = service.plan(PlanningRequest(schema_version=1, dataset_id=manifest.dataset_id))
     monkeypatch.setattr(service, "_start", lambda: None)
     job = service.execute(ExecutePlan(schema_version=1, request_id="one", plan_id=preview.plan_id))
+    second_request = ExecutePlan(schema_version=1, request_id="two", plan_id=preview.plan_id)
     with pytest.raises(ValueError, match="queue capacity"):
-        service.execute(ExecutePlan(schema_version=1, request_id="two", plan_id=preview.plan_id))
+        service.execute(second_request)
     assert service.cancel(job.job_id).state == "cancelled"
     second = service.execute(ExecutePlan(schema_version=1, request_id="two", plan_id=preview.plan_id))
     service.cancel(second.job_id)
+    third_request = ExecutePlan(schema_version=1, request_id="three", plan_id=preview.plan_id)
     with pytest.raises(ValueError, match="tombstone"):
-        service.execute(ExecutePlan(schema_version=1, request_id="three", plan_id=preview.plan_id))
+        service.execute(third_request)
     constrained = WorkflowService(
         tmp_path / "memory", policy=HostPolicy(schema_version=1, max_active_memory_bytes=67108864)
     )
     constrained.register(owned_fixture(constrained.store.root))
+    memory_request = PlanningRequest(schema_version=1, dataset_id=manifest.dataset_id)
     with pytest.raises(ValueError, match="aggregate active memory"):
-        constrained.plan(PlanningRequest(schema_version=1, dataset_id=manifest.dataset_id))
+        constrained.plan(memory_request)
 
 
 def test_changed_runtime_and_native_thread_profile_reject_before_admission(tmp_path, monkeypatch):

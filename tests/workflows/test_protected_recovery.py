@@ -92,7 +92,8 @@ def test_missing_native_state_cannot_silently_restart_protected_learning(tmp_pat
         shutil.rmtree(path)
     service.reconnect()
     failed = wait(service, job.job_id, "failed")
-    assert failed.error is not None and "reset missing native learning state" in failed.error
+    assert failed.error is not None
+    assert "reset missing native learning state" in failed.error
     assert failed.result_digest is None
     assert not (root / "complete.json").exists()
     assert not list((root / "evidence").glob("*/evaluation/complete.json"))
@@ -110,7 +111,9 @@ def test_missing_native_state_cannot_silently_restart_protected_learning(tmp_pat
     service.resume(job.job_id)
     completed = wait(service, job.job_id)
     report = service.report(job.job_id)
-    assert completed.invocations == 3 and completed.attempts == 4
-    assert report.comparison is not None and report.comparison.access.prior_test_accesses == 1
+    assert completed.invocations == 3
+    assert completed.attempts == 4
+    assert report.comparison is not None
+    assert report.comparison.access.prior_test_accesses == 1
     assert sum(len(trial.rows) for trial in report.trials) == 6
     assert report.fallback_configuration is not None

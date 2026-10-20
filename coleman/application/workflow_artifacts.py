@@ -13,6 +13,8 @@ from coleman.reward.rnfail import RNFailReward
 from coleman.workflows.contracts import ExperimentPlan, Trial, WorkflowError
 from coleman.workflows.lifecycle import FilePin, NativeRow, PhysicalAttempt, Stage, TrialResult, WorkflowReport
 
+_COMPLETE_RECEIPT = "complete.json"
+
 
 def pin_file(root: Path, path: Path) -> FilePin:
     """Identify bounded immutable bytes without opening executable checkpoints.
@@ -134,7 +136,9 @@ def publish_trial(
         destination = target / source.relative_to(native / "results")
         with source.open("rb") as stream:
             ArtifactWriter(root).write_immutable_stream(
-                destination, iter(lambda: stream.read(1048576), b""), maximum_bytes=plan.request.limits.max_output_bytes
+                destination,
+                iter(lambda stream=stream: stream.read(1048576), b""),
+                maximum_bytes=plan.request.limits.max_output_bytes,
             )
         pins.append(pin_file(root, destination))
     receipt = TrialResult(
@@ -149,8 +153,8 @@ def publish_trial(
     payload = receipt.to_json()
     if len(payload.encode()) > 16777216:
         raise WorkflowError("Native trial receipt exceeds its 16 MiB reader limit; reduce the declared history")
-    ArtifactWriter(root).write_immutable(target / "complete.json", payload)
-    return verify_trial(root, target / "complete.json", plan, trial, stage)
+    ArtifactWriter(root).write_immutable(target / _COMPLETE_RECEIPT, payload)
+    return verify_trial(root, target / _COMPLETE_RECEIPT, plan, trial, stage)
 
 
 def native_rows(table, plan: ExperimentPlan, trial: Trial) -> tuple[NativeRow, ...]:
@@ -256,7 +260,7 @@ def verify_report(root: Path, plan: ExperimentPlan, report: WorkflowReport) -> N
         if receipt.stage != stage or len(receipt.rows) != len(plan.dataset.build_ids):
             raise WorkflowError("Workflow complete report requires every native build at the declared stage")
         trial = coordinates[receipt.trial_id]
-        path = root / "evidence" / trial.trial_id[7:] / stage / "complete.json"
+        path = root / "evidence" / trial.trial_id[7:] / stage / _COMPLETE_RECEIPT
         if verify_trial(root, path, plan, trial, stage) != receipt:
             raise WorkflowError("Workflow report differs from actual completed native evidence")
     if report.physical_attempts != read_attempts(root, plan):
@@ -283,19 +287,45 @@ def read_attempts(root: Path, plan: ExperimentPlan) -> tuple[PhysicalAttempt, ..
     ValueError, OSError
         Extra, missing-ordinal, conflicting or incompatible event records.
     """
+    return tuple(event for trial in plan.trials for event in read_trial_attempts(root, plan, trial))
+
+
+def read_trial_attempts(root: Path, plan: ExperimentPlan, trial: Trial) -> tuple[PhysicalAttempt, ...]:
+    """Read one coordinate's bounded physical reservations without loading learning state.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        Trusted private job directory, never a client-supplied extraction path.
+    plan : ExperimentPlan
+        Exact context and finite per-trial invocation allowance, at most eight.
+    trial : Trial
+        Saved coordinate whose retained event files are inspected.
+
+    Returns
+    -------
+    tuple[PhysicalAttempt, ...]
+        Canonical ordinal order. A reservation does not prove native computation
+        completed; no files are written and no checkpoint pickle is loaded.
+
+    Raises
+    ------
+    ValueError, OSError
+        Excess events, nonconsecutive filenames/ordinals, incompatible versions,
+        changed binding or unavailable private metadata.
+    """
+    paths = sorted((root / "attempts" / trial.trial_id[7:]).glob("*.json"))
+    if len(paths) > plan.request.limits.max_attempts:
+        raise WorkflowError("Retained physical attempts exceed the saved cap")
     events = []
-    for trial in plan.trials:
-        paths = sorted((root / "attempts" / trial.trial_id[7:]).glob("*.json"))
-        if len(paths) > plan.request.limits.max_attempts:
-            raise WorkflowError("Retained physical attempts exceed the saved cap")
-        for ordinal, path in enumerate(paths, 1):
-            event = read_baseline_artifact(path, PhysicalAttempt)
-            if (event.ordinal, event.trial_id, event.plan_fingerprint, path.name) != (
-                ordinal,
-                trial.trial_id,
-                plan.fingerprint,
-                f"{ordinal:04d}.json",
-            ):
-                raise WorkflowError("Retained physical attempt binding mismatch")
-            events.append(event)
+    for ordinal, path in enumerate(paths, 1):
+        event = read_baseline_artifact(path, PhysicalAttempt)
+        if (event.ordinal, event.trial_id, event.plan_fingerprint, path.name) != (
+            ordinal,
+            trial.trial_id,
+            plan.fingerprint,
+            f"{ordinal:04d}.json",
+        ):
+            raise WorkflowError("Retained physical attempt binding mismatch")
+        events.append(event)
     return tuple(events)

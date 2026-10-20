@@ -27,9 +27,11 @@ def completed(tmp_path_factory):
 def test_bounded_file_handles_reassemble_exact_plan_report_and_native_bytes(completed):
     service, job = completed
     overview = report_overview(service, job.job_id)
-    assert overview.trial_count == 8 and overview.native_build_rows == 24
+    assert overview.trial_count == 8
+    assert overview.native_build_rows == 24
     first = artifact_page(service, job.job_id, limit=2)
-    assert len(first.artifacts) == 2 and first.next_offset == 2
+    assert len(first.artifacts) == 2
+    assert first.next_offset == 2
     descriptors = list(first.artifacts)
     offset = first.next_offset
     while offset is not None:
@@ -72,8 +74,9 @@ def test_unknown_foreign_and_corrupt_chunks_reject(completed):
     first = artifact_page(service, job.job_id, limit=1).artifacts[0]
     with pytest.raises(KeyError):
         read_artifact(service, job.job_id, "missing")
+    foreign_service = WorkflowService(service.store.root, owner="foreign")
     with pytest.raises(KeyError):
-        read_artifact(WorkflowService(service.store.root, owner="foreign"), job.job_id, first.artifact_id)
+        read_artifact(foreign_service, job.job_id, first.artifact_id)
     with pytest.raises(ValueError):
         read_artifact(service, job.job_id, first.artifact_id, offset=first.size_bytes + 1)
     with pytest.raises(ValueError):
@@ -86,8 +89,9 @@ def test_unknown_foreign_and_corrupt_chunks_reject(completed):
         {"offset": first.size_bytes + 1},
         {"schema_version": 2},
     ):
+        chunk_payload = {**chunk.model_dump(), **changes}
         with pytest.raises(ValueError):
-            ArtifactChunk.model_validate({**chunk.model_dump(), **changes})
+            ArtifactChunk.model_validate(chunk_payload)
 
 
 def test_versioned_lifecycle_golden():
@@ -96,8 +100,10 @@ def test_versioned_lifecycle_golden():
     path = Path(__file__).with_name("fixtures") / "job-view-v1.json"
     view = JobView.from_json(path.read_bytes())
     assert view.to_json() + "\n" == path.read_text()
-    assert view.attempts == 2 and view.invocations == 1
-    assert view.eta_seconds.status == "unavailable" and view.eta_seconds.value is None
+    assert view.attempts == 2
+    assert view.invocations == 1
+    assert view.eta_seconds.status == "unavailable"
+    assert view.eta_seconds.value is None
 
 
 _PUBLICATION_FAULT = """
@@ -141,7 +147,8 @@ def test_interrupted_report_publication_never_issues_a_false_completed_handle(tm
     view = service.status(job.job_id)
     assert view.state == ("interrupted" if mode == "after" else "failed")
     assert view.result_digest is None
-    assert view.completed_trials == 8 and view.attempts == 8
+    assert view.completed_trials == 8
+    assert view.attempts == 8
     with pytest.raises(ValueError, match="completed report"):
         service.report(job.job_id)
     root = tmp_path / "jobs" / job.job_id
@@ -149,7 +156,8 @@ def test_interrupted_report_publication_never_issues_a_false_completed_handle(tm
     published = (root / "complete.json").read_bytes() if mode == "after" else None
     service.resume(job.job_id)
     final = wait(service, job.job_id)
-    assert final.attempts == 8 and final.invocations == 2
+    assert final.attempts == 8
+    assert final.invocations == 2
     assert all(path.read_bytes() == before[str(path)] for path in (root / "evidence").rglob("*") if path.is_file())
     if published is not None:
         assert (root / "complete.json").read_bytes() == published

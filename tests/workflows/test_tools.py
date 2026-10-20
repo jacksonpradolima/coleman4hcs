@@ -51,7 +51,8 @@ def test_sdk_in_process_tuning_and_portable_read_only_evidence(tmp_path):
                 assert job["state"] == "completed"
                 inspected = (await client.call_tool("inspect_experiment", command)).structured_content["data"]
                 assert len(inspected["trials"]) == 4
-                assert len(inspected["coordinates"]) == 4 and len(inspected["attempts"]) == 4
+                assert len(inspected["coordinates"]) == 4
+                assert len(inspected["attempts"]) == 4
                 await client.call_tool("resume_experiment", command)
                 assert (await client.call_tool("cancel_experiment", command)).structured_content["data"][
                     "state"
@@ -107,5 +108,6 @@ def test_bounded_public_errors_do_not_expose_host_exceptions(error, code):
 
 def test_structured_missing_fields():
     reply = _reply(lambda: PlanningRequest.model_validate({"schema_version": 1}))
-    assert reply.error == "invalid_input" and reply.missing_fields == ("dataset_id",)
+    assert reply.error == "invalid_input"
+    assert reply.missing_fields == ("dataset_id",)
     assert json.loads(reply.to_json())["data"] is None

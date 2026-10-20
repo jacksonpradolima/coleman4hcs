@@ -37,22 +37,25 @@ def test_work_and_zip_bounds_before_materialization():
     request = PlanningRequest(
         schema_version=1, dataset_id="owned-ci", mode="zip", budget=ScheduleBudget(values=(0.2, 0.8))
     )
+    zip_manifest = manifest()
+    zip_runtime = recorded_runtime()
     with pytest.raises(ValueError, match="matching"):
-        make_plan(request, manifest(), recorded_runtime())
+        make_plan(request, zip_manifest, zip_runtime)
     request = PlanningRequest(schema_version=1, dataset_id="owned-ci", limits=WorkflowLimits(max_build_work=1))
+    work_manifest = manifest()
+    work_runtime = recorded_runtime()
     with pytest.raises(ValueError, match="Worst-case"):
-        make_plan(request, manifest(), recorded_runtime())
+        make_plan(request, work_manifest, work_runtime)
+    fixed_time_request = changed(
+        request,
+        limits=WorkflowLimits(),
+        evaluation="protected",
+        budget=ScheduleBudget(mode=BudgetMode.FIXED_TIME, unit="s", values=(2.0,)),
+    )
+    fixed_time_manifest = manifest()
+    fixed_time_runtime = recorded_runtime()
     with pytest.raises(ValueError, match="one ratio"):
-        make_plan(
-            changed(
-                request,
-                limits=WorkflowLimits(),
-                evaluation="protected",
-                budget=ScheduleBudget(mode=BudgetMode.FIXED_TIME, unit="s", values=(2.0,)),
-            ),
-            manifest(),
-            recorded_runtime(),
-        )
+        make_plan(fixed_time_request, fixed_time_manifest, fixed_time_runtime)
 
 
 def test_saved_plan_cannot_drop_or_substitute_resolved_coordinates():
@@ -61,21 +64,26 @@ def test_saved_plan_cannot_drop_or_substitute_resolved_coordinates():
         changed(plan, trials=plan.trials[:-1])
     payload = json.loads(plan.to_json())
     payload["trials"][0]["exploration"] = None
+    changed_plan_json = json.dumps(payload)
     with pytest.raises(ValueError):
-        ExperimentPlan.from_json(json.dumps(payload))
+        ExperimentPlan.from_json(changed_plan_json)
 
 
 def test_protected_admission_clocks_missing_partitions_and_order(tmp_path):
     data = owned_fixture(tmp_path)
     request = PlanningRequest(schema_version=1, dataset_id=data.dataset_id, evaluation="protected")
+    descriptive_manifest = changed(data, evidence="descriptive_source")
+    descriptive_runtime = recorded_runtime()
     with pytest.raises(ValueError, match="admission"):
-        make_plan(request, changed(data, evidence="descriptive_source"), recorded_runtime())
+        make_plan(request, descriptive_manifest, descriptive_runtime)
     late = changed(
         data.metadata[0],
         observation=changed(data.metadata[0].observation, available_at=datetime(2026, 1, 3, tzinfo=UTC)),
     )
+    late_manifest = changed(data, metadata=(late, *data.metadata[1:]))
+    late_runtime = recorded_runtime()
     with pytest.raises(ValueError, match="late/unavailable"):
-        make_plan(request, changed(data, metadata=(late, *data.metadata[1:])), recorded_runtime())
+        make_plan(request, late_manifest, late_runtime)
     all_train = tuple(
         changed(
             item,
@@ -87,8 +95,10 @@ def test_protected_admission_clocks_missing_partitions_and_order(tmp_path):
         )
         for item in data.metadata
     )
+    all_train_manifest = changed(data, metadata=all_train)
+    all_train_runtime = recorded_runtime()
     with pytest.raises(ValueError, match="nonempty"):
-        make_plan(request, changed(data, metadata=all_train), recorded_runtime())
+        make_plan(request, all_train_manifest, all_train_runtime)
     backward = tuple(
         changed(
             item,
@@ -98,8 +108,10 @@ def test_protected_admission_clocks_missing_partitions_and_order(tmp_path):
         )
         for item, other in zip(data.metadata, reversed(data.metadata), strict=True)
     )
+    backward_manifest = changed(data, metadata=backward)
+    backward_runtime = recorded_runtime()
     with pytest.raises(ValueError, match="chronological"):
-        make_plan(request, changed(data, metadata=backward), recorded_runtime())
+        make_plan(request, backward_manifest, backward_runtime)
     with pytest.raises(ValueError, match="every native build"):
         changed(data, metadata=data.metadata[:-1])
     with pytest.raises(ValueError, match="complete build"):
@@ -122,7 +134,9 @@ def test_zero_null_negative_and_nonfinite_native_projection():
         ranking=("a", "b", "c"),
         attempt_id="physical-1",
     )
-    assert row.napfd == -0.25 and row.process_cpu_seconds == 0.0 and row.process_wall_seconds is None
+    assert row.napfd == -0.25
+    assert row.process_cpu_seconds == 0.0
+    assert row.process_wall_seconds is None
     for name, value in (
         ("napfd", float("nan")),
         ("apfdc", float("inf")),

@@ -4,6 +4,7 @@ import copy
 import io
 import json
 from contextlib import closing
+from functools import partial
 
 import polars as pl
 import pytest
@@ -63,8 +64,9 @@ def test_source_shape_is_rejected_before_registration(tmp_path, kind):
         frame = pl.concat([frame.head(1)] * 513).with_columns(pl.int_range(0, 513).alias("BuildId"))
     buffer = io.BytesIO()
     frame.write_parquet(buffer)
+    encoded_source = buffer.getvalue()
     with pytest.raises(ValueError):
-        inspect_history(buffer.getvalue())
+        inspect_history(encoded_source)
 
 
 def test_empty_encoded_source_and_invalid_rng_stream_reject():
@@ -96,15 +98,16 @@ def test_corrupt_retained_indexes_do_not_change_owned_identity(tmp_path, corrupt
                 "INSERT INTO jobs VALUES (?,?,?,?,?)",
                 [(f"job-{i}", "owner", f"request-{i}", "plan", "{}") for i in range(129)],
             )
+    if corruption == "policy":
+        operation = partial(WorkflowStore, tmp_path)
+    elif corruption.startswith("dataset"):
+        operation = service.discover
+    elif corruption.startswith("plan"):
+        operation = partial(service.saved_plan, "0" * 64)
+    else:
+        operation = partial(service.status, "job-0")
     with pytest.raises((ValueError, KeyError)):
-        if corruption == "policy":
-            WorkflowStore(tmp_path)
-        elif corruption.startswith("dataset"):
-            service.discover()
-        elif corruption.startswith("plan"):
-            service.saved_plan("0" * 64)
-        else:
-            service.status("job-0")
+        operation()
 
 
 @pytest.fixture(scope="module")
@@ -181,7 +184,8 @@ def test_offline_approved_preset_uses_real_owned_etl_and_retains_receipt(tmp_pat
     monkeypatch.setattr(presets, "files", lambda package: resource)
     service = WorkflowService(tmp_path / "workspace")
     result = presets.register_karaf(service, cache, tmp_path / "etl")
-    assert result.receipt.observed_cases == 10 and result.receipt.replay_cases == 4
+    assert result.receipt.observed_cases == 10
+    assert result.receipt.replay_cases == 4
     assert service.discover().datasets[0].protected_eligible is False
     receipt = service.store.root / "source-receipts" / f"{result.receipt.fingerprint[7:]}.json"
     assert receipt.read_text() == result.receipt.to_json()

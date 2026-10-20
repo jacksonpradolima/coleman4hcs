@@ -41,8 +41,9 @@ def test_source_rejects_silent_semantic_changes(tmp_path, column, value):
     frame = pl.read_parquet(fixture_bytes(tmp_path)).with_columns(pl.lit(value).alias(column))
     output = io.BytesIO()
     frame.write_parquet(output)
+    encoded_history = output.getvalue()
     with pytest.raises(ValueError):
-        inspect_history(output.getvalue())
+        inspect_history(encoded_history)
 
 
 def test_zero_duration_is_observed_and_exact_bytes_stay_bound(tmp_path):
@@ -52,7 +53,10 @@ def test_zero_duration_is_observed_and_exact_bytes_stay_bound(tmp_path):
     assert inspect_history(output.getvalue())["Duration"].sum() == 0
     service = WorkflowService(tmp_path)
     manifest = owned_fixture(tmp_path)
-    assert service.register(manifest) == service.register(manifest)
+    first = service.register(manifest)
+    second = service.register(manifest)
+    assert first == manifest
+    assert second == first
     changed = manifest.model_copy(update={"assumptions": ("different source declaration",)})
     with pytest.raises(ValueError, match="replaced"):
         service.register(changed)
@@ -71,11 +75,18 @@ def test_unsafe_evidence_names_reject(name):
 def test_store_reopen_policy_identity_and_corrupt_versions(tmp_path):
     store = WorkflowStore(tmp_path)
     assert WorkflowStore(tmp_path).policy == store.policy
+    changed_policy = HostPolicy(schema_version=1, max_jobs=1)
     with pytest.raises(ValueError, match="replaced"):
-        WorkflowStore(tmp_path, HostPolicy(schema_version=1, max_jobs=1))
-    with pytest.raises(RuntimeError), store.transaction() as connection:
-        connection.execute("INSERT INTO settings VALUES ('rolled-back','value')")
-        raise RuntimeError("disk-independent rollback boundary")
+        WorkflowStore(tmp_path, changed_policy)
+
+    def interrupted_transaction():
+        """Fail after a real write so the transaction must roll it back."""
+        with store.transaction() as connection:
+            connection.execute("INSERT INTO settings VALUES ('rolled-back','value')")
+            raise RuntimeError("disk-independent rollback boundary")
+
+    with pytest.raises(RuntimeError):
+        interrupted_transaction()
     with store.transaction() as connection:
         assert connection.execute("SELECT 1 FROM settings WHERE name='rolled-back'").fetchone() is None
         connection.execute("DROP TABLE imports")
@@ -92,20 +103,21 @@ def test_unversioned_foreign_database_is_not_migrated(tmp_path):
 
 def test_host_limits_and_missing_owned_inputs(tmp_path):
     service = WorkflowService(tmp_path, policy=HostPolicy(schema_version=1, max_plans=1, max_datasets=1))
+    unregistered_request = PlanningRequest(schema_version=1, dataset_id="unregistered")
     with pytest.raises(KeyError):
-        service.plan(PlanningRequest(schema_version=1, dataset_id="unregistered"))
+        service.plan(unregistered_request)
     service.register(owned_fixture(tmp_path))
+    over_cap_request = PlanningRequest(
+        schema_version=1, dataset_id="owned-ci-three-build-v1", limits=WorkflowLimits(attempt_seconds=301.0)
+    )
     with pytest.raises(ValueError, match="host cap"):
-        service.plan(
-            PlanningRequest(
-                schema_version=1, dataset_id="owned-ci-three-build-v1", limits=WorkflowLimits(attempt_seconds=301.0)
-            )
-        )
+        service.plan(over_cap_request)
     request = PlanningRequest(schema_version=1, dataset_id="owned-ci-three-build-v1")
     first = service.plan(request)
     assert service.plan(request) == first
+    another_seed_request = request.model_copy(update={"seeds": (0,)})
     with pytest.raises(ValueError, match="slots"):
-        service.plan(request.model_copy(update={"seeds": (0,)}))
+        service.plan(another_seed_request)
     with pytest.raises(ValueError, match="offset"):
         service.inspect("missing", offset=True)
     with pytest.raises(KeyError):

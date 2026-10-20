@@ -213,7 +213,8 @@ class WorkflowStore:
         if row is None:
             raise KeyError("No owned workflow plan")
         plan = ExperimentPlan.from_json(row["payload"])
-        if plan.fingerprint[7:] != plan_id:
+        expected_id = plan.fingerprint.removeprefix("sha256:")
+        if expected_id != plan_id:
             raise ValueError("Saved plan identity mismatch")
         return plan
 

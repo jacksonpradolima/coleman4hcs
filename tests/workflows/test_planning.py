@@ -124,15 +124,18 @@ def test_preflight_before_expansion(monkeypatch):
 
     monkeypatch.setattr("coleman.workflows.planning.expand_sweep", forbidden)
     request = PlanningRequest(schema_version=1, dataset_id="owned-ci", limits=WorkflowLimits(max_trials=7))
+    source_manifest = manifest()
+    installed_runtime = recorded_runtime()
     with pytest.raises(ValueError, match="before expansion"):
-        make_plan(request, manifest(), recorded_runtime())
+        make_plan(request, source_manifest, installed_runtime)
 
 
 @pytest.mark.parametrize("version", [0, 2, True, None])
 def test_unknown_versions(version):
     payload = {"schema_version": version, "dataset_id": "owned-ci"}
+    future_request_json = json.dumps(payload)
     with pytest.raises(ValueError):
-        PlanningRequest.from_json(json.dumps(payload))
+        PlanningRequest.from_json(future_request_json)
 
 
 def test_duplicate_unknown_keys_and_parameter_missingness():
@@ -148,17 +151,17 @@ def test_duplicate_unknown_keys_and_parameter_missingness():
 
 
 def test_protected_requires_actual_clocks_and_rejects_late_labels(tmp_path):
+    protected_request = PlanningRequest(schema_version=1, dataset_id="owned-ci", evaluation="protected")
+    missing_clock_manifest = manifest()
+    missing_clock_runtime = recorded_runtime()
     with pytest.raises(ValueError, match="temporal"):
-        make_plan(
-            PlanningRequest(schema_version=1, dataset_id="owned-ci", evaluation="protected"),
-            manifest(),
-            recorded_runtime(),
-        )
+        make_plan(protected_request, missing_clock_manifest, missing_clock_runtime)
     data = owned_fixture(tmp_path)
     request = PlanningRequest(schema_version=1, dataset_id=data.dataset_id, evaluation="protected")
     assert len(make_plan(request, data, recorded_runtime()).trials) == 8
     metadata = list(data.metadata)
     metadata[0] = metadata[0].model_copy(update={"costs_known_at_decision": False})
     changed = data.model_copy(update={"metadata": tuple(metadata)})
+    changed_runtime = recorded_runtime()
     with pytest.raises(ValueError, match="predecision"):
-        make_plan(request, changed, recorded_runtime())
+        make_plan(request, changed, changed_runtime)

@@ -12,7 +12,7 @@ import polars as pl
 from pydantic import TypeAdapter
 
 from coleman.application.baseline_storage import read_baseline_artifact
-from coleman.application.workflow_artifacts import verify_report, verify_trial
+from coleman.application.workflow_artifacts import read_trial_attempts, verify_report, verify_trial
 from coleman.application.workflow_ownership import worker_active
 from coleman.application.workflow_store import JobRecord, WorkflowStore
 from coleman.artifacts import ArtifactWriter
@@ -25,7 +25,6 @@ from coleman.workflows.lifecycle import (
     ExecutePlan,
     HostPolicy,
     JobView,
-    PhysicalAttempt,
     PlanPreview,
     TrialCoordinate,
     TrialSummary,
@@ -34,6 +33,8 @@ from coleman.workflows.lifecycle import (
     WorkflowReport,
 )
 from coleman.workflows.planning import make_plan
+
+_QUEUE_CAPACITY_ERROR = "Workspace running/queue capacity is exhausted"
 
 
 def _preview(plan: ExperimentPlan) -> PlanPreview:
@@ -270,18 +271,7 @@ class WorkflowService:
                 plan = self.store.plan(connection, request.plan_id, self.owner)
                 if plan.runtime != InstalledRuntime.capture() or plan.native_threads != pl.thread_pool_size():
                     raise WorkflowError("Saved plan producer/runtime is incompatible; create a new plan")
-                if len(jobs) >= self.store.policy.max_jobs:
-                    raise WorkflowError("Job/tombstone slots are full; create another owned workspace")
-                active = [item for item in jobs if item.state in ("queued", "running")]
-                if len(active) >= self.store.policy.max_running + self.store.policy.max_queued:
-                    raise WorkflowError("Workspace running/queue capacity is exhausted")
-                reserved = sum(
-                    self.store.plan(connection, item.plan_id, item.owner).request.limits.max_output_bytes
-                    for item in jobs
-                    if item.state != "expired" or (self.store.root / "jobs" / item.job_id).exists()
-                )
-                if reserved + plan.request.limits.max_output_bytes > self.store.policy.max_retained_bytes:
-                    raise WorkflowError("Aggregate retained output reservation exhausted")
+                self._admission_limits(connection, jobs, plan)
                 now = time.time()
                 job = JobRecord(
                     schema_version=1,
@@ -299,6 +289,21 @@ class WorkflowService:
                 self.store.save_job(connection, job, create=True)
         self._start()
         return self.status(job.job_id)
+
+    def _admission_limits(self, connection, jobs, plan) -> None:
+        """Check new-job slot/byte reservations; resumed jobs retain their existing reservation."""
+        if len(jobs) >= self.store.policy.max_jobs:
+            raise WorkflowError("Job/tombstone slots are full; create another owned workspace")
+        active = [item for item in jobs if item.state in ("queued", "running")]
+        if len(active) >= self.store.policy.max_running + self.store.policy.max_queued:
+            raise WorkflowError(_QUEUE_CAPACITY_ERROR)
+        reserved = sum(
+            self.store.plan(connection, item.plan_id, item.owner).request.limits.max_output_bytes
+            for item in jobs
+            if item.state != "expired" or (self.store.root / "jobs" / item.job_id).exists()
+        )
+        if reserved + plan.request.limits.max_output_bytes > self.store.policy.max_retained_bytes:
+            raise WorkflowError("Aggregate retained output reservation exhausted")
 
     def _start(self) -> None:
         """Ensure a single fixed detached supervisor; no shell or user-selected module."""
@@ -416,9 +421,7 @@ class WorkflowService:
         self.status(job_id)
         with self.store.transaction() as connection:
             job = self._job(connection, job_id)
-            if job.state in ("completed", "queued", "running", "awaiting_evaluation"):
-                pass
-            else:
+            if job.state not in ("completed", "queued", "running", "awaiting_evaluation"):
                 plan = self.store.plan(connection, job.plan_id, self.owner)
                 if job.state == "expired" or worker_active(self.store.root, job_id):
                     raise WorkflowError("Expired work or an active cancelled worker cannot resume")
@@ -431,7 +434,7 @@ class WorkflowService:
                     sum(item.state in ("queued", "running") for item in jobs)
                     >= self.store.policy.max_running + self.store.policy.max_queued
                 ):
-                    raise WorkflowError("Workspace running/queue capacity is exhausted")
+                    raise WorkflowError(_QUEUE_CAPACITY_ERROR)
                 self.store.save_job(
                     connection,
                     JobRecord.model_validate(
@@ -479,18 +482,7 @@ class WorkflowService:
             path = root / "evidence" / trial.trial_id[7:] / view.stage / "complete.json"
             if path.exists():
                 receipts.append(verify_trial(root, path, plan, trial, view.stage))
-            paths = sorted((root / "attempts" / trial.trial_id[7:]).glob("*.json"))
-            if len(paths) > plan.request.limits.max_attempts:
-                raise WorkflowError("Retained trial attempts exceed the plan cap")
-            for ordinal, path in enumerate(paths, 1):
-                event = read_baseline_artifact(path, PhysicalAttempt)
-                if (event.ordinal, event.trial_id, event.plan_fingerprint) != (
-                    ordinal,
-                    trial.trial_id,
-                    plan.fingerprint,
-                ):
-                    raise WorkflowError("Retained physical attempt binding mismatch")
-                attempts.append(event)
+            attempts.extend(read_trial_attempts(root, plan, trial))
         page = WorkflowInspection(
             schema_version=1,
             job=view,
@@ -531,9 +523,7 @@ class WorkflowService:
             plan = self.store.plan(connection, job.plan_id, self.owner)
             if plan.request.evaluation != "protected":
                 raise WorkflowError("Descriptive replay exposes the full history; create a separate protected plan")
-            if job.state == "completed" or job.stage == "evaluation":
-                pass
-            else:
+            if job.state != "completed" and job.stage != "evaluation":
                 if job.state != "awaiting_evaluation":
                     raise WorkflowError("Protected evaluation requires a completed tuning prefix")
                 plan = self.store.plan(connection, job.plan_id, self.owner)
@@ -543,7 +533,7 @@ class WorkflowService:
                     raise WorkflowError("Incompatible producer/runtime or exhausted invocation allowance")
                 active = sum(item.state in ("queued", "running") for item in self.store.jobs(connection))
                 if active >= self.store.policy.max_running + self.store.policy.max_queued:
-                    raise WorkflowError("Workspace running/queue capacity is exhausted")
+                    raise WorkflowError(_QUEUE_CAPACITY_ERROR)
                 handoff = prepare_evaluation(self.store.root, self.store.root / "jobs" / job_id, plan)
                 self.store.save_job(
                     connection,
@@ -756,6 +746,7 @@ class WorkflowService:
         bundle = EvidenceBundle.from_json(row[0])
         from coleman.results.domain import fingerprint
 
-        if fingerprint([self.owner, bundle.fingerprint])[7:] != identity:
+        expected_id = fingerprint([self.owner, bundle.fingerprint]).removeprefix("sha256:")
+        if expected_id != identity:
             raise WorkflowError("Read-only evidence handle/content binding mismatch")
         return bundle

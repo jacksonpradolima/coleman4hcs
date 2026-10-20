@@ -22,6 +22,8 @@ from coleman.spec.runtime_identity import InstalledRuntime
 from coleman.workflows.contracts import ExperimentPlan, Trial, WorkflowError
 from coleman.workflows.lifecycle import PhysicalAttempt, TrialResult, WorkflowReport
 
+_COMPLETE_RECEIPT = "complete.json"
+
 
 def _read_job(store: WorkflowStore, job_id: str) -> JobRecord:
     """Read a bounded validated private record without modifying ownership."""
@@ -81,7 +83,9 @@ def _input(store: WorkflowStore, root: Path, plan: ExperimentPlan) -> None:
 
 
 def _check_output(store: WorkflowStore, job_id: str, plan: ExperimentPlan, deadline: float) -> None:
-    """Reject bounded publication overshoot synchronously as well as through sampled guards."""
+    """Reject cooperative deadline and publication-byte overshoot at actual phase boundaries."""
+    if time.monotonic() > deadline:
+        raise WorkflowError("Workflow observed wall-time allowance exhausted")
     if _output_exceeds(plan.request.limits.max_output_bytes, root=store.root / "jobs" / job_id, maximum_entries=32768):
         raise WorkflowError("Workflow output byte/file limit exceeded")
 
@@ -100,6 +104,80 @@ def _require_committed_progress(root: Path, job: JobRecord, trial: Trial) -> Non
             raise WorkflowError("Previously committed native checkpoint is missing; implicit reset is forbidden")
 
 
+def _prefix_steps(plan: ExperimentPlan) -> int:
+    """Count the already eligible chronological train/validation frontier without reading outcomes."""
+    assert plan.dataset.temporal_plan is not None
+    return sum(
+        item.partition != "test"
+        for item in plan.dataset.temporal_plan.split(tuple(item.observation for item in plan.dataset.metadata))
+    )
+
+
+def _reserve_attempt(store: WorkflowStore, job: JobRecord, plan: ExperimentPlan, trial: Trial) -> str:
+    """Reserve one bounded physical invocation before native work; cancellation wins transactionally."""
+    root = store.root / "jobs" / job.job_id
+    with store.transaction() as connection:
+        current = next(item for item in store.jobs(connection) if item.job_id == job.job_id)
+        if current.state != "running":
+            raise InterruptedError("Workflow cancelled before native invocation")
+        events = root / "attempts" / trial.trial_id[7:]
+        count = len(list(events.glob("*.json")))
+        if count >= plan.request.limits.max_attempts:
+            raise WorkflowError("Physical trial attempt limit exhausted")
+        attempt_id = fingerprint(["workflow.physical.v1", job.job_id, trial.trial_id, count + 1])[7:]
+        ArtifactWriter(root).write_immutable(
+            events / f"{count + 1:04d}.json",
+            PhysicalAttempt(
+                schema_version=1,
+                trial_id=trial.trial_id,
+                attempt_id=attempt_id,
+                plan_fingerprint=plan.fingerprint,
+                stage=current.stage,
+                worker_invocation=current.invocations,
+                ordinal=count + 1,
+                started_epoch_seconds=time.time(),
+            ).to_json(),
+        )
+        store.save_job(
+            connection,
+            JobRecord.model_validate(
+                {
+                    **current.model_dump(),
+                    "attempts": current.attempts + 1,
+                    "current_trial": trial.trial_id,
+                    "checkpoint_step": 0,
+                    "changed": time.time(),
+                }
+            ),
+        )
+
+    return attempt_id
+
+
+def _execute_trial(store, job, plan, trial, steps, progress_hook, deadline) -> TrialResult:
+    """Continue actual owned native state and publish one immutable stage receipt last."""
+    root = store.root / "jobs" / job.job_id
+    _require_committed_progress(root, job, trial)
+    if job.stage == "evaluation":
+        from coleman.application.workflow_evaluation import require_continuation
+
+        require_continuation(root, trial, _prefix_steps(plan))
+    attempt_id = _reserve_attempt(store, job, plan, trial)
+
+    def progress(step: int) -> None:
+        """Record only a real native commit before invoking the trusted interruption hook."""
+        _transition(store, job.job_id, checkpoint_step=step)
+        _check_output(store, job.job_id, plan, deadline)
+        if progress_hook is not None:
+            progress_hook(trial.trial_id, step)
+
+    native = execute_native(root, plan, trial, steps, progress, attempt_id=attempt_id)
+    _check_output(store, job.job_id, plan, deadline)
+    result = publish_trial(root, native, plan, trial, job.stage, steps)
+    _check_output(store, job.job_id, plan, deadline)
+    return result
+
+
 def _trials(
     store: WorkflowStore,
     job: JobRecord,
@@ -111,79 +189,16 @@ def _trials(
 ) -> tuple[TrialResult, ...]:
     """Reuse complete receipts and invoke only unfinished coordinates with retained attempts."""
     root = store.root / "jobs" / job.job_id
-    steps = len(plan.dataset.build_ids)
-    if job.stage == "tuning":
-        assert plan.dataset.temporal_plan is not None
-        steps = sum(
-            item.partition != "test"
-            for item in plan.dataset.temporal_plan.split(tuple(item.observation for item in plan.dataset.metadata))
-        )
+    steps = _prefix_steps(plan) if job.stage == "tuning" else len(plan.dataset.build_ids)
     receipts = []
     for trial in plan.trials if trials is None else trials:
-        receipt = root / "evidence" / trial.trial_id[7:] / job.stage / "complete.json"
+        receipt = root / "evidence" / trial.trial_id[7:] / job.stage / _COMPLETE_RECEIPT
         if receipt.exists():
             result = verify_trial(root, receipt, plan, trial, job.stage)
             if len(result.rows) != steps:
                 raise WorkflowError("Completed workflow stage has an incompatible frontier")
         else:
-            _require_committed_progress(root, job, trial)
-            if job.stage == "evaluation":
-                from coleman.application.workflow_evaluation import require_continuation
-
-                assert plan.dataset.temporal_plan is not None
-                prefix_steps = sum(
-                    item.partition != "test"
-                    for item in plan.dataset.temporal_plan.split(
-                        tuple(item.observation for item in plan.dataset.metadata)
-                    )
-                )
-                require_continuation(root, trial, prefix_steps)
-            with store.transaction() as connection:
-                current = next(item for item in store.jobs(connection) if item.job_id == job.job_id)
-                if current.state != "running":
-                    raise InterruptedError("Workflow cancelled before native invocation")
-                events = root / "attempts" / trial.trial_id[7:]
-                count = len(list(events.glob("*.json")))
-                if count >= plan.request.limits.max_attempts:
-                    raise WorkflowError("Physical trial attempt limit exhausted")
-                attempt_id = fingerprint(["workflow.physical.v1", job.job_id, trial.trial_id, count + 1])[7:]
-                ArtifactWriter(root).write_immutable(
-                    events / f"{count + 1:04d}.json",
-                    PhysicalAttempt(
-                        schema_version=1,
-                        trial_id=trial.trial_id,
-                        attempt_id=attempt_id,
-                        plan_fingerprint=plan.fingerprint,
-                        stage=current.stage,
-                        worker_invocation=current.invocations,
-                        ordinal=count + 1,
-                        started_epoch_seconds=time.time(),
-                    ).to_json(),
-                )
-                store.save_job(
-                    connection,
-                    JobRecord.model_validate(
-                        {
-                            **current.model_dump(),
-                            "attempts": current.attempts + 1,
-                            "current_trial": trial.trial_id,
-                            "checkpoint_step": 0,
-                            "changed": time.time(),
-                        }
-                    ),
-                )
-
-            def progress(step: int, trial_id: str = trial.trial_id) -> None:
-                """Record only a real native checkpoint; trusted tests may interrupt after this boundary."""
-                _transition(store, job.job_id, checkpoint_step=step)
-                _check_output(store, job.job_id, plan, deadline)
-                if progress_hook is not None:
-                    progress_hook(trial_id, step)
-
-            native = execute_native(root, plan, trial, steps, progress, attempt_id=attempt_id)
-            _check_output(store, job.job_id, plan, deadline)
-            result = publish_trial(root, native, plan, trial, job.stage, steps)
-            _check_output(store, job.job_id, plan, deadline)
+            result = _execute_trial(store, job, plan, trial, steps, progress_hook, deadline)
         receipts.append(result)
         _transition(store, job.job_id, completed_trials=len(receipts), current_trial=None)
     return tuple(receipts)
@@ -200,7 +215,7 @@ def _produce_report(store, job, plan, progress_hook, deadline):
         evaluation_trials,
     )
 
-    complete_path = root / "jobs" / job_id / "complete.json"
+    complete_path = root / "jobs" / job_id / _COMPLETE_RECEIPT
     if complete_path.exists():
         report = read_baseline_artifact(complete_path, WorkflowReport)
         verify_report(root / "jobs" / job_id, plan, report)
@@ -238,6 +253,31 @@ def _produce_report(store, job, plan, progress_hook, deadline):
             assumptions=plan.dataset.assumptions + ("Seeds are repetitions, not independent repositories.",),
         )
     return report
+
+
+def _publish_completion(store, job_id, plan, report, deadline) -> None:
+    """Publish complete bytes before the serialized completion transition; prior cancellation wins."""
+    root = store.root
+    with store.transaction() as connection:
+        current = next(item for item in store.jobs(connection) if item.job_id == job_id)
+        if current.state != "running":
+            raise InterruptedError("Cancellation won before report publication")
+        payload = report.to_json()
+        if len(payload.encode()) > 16777216:
+            raise WorkflowError("Workflow report exceeds its 16 MiB reader limit; reduce the plan/history")
+        ArtifactWriter(root).write_immutable(root / "jobs" / job_id / _COMPLETE_RECEIPT, payload)
+        _check_output(store, job_id, plan, deadline)
+        store.save_job(
+            connection,
+            JobRecord.model_validate(
+                {
+                    **current.model_dump(),
+                    "state": "completed",
+                    "result_digest": report.fingerprint,
+                    "changed": time.time(),
+                }
+            ),
+        )
 
 
 def run_job(root: Path, job_id: str, *, progress_hook: Callable[[str, int], None] | None = None) -> None:
@@ -281,7 +321,7 @@ def run_job(root: Path, job_id: str, *, progress_hook: Callable[[str, int], None
             raise WorkflowError("Native Polars thread profile differs from the frozen plan")
         _transition(store, job_id, attempts=len(read_attempts(root / "jobs" / job_id, plan)))
         _input(store, root / "jobs" / job_id, plan)
-        if job.stage == "descriptive" and not (root / "jobs" / job_id / "complete.json").exists():
+        if job.stage == "descriptive" and not (root / "jobs" / job_id / _COMPLETE_RECEIPT).exists():
             from coleman.application.workflow_exposure import mark_exposure
 
             mark_exposure(root, plan, job_id, job.invocations, "descriptive_replay")
@@ -289,28 +329,7 @@ def run_job(root: Path, job_id: str, *, progress_hook: Callable[[str, int], None
         if job.stage == "tuning":
             _transition(store, job_id, state="awaiting_evaluation")
         else:
-            # Commit lifecycle completion only after the complete report exists;
-            # a prior cancellation can leave a private orphan report, never a handle.
-            with store.transaction() as connection:
-                current = next(item for item in store.jobs(connection) if item.job_id == job_id)
-                if current.state != "running":
-                    raise InterruptedError("Cancellation won before report publication")
-                payload = report.to_json()
-                if len(payload.encode()) > 16777216:
-                    raise WorkflowError("Workflow report exceeds its 16 MiB reader limit; reduce the plan/history")
-                ArtifactWriter(root).write_immutable(root / "jobs" / job_id / "complete.json", payload)
-                _check_output(store, job_id, plan, deadline)
-                store.save_job(
-                    connection,
-                    JobRecord.model_validate(
-                        {
-                            **current.model_dump(),
-                            "state": "completed",
-                            "result_digest": report.fingerprint,
-                            "changed": time.time(),
-                        }
-                    ),
-                )
+            _publish_completion(store, job_id, plan, report, deadline)
     except Exception as error:  # boundary retains a stable bounded failure, not a false result
         ArtifactWriter(root).write_immutable(
             root / "jobs" / job_id / f"failure-{job.invocations:04d}.json",

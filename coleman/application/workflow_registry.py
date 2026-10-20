@@ -48,12 +48,7 @@ def inspect_history(payload: bytes) -> pl.DataFrame:
         if source.metadata.num_rows > 1000000 or size > 134217728 or len(source.schema_arrow) > 64:
             raise ValueError("History exceeds decoded row/byte/column bounds")
     frame = pl.read_parquet(payload)
-    if not frame.height or not _REQUIRED.issubset(frame.columns):
-        raise ValueError("History requires nonempty native testcase columns")
-    if not frame.schema["BuildId"].is_integer() or not frame.schema["Verdict"].is_integer():
-        raise ValueError("Native build IDs and binary verdicts require integer columns")
-    if frame.schema["Name"] != pl.String or not frame.schema["Duration"].is_numeric():
-        raise ValueError("Native names require strings and durations numeric seconds")
+    _native_columns(frame)
     if any(frame[name].null_count() for name in _REQUIRED):
         raise ValueError("Null native source cells cannot be silently converted to zero")
     if not frame["Name"].str.len_chars().is_between(1, 4096).all():
@@ -70,6 +65,16 @@ def inspect_history(payload: bytes) -> pl.DataFrame:
     if frame["BuildId"].n_unique() > 512 or int(max(frame.group_by("BuildId").len()["len"].to_list())) > 10000:
         raise ValueError("History exceeds native build/test candidate limits")
     return frame
+
+
+def _native_columns(frame: pl.DataFrame) -> None:
+    """Require a nonempty native schema before reductions; never coerce values or units."""
+    if not frame.height or not _REQUIRED.issubset(frame.columns):
+        raise ValueError("History requires nonempty native testcase columns")
+    if not frame.schema["BuildId"].is_integer() or not frame.schema["Verdict"].is_integer():
+        raise ValueError("Native build IDs and binary verdicts require integer columns")
+    if frame.schema["Name"] != pl.String or not frame.schema["Duration"].is_numeric():
+        raise ValueError("Native names require strings and durations numeric seconds")
 
 
 def snapshot_history(

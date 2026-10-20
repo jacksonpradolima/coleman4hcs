@@ -110,7 +110,8 @@ def test_actual_eight_trials_export_import_and_two_coordinators(tmp_path):
     assert other.execute(request).job_id == view.job_id
     assert other.resume(view.job_id).result_digest == view.result_digest
     pages = other.inspect(view.job_id, limit=3)
-    assert len(pages.trials) == 3 and pages.next_offset == 3
+    assert len(pages.trials) == 3
+    assert pages.next_offset == 3
     bundle = other.export(view.job_id)
     assert EvidenceBundle.from_json(bundle.to_json()) == bundle
     imported = other.import_evidence(bundle.to_json())
@@ -126,12 +127,14 @@ def test_actual_eight_trials_export_import_and_two_coordinators(tmp_path):
     # The same mathematical plan is independently ownable; its ID is not a secret.
     assert foreign.plan(service.saved_plan(plan.plan_id).request) == plan
     alternate = other.plan(PlanningRequest(schema_version=1, dataset_id="owned-ci-three-build-v1", seeds=(0,)))
+    conflicting_request = ExecutePlan(schema_version=1, request_id="same", plan_id=alternate.plan_id)
     with pytest.raises(ValueError, match="conflicts"):
-        other.execute(ExecutePlan(schema_version=1, request_id="same", plan_id=alternate.plan_id))
+        other.execute(conflicting_request)
     bad = json.loads(bundle.to_json())
     bad["report"]["trials"][0]["rows"][0]["napfd"] = 0.12345
+    changed_evidence_json = json.dumps(bad)
     with pytest.raises(ValueError, match="native bytes"):
-        other.import_evidence(json.dumps(bad))
+        other.import_evidence(changed_evidence_json)
     first = report.trials[0].files[0]
     path = tmp_path / "jobs" / view.job_id / first.name
     path.write_bytes(path.read_bytes() + b"altered")
@@ -157,7 +160,8 @@ def test_actual_protected_prefix_audit_and_learning_continuation(tmp_path):
     assert report.comparison is not None
     assert report.comparison.results[0].reason == "too_few_independent_units"
     assert report.comparison.results[0].observed_pairs == 1
-    assert len(report.trials) == 4 and sum(len(trial.rows) for trial in report.trials) == 12
+    assert len(report.trials) == 4
+    assert sum(len(trial.rows) for trial in report.trials) == 12
     planned = service.saved_plan(preview.plan_id)
     completed_ids = {receipt.trial_id for receipt in report.trials}
     compared = {trial.configuration_id for trial in planned.trials if trial.trial_id in completed_ids}
@@ -239,9 +243,11 @@ def test_running_cancellation_preserves_checkpoint_and_concurrent_resume_identit
             time.sleep(0.025)
         assert (tmp_path / "checkpoint-ready").exists()
         before = service.status(job.job_id)
-        assert before.worker_active and before.checkpoint_step == before.attempts == 1
+        assert before.worker_active
+        assert before.checkpoint_step == before.attempts == 1
         cancelled = service.cancel(job.job_id)
-        assert cancelled.state == "cancelled" and cancelled.result_digest is None
+        assert cancelled.state == "cancelled"
+        assert cancelled.result_digest is None
         _, error = process.communicate(timeout=10)
         assert process.returncode == 75, error.decode()
         assert service.status(job.job_id).state == "cancelled"
@@ -250,9 +256,11 @@ def test_running_cancellation_preserves_checkpoint_and_concurrent_resume_identit
             views = list(pool.map(lambda host: host.resume(job.job_id), (service, WorkflowService(tmp_path))))
         assert {view.job_id for view in views} == {job.job_id}
         final = wait(service, job.job_id)
-        assert final.attempts == 9 and final.invocations == 2
+        assert final.attempts == 9
+        assert final.invocations == 2
         report = service.report(job.job_id)
-        assert len(report.trials) == 8 and sum(len(trial.rows) for trial in report.trials) == 24
+        assert len(report.trials) == 8
+        assert sum(len(trial.rows) for trial in report.trials) == 24
         assert_independent_fixture_metrics(report)
         assert service.cancel(job.job_id).result_digest == final.result_digest
     finally:
@@ -285,8 +293,10 @@ def test_real_checkpoint_crash_then_actual_stdio_reconnection(tmp_path, monkeypa
     _, error = process.communicate(timeout=30)
     assert process.returncode == 87, error.decode()
     interrupted = service.status(job.job_id)
-    assert interrupted.state == "interrupted" and interrupted.completed_trials == 1
-    assert interrupted.checkpoint_step == 1 and interrupted.attempts == 2
+    assert interrupted.state == "interrupted"
+    assert interrupted.completed_trials == 1
+    assert interrupted.checkpoint_step == 1
+    assert interrupted.attempts == 2
     assert interrupted.result_digest is None
     assert not (tmp_path / "jobs" / job.job_id / "complete.json").exists()
     summary = service.inspect(job.job_id).trials[0]
@@ -335,7 +345,8 @@ def test_real_checkpoint_crash_then_actual_stdio_reconnection(tmp_path, monkeypa
     final = wait(reopened, job.job_id)
     assert final.attempts == 9
     report = reopened.report(job.job_id)
-    assert len(report.trials) == 8 and sum(len(trial.rows) for trial in report.trials) == 24
+    assert len(report.trials) == 8
+    assert sum(len(trial.rows) for trial in report.trials) == 24
     assert next(trial for trial in report.trials if trial.trial_id == receipt.trial_id) == receipt
     assert all((tmp_path / "jobs" / job.job_id / name).read_bytes() == payload for name, payload in before.items())
 

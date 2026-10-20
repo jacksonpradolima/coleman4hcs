@@ -6340,6 +6340,9 @@ compatible continuation. Portable evidence cannot supply those executable files.
 Native checkpoints also retain the global Random policy generator through the
 existing `CheckpointPayload.extra` extension, with a versioned PCG64 codec and
 complete plan/trial binding. The native agents already retain their own RNG.
+Before restoring that generator, the loader checks that the actual payload's
+run, experiment and step exactly match its committed progress marker. A mismatch
+rejects continuation without changing the generator state.
 Ordinary older native checkpoints lack this workflow context and cannot be
 silently adopted or reseeded. The existing native pickle/progress formats and
 non-workflow checkpoint behavior are unchanged. The saved plan also records its
@@ -6359,6 +6362,12 @@ aggregation design and full bounded-mean hypothesis/protocol before the existing
 audit ledger reserves test access. The best UCB challenger is compared with Random
 even if Random won validation; ties prefer Random, then smaller UCB c, then
 canonical identity. Nothing activates a production policy.
+
+Local and portable report readers require exactly one frozen learning-state
+entry for each planned seed of each selected configuration. Trial identities,
+seed values and unique checkpoint references must agree with that plan. These
+checks establish internal consistency; they do not authenticate an external
+producer. Report interpretation must also agree with the declared evaluation mode.
 
 The selected challenger and Random continue their **original native checkpoints**
 for both seeds. Four complete continuation receipts contain **12 cumulative rows**:
@@ -6387,6 +6396,9 @@ does not make a previously exposed holdout appear new. The ledger audits this
 workspace's API; it cannot detect an external reader or authenticate host source
 declarations. Preserve exposure when moving workspaces, including by importing
 previous outcome evidence, rather than claiming a fresh independent holdout.
+The source lock covers exposure integration and the subsequent audit-capacity
+check. If those receipts fill the 512-access ledger, evaluation rejects before
+another holdout read; it does not discard earlier exposure to make room.
 
 Evaluating an already descriptive job rejects with an explicit explanation;
 create a separate eligible protected plan. The protected report preserves a

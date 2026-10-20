@@ -75,6 +75,8 @@ def changed_bundle(bundle, case):
         data["report"]["physical_attempts"][0]["worker_invocation"] = 8
     elif case == "wrong_attempt_stage":
         data["report"]["physical_attempts"][0]["stage"] = "evaluation"
+    elif case == "wrong_interpretation":
+        data["report"]["interpretation"] = "insufficient_evidence"
     return data
 
 
@@ -102,11 +104,13 @@ def changed_bundle(bundle, case):
         "excess_attempt_ordinal",
         "excess_worker_invocation",
         "wrong_attempt_stage",
+        "wrong_interpretation",
     ],
 )
 def test_corrupt_or_unplanned_portable_membership_rejects(evidence, case):
+    changed_payload = changed_bundle(evidence, case)
     with pytest.raises(ValueError):
-        EvidenceBundle.model_validate(changed_bundle(evidence, case))
+        EvidenceBundle.model_validate(changed_payload)
 
 
 def replace_first_bytes(bundle, payload):
@@ -122,10 +126,12 @@ def replace_first_bytes(bundle, payload):
 def test_native_schema_mismatch_rejects_even_when_file_and_pin_digests_match(evidence):
     output = io.BytesIO()
     pl.DataFrame({"unrecognized_column": [1]}).write_parquet(output)
+    schema_payload = replace_first_bytes(evidence, output.getvalue())
     with pytest.raises(ValueError, match="schema"):
-        EvidenceBundle.model_validate(replace_first_bytes(evidence, output.getvalue()))
+        EvidenceBundle.model_validate(schema_payload)
+    broken_footer_payload = replace_first_bytes(evidence, b"PAR1 broken footer")
     with pytest.raises(ValueError):
-        EvidenceBundle.model_validate(replace_first_bytes(evidence, b"PAR1 broken footer"))
+        EvidenceBundle.model_validate(broken_footer_payload)
 
 
 def test_compressed_native_decode_bomb_is_rejected_from_footer_before_materialization(evidence, monkeypatch):
@@ -138,8 +144,9 @@ def test_compressed_native_decode_bomb_is_rejected_from_footer_before_materializ
         raise AssertionError("Oversized native payload must not be decoded")
 
     monkeypatch.setattr(pl, "read_parquet", forbidden)
+    oversized_payload = replace_first_bytes(evidence, payload)
     with pytest.raises(ValueError, match="decode bounds"):
-        EvidenceBundle.model_validate(replace_first_bytes(evidence, payload))
+        EvidenceBundle.model_validate(oversized_payload)
 
 
 def test_portable_native_aggregate_bytes_reject_before_native_decode(evidence, monkeypatch):

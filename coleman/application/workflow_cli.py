@@ -79,13 +79,7 @@ def run_command(args: argparse.Namespace) -> None:
     elif operation == "discover":
         value = service.discover()
     elif operation in ("plan", "execute"):
-        if args.request is None or len(args.request.encode()) > 65536:
-            raise ValueError("A bounded versioned --request is required")
-        value = (
-            service.plan(PlanningRequest.from_json(args.request))
-            if operation == "plan"
-            else service.execute(ExecutePlan.from_json(args.request))
-        )
+        value = _request_command(args, service)
     elif operation == "cleanup":
         print(canonical_json({"schema_version": 1, "expired_jobs": list(service.cleanup())}))
         return
@@ -98,21 +92,34 @@ def run_command(args: argparse.Namespace) -> None:
             raise ValueError("Portable evidence exceeds 2 MiB")
         value = service.import_evidence(payload.decode("utf-8"))
     else:
-        if args.job is None:
-            raise ValueError("A host-issued --job is required")
-        if operation == "inspect":
-            value = service.inspect(args.job, offset=args.offset, limit=args.limit)
-        else:
-            functions = {
-                "status": service.status,
-                "cancel": service.cancel,
-                "resume": service.resume,
-                "evaluate": service.evaluate,
-                "report": service.report,
-                "export": service.export,
-            }
-            value = functions[operation](args.job)
+        value = _job_command(args, service)
     print(value.to_json())
+
+
+def _request_command(args, service):
+    """Validate bounded JSON before invoking the matching typed planning/admission operation."""
+    if args.request is None or len(args.request.encode()) > 65536:
+        raise ValueError("A bounded versioned --request is required")
+    if args.operation == "plan":
+        return service.plan(PlanningRequest.from_json(args.request))
+    return service.execute(ExecutePlan.from_json(args.request))
+
+
+def _job_command(args, service):
+    """Dispatch only a parsed known job operation, preserving caller-owned service checks."""
+    if args.job is None:
+        raise ValueError("A host-issued --job is required")
+    if args.operation == "inspect":
+        return service.inspect(args.job, offset=args.offset, limit=args.limit)
+    functions = {
+        "status": service.status,
+        "cancel": service.cancel,
+        "resume": service.resume,
+        "evaluate": service.evaluate,
+        "report": service.report,
+        "export": service.export,
+    }
+    return functions[args.operation](args.job)
 
 
 def _register(args, service):

@@ -193,7 +193,7 @@ def prepare_evaluation(workspace: Path, root: Path, plan: ExperimentPlan) -> Eva
                 with path.open("rb") as stream:
                     ArtifactWriter(root).write_immutable_stream(
                         destination,
-                        iter(lambda: stream.read(1048576), b""),
+                        iter(lambda stream=stream: stream.read(1048576), b""),
                         maximum_bytes=plan.request.limits.max_output_bytes,
                     )
                 pin = pin_file(root, destination)
@@ -404,6 +404,8 @@ def compare_continuation(
 
     with source_lock(workspace, plan.dataset.source_fingerprint):
         synchronize_exposures(workspace, handoff.frozen)
+        if len(audit.history(handoff.frozen.protocol.holdout_id)) >= 512:
+            raise WorkflowError("Protected scope access slots exhausted")
         comparison = evaluate(handoff.frozen, audit, observations, actor="local-workflow")
     audit.save_report(comparison)
     return WorkflowReport(

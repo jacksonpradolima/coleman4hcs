@@ -51,24 +51,12 @@ def ensure_supervisor(root: Path) -> None:
         pass
 
 
-def _schedule(store: WorkflowStore, descriptor: int) -> bool:
+def _schedule(store: WorkflowStore, supervisor_descriptor: int) -> bool:
     """Reconcile dead ownership and claim bounded queued work atomically under native locks."""
     with store.transaction() as connection:
         jobs = store.jobs(connection)
         active = [job for job in jobs if worker_active(store.root, job.job_id)]
-        for job in jobs:
-            if job.state == "running" and job.job_id not in {item.job_id for item in active}:
-                store.save_job(
-                    connection,
-                    JobRecord.model_validate(
-                        {
-                            **job.model_dump(),
-                            "state": "interrupted",
-                            "changed": time.time(),
-                            "error": "worker_ownership_lost",
-                        }
-                    ),
-                )
+        _reconcile_ownership(store, connection, jobs, active)
         memory = sum(store.plan(connection, job.plan_id, job.owner).request.limits.max_memory_bytes for job in active)
         for job in jobs:
             if job.state != "queued" or len(active) >= store.policy.max_running:
@@ -77,7 +65,7 @@ def _schedule(store: WorkflowStore, descriptor: int) -> bool:
             if memory + plan.request.limits.max_memory_bytes > store.policy.max_active_memory_bytes:
                 continue
             try:
-                with baseline_lock(store.root / "locks" / f"{job.job_id}.lock", handoff=True) as descriptor:
+                with baseline_lock(store.root / "locks" / f"{job.job_id}.lock", handoff=True) as worker_descriptor:
                     if job.invocations >= plan.request.limits.max_attempts:
                         store.save_job(
                             connection,
@@ -103,7 +91,7 @@ def _schedule(store: WorkflowStore, descriptor: int) -> bool:
                     store.save_job(connection, updated)
                     # The child waits for this transaction; inherited ownership is
                     # already continuous before running becomes visible to clients.
-                    _spawn(store.root, "work", descriptor, job.job_id)
+                    _spawn(store.root, "work", worker_descriptor, job.job_id)
                     active.append(updated)
                     memory += plan.request.limits.max_memory_bytes
             except BaselineBusyError:
@@ -112,8 +100,26 @@ def _schedule(store: WorkflowStore, descriptor: int) -> bool:
         if not pending:
             # Release ownership while admission is still serialized. A later
             # admission cannot observe a retiring owner and strand queued work.
-            os.close(descriptor)
+            os.close(supervisor_descriptor)
         return pending
+
+
+def _reconcile_ownership(store, connection, jobs, active) -> None:
+    """Record lost kernel ownership inside the caller's transaction without restarting native work."""
+    active_ids = {job.job_id for job in active}
+    for job in jobs:
+        if job.state == "running" and job.job_id not in active_ids:
+            store.save_job(
+                connection,
+                JobRecord.model_validate(
+                    {
+                        **job.model_dump(),
+                        "state": "interrupted",
+                        "changed": time.time(),
+                        "error": "worker_ownership_lost",
+                    }
+                ),
+            )
 
 
 def _supervise(root: Path, descriptor: int) -> None:

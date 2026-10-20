@@ -72,7 +72,28 @@ def _candidate_contexts(plan, frozen) -> dict[str, FrozenWorkflowConfiguration]:
         for config in configs.values()
     ):
         raise WorkflowError("Protected candidate family differs from the saved workflow")
+    for config in configs.values():
+        _learning_membership(plan, config)
     return configs
+
+
+def _learning_membership(plan: ExperimentPlan, configuration: FrozenWorkflowConfiguration) -> None:
+    """Bind every claimed seed snapshot to its unique planned candidate trial.
+
+    Validate references without reading or unpickling imported state. Pin digests
+    establish consistency, not authenticity of an external producer or source.
+    """
+    expected = {
+        trial.trial_id: trial.seed for trial in plan.trials if trial.configuration_id == configuration.configuration_id
+    }
+    actual = {state.trial_id: state.seed for state in configuration.learning_state}
+    if len(actual) != len(configuration.learning_state) or actual != expected:
+        raise WorkflowError("Frozen learning state must cover every planned candidate trial/seed exactly once")
+    for state in configuration.learning_state:
+        prefix = f"frozen-learning/{state.trial_id.removeprefix('sha256:')}/"
+        names = tuple(pin.name for pin in state.checkpoints)
+        if len(set(names)) != len(names) or any(not name.startswith(prefix) for name in names):
+            raise WorkflowError("Frozen learning checkpoint membership differs from its planned trial")
 
 
 def _planned_policies(plan, configs) -> None:
@@ -133,6 +154,9 @@ def expected_trials_for_report(plan: ExperimentPlan, report: WorkflowReport) -> 
     """
     if report.plan_fingerprint != plan.fingerprint:
         raise WorkflowError("Workflow report has a different plan")
+    interpretation = "descriptive_only" if plan.request.evaluation == "descriptive" else "insufficient_evidence"
+    if report.interpretation != interpretation:
+        raise WorkflowError("Workflow report interpretation contradicts its declared evaluation mode")
     _validate_attempts(plan, report)
     _validate_choices(plan, report)
     if plan.request.evaluation == "descriptive":
@@ -143,14 +167,7 @@ def expected_trials_for_report(plan: ExperimentPlan, report: WorkflowReport) -> 
         raise WorkflowError("Protected completion requires its frozen comparison")
     comparison = report.comparison
     configs = _configurations(plan, comparison)
-    if (
-        report.selected_configuration is not None
-        and report.selected_configuration not in {config.configuration_id for config in configs.values()}
-    ) or (
-        report.fallback_configuration is not None
-        and report.fallback_configuration != configs["baseline"].configuration_id
-    ):
-        raise WorkflowError("Protected selection/fallback differs from the frozen candidate family")
+    _protected_choices(report, configs)
     grouped = _grouped_native(plan, report, configs)
     if {(reference.candidate_id, reference.metadata.group_id) for reference in comparison.inputs} != set(grouped):
         raise WorkflowError("Protected inference units differ from the source repository families")
@@ -164,6 +181,18 @@ def expected_trials_for_report(plan: ExperimentPlan, report: WorkflowReport) -> 
         for trial in plan.trials
         if trial.configuration_id in {config.configuration_id for config in configs.values()}
     }
+
+
+def _protected_choices(report, configs) -> None:
+    """Require reported choices to reference the actual frozen comparison family."""
+    if (
+        report.selected_configuration is not None
+        and report.selected_configuration not in {config.configuration_id for config in configs.values()}
+    ) or (
+        report.fallback_configuration is not None
+        and report.fallback_configuration != configs["baseline"].configuration_id
+    ):
+        raise WorkflowError("Protected selection/fallback differs from the frozen candidate family")
 
 
 def _validate_attempts(plan, report) -> None:
