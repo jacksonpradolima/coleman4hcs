@@ -134,6 +134,7 @@ def expected_trials_for_report(plan: ExperimentPlan, report: WorkflowReport) -> 
     if report.plan_fingerprint != plan.fingerprint:
         raise WorkflowError("Workflow report has a different plan")
     _validate_attempts(plan, report)
+    _validate_choices(plan, report)
     if plan.request.evaluation == "descriptive":
         if report.comparison is not None:
             raise WorkflowError("Descriptive replay cannot claim protected inference")
@@ -142,6 +143,14 @@ def expected_trials_for_report(plan: ExperimentPlan, report: WorkflowReport) -> 
         raise WorkflowError("Protected completion requires its frozen comparison")
     comparison = report.comparison
     configs = _configurations(plan, comparison)
+    if (
+        report.selected_configuration is not None
+        and report.selected_configuration not in {config.configuration_id for config in configs.values()}
+    ) or (
+        report.fallback_configuration is not None
+        and report.fallback_configuration != configs["baseline"].configuration_id
+    ):
+        raise WorkflowError("Protected selection/fallback differs from the frozen candidate family")
     grouped = _grouped_native(plan, report, configs)
     if {(reference.candidate_id, reference.metadata.group_id) for reference in comparison.inputs} != set(grouped):
         raise WorkflowError("Protected inference units differ from the source repository families")
@@ -165,8 +174,40 @@ def _validate_attempts(plan, report) -> None:
         event.trial_id not in trials or event.plan_fingerprint != plan.fingerprint for event in events.values()
     ):
         raise WorkflowError("Workflow report has duplicate/unplanned physical attempts")
+    _attempt_limits(plan, events.values())
     for receipt in report.trials:
         for row in receipt.rows:
             event = events.get(row.attempt_id)
             if event is None or event.trial_id != receipt.trial_id:
                 raise WorkflowError("Native runtime sample is not bound to its actual physical attempt")
+
+
+def _attempt_limits(plan, events) -> None:
+    """Require retained physical ordinals, worker starts and stages to respect the saved plan."""
+    grouped = {}
+    allowed = {"descriptive"} if plan.request.evaluation == "descriptive" else {"tuning", "evaluation"}
+    for event in events:
+        if (
+            not event.ordinal <= event.worker_invocation <= plan.request.limits.max_attempts
+            or event.stage not in allowed
+        ):
+            raise WorkflowError("Physical attempt exceeds its planned invocation/ordinal/stage contract")
+        grouped.setdefault(event.trial_id, []).append(event.ordinal)
+    if any(sorted(ordinals) != list(range(1, len(ordinals) + 1)) for ordinals in grouped.values()):
+        raise WorkflowError("Physical attempt ordinals must be unique and contiguous within each logical trial")
+
+
+def _validate_choices(plan, report) -> None:
+    """Bind optional reported choices to actual configurations and a same-budget Random fallback."""
+    coordinates = {trial.configuration_id: trial for trial in plan.trials}
+    if any(
+        choice is not None and choice not in coordinates
+        for choice in (report.selected_configuration, report.fallback_configuration)
+    ):
+        raise WorkflowError("Workflow selection/fallback references an unplanned configuration")
+    selected = coordinates.get(report.selected_configuration)
+    fallback = coordinates.get(report.fallback_configuration)
+    if fallback is not None and (
+        fallback.policy != "Random" or (selected is not None and fallback.budget_value != selected.budget_value)
+    ):
+        raise WorkflowError("Workflow fallback must be the planned same-budget Random configuration")

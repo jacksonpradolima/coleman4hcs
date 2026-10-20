@@ -158,6 +158,14 @@ def test_actual_protected_prefix_audit_and_learning_continuation(tmp_path):
     assert report.comparison.results[0].reason == "too_few_independent_units"
     assert report.comparison.results[0].observed_pairs == 1
     assert len(report.trials) == 4 and sum(len(trial.rows) for trial in report.trials) == 12
+    planned = service.saved_plan(preview.plan_id)
+    completed_ids = {receipt.trial_id for receipt in report.trials}
+    compared = {trial.configuration_id for trial in planned.trials if trial.trial_id in completed_ids}
+    unrelated = next(trial.configuration_id for trial in planned.trials if trial.configuration_id not in compared)
+    portable = service.export(job.job_id).model_dump(mode="json")
+    portable["report"]["selected_configuration"] = unrelated
+    with pytest.raises(ValueError, match="frozen candidate family"):
+        EvidenceBundle.model_validate(portable)
     prefix_rows = {trial.trial_id: trial.rows for trial in prefix.trials}
     assert all(TrialSummary.from_result(trial).rows[:2] == prefix_rows[trial.trial_id] for trial in report.trials)
     access = report.comparison.access

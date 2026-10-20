@@ -61,6 +61,20 @@ def changed_bundle(bundle, case):
         data["report"]["physical_attempts"].append(data["report"]["physical_attempts"][0])
     elif case == "missing_physical_attempts":
         data["report"]["physical_attempts"] = []
+    elif case == "unplanned_selection":
+        data["report"]["selected_configuration"] = "sha256:" + "0" * 64
+    elif case == "unplanned_fallback":
+        data["report"]["fallback_configuration"] = "sha256:" + "0" * 64
+    elif case == "ucb_fallback":
+        data["report"]["fallback_configuration"] = next(
+            trial.configuration_id for trial in bundle.plan.trials if trial.policy == "UCB"
+        )
+    elif case == "excess_attempt_ordinal":
+        data["report"]["physical_attempts"][0]["ordinal"] = 8
+    elif case == "excess_worker_invocation":
+        data["report"]["physical_attempts"][0]["worker_invocation"] = 8
+    elif case == "wrong_attempt_stage":
+        data["report"]["physical_attempts"][0]["stage"] = "evaluation"
     return data
 
 
@@ -82,6 +96,12 @@ def changed_bundle(bundle, case):
         "missing_hive",
         "duplicate_physical_attempt",
         "missing_physical_attempts",
+        "unplanned_selection",
+        "unplanned_fallback",
+        "ucb_fallback",
+        "excess_attempt_ordinal",
+        "excess_worker_invocation",
+        "wrong_attempt_stage",
     ],
 )
 def test_corrupt_or_unplanned_portable_membership_rejects(evidence, case):

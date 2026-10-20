@@ -86,6 +86,20 @@ def _check_output(store: WorkflowStore, job_id: str, plan: ExperimentPlan, deadl
         raise WorkflowError("Workflow output byte/file limit exceeded")
 
 
+def _require_committed_progress(root: Path, job: JobRecord, trial: Trial) -> None:
+    """Reject losing a native frontier already acknowledged by durable job metadata.
+
+    A physical attempt interrupted before its first checkpoint may retry from
+    the beginning. Once the application has recorded an actual native commit,
+    missing progress cannot silently turn continuation into fresh learning.
+    Existing native recovery still validates the checkpoint and its byte binding.
+    """
+    if job.current_trial == trial.trial_id and job.checkpoint_step > 0:
+        markers = list((root / "native" / trial.trial_id[7:]).rglob("progress_ex1.json"))
+        if len(markers) != 1:
+            raise WorkflowError("Previously committed native checkpoint is missing; implicit reset is forbidden")
+
+
 def _trials(
     store: WorkflowStore,
     job: JobRecord,
@@ -112,6 +126,7 @@ def _trials(
             if len(result.rows) != steps:
                 raise WorkflowError("Completed workflow stage has an incompatible frontier")
         else:
+            _require_committed_progress(root, job, trial)
             if job.stage == "evaluation":
                 from coleman.application.workflow_evaluation import require_continuation
 

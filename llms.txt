@@ -6331,6 +6331,12 @@ coleman workflow --workspace /tmp/coleman-workspace import --input evidence.json
 `ACTUAL_PLAN_ID` and `ACTUAL_JOB_ID` are placeholders, not valid executable IDs.
 CLI setup may read trusted local files; MCP requests never accept these paths.
 
+An attempt interrupted before its first committed checkpoint can retry from the
+beginning. Once durable job metadata acknowledges a native commit, a missing
+checkpoint marker rejects continuation before another native invocation; it does
+not silently reset learning. Restoring the exact original private files permits
+compatible continuation. Portable evidence cannot supply those executable files.
+
 Native checkpoints also retain the global Random policy generator through the
 existing `CheckpointPayload.extra` extension, with a versioned PCG64 codec and
 complete plan/trial binding. The native agents already retain their own RNG.

@@ -84,3 +84,45 @@ def test_random_resume_after_consumed_rng_matches_uninterrupted_native_run(tmp_p
     wait(service, fresh.job_id)
     assert mathematics(resumed) == mathematics(service.report(fresh.job_id))
     assert len(resumed.physical_attempts) == 3 and len(resumed.trials) == 2
+
+
+def test_descriptive_resume_cannot_reset_a_previously_committed_native_checkpoint(tmp_path, monkeypatch):
+    service, preview = setup_workflow(tmp_path, policies=("Random",), seeds=(42,))
+    with monkeypatch.context() as patch:
+        patch.setattr(service, "_start", lambda: None)
+        job = service.execute(ExecutePlan(schema_version=1, request_id="missing-frontier", plan_id=preview.plan_id))
+    with baseline_lock(tmp_path / "locks" / f"{job.job_id}.lock", handoff=True) as descriptor:
+        with service.store.transaction() as connection:
+            record = service._job(connection, job.job_id)
+            service.store.save_job(
+                connection, JobRecord.model_validate({**record.model_dump(), "state": "running", "invocations": 1})
+            )
+        code = _CRASH_AT_REAL_CHECKPOINT.replace("completed_trials==1", "completed_trials==0").replace(
+            "step==1", "step==2"
+        )
+        process = subprocess.Popen(
+            [sys.executable, "-c", code, str(tmp_path), job.job_id],
+            pass_fds=(descriptor,),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+    _, error = process.communicate(timeout=30)
+    assert process.returncode == 87, error.decode()
+    assert service.status(job.job_id).checkpoint_step == 2
+    root = tmp_path / "jobs" / job.job_id
+    marker = next((root / "native").rglob("progress_ex1.json"))
+    retained = marker.read_bytes()
+    native_bytes = {path: path.read_bytes() for path in (root / "native").rglob("*.parquet")}
+    marker.unlink()
+    service.resume(job.job_id)
+    rejected = wait(service, job.job_id, "failed")
+    assert rejected.attempts == 1 and rejected.invocations == 2
+    assert rejected.error is not None and "implicit reset" in rejected.error
+    assert all(path.read_bytes() == value for path, value in native_bytes.items())
+    marker.write_bytes(retained)
+    service.resume(job.job_id)
+    final = wait(service, job.job_id)
+    assert final.attempts == 2 and final.invocations == 3
+    reference = service.execute(ExecutePlan(schema_version=1, request_id="fresh-reference", plan_id=preview.plan_id))
+    wait(service, reference.job_id)
+    assert mathematics(service.report(job.job_id)) == mathematics(service.report(reference.job_id))
