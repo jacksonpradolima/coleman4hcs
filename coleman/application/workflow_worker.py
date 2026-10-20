@@ -213,6 +213,7 @@ def _produce_report(store, job, plan, progress_hook, deadline):
         choose_configuration,
         compare_continuation,
         evaluation_trials,
+        prepare_evaluation_attempt,
     )
 
     complete_path = root / "jobs" / job_id / _COMPLETE_RECEIPT
@@ -226,6 +227,8 @@ def _produce_report(store, job, plan, progress_hook, deadline):
         _transition(store, job_id, completed_trials=len(report.trials), current_trial=None)
     elif job.stage == "evaluation":
         handoff = read_baseline_artifact(root / "jobs" / job_id / "evaluation-handoff.json", EvaluationHandoff)
+        handoff = prepare_evaluation_attempt(root, root / "jobs" / job_id, plan, handoff, job.invocations)
+        _check_output(store, job_id, plan, deadline)
         report = compare_continuation(
             root,
             root / "jobs" / job_id,

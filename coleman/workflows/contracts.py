@@ -88,7 +88,8 @@ class WorkflowLimits(Immutable):
     max_memory_bytes : int
         Sampled worker RSS ceiling in bytes; not a hostile-code sandbox.
     max_output_bytes : int
-        Total reserved job artifact bytes, including native checkpoints/results.
+        Total reserved job bytes, including its input copy, native checkpoints
+        and results. Input alone must leave space for produced artifacts.
     """
 
     max_configurations: Annotated[int, Field(strict=True, ge=1, le=64)] = 12

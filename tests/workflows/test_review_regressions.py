@@ -5,18 +5,22 @@ import json
 import pickle
 from dataclasses import replace
 
+import polars as pl
 import pytest
 
 from coleman.application.workflow_checkpoint import WorkflowCheckpointStore
-from coleman.application.workflow_evaluation import prepare_evaluation
+from coleman.application.workflow_evaluation import compare_continuation, prepare_evaluation
 from coleman.application.workflow_exports import EvidenceBundle
+from coleman.application.workflow_registry import owned_fixture, snapshot_history
+from coleman.application.workflows import WorkflowService
 from coleman.checkpoint.checkpoint_store import LocalCheckpointStore
 from coleman.checkpoint.state import CheckpointPayload
 from coleman.evaluation.protected import EvaluationAudit, FrozenCandidate, PairedObservation, evaluate, freeze
 from coleman.policy import base as policy_base
+from coleman.results.domain import fingerprint
 from coleman.workflows.contracts import PlanningRequest, WorkflowLimits
-from coleman.workflows.lifecycle import ExecutePlan
-from tests.workflows.test_execution import setup_workflow, wait
+from coleman.workflows.lifecycle import ExecutePlan, HostPolicy
+from tests.workflows.test_execution import archived_handoff, setup_workflow, wait
 
 
 @pytest.fixture(scope="module")
@@ -204,4 +208,88 @@ def test_protected_planning_requires_two_invocations_before_expansion(tmp_path, 
 
     monkeypatch.setattr("coleman.workflows.planning.expand_sweep", forbidden)
     with pytest.raises(ValueError, match="two.*invocations"):
+        service.plan(request)
+
+
+def test_queued_protected_evaluation_uses_a_current_assembly_window(tmp_path, monkeypatch):
+    service, preview = setup_workflow(tmp_path, evaluation="protected", seeds=(42,), ucb_exploration=(1.0,))
+    job = service.execute(ExecutePlan(schema_version=1, request_id="archived-queue", plan_id=preview.plan_id))
+    wait(service, job.job_id, "awaiting_evaluation")
+    root = tmp_path / "jobs" / job.job_id
+    original = archived_handoff(service, preview, root, monkeypatch)
+    before = (root / "evaluation-handoff.json").read_bytes()
+    service.evaluate(job.job_id)
+    wait(service, job.job_id)
+    report = service.report(job.job_id)
+    assert report.comparison is not None
+    assert report.comparison.frozen.plan.test_end > original.frozen.plan.test_end
+    assert report.comparison.frozen.protocol == original.frozen.protocol
+    assert report.comparison.access.holdout_id == original.frozen.protocol.holdout_id
+    assert report.comparison.access.prior_test_accesses == 0
+    assert (root / "evaluation-handoff.json").read_bytes() == before
+    for candidate in report.comparison.frozen.candidates:
+        previous = json.loads(original.frozen.candidate(candidate.candidate_id).configuration_json)
+        current = json.loads(candidate.configuration_json)
+        assert current["learning_state"] == previous["learning_state"]
+        assert current["configuration_id"] == previous["configuration_id"]
+
+
+def test_expired_direct_context_rejects_before_reserving_protected_access(tmp_path, monkeypatch):
+    service, preview = setup_workflow(tmp_path, evaluation="protected", seeds=(42,), ucb_exploration=(1.0,))
+    job = service.execute(ExecutePlan(schema_version=1, request_id="expired-context", plan_id=preview.plan_id))
+    wait(service, job.job_id, "awaiting_evaluation")
+    root = tmp_path / "jobs" / job.job_id
+    initial = archived_handoff(service, preview, root, monkeypatch)
+    plan = service.saved_plan(preview.plan_id)
+
+    def forbidden():
+        raise AssertionError("Expired analysis must reject before a protected outcome callback")
+
+    with pytest.raises(ValueError, match="assembly window expired"):
+        compare_continuation(tmp_path, root, plan, initial, forbidden)
+    assert EvaluationAudit(tmp_path / "audit").history(initial.frozen.protocol.holdout_id) == ()
+
+
+@pytest.fixture(scope="module")
+def large_registered_history(tmp_path_factory):
+    root = tmp_path_factory.mktemp("large-input-reservation")
+    service = WorkflowService(
+        root,
+        policy=HostPolicy(
+            schema_version=1,
+            caps=WorkflowLimits(max_configurations=64, max_trials=128, max_output_bytes=67108864),
+        ),
+    )
+    base = service.register(owned_fixture(root))
+    frame = pl.read_parquet(root / "datasets" / f"{base.sha256.removeprefix('sha256:')}.parquet")
+    payloads = [str(i) + "x" * 2097152 for i in range(frame.height)]
+    path = root / "large-ci.parquet"
+    frame.with_columns(pl.Series("auxiliary_log", payloads)).write_parquet(path, compression="uncompressed")
+    manifest = snapshot_history(
+        root,
+        path,
+        dataset_id="large-ci-history",
+        source_fingerprint=base.source_fingerprint,
+        projection_fingerprint=fingerprint([base.projection_fingerprint, "auxiliary-log-v1"]),
+        evidence=base.evidence,
+        assumptions=("Authored CI history with auxiliary log context.",),
+    )
+    assert manifest.size_bytes > 16777216
+    service.register(manifest)
+    return service, manifest
+
+
+@pytest.mark.parametrize("allowance", ["default", "input_size"])
+def test_registered_input_must_leave_output_allowance_before_expansion(
+    large_registered_history, monkeypatch, allowance
+):
+    service, manifest = large_registered_history
+    limits = WorkflowLimits() if allowance == "default" else WorkflowLimits(max_output_bytes=manifest.size_bytes)
+    request = PlanningRequest(schema_version=1, dataset_id=manifest.dataset_id, limits=limits)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Unexecutable input reservations must reject before expansion")
+
+    monkeypatch.setattr("coleman.workflows.planning.expand_sweep", forbidden)
+    with pytest.raises(ValueError, match="input.*output"):
         service.plan(request)

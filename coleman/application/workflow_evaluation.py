@@ -27,7 +27,7 @@ from coleman.evaluation.protected import (
     evaluate,
     freeze,
 )
-from coleman.results.domain import DomainRecord, Fingerprint, Measurement, ResultProvenance
+from coleman.results.domain import DomainRecord, Fingerprint, Measurement, ResultProvenance, decode_json
 from coleman.selection.contracts import Quantity, UnitSemantics
 from coleman.workflows.contracts import ExperimentPlan, Trial, WorkflowContract, WorkflowError
 from coleman.workflows.evidence import FrozenLearningState, FrozenWorkflowConfiguration
@@ -124,8 +124,9 @@ def prepare_evaluation(workspace: Path, root: Path, plan: ExperimentPlan) -> Eva
     Returns
     -------
     EvaluationHandoff
-        Complete saved handoff. Identical retries reuse it; no protected outcome
-        is executed/read by this function. Prefix artifacts are verified first.
+        Complete immutable prefix handoff. Identical retries reuse it; no protected
+        outcome is read. The worker derives its operational assembly context after
+        acquiring execution ownership. Prefix artifacts are verified first.
 
     Raises
     ------
@@ -263,6 +264,80 @@ def evaluation_trials(plan: ExperimentPlan, handoff: EvaluationHandoff) -> tuple
     )
 
 
+def prepare_evaluation_attempt(
+    workspace: Path, root: Path, plan: ExperimentPlan, initial: EvaluationHandoff, invocation: int
+) -> EvaluationHandoff:
+    """Freeze an assembly window after worker ownership, preserving the original decision and audit scope.
+
+    Parameters
+    ----------
+    workspace, root : pathlib.Path
+        Trusted shared audit directory and private job directory. This writes one
+        immutable context per admitted worker invocation, before protected access.
+    plan : ExperimentPlan
+        Original source membership, protocol and finite wall-time/attempt allowance.
+    initial : EvaluationHandoff
+        Unchanged pre-queue selection and prefix-state snapshots. These snapshots
+        never acquire later learned state or a newly selected candidate on resume.
+    invocation : int
+        Actual owned worker start, one through the plan's finite cap, at most eight.
+
+    Returns
+    -------
+    EvaluationHandoff
+        Original source partitions, choices, learning state and hypothesis family,
+        with a current bounded assembly cutoff. Its existing upstream holdout ID
+        retains earlier accesses even though the operational context digest changes.
+
+    Raises
+    ------
+    ValueError, OSError
+        Invalid invocation, conflicting publication or context over 16 MiB. No
+        outcome is read, access receipt reserved or checkpoint unpickled here.
+
+    Notes
+    -----
+    Queue time and time between recoveries do not consume this execution window.
+    Only the derived-metric assembly cutoff changes; the original handoff remains
+    immutable. Reusing a completed report requires no new window or protected access.
+    """
+    if type(invocation) is not int or not 1 <= invocation <= plan.request.limits.max_attempts:
+        raise WorkflowError("Protected execution context requires an admitted worker invocation")
+    cutoff = max(
+        initial.design.plan.test_end,
+        datetime.now(UTC)
+        + timedelta(seconds=plan.request.limits.attempt_seconds * plan.request.limits.max_attempts + 60),
+    )
+    analysis = TemporalPlan.model_validate({**initial.design.plan.model_dump(), "test_end": cutoff})
+    design = RepetitionDesign.model_validate({**initial.design.model_dump(), "plan": analysis})
+    candidates = tuple(_candidate_for_design(candidate, design) for candidate in initial.frozen.candidates)
+    frozen = freeze(
+        candidates, initial.frozen.data_fingerprint, analysis, initial.frozen.protocol, initial.frozen.comparison_family
+    )
+    context = EvaluationHandoff.model_validate({**initial.model_dump(), "design": design, "frozen": frozen})
+    payload = context.to_json()
+    if len(payload.encode()) > 16777216:
+        raise WorkflowError("Protected execution context exceeds its 16 MiB reader limit; reduce the plan")
+    EvaluationAudit(workspace / "audit").save_freeze(frozen)
+    ArtifactWriter(root).write_immutable(root / "evaluation-attempts" / f"{invocation:02d}.json", payload)
+    return context
+
+
+def _candidate_for_design(candidate: FrozenCandidate, design: RepetitionDesign) -> FrozenCandidate:
+    """Rebind only assembly bookkeeping, retaining exact candidate/source/prefix-state membership."""
+    configuration = FrozenWorkflowConfiguration.model_validate(decode_json(candidate.configuration_json))
+    rebound = FrozenWorkflowConfiguration.model_validate(
+        {**configuration.model_dump(), "corpus_repetition_design": design.fingerprint}
+    )
+    return FrozenCandidate.from_configuration(candidate.candidate_id, rebound.model_dump(mode="json"))
+
+
+def _require_current_window(handoff: EvaluationHandoff) -> None:
+    """Reject expired assembly bookkeeping before another protected-access reservation."""
+    if datetime.now(UTC) > handoff.design.plan.test_end:
+        raise WorkflowError("Protected assembly window expired; resume with a new execution context")
+
+
 def require_continuation(root: Path, trial: Trial, prefix_steps: int) -> None:
     """Reject missing/reset protected state before invoking native checkpoint restoration.
 
@@ -282,8 +357,6 @@ def require_continuation(root: Path, trial: Trial, prefix_steps: int) -> None:
         frontiers still undergo the existing native checkpoint/recovery validation.
         This function never unpickles, repairs or substitutes a fresh run.
     """
-    from coleman.results.domain import decode_json
-
     native = root / "native" / trial.trial_id[7:]
     paths = list(native.rglob("progress_ex1.json"))
     if len(paths) != 1:
@@ -320,7 +393,8 @@ def compare_continuation(
     plan : ExperimentPlan
         Frozen eligible constructed workflow, without fabricated empirical admission.
     handoff : EvaluationHandoff
-        Persisted full candidates/protocol/prefix-state binding.
+        Persisted invocation context with complete candidates/protocol/prefix-state
+        binding and an assembly cutoff frozen after worker ownership.
     execute_continuation : callable
         Trusted native callback returning actual complete evaluation stage receipts.
 
@@ -406,6 +480,7 @@ def compare_continuation(
         synchronize_exposures(workspace, handoff.frozen)
         if len(audit.history(handoff.frozen.protocol.holdout_id)) >= 512:
             raise WorkflowError("Protected scope access slots exhausted")
+        _require_current_window(handoff)
         comparison = evaluate(handoff.frozen, audit, observations, actor="local-workflow")
     audit.save_report(comparison)
     return WorkflowReport(

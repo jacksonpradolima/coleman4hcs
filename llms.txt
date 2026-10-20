@@ -6396,7 +6396,14 @@ prefix count and call the sum independent observations.
 The existing repeated-corpus machinery computes equal seed means within each
 build, then equal build means within each repository family. Metric assembly has
 its actual current timestamp; it is never backdated to source label availability.
-The frozen analysis cutoff explicitly reserves a bounded assembly window.
+After a worker owns evaluation, it freezes a current bounded assembly window.
+A long queue or a later resume therefore does not inherit an expired operational
+cutoff. Each worker invocation retains its own immutable execution context.
+The original source membership, stage boundaries, selected candidates, prefix
+learning state and hypothesis family stay fixed. The original handoff bytes stay
+unchanged, and every context keeps the same upstream holdout ID and access history.
+Changing this assembly bookkeeping never creates a fresh confirmatory holdout.
+Direct use of an expired context rejects before another protected-access receipt.
 
 The fixture has one constructed family. Its successful evaluation returns
 `insufficient_evidence`, with `too_few_independent_units`; seeds do not increase
@@ -6553,6 +6560,11 @@ worker invocation has 300 seconds. The allowance is four invocations and at most
 four physical invocations per logical trial, including protected continuation.
 Worst-case build work includes retries before expansion. Queue time/job age,
 worker wall time and modeled scheduling seconds remain separate quantities.
+The output reservation includes the job's input snapshot copy, native results,
+checkpoints and execution contexts. Registration's 64 MiB input limit is separate
+from this reservation. Planning rejects an input that alone fills or exceeds its
+output allowance, before expansion; increase the allowance or reduce the history.
+The remaining space still has to accommodate the actual produced artifacts.
 
 Limits are sampled/cooperative local guards with possible transient overshoot,
 not an untrusted-code sandbox, hard OS memory ceiling, distributed lock or
@@ -15483,6 +15495,9 @@ Search-space size is checked before calling the existing sweep expansion. UCB
 axes apply only to UCB; Random is included once per relevant scheduling budget.
 Configurations, seed repetitions, native builds, test candidates, modeled seconds,
 observed wall time, memory and disk are separate quantities.
+The job output reservation includes its owned input copy. An input that alone
+fills or exceeds this allowance rejects before expansion; registration does not
+guarantee that every permitted snapshot fits a chosen execution quota.
 
 ## Durable ownership
 
@@ -15513,6 +15528,13 @@ availability metadata. Tuning accesses training/validation only, then freezes th
 candidate, baseline, learned-state identity, family and protocol before reserving
 holdout access in the existing persistent evaluation audit.
 
+Once an evaluation worker owns execution, it freezes a current bounded assembly
+cutoff in a separate immutable context for that invocation. Long queues and later
+recovery do not reuse an expired cutoff. Source membership and partitions,
+candidate choice, original prefix-state snapshots and the hypothesis family stay
+fixed. Context digests can change; the upstream holdout ID and prior access ledger
+cannot reset. An expired direct context rejects before another protected read.
+
 A compatible native checkpoint carries learned state across the stage boundary;
 filtering a previously computed full-history result is not a holdout protocol.
 Repeated accesses remain recorded across reconnects and restarts. The owned small
@@ -15530,8 +15552,12 @@ flowchart TD
     Runner --> Store[Parquet and native checkpoints with versioned RNG extra state]
     Runner --> Exposure[Stable upstream source exposure]
     Exposure --> Audit[Existing protected-access audit]
-    Store --> Evidence[Descriptive inspection or frozen protected continuation]
-    Evidence --> Audit
+    Ownership --> Window[Assembly cutoff after evaluation ownership]
+    Store --> Window
+    Window --> Audit
+    Audit --> Continuation[Protected native continuation]
+    Continuation --> Runner
+    Store --> Evidence[Inspection and immutable prefix evidence]
     Evidence --> App
 ```
 

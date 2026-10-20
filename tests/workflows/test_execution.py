@@ -47,6 +47,28 @@ def mathematics(report):
     }
 
 
+def archived_handoff(service, preview, root, monkeypatch):
+    """Create genuine archived prefix evidence; the native engine and later clocks remain real."""
+    from datetime import UTC, datetime
+
+    import coleman.application.workflow_evaluation as evaluation
+
+    plan = service.saved_plan(preview.plan_id)
+    assert plan.dataset.temporal_plan is not None
+    archived = plan.dataset.temporal_plan.test_end.timestamp() + 1
+
+    class ArchivedClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls.fromtimestamp(archived, tz)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(evaluation, "datetime", ArchivedClock)
+        handoff = evaluation.prepare_evaluation(service.store.root, root, plan)
+    assert handoff.design.plan.test_end < datetime.now(UTC)
+    return handoff
+
+
 def assert_independent_fixture_metrics(report):
     """Use the independent rational/binary32 reference, never the production metric class."""
     for result in report.trials:

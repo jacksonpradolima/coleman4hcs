@@ -30,6 +30,9 @@ Search-space size is checked before calling the existing sweep expansion. UCB
 axes apply only to UCB; Random is included once per relevant scheduling budget.
 Configurations, seed repetitions, native builds, test candidates, modeled seconds,
 observed wall time, memory and disk are separate quantities.
+The job output reservation includes its owned input copy. An input that alone
+fills or exceeds this allowance rejects before expansion; registration does not
+guarantee that every permitted snapshot fits a chosen execution quota.
 
 ## Durable ownership
 
@@ -60,6 +63,13 @@ availability metadata. Tuning accesses training/validation only, then freezes th
 candidate, baseline, learned-state identity, family and protocol before reserving
 holdout access in the existing persistent evaluation audit.
 
+Once an evaluation worker owns execution, it freezes a current bounded assembly
+cutoff in a separate immutable context for that invocation. Long queues and later
+recovery do not reuse an expired cutoff. Source membership and partitions,
+candidate choice, original prefix-state snapshots and the hypothesis family stay
+fixed. Context digests can change; the upstream holdout ID and prior access ledger
+cannot reset. An expired direct context rejects before another protected read.
+
 A compatible native checkpoint carries learned state across the stage boundary;
 filtering a previously computed full-history result is not a holdout protocol.
 Repeated accesses remain recorded across reconnects and restarts. The owned small
@@ -77,8 +87,12 @@ flowchart TD
     Runner --> Store[Parquet and native checkpoints with versioned RNG extra state]
     Runner --> Exposure[Stable upstream source exposure]
     Exposure --> Audit[Existing protected-access audit]
-    Store --> Evidence[Descriptive inspection or frozen protected continuation]
-    Evidence --> Audit
+    Ownership --> Window[Assembly cutoff after evaluation ownership]
+    Store --> Window
+    Window --> Audit
+    Audit --> Continuation[Protected native continuation]
+    Continuation --> Runner
+    Store --> Evidence[Inspection and immutable prefix evidence]
     Evidence --> App
 ```
 

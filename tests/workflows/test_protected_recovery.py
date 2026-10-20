@@ -12,7 +12,7 @@ from coleman.evaluation.protected import EvaluationAudit
 from coleman.results.domain import fingerprint
 from coleman.workflows.contracts import PlanningRequest
 from coleman.workflows.lifecycle import ExecutePlan
-from tests.workflows.test_execution import setup_workflow, wait
+from tests.workflows.test_execution import archived_handoff, setup_workflow, wait
 
 
 def execute(service, plan, key):
@@ -80,17 +80,15 @@ def test_missing_native_state_cannot_silently_restart_protected_learning(tmp_pat
     preview = protected_plan(service)
     job = execute(service, preview, "state-handoff")
     wait(service, job.job_id, "awaiting_evaluation")
-    with monkeypatch.context() as patch:
-        patch.setattr(service, "_start", lambda: None)
-        service.evaluate(job.job_id)
     root = tmp_path / "jobs" / job.job_id
+    original = archived_handoff(service, preview, root, monkeypatch)
     handoff = json.loads((root / "evaluation-handoff.json").read_text())
     before = {str(path): path.read_bytes() for path in (root / "evidence").rglob("*.parquet")}
     checkpoints = list((root / "native").glob("*/*/checkpoints"))
     assert len(checkpoints) == 2
     for path in checkpoints:
         shutil.rmtree(path)
-    service.reconnect()
+    service.evaluate(job.job_id)
     failed = wait(service, job.job_id, "failed")
     assert failed.error is not None
     assert "reset missing native learning state" in failed.error
@@ -115,5 +113,7 @@ def test_missing_native_state_cannot_silently_restart_protected_learning(tmp_pat
     assert completed.attempts == 4
     assert report.comparison is not None
     assert report.comparison.access.prior_test_accesses == 1
+    assert report.comparison.frozen.plan.test_end > original.frozen.plan.test_end
+    assert report.comparison.frozen.protocol == original.frozen.protocol
     assert sum(len(trial.rows) for trial in report.trials) == 6
     assert report.fallback_configuration is not None

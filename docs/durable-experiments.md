@@ -369,7 +369,14 @@ prefix count and call the sum independent observations.
 The existing repeated-corpus machinery computes equal seed means within each
 build, then equal build means within each repository family. Metric assembly has
 its actual current timestamp; it is never backdated to source label availability.
-The frozen analysis cutoff explicitly reserves a bounded assembly window.
+After a worker owns evaluation, it freezes a current bounded assembly window.
+A long queue or a later resume therefore does not inherit an expired operational
+cutoff. Each worker invocation retains its own immutable execution context.
+The original source membership, stage boundaries, selected candidates, prefix
+learning state and hypothesis family stay fixed. The original handoff bytes stay
+unchanged, and every context keeps the same upstream holdout ID and access history.
+Changing this assembly bookkeeping never creates a fresh confirmatory holdout.
+Direct use of an expired context rejects before another protected-access receipt.
 
 The fixture has one constructed family. Its successful evaluation returns
 `insufficient_evidence`, with `too_few_independent_units`; seeds do not increase
@@ -526,6 +533,11 @@ worker invocation has 300 seconds. The allowance is four invocations and at most
 four physical invocations per logical trial, including protected continuation.
 Worst-case build work includes retries before expansion. Queue time/job age,
 worker wall time and modeled scheduling seconds remain separate quantities.
+The output reservation includes the job's input snapshot copy, native results,
+checkpoints and execution contexts. Registration's 64 MiB input limit is separate
+from this reservation. Planning rejects an input that alone fills or exceeds its
+output allowance, before expansion; increase the allowance or reduce the history.
+The remaining space still has to accommodate the actual produced artifacts.
 
 Limits are sampled/cooperative local guards with possible transient overshoot,
 not an untrusted-code sandbox, hard OS memory ceiling, distributed lock or

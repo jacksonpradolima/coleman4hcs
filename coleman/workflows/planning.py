@@ -21,6 +21,8 @@ def _cardinality(request: PlanningRequest, dataset: DatasetManifest) -> None:
     configurations = budgets + (ucb if "UCB" in request.policies else 0)
     trials = configurations * len(request.seeds)
     limits = request.limits
+    if dataset.size_bytes >= limits.max_output_bytes:
+        raise WorkflowError("Registered input must leave space in the output byte allowance for native artifacts")
     if configurations > limits.max_configurations or trials > limits.max_trials:
         raise WorkflowError("Search space exceeds configuration/trial limits before expansion")
     if trials * len(dataset.build_ids) * limits.max_attempts > limits.max_build_work:
