@@ -41,7 +41,8 @@ def test_spawned_worker_waits_for_the_real_claim_commit_or_rollback(tmp_path, mo
     children = []
 
     def observe_spawn(root, role, descriptor, job_id=None):
-        assert role == "work" and job_id is not None
+        assert role == "work"
+        assert job_id is not None
         child = subprocess.Popen(
             [sys.executable, "-c", _OBSERVE_INITIAL_SNAPSHOT, role, str(root), str(descriptor), job_id],
             cwd=root,
