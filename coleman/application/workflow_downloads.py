@@ -33,6 +33,10 @@ class ReportOverview(WorkflowContract):
         Validation/descriptive choice and conservative same-budget Random fallback.
     interpretation : str
         Explicit descriptive-only or insufficient-evidence product outcome.
+    native_execution_bindings_verified : bool
+        Always false: portable native-byte validation does not independently prove
+        trial/seed, treatment/configuration or source attribution. The producer
+        must be trusted separately; logical plan and metric checks still apply.
     comparisons, access : tuple or None
         Existing bounded family results and actual persistent protected access receipt.
         Raw inputs/complete report can be retrieved through immutable artifact handles.
@@ -46,6 +50,7 @@ class ReportOverview(WorkflowContract):
     selected_configuration: Fingerprint | None
     fallback_configuration: Fingerprint | None
     interpretation: Literal["descriptive_only", "insufficient_evidence"]
+    native_execution_bindings_verified: Literal[False] = False
     comparisons: Annotated[tuple[ComparisonResult, ...], Field(max_length=1)] = ()
     access: AccessReceipt | None = None
 

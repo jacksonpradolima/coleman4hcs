@@ -36,6 +36,15 @@ guarantee that every permitted snapshot fits a chosen execution quota.
 
 ## Durable ownership
 
+Portable metric integrity and execution attribution have different limits.
+Coordinate definitions, included values and declared membership are checked;
+assignment to a seed, treatment/configuration or source is a producer assertion.
+Legacy Parquet has no authoritative execution binding. Bundle/receipt accessors
+and all import/inspection/report views expose
+`native_execution_bindings_verified=False`. Independent reproduction or producer
+admission is needed to trust that attribution. Existing canonical v1 artifacts
+are preserved rather than silently upgraded to verified provenance.
+
 The host owns a trusted local workspace. SQLite transactions serialize bounded
 job/idempotency metadata, while existing immutable artifacts retain plans,
 attempt events, results and complete-last receipts. POSIX kernel locks establish

@@ -316,7 +316,9 @@ class TrialResult(WorkflowContract):
     Parameters
     ----------
     trial_id, plan_fingerprint : str
-        Bound logical coordinate and complete executable context.
+        Declared logical coordinate and complete plan context. The coordinate
+        definition is checked against that plan; attribution of native bytes to
+        its seed/treatment/source remains an unverified producer assertion.
     stage : str
         Descriptive, tuning prefix or protected continuation.
     native_run_id : str
@@ -332,7 +334,10 @@ class TrialResult(WorkflowContract):
         Explicit fixed units and versioned meaning for every native row projection.
     """
 
-    trial_id: Fingerprint
+    trial_id: Annotated[
+        Fingerprint,
+        Field(description="Declared plan coordinate; native seed/treatment/source attribution is producer asserted."),
+    ]
     plan_fingerprint: Fingerprint
     stage: Stage
     native_run_id: Annotated[
@@ -346,6 +351,17 @@ class TrialResult(WorkflowContract):
     rows: Annotated[tuple[NativeRow, ...], Field(min_length=1, max_length=512)]
     files: Annotated[tuple[FilePin, ...], Field(min_length=1, max_length=4096)]
     semantics: NativeSemantics = NativeSemantics()
+
+    @property
+    def native_execution_bindings_verified(self) -> Literal[False]:
+        """Return false: portable native bytes do not prove this receipt's trial/seed/treatment assignment.
+
+        This trust qualification is not serialized, preserving canonical v1
+        receipt/report digests. Logical plan definitions and metric integrity are
+        validated independently; trusting execution attribution requires producer
+        admission or independent reproduction.
+        """
+        return False
 
 
 def report_assumptions(plan: ExperimentPlan) -> tuple[str, ...]:
@@ -569,8 +585,11 @@ class TrialSummary(WorkflowContract):
         Completed native stage and producer-asserted native configuration ID.
         This claim cannot be recomputed without private host execution paths.
     native_run_id_verification : str
-        Always producer_asserted_unverified; native bytes verify metrics and
-        membership, not the path-derived native ID or authenticity of its producer.
+        Always producer_asserted_unverified; native bytes verify metric values
+        and declared membership, not the path-derived native ID or its producer.
+    native_execution_bindings_verified : bool
+        Always false. Native assignment to a trial/seed, policy, budget and source
+        is producer asserted; the coordinate definition itself is plan-checked.
     rows : tuple[BuildSummary, ...]
         Finite native quantities, excluding entire testcase ranking histories.
     files_count : int
@@ -584,6 +603,7 @@ class TrialSummary(WorkflowContract):
     trial_id: Fingerprint
     receipt_digest: Fingerprint
     native_run_id_verification: Literal["producer_asserted_unverified"] = "producer_asserted_unverified"
+    native_execution_bindings_verified: Literal[False] = False
     stage: Stage
     native_run_id: Annotated[
         str,

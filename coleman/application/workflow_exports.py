@@ -129,9 +129,10 @@ class EvidenceBundle(WorkflowContract):
         Complete abstract native specifications, producer/runtime and source identity.
         Importing retains evidence only; it does not register datasets or executable plans.
     report : WorkflowReport
-        Typed completed evidence and verified native metrics. Native run IDs are
-        explicitly producer-asserted, not portably verified: their computation
-        includes private execution paths absent from the portable bundle.
+        Completed evidence with byte-checked native metric values and internally
+        consistent declared coordinates. Attribution to trial, seed, policy,
+        budget, source and native run identity remains producer asserted; native
+        Parquet does not independently bind these execution claims.
     files : tuple[PortableFile, ...]
         Exact completed native Parquet bytes. Every report pin must be represented
         once; at most 1 MiB original native bytes and 64 MiB aggregate decoded
@@ -156,8 +157,21 @@ class EvidenceBundle(WorkflowContract):
 
         This nonserialized trust declaration leaves existing v1 canonical bytes
         and digests unchanged. File membership, native metrics and logical trial
-        identities are verified separately; this property never authenticates a
-        producer. Consumers must not promote these IDs to trusted provenance.
+        definitions are checked against the declared plan. The association of
+        those coordinates to actual executions is not independently verified;
+        this property never authenticates a producer. Consumers must not promote these IDs to trusted provenance.
+        """
+        return False
+
+    @property
+    def native_execution_bindings_verified(self) -> Literal[False]:
+        """Return false: native trial/seed/treatment/source attribution is a producer claim.
+
+        Logical coordinate definitions, native metric values and declared
+        membership are checked for consistency. Legacy Parquet has no seed or
+        authoritative treatment/source binding; Hive labels are producer supplied.
+        This nonserialized qualification preserves existing v1 bytes and digests.
+        Producer trust or independent reproduction must establish the attribution.
         """
         return False
 
@@ -198,6 +212,9 @@ class ImportedEvidence(WorkflowContract):
     native_run_ids_verified : bool
         Always false. Original path-derived native IDs are retained as explicit
         producer claims; portable validation does not authenticate those claims.
+    native_execution_bindings_verified : bool
+        Always false. Trial/seed, treatment/configuration and source attribution
+        remain producer assertions; byte integrity does not prove execution.
     read_only : bool
         Always true; importing neither grants dataset admission nor native resume.
     """
@@ -206,3 +223,4 @@ class ImportedEvidence(WorkflowContract):
     digest: Fingerprint
     read_only: Literal[True] = True
     native_run_ids_verified: Literal[False] = False
+    native_execution_bindings_verified: Literal[False] = False
