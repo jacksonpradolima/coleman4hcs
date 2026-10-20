@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from coleman.corpus.repeated import _complete_mean
 from coleman.corpus.repeated_contracts import MEAN_SUFFIX
 from coleman.evaluation.protected import BoundedMeanProtocol, FamilyReport
 from coleman.results.domain import decode_json, fingerprint
 from coleman.workflows.contracts import ExperimentPlan, WorkflowError
 from coleman.workflows.evidence import FrozenWorkflowConfiguration
 from coleman.workflows.lifecycle import WorkflowReport
+from coleman.workflows.repetitions import native_repetition_evidence
 
 
 def protected_protocol(plan: ExperimentPlan) -> BoundedMeanProtocol:
@@ -105,31 +105,6 @@ def _planned_policies(plan, configs) -> None:
             raise WorkflowError("Protected comparison requires a planned UCB challenger and Random baseline")
 
 
-def _grouped_native(plan, report, configs):
-    """Group actual binary64 observations by candidate/family/build, retaining every seed."""
-    assert plan.dataset.temporal_plan is not None
-    decisions = plan.dataset.split_by_build()
-    metadata = {
-        item.build_id: item
-        for item, decision in zip(plan.dataset.metadata, decisions, strict=True)
-        if decision.partition == "test"
-    }
-    trials = {trial.trial_id: trial for trial in plan.trials}
-    grouped = {}
-    names = {config.configuration_id: name for name, config in configs.items()}
-    for receipt in report.trials:
-        trial = trials.get(receipt.trial_id)
-        if trial is None or trial.configuration_id not in names:
-            raise WorkflowError("Protected completion contains an unselected/unplanned coordinate")
-        for row in receipt.rows:
-            if row.source_build_id in metadata:
-                key = names[trial.configuration_id], metadata[row.source_build_id].unit_id
-                grouped.setdefault(key, {}).setdefault(row.source_build_id, []).append(
-                    getattr(row, plan.request.objective)
-                )
-    return grouped
-
-
 def expected_trials_for_report(plan: ExperimentPlan, report: WorkflowReport) -> set[str]:
     """Require full planned membership and protected means grounded in actual native rows.
 
@@ -170,19 +145,29 @@ def expected_trials_for_report(plan: ExperimentPlan, report: WorkflowReport) -> 
     configs = _configurations(plan, comparison)
     _protected_choices(report, configs)
     _exact_choices(plan, report)
-    grouped = _grouped_native(plan, report, configs)
-    if {(reference.candidate_id, reference.metadata.group_id) for reference in comparison.inputs} != set(grouped):
-        raise WorkflowError("Protected inference units differ from the source repository families")
-    for reference in comparison.inputs:
-        builds = grouped[reference.candidate_id, reference.metadata.group_id]
-        mean = _complete_mean(tuple(tuple(values) for _, values in sorted(builds.items())))
-        if reference.record.measurement(comparison.frozen.protocol.metric_name).value != mean:
-            raise WorkflowError("Protected unit means differ from actual native observations")
+    _protected_input_projection(plan, report)
     return {
         trial.trial_id
         for trial in plan.trials
         if trial.configuration_id in {config.configuration_id for config in configs.values()}
     }
+
+
+def _protected_input_projection(plan: ExperimentPlan, report: WorkflowReport) -> None:
+    """Require exact authoritative unit metadata, identities, means and native provenance."""
+    comparison = report.comparison
+    assert comparison is not None
+    assembled = {item.record.available_at for item in comparison.inputs}
+    if len(assembled) != 1:
+        raise WorkflowError("Protected unit evidence requires one declared native assembly timestamp")
+    repeated = native_repetition_evidence(plan, comparison.frozen, report.trials, assembled_at=next(iter(assembled)))
+    expected = {(item.candidate_id, item.metadata.group_id): item for item in repeated.paired_observations()}
+    if {(item.candidate_id, item.metadata.group_id) for item in comparison.inputs} != set(expected):
+        raise WorkflowError("Protected inference units differ from the source repository families")
+    for reference in comparison.inputs:
+        original = expected[reference.candidate_id, reference.metadata.group_id]
+        if reference.metadata != original.metadata or reference.record != original.record:
+            raise WorkflowError("Protected unit metadata, means or provenance differ from actual native evidence")
 
 
 def _protected_choices(report, configs) -> None:

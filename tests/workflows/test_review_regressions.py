@@ -7,6 +7,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from dataclasses import replace
+from datetime import timedelta
 from pathlib import Path
 
 import polars as pl
@@ -26,6 +27,7 @@ from coleman.policy import base as policy_base
 from coleman.results.domain import fingerprint
 from coleman.workflows.contracts import PlanningRequest, WorkflowLimits
 from coleman.workflows.lifecycle import ExecutePlan, HostPolicy
+from coleman.workflows.repetitions import native_repetition_evidence
 from tests.workflows.test_execution import archived_handoff, setup_workflow, wait
 
 
@@ -63,6 +65,8 @@ def forged_learning_bundle(bundle, mutation, directory):
         pin["name"] = "frozen-learning/" + "0" * 64 + "/checkpoint.pkl"
     elif mutation == "duplicate_checkpoint":
         learning[0]["checkpoints"].append(copy.deepcopy(learning[0]["checkpoints"][0]))
+    elif mutation == "wrong_design":
+        configuration["corpus_repetition_design"] = fingerprint(["invented-repetition-design"])
     candidates = tuple(
         FrozenCandidate.from_configuration(candidate.candidate_id, configuration)
         if candidate.candidate_id == "challenger"
@@ -96,7 +100,15 @@ def forged_learning_bundle(bundle, mutation, directory):
 
 @pytest.mark.parametrize(
     "mutation",
-    ["missing_seed", "duplicate_trial", "foreign_trial", "wrong_seed", "foreign_checkpoint", "duplicate_checkpoint"],
+    [
+        "missing_seed",
+        "duplicate_trial",
+        "foreign_trial",
+        "wrong_seed",
+        "foreign_checkpoint",
+        "duplicate_checkpoint",
+        "wrong_design",
+    ],
 )
 def test_portable_frozen_learning_membership_is_bound_to_the_actual_plan(protected_evidence, tmp_path, mutation):
     payload = forged_learning_bundle(protected_evidence, mutation, tmp_path)
@@ -510,3 +522,67 @@ def test_import_does_not_decode_outcome_json_before_exposure(protected_evidence,
     else:
         assert service.import_evidence(payload).read_only
         assert decoded
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["observation_id", "revision_id", "event_at", "target_end", "decision_id", "namespace", "source_revision"],
+)
+def test_protected_inputs_must_retain_native_unit_metadata_and_provenance(protected_evidence, tmp_path, mutation):
+    comparison = protected_evidence.report.comparison
+    assert comparison is not None
+    rows = []
+    for reference in comparison.inputs:
+        metadata, record = reference.metadata, reference.record
+        if mutation in ("observation_id", "revision_id"):
+            metadata = metadata.model_copy(update={mutation: "invented-source-identity"})
+        elif mutation == "event_at":
+            metadata = metadata.model_copy(update={"event_at": metadata.event_at + timedelta(minutes=1)})
+        elif mutation == "target_end":
+            metadata = metadata.model_copy(update={"target_end": metadata.event_at + timedelta(minutes=2)})
+        elif mutation == "decision_id":
+            record = record.model_copy(update={"decision_id": "invented-source-unit"})
+        elif mutation == "namespace":
+            record = record.model_copy(update={"namespace": "ci.invented.unit_means"})
+        else:
+            provenance = record.provenance.model_copy(update={"source_revision": fingerprint(["invented-raw-source"])})
+            record = record.model_copy(update={"provenance": provenance})
+        rows.append(PairedObservation(candidate_id=reference.candidate_id, metadata=metadata, record=record))
+    audit = EvaluationAudit(tmp_path / "audit")
+    audit.save_freeze(comparison.frozen)
+    # The actual generic evaluator accepts these otherwise eligible means. The
+    # workflow reader must additionally bind them to the registered native source.
+    rebuilt = evaluate(comparison.frozen, audit, lambda: tuple(rows), actor="source-metadata-regression")
+    data = protected_evidence.model_dump(mode="json")
+    data["report"]["comparison"] = rebuilt.model_dump(mode="json")
+    assert data["files"] == protected_evidence.model_dump(mode="json")["files"]
+    with pytest.raises(ValueError):
+        EvidenceBundle.model_validate(data)
+
+
+@pytest.mark.parametrize(
+    "mutation", ["duplicate", "missing", "unplanned_trial", "wrong_plan", "wrong_stage", "unselected_configuration"]
+)
+def test_native_repetition_projection_rejects_invalid_receipt_membership(protected_evidence, mutation):
+    plan, report = protected_evidence.plan, protected_evidence.report
+    comparison = report.comparison
+    assert comparison is not None
+    first = report.trials[0]
+    if mutation == "duplicate":
+        changed = first.model_copy(update={"rows": (*first.rows, first.rows[0])})
+    elif mutation == "missing":
+        changed = first.model_copy(update={"rows": tuple(row for row in first.rows if row.source_build_id != 3)})
+    elif mutation == "wrong_plan":
+        changed = first.model_copy(update={"plan_fingerprint": fingerprint(["another-plan"])})
+    elif mutation == "wrong_stage":
+        changed = first.model_copy(update={"stage": "tuning"})
+    elif mutation == "unselected_configuration":
+        selected = {item.trial_id for item in report.trials}
+        other = next(trial for trial in plan.trials if trial.trial_id not in selected)
+        changed = first.model_copy(update={"trial_id": other.trial_id})
+    else:
+        changed = first.model_copy(update={"trial_id": fingerprint(["another-trial"])})
+    receipts = (changed, *report.trials[1:])
+    assembled = comparison.inputs[0].record.available_at
+    with pytest.raises(ValueError):
+        native_repetition_evidence(plan, comparison.frozen, receipts, assembled_at=assembled)

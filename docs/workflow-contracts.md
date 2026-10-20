@@ -104,6 +104,9 @@ flowchart TD
     Window --> Audit
     Audit --> Continuation[Protected native continuation]
     Continuation --> Runner
+    Continuation --> Projection[Shared native receipt to unit evidence projection]
+    Store --> Projection
+    Projection --> Evidence
     Store --> Evidence[Inspection and immutable prefix evidence]
     Evidence --> App
 ```

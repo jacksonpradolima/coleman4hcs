@@ -160,7 +160,9 @@ def test_pure_workflow_imports_have_no_transports_or_model_sdks():
     program = """
 import sys
 import coleman.workflows
-assert not any(name == "mcp" or name.startswith(("mcp.", "openai", "anthropic")) for name in sys.modules)
+import coleman.workflows.repetitions
+forbidden = ("coleman.cli", "coleman.transports", "mcp", "openai", "anthropic")
+assert not any(name == prefix or name.startswith(prefix + ".") for name in sys.modules for prefix in forbidden)
 """
     subprocess.run([sys.executable, "-c", program], check=True)
 

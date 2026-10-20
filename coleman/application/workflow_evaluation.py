@@ -9,11 +9,8 @@ from pathlib import Path
 from coleman.application.baseline_storage import read_baseline_artifact
 from coleman.application.workflow_artifacts import pin_file, read_attempts, verify_trial
 from coleman.artifacts import ArtifactWriter
-from coleman.corpus.repeated import RepeatedCorpusReport
 from coleman.corpus.repeated_contracts import (
-    CorpusRepetition,
     RepetitionDesign,
-    repetition_execution_id,
 )
 from coleman.evaluation.protected import (
     ComparisonHypothesis,
@@ -24,11 +21,12 @@ from coleman.evaluation.protected import (
     evaluate,
     freeze,
 )
-from coleman.results.domain import DomainRecord, Fingerprint, Measurement, ResultProvenance, decode_json
+from coleman.results.domain import Fingerprint, decode_json
 from coleman.workflows.contracts import ExperimentPlan, Trial, WorkflowContract, WorkflowError
 from coleman.workflows.evidence import FrozenLearningState, FrozenWorkflowConfiguration
 from coleman.workflows.lifecycle import FilePin, TrialResult, WorkflowReport
 from coleman.workflows.planning import protected_repetition_design
+from coleman.workflows.repetitions import native_repetition_evidence
 
 
 class EvaluationHandoff(WorkflowContract):
@@ -393,51 +391,7 @@ def compare_continuation(
         receipts = execute_continuation()
         completed.extend(receipts)
         assembled = datetime.now(UTC)
-        raw = []
-        trials = {trial.trial_id: trial for trial in plan.trials}
-        for receipt in receipts:
-            trial = trials[receipt.trial_id]
-            name = "baseline" if trial.configuration_id == handoff.baseline_configuration else "challenger"
-            candidate = handoff.frozen.candidate(name)
-            for build in handoff.design.builds:
-                row = next(row for row in receipt.rows if f"build-{row.source_build_id}" == build.member_id)
-                raw.append(
-                    CorpusRepetition(
-                        candidate_id=name,
-                        member_id=build.member_id,
-                        seed=trial.seed,
-                        state="completed",
-                        record=DomainRecord(
-                            schema_version=1,
-                            namespace="ci.workflow.repetitions",
-                            run_id=receipt.native_run_id,
-                            execution_id=repetition_execution_id(name, trial.seed),
-                            decision_id=build.member_id,
-                            data_fingerprint=handoff.frozen.data_fingerprint,
-                            available_at=assembled,
-                            provenance=ResultProvenance(
-                                producer="coleman.workflow.native-projection",
-                                producer_version="1",
-                                spec_fingerprint=candidate.configuration_fingerprint,
-                                evaluation_fingerprint=handoff.frozen.fingerprint,
-                                source_revision=receipt.fingerprint,
-                            ),
-                            measurements=(
-                                Measurement(
-                                    name=handoff.design.raw_metric,
-                                    value=getattr(row, plan.request.objective),
-                                    unit="1",
-                                    meaning=handoff.design.raw_semantics.meaning,
-                                    direction="maximize",
-                                    status="observed",
-                                ),
-                            ),
-                        ),
-                    )
-                )
-        repeated = RepeatedCorpusReport(
-            schema_version=1, design=handoff.design, frozen=handoff.frozen, rows=tuple(raw), assembled_at=assembled
-        )
+        repeated = native_repetition_evidence(plan, handoff.frozen, receipts, assembled_at=assembled)
         ArtifactWriter(root).write_immutable(
             root / "repetitions" / f"{repeated.fingerprint[7:]}.json", repeated.to_json()
         )

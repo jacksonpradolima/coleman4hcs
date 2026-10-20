@@ -4,13 +4,16 @@ import itertools
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
+import polars as pl
 import pytest
 
 from coleman.application.workflow_evaluation import EvaluationHandoff
-from coleman.application.workflow_registry import owned_fixture
+from coleman.application.workflow_exports import EvidenceBundle
+from coleman.application.workflow_registry import owned_fixture, snapshot_history
 from coleman.application.workflows import WorkflowService
 from coleman.corpus.repeated_contracts import BUDGET_RATIO, CorpusBuild, RepetitionDesign
-from coleman.evaluation.protected import TemporalObservation
+from coleman.evaluation.protected import EvaluationAudit, PairedObservation, TemporalObservation, evaluate
+from coleman.results.domain import fingerprint
 from coleman.selection.contracts import Quantity, UnitSemantics
 from coleman.workflows.contracts import BuildMetadata, DatasetManifest, PlanningRequest, ScheduleBudget, WorkflowLimits
 from coleman.workflows.lifecycle import ExecutePlan
@@ -102,6 +105,85 @@ def test_protected_preflight_reuses_the_core_membership_guards(tmp_path, monkeyp
     monkeypatch.setattr("coleman.workflows.planning.expand_sweep", forbidden)
     with pytest.raises(ValueError, match="revision|Sibling"):
         make_plan(request, dataset, runtime)
+
+
+def test_two_family_native_means_preserve_one_assembly_and_source_events(tmp_path):
+    service = WorkflowService(tmp_path / "workspace")
+    staging = tmp_path / "source"
+    original = owned_fixture(staging)
+    frame = pl.read_parquet(staging / "datasets" / f"{original.sha256[7:]}.parquet")
+    frame = pl.concat(
+        [
+            frame,
+            frame.filter(pl.col("BuildId") == 3).with_columns(
+                pl.lit(4, dtype=frame.schema["BuildId"]).alias("BuildId")
+            ),
+        ]
+    )
+    source = staging / "two-families.parquet"
+    frame.write_parquet(source)
+    third = original.metadata[2]
+    fourth = third.model_copy(
+        update={
+            "build_id": 4,
+            "unit_id": "another-authored-family",
+            "observation": third.observation.model_copy(
+                update={
+                    "observation_id": "heldout-four",
+                    "group_id": "owned-build-four",
+                    "event_at": third.observation.event_at + timedelta(hours=2),
+                    "available_at": third.observation.available_at + timedelta(hours=2),
+                }
+            ),
+        }
+    )
+    dataset = snapshot_history(
+        staging,
+        source,
+        dataset_id="authored-two-family-ci",
+        source_fingerprint=fingerprint(["authored-two-family-ci", frame.to_dicts()]),
+        projection_fingerprint=fingerprint(["authored-native-seconds-two-families"]),
+        evidence="constructed_mechanism",
+        assumptions=("Two authored families, not empirical source evidence.",),
+        metadata=(*original.metadata, fourth),
+        temporal_plan=original.temporal_plan,
+    )
+    service.register(dataset, snapshot_root=staging)
+    preview = service.plan(
+        PlanningRequest(
+            schema_version=1, dataset_id=dataset.dataset_id, evaluation="protected", ucb_exploration=(1.0,), seeds=(42,)
+        )
+    )
+    job = service.execute(ExecutePlan(schema_version=1, plan_id=preview.plan_id, request_id="two-family-source-events"))
+    wait(service, job.job_id, "awaiting_evaluation")
+    service.evaluate(job.job_id)
+    wait(service, job.job_id)
+    bundle = service.export(job.job_id)
+    comparison = bundle.report.comparison
+    assert comparison is not None
+    assert comparison.results[0].observed_pairs == 2
+    assert len(comparison.inputs) == 4
+    assert {item.metadata.event_at for item in comparison.inputs} == {
+        third.observation.event_at,
+        fourth.observation.event_at,
+    }
+    assert len({item.record.available_at for item in comparison.inputs}) == 1
+    assert service.import_evidence(bundle.to_json()).read_only
+    altered = []
+    for reference in comparison.inputs:
+        metadata, record = reference.metadata, reference.record
+        if metadata.group_id == fourth.unit_id:
+            timestamp = record.available_at - timedelta(seconds=1)
+            metadata = metadata.model_copy(update={"available_at": timestamp})
+            record = record.model_copy(update={"available_at": timestamp})
+        altered.append(PairedObservation(candidate_id=reference.candidate_id, metadata=metadata, record=record))
+    audit = EvaluationAudit(tmp_path / "altered-audit")
+    audit.save_freeze(comparison.frozen)
+    rebuilt = evaluate(comparison.frozen, audit, lambda: tuple(altered), actor="assembly-regression")
+    payload = bundle.model_dump(mode="json")
+    payload["report"]["comparison"] = rebuilt.model_dump(mode="json")
+    with pytest.raises(ValueError, match="assembly timestamp"):
+        EvidenceBundle.model_validate(payload)
 
 
 @pytest.mark.parametrize("partitions", list(itertools.permutations(("train", "validation", "test"))))

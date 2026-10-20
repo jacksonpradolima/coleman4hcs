@@ -376,6 +376,12 @@ seed values and unique checkpoint references must agree with that plan. These
 checks establish internal consistency; they do not authenticate an external
 producer. Report interpretation must also agree with the declared evaluation mode.
 
+Readers reconstruct the unit evidence from unchanged native receipts through the
+same producer used during execution. Observation/revision identity, source event,
+target interval, complete mean record and provenance must match that projection.
+All units retain one declared assembly timestamp. An eligible date or the right
+numeric mean alone cannot substitute for the registered source chronology.
+
 The selected challenger and Random continue their **original native checkpoints**
 for both seeds. Four complete continuation receipts contain **12 cumulative rows**:
 eight retained prefix rows plus four newly evaluated test rows. Other UCB choices
