@@ -81,6 +81,8 @@ class WorkflowLimits(Immutable):
         Worst-case native build work including the declared maximum attempts.
     max_attempts : int
         Maximum physical invocations per logical trial, including resume.
+        Also bounds job-worker starts; protected tuning/evaluation requires at
+        least two starts. A rejected restoration retains its acknowledged frontier.
     attempt_seconds : float
         Positive observed-wall-time allowance per worker invocation, in seconds.
     max_memory_bytes : int

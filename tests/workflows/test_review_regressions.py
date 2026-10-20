@@ -14,7 +14,7 @@ from coleman.checkpoint.checkpoint_store import LocalCheckpointStore
 from coleman.checkpoint.state import CheckpointPayload
 from coleman.evaluation.protected import EvaluationAudit, FrozenCandidate, PairedObservation, evaluate, freeze
 from coleman.policy import base as policy_base
-from coleman.workflows.contracts import PlanningRequest
+from coleman.workflows.contracts import PlanningRequest, WorkflowLimits
 from coleman.workflows.lifecycle import ExecutePlan
 from tests.workflows.test_execution import setup_workflow, wait
 
@@ -156,3 +156,52 @@ def test_digest_suffix_cannot_replace_a_complete_owned_plan_identity(tmp_path):
         connection.execute("UPDATE plans SET id=?", (suffix,))
     with pytest.raises(ValueError, match="identity mismatch"):
         service.saved_plan(suffix)
+
+
+@pytest.fixture(scope="module", params=["descriptive", "protected"])
+def decision_evidence(request, tmp_path_factory):
+    service, preview = setup_workflow(
+        tmp_path_factory.mktemp("review-selection"),
+        evaluation=request.param,
+        seeds=(42,),
+        ucb_exploration=(1.0,),
+    )
+    job = service.execute(ExecutePlan(schema_version=1, request_id="selection", plan_id=preview.plan_id))
+    if request.param == "protected":
+        wait(service, job.job_id, "awaiting_evaluation")
+        service.evaluate(job.job_id)
+    wait(service, job.job_id)
+    return service.export(job.job_id)
+
+
+@pytest.mark.parametrize("field", ["selected_configuration", "fallback_configuration"])
+@pytest.mark.parametrize("replacement", ["null", "other_planned"])
+def test_report_choices_must_match_the_native_winner_and_random_fallback(decision_evidence, field, replacement):
+    payload = decision_evidence.model_dump(mode="json")
+    original = payload["report"][field]
+    payload["report"][field] = (
+        None
+        if replacement == "null"
+        else next(
+            trial.configuration_id for trial in decision_evidence.plan.trials if trial.configuration_id != original
+        )
+    )
+    with pytest.raises(ValueError):
+        EvidenceBundle.model_validate(payload)
+
+
+def test_protected_planning_requires_two_invocations_before_expansion(tmp_path, monkeypatch):
+    service, preview = setup_workflow(tmp_path)
+    request = PlanningRequest(
+        schema_version=1,
+        dataset_id=service.saved_plan(preview.plan_id).dataset.dataset_id,
+        evaluation="protected",
+        limits=WorkflowLimits(max_attempts=1),
+    )
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Unexecutable protected plans must reject before expansion")
+
+    monkeypatch.setattr("coleman.workflows.planning.expand_sweep", forbidden)
+    with pytest.raises(ValueError, match="two.*invocations"):
+        service.plan(request)

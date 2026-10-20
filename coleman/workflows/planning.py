@@ -26,6 +26,10 @@ def _cardinality(request: PlanningRequest, dataset: DatasetManifest) -> None:
     if trials * len(dataset.build_ids) * limits.max_attempts > limits.max_build_work:
         raise WorkflowError("Worst-case native build work, including retries, exceeds the declared cap")
     if request.evaluation == "protected":
+        if limits.max_attempts < 2:
+            raise WorkflowError(
+                "Protected execution requires at least two worker invocations for tuning and evaluation"
+            )
         if request.budget.mode.value != "ratio" or len(request.budget.values) != 1 or "UCB" not in request.policies:
             raise WorkflowError(
                 "Protected v1 requires one ratio budget and Random/UCB; other budgets support descriptive replay"

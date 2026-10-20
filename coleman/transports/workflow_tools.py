@@ -54,6 +54,25 @@ class WorkflowReply[T](WorkflowContract):
     reason: Annotated[str, Field(max_length=512)] | None = None
 
 
+class PlanningInput(PlanningRequest):
+    """Typed conversation draft, converted to a strict executable request before planning.
+
+    Parameters
+    ----------
+    dataset_id : str or None
+        Discovered host-approved ID. Missing/None returns structured missing-field
+        information with no plan or job admission. All other versioned fields,
+        parameter constraints and discovered defaults inherit PlanningRequest.
+
+    Notes
+    -----
+    This transport-only draft never enters persistence or the native runner.
+    The domain PlanningRequest still requires a valid explicit dataset identity.
+    """
+
+    dataset_id: WorkflowId | None = None
+
+
 class JobCommand(WorkflowContract):
     """Versioned caller-owned job operation; a stable ID replaces arbitrary paths.
 
@@ -170,9 +189,9 @@ def register_workflow_tools(server: MCPServer, service: WorkflowService) -> None
         return _reply(service.discover)
 
     @server.tool()
-    def plan_experiment(request: PlanningRequest) -> WorkflowReply[PlanPreview]:
+    def plan_experiment(request: PlanningInput) -> WorkflowReply[PlanPreview]:
         """Freeze Random/UCB RNFail grid/zip, native budget, seeds and finite work limits; execute nothing."""
-        return _reply(lambda: service.plan(request))
+        return _reply(lambda: service.plan(PlanningRequest.model_validate(request.model_dump(exclude_none=True))))
 
     @server.tool()
     def execute_plan(request: ExecutePlan) -> WorkflowReply[JobView]:

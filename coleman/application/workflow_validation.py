@@ -162,12 +162,14 @@ def expected_trials_for_report(plan: ExperimentPlan, report: WorkflowReport) -> 
     if plan.request.evaluation == "descriptive":
         if report.comparison is not None:
             raise WorkflowError("Descriptive replay cannot claim protected inference")
+        _exact_choices(plan, report)
         return {trial.trial_id for trial in plan.trials}
     if report.comparison is None:
         raise WorkflowError("Protected completion requires its frozen comparison")
     comparison = report.comparison
     configs = _configurations(plan, comparison)
     _protected_choices(report, configs)
+    _exact_choices(plan, report)
     grouped = _grouped_native(plan, report, configs)
     if {(reference.candidate_id, reference.metadata.group_id) for reference in comparison.inputs} != set(grouped):
         raise WorkflowError("Protected inference units differ from the source repository families")
@@ -240,3 +242,22 @@ def _validate_choices(plan, report) -> None:
         fallback.policy != "Random" or (selected is not None and fallback.budget_value != selected.budget_value)
     ):
         raise WorkflowError("Workflow fallback must be the planned same-budget Random configuration")
+
+
+def _exact_choices(plan, report) -> None:
+    """Reuse native enumeration's deterministic winner and require its actual Random fallback.
+
+    Protected selection reads retained validation rows only. No outcome is loaded,
+    no new hypothesis is selected and no superiority claim follows from this check.
+    """
+    from coleman.application.workflow_evaluation import choose_configuration
+
+    winner = choose_configuration(plan, report.trials)
+    coordinates = {trial.configuration_id: trial for trial in plan.trials}
+    fallback = next(
+        trial.configuration_id
+        for trial in plan.trials
+        if trial.policy == "Random" and trial.budget_value == coordinates[winner].budget_value
+    )
+    if report.selected_configuration != winner or report.fallback_configuration != fallback:
+        raise WorkflowError("Workflow selection/fallback differs from its deterministic native result")

@@ -127,6 +127,12 @@ unknown/future schema versions, arbitrary configuration fields and work exceedin
 the host's caps before execution. There is no additional COLEMAN confirmation
 step between a valid execute request and its admission.
 
+An incomplete MCP draft such as `{"request":{"schema_version":1}}` returns
+`{"schema_version":1,"contract":"coleman-workflows-v1","data":null,"error":"invalid_input","missing_fields":["dataset_id"],"reason":null}`.
+An explicit null dataset has the same response. The client can discover approved
+IDs and ask the user to choose one. This transport draft is never saved or run;
+the application still requires a strict, complete `PlanningRequest`.
+
 ## What a conversation maps to
 
 The utterances below are **illustrative**. The accounting beneath them comes from
@@ -145,6 +151,10 @@ coordinates. Random appears once per budget, with `exploration: null` meaning
 **not applicable**. UCB choices are not multiplied into extra Random baselines.
 The full retained plan includes every resolved native specification and the
 producer/runtime identity; execution never asks a model to reconstruct it.
+Local and portable readers recompute the deterministic choice from retained
+native rows and require the matching same-budget Random fallback. Descriptive
+selection uses all declared rows; protected selection uses validation rows only.
+An alternate planned ID or null cannot silently replace either reported choice.
 
 > Run that plan. I will come back later.
 
@@ -326,8 +336,13 @@ actual Polars thread pool; restart with that same host setting.
 
 ## Keep tuning separate from protected evaluation
 
-For the owned fixture, plan with `evaluation: "protected"`. The host-authored
-metadata declares train build 1, validation build 2 and test build 3. Native
+For the owned fixture, plan with `evaluation: "protected"`. Protected execution
+requires `max_attempts` of at least two, covering the tuning worker and
+the separate evaluation worker. A one-invocation protected plan rejects before
+sweep expansion or admission. Descriptive replay can use one invocation.
+
+The fixture's host-authored metadata declares train build 1, validation build 2
+and test build 3. Native
 source filtering happens **before** eager outcome materialization. Each trial
 executes only its training/validation prefix, without a final forecast into the
 holdout. The job stops at `awaiting_evaluation`: eight trials and **16 prefix rows**.

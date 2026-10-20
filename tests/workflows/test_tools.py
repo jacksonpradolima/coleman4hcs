@@ -30,6 +30,12 @@ def test_sdk_in_process_tuning_and_portable_read_only_evidence(tmp_path):
                 assert next(tool.output_schema for tool in tools if tool.name == "plan_experiment") is not None
                 discovery = (await client.call_tool("workflow_discover", {})).structured_content
                 assert discovery["data"]["datasets"][0]["duration_unit"] == "s"
+                for incomplete in ({"schema_version": 1}, {"schema_version": 1, "dataset_id": None}):
+                    missing_dataset = await client.call_tool("plan_experiment", {"request": incomplete})
+                    assert missing_dataset.structured_content is not None
+                    assert missing_dataset.structured_content["error"] == "invalid_input"
+                    assert missing_dataset.structured_content["missing_fields"] == ["dataset_id"]
+                    assert missing_dataset.structured_content["data"] is None
                 response = await client.call_tool(
                     "plan_experiment", {"request": {"schema_version": 1, "dataset_id": "owned-ci-three-build-v1"}}
                 )

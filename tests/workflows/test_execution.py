@@ -18,7 +18,7 @@ from coleman.corpus.baseline_contracts import FAILURE_MEANING, BaselineBuild, Ba
 from coleman.corpus.baseline_reference import baseline_reference
 from coleman.pilot.contracts import SECONDS
 from coleman.results.domain import Measurement
-from coleman.workflows.contracts import PlanningRequest
+from coleman.workflows.contracts import PlanningRequest, WorkflowLimits
 from coleman.workflows.lifecycle import ExecutePlan, HostPolicy, TrialResult, TrialSummary
 
 
@@ -143,7 +143,7 @@ def test_actual_eight_trials_export_import_and_two_coordinators(tmp_path):
 
 
 def test_actual_protected_prefix_audit_and_learning_continuation(tmp_path):
-    service, preview = setup_workflow(tmp_path, evaluation="protected")
+    service, preview = setup_workflow(tmp_path, evaluation="protected", limits=WorkflowLimits(max_attempts=2))
     job = service.execute(ExecutePlan(schema_version=1, request_id="protected", plan_id=preview.plan_id))
     wait(service, job.job_id, "awaiting_evaluation")
     prefix = service.inspect(job.job_id, limit=8)
