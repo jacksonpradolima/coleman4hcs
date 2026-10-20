@@ -3,14 +3,20 @@
 import copy
 import json
 import pickle
+import time
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from dataclasses import replace
+from pathlib import Path
 
 import polars as pl
 import pytest
 
+from coleman.application.baseline_lock import BaselineBusyError, baseline_lock
 from coleman.application.workflow_checkpoint import WorkflowCheckpointStore
 from coleman.application.workflow_evaluation import compare_continuation, prepare_evaluation
 from coleman.application.workflow_exports import EvidenceBundle
+from coleman.application.workflow_exposure import source_lock, synchronize_exposures
 from coleman.application.workflow_registry import owned_fixture, snapshot_history
 from coleman.application.workflows import WorkflowService
 from coleman.checkpoint.checkpoint_store import LocalCheckpointStore
@@ -293,3 +299,184 @@ def test_registered_input_must_leave_output_allowance_before_expansion(
     monkeypatch.setattr("coleman.workflows.planning.expand_sweep", forbidden)
     with pytest.raises(ValueError, match="input.*output"):
         service.plan(request)
+
+
+def test_queued_admission_waits_for_a_retiring_supervisor_lock(tmp_path):
+    service, preview = setup_workflow(tmp_path, policies=("Random",), seeds=(42,))
+    request = ExecutePlan(schema_version=1, request_id="retiring-supervisor", plan_id=preview.plan_id)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        # Model the retained descriptor of a retiring owner. A busy inode alone
+        # does not prove that any coordinator has observed this new admission.
+        with baseline_lock(tmp_path / "supervisor.lock", handoff=True):
+            future = pool.submit(service.execute, request)
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                with closing(service.store.connect()) as connection:
+                    jobs = service.store.jobs(connection)
+                if jobs:
+                    break
+                time.sleep(0.01)
+            assert jobs
+            with pytest.raises(TimeoutError):
+                future.result(timeout=0.2)
+        job = future.result(timeout=15)
+    complete = wait(service, job.job_id)
+    assert complete.attempts == 1
+    assert len(service.report(job.job_id).trials) == 1
+
+
+def test_unobserved_queue_timeout_keeps_idempotent_admission(tmp_path, monkeypatch):
+    import coleman.application.workflow_supervisor as supervision
+
+    service, preview = setup_workflow(tmp_path, policies=("Random",), seeds=(42,))
+    request = ExecutePlan(schema_version=1, request_id="unobserved-queue", plan_id=preview.plan_id)
+    with monkeypatch.context() as patch:
+        patch.setattr(supervision, "_ACK_WAIT_SECONDS", 0.1)
+        with baseline_lock(tmp_path / "supervisor.lock", handoff=True), pytest.raises(ValueError, match="acknowledge"):
+            service.execute(request)
+    with closing(service.store.connect()) as connection:
+        admitted = service.store.jobs(connection)
+    assert len(admitted) == 1
+    assert admitted[0].state == "queued"
+    job = service.execute(request)
+    assert job.job_id == admitted[0].job_id
+    assert wait(service, job.job_id).attempts == 1
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [{"schema_version": 2}, {"requested": 1, "observed": 2}, {"requested": 2**63 - 1}],
+)
+def test_unknown_or_impossible_coordinator_progress_cannot_acknowledge_work(tmp_path, monkeypatch, changes):
+    from coleman.application.workflow_supervisor import ensure_supervisor
+
+    service, preview = setup_workflow(tmp_path, policies=("Random",), seeds=(42,))
+    request = ExecutePlan(schema_version=1, request_id="invalid-progress", plan_id=preview.plan_id)
+    with monkeypatch.context() as patch:
+        patch.setattr(service, "_start", lambda: None)
+        job = service.execute(request)
+    record = {"schema_version": 1, "contract": "coleman-workflows-v1", "requested": 0, "observed": 0, **changes}
+    with service.store.transaction() as connection:
+        connection.execute("INSERT INTO settings VALUES ('supervisor_progress_v1',?)", (json.dumps(record),))
+    with pytest.raises(ValueError):
+        ensure_supervisor(tmp_path)
+    assert service.status(job.job_id).state == "queued"
+    assert service.status(job.job_id).worker_active is False
+
+
+def test_supervision_progress_v1_golden():
+    from coleman.application.workflow_supervisor import _SupervisionProgress
+
+    path = Path(__file__).with_name("fixtures") / "supervision-progress-v1.json"
+    record = _SupervisionProgress.from_json(path.read_bytes())
+    assert record.to_json() + "\n" == path.read_text()
+
+
+@pytest.mark.parametrize("quota", ["slots", "bytes"])
+def test_capacity_rejected_import_still_preserves_outcome_exposure(
+    protected_evidence, decision_evidence, tmp_path, quota
+):
+    first = protected_evidence.to_json()
+    second = decision_evidence.to_json()
+    assert protected_evidence.fingerprint != decision_evidence.fingerprint
+    byte_limit = len(first.encode()) + len(second.encode()) - 1
+    assert byte_limit >= 65536
+    policy = HostPolicy(
+        schema_version=1,
+        max_jobs=1 if quota == "slots" else 64,
+        max_retained_bytes=536870912 if quota == "slots" else byte_limit,
+    )
+    service = WorkflowService(tmp_path, policy=policy)
+    service.import_evidence(first)
+    with pytest.raises(ValueError, match="slots/bytes exhausted"):
+        service.import_evidence(second)
+    comparison = protected_evidence.report.comparison
+    assert comparison is not None
+    audit = EvaluationAudit(tmp_path / "audit")
+    audit.save_freeze(comparison.frozen)
+    observations = tuple(
+        PairedObservation(candidate_id=item.candidate_id, metadata=item.metadata, record=item.record)
+        for item in comparison.inputs
+    )
+    with source_lock(tmp_path, protected_evidence.plan.dataset.source_fingerprint):
+        synchronize_exposures(tmp_path, comparison.frozen)
+        result = evaluate(comparison.frozen, audit, lambda: observations, actor="rejected-import-regression")
+    assert result.access.prior_test_accesses == 2
+
+
+def test_import_reserves_exposure_before_native_outcome_materialization(protected_evidence, tmp_path, monkeypatch):
+    import coleman.application.workflow_exports as exports
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("A busy exposure scope must reject before native outcome decoding")
+
+    service = WorkflowService(tmp_path)
+    payload = protected_evidence.to_json()
+    monkeypatch.setattr(exports, "_native_table", forbidden)
+    with (
+        source_lock(tmp_path, protected_evidence.plan.dataset.source_fingerprint),
+        pytest.raises(BaselineBusyError),
+    ):
+        service.import_evidence(payload)
+
+
+@pytest.mark.parametrize("mutation", ["full", "future_version", "duplicate", "overfull"])
+def test_import_attempt_capacity_rejects_before_outcome_decoding(protected_evidence, tmp_path, monkeypatch, mutation):
+    import coleman.application.workflow_exports as exports
+
+    def forbidden(*args, **kwargs):
+        raise RuntimeError("Attempt admission must reject before native outcome decoding")
+
+    service = WorkflowService(tmp_path)
+    payload = protected_evidence.to_json()
+    identities = [fingerprint(["prior-import", index])[7:] for index in range(1024)]
+    record = {"schema_version": 1, "contract": "coleman-workflows-v1", "identities": sorted(identities)}
+    if mutation == "future_version":
+        record["schema_version"] = 2
+    elif mutation == "duplicate":
+        record["identities"] = [identities[0], identities[0]]
+    elif mutation == "overfull":
+        record["identities"] = sorted([*identities, "extra-attempt"])
+    with service.store.transaction() as connection:
+        connection.execute("INSERT INTO settings VALUES ('import_exposure_attempts_v1',?)", (json.dumps(record),))
+    monkeypatch.setattr(exports, "_native_table", forbidden)
+    with pytest.raises(ValueError):
+        service.import_evidence(payload)
+    assert not (tmp_path / "source-exposures").exists()
+
+
+def test_full_import_attempt_index_preserves_exact_retry(protected_evidence, tmp_path):
+    service = WorkflowService(tmp_path)
+    payload = protected_evidence.to_json()
+    identity = fingerprint(["workflow.import-attempt.v1", service.owner, payload])[7:]
+    identities = [identity, *(fingerprint(["prior-import", index])[7:] for index in range(1023))]
+    record = {"schema_version": 1, "contract": "coleman-workflows-v1", "identities": sorted(identities)}
+    with service.store.transaction() as connection:
+        connection.execute("INSERT INTO settings VALUES ('import_exposure_attempts_v1',?)", (json.dumps(record),))
+    retained = service.import_evidence(payload)
+    marker = next((tmp_path / "source-exposures").rglob("*.json"))
+    original = marker.read_bytes()
+    assert service.import_evidence(payload) == retained
+    assert marker.read_bytes() == original
+    with closing(service.store.connect()) as connection:
+        saved = connection.execute("SELECT payload FROM settings WHERE name='import_exposure_attempts_v1'").fetchone()
+    assert json.loads(saved[0]) == record
+
+
+def test_rejected_import_retry_retains_one_attempt_and_exposure(protected_evidence, tmp_path):
+    service = WorkflowService(tmp_path)
+    data = protected_evidence.model_dump(mode="json")
+    data["files"] = []
+    payload = json.dumps(data)
+    with pytest.raises(ValueError, match="membership"):
+        service.import_evidence(payload)
+    marker = next((tmp_path / "source-exposures").rglob("*.json"))
+    original = marker.read_bytes()
+    with pytest.raises(ValueError, match="membership"):
+        service.import_evidence(payload)
+    assert marker.read_bytes() == original
+    assert len(list((tmp_path / "source-exposures").rglob("*.json"))) == 1
+    with closing(service.store.connect()) as connection:
+        saved = connection.execute("SELECT payload FROM settings WHERE name='import_exposure_attempts_v1'").fetchone()
+        assert connection.execute("SELECT count(*) FROM imports").fetchone()[0] == 0
+    assert len(json.loads(saved[0])["identities"]) == 1

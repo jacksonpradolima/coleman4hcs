@@ -6342,6 +6342,13 @@ coleman workflow --workspace /tmp/coleman-workspace import --input evidence.json
 `ACTUAL_PLAN_ID` and `ACTUAL_JOB_ID` are placeholders, not valid executable IDs.
 CLI setup may read trusted local files; MCP requests never accept these paths.
 
+Admission waits up to ten seconds for the coordinator to acknowledge observing
+the queue in durable metadata. A busy process lock alone is insufficient: it
+could belong to a retiring owner. If acknowledgement times out, the job remains
+durably admitted; retry the same request and idempotency key instead of creating
+a second experiment. The versioned, bounded coordination counters are operational
+metadata, not independent scientific observations.
+
 An attempt interrupted before its first committed checkpoint can retry from the
 beginning. Once durable job metadata acknowledges a native commit, a missing
 checkpoint marker rejects continuation before another native invocation; it does
@@ -6414,7 +6421,17 @@ holdout outcomes or manufacture another access.
 Descriptive full-history execution and imported outcome evidence also leave
 durable source-exposure markers. Before protected access, those markers become
 development-access receipts in the existing audit, retaining their original
-operational timestamps separately. A crash during that integration can
+operational timestamps separately. Import reserves exposure after checking the
+versioned source header and before decoding native outcomes or checking retention
+capacity. A later validation or quota failure therefore preserves conservative
+exposure. Repeating the exact payload reuses that attempt; different encodings
+can overcount accesses while retaining the same logical evidence handle.
+At most 1024 distinct import attempts are retained globally per workspace,
+including rejected attempts. Repeating an exact payload reuses its reservation,
+even at capacity. Exhaustion rejects before outcome decoding; reservations never
+expire or recycle silently. A crash before source marking can consume an unused
+slot, but cannot authorize an unrecorded outcome read.
+A crash during audit integration can
 conservatively overcount exposure; it cannot erase it. The scope follows stable
 upstream source identity, so a different Parquet encoding, candidate or protocol
 does not make a previously exposed holdout appear new. The ledger audits this
@@ -15548,9 +15565,13 @@ flowchart TD
     App --> Plan[Immutable experiment plan]
     Plan --> Jobs[Durable job and attempt metadata]
     Jobs --> Ownership[SQLite transitions and kernel ownership]
+    Jobs --> Ack[Versioned queue observation acknowledgement]
+    Ack --> Ownership
     Ownership --> Runner[Existing native runner and sweeps]
     Runner --> Store[Parquet and native checkpoints with versioned RNG extra state]
     Runner --> Exposure[Stable upstream source exposure]
+    Import[Read-only import source header] --> Exposure
+    Exposure --> Decode[Native outcome validation and bounded retention]
     Exposure --> Audit[Existing protected-access audit]
     Ownership --> Window[Assembly cutoff after evaluation ownership]
     Store --> Window

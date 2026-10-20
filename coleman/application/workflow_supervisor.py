@@ -6,11 +6,74 @@ import os
 import subprocess
 import sys
 import time
+from contextlib import closing
 from pathlib import Path
+from typing import Annotated
+
+from pydantic import Field, model_validator
 
 from coleman.application.baseline_lock import BaselineBusyError, baseline_lock
 from coleman.application.workflow_ownership import worker_active
 from coleman.application.workflow_store import JobRecord, WorkflowStore
+from coleman.workflows.contracts import WorkflowContract, WorkflowError
+
+_ACK_WAIT_SECONDS = 10.0
+_MAX_GENERATION = 2**63 - 1
+
+
+class _SupervisionProgress(WorkflowContract):
+    """Bounded coordination counters; these never represent scientific observations.
+
+    Parameters
+    ----------
+    requested, observed : int
+        Monotonic local generations. Observation occurs inside the scheduler's
+        metadata transaction; a busy kernel lock alone is not acknowledgement.
+    """
+
+    requested: Annotated[int, Field(strict=True, ge=0, le=_MAX_GENERATION)] = 0
+    observed: Annotated[int, Field(strict=True, ge=0, le=_MAX_GENERATION)] = 0
+
+    @model_validator(mode="after")
+    def _ordered(self):
+        """Reject corrupt/future progress instead of inventing acknowledgement."""
+        if self.observed > self.requested:
+            raise WorkflowError("Coordinator observation exceeds its requested generation")
+        return self
+
+
+def _progress(connection) -> _SupervisionProgress:
+    """Read one versioned fixed-size metadata record; absence supports an older workspace."""
+    row = connection.execute("SELECT payload FROM settings WHERE name='supervisor_progress_v1'").fetchone()
+    return _SupervisionProgress(schema_version=1) if row is None else _SupervisionProgress.from_json(row[0])
+
+
+def _save_progress(connection, progress: _SupervisionProgress) -> None:
+    """Persist bounded coordination metadata in the caller's existing transaction."""
+    connection.execute(
+        "INSERT INTO settings(name,payload) VALUES('supervisor_progress_v1',?) "
+        "ON CONFLICT(name) DO UPDATE SET payload=excluded.payload",
+        (progress.to_json(),),
+    )
+
+
+def _request_observation(store: WorkflowStore) -> int | None:
+    """Request a new queue observation without resetting or recycling a generation."""
+    with store.transaction() as connection:
+        if not any(job.state == "queued" for job in store.jobs(connection)):
+            return None
+        progress = _progress(connection)
+        if progress.requested == _MAX_GENERATION:
+            raise WorkflowError("Coordinator generation capacity exhausted; use a new owned workspace")
+        updated = _SupervisionProgress(schema_version=1, requested=progress.requested + 1, observed=progress.observed)
+        _save_progress(connection, updated)
+        return updated.requested
+
+
+def _observed(store: WorkflowStore, generation: int) -> bool:
+    """Check transactional acknowledgement, rather than equating a busy inode with a live reader."""
+    with closing(store.connect()) as connection:
+        return _progress(connection).observed >= generation
 
 
 def _spawn(root: Path, role: str, descriptor: int, job_id: str | None = None) -> None:
@@ -43,12 +106,33 @@ def ensure_supervisor(root: Path) -> None:
     OSError, ValueError
         Unsupported/unsafe storage or spawn failure. Existing queued records remain
         recoverable by reopening the workspace and retrying the same request.
+        Missing acknowledgement raises a safe retryable WorkflowError; it never
+        silently returns an unobserved queue as healthy.
+
+    Notes
+    -----
+    Waits up to ten seconds for an actual queue observation. A retiring child can
+    close its descriptor while an old parent still retains another copy; this
+    bounded handshake retries that interval. Work is durably admitted first, so
+    an acknowledgement timeout requires retrying the same request, not a new job.
     """
-    try:
-        with baseline_lock(root / "supervisor.lock", handoff=True) as descriptor:
-            _spawn(root, "supervise", descriptor)
-    except BaselineBusyError:
-        pass
+    store = WorkflowStore(root)
+    generation = _request_observation(store)
+    if generation is None:
+        return
+    deadline = time.monotonic() + _ACK_WAIT_SECONDS
+    while time.monotonic() < deadline:
+        if _observed(store, generation):
+            return
+        try:
+            with baseline_lock(root / "supervisor.lock", handoff=True) as descriptor:
+                _spawn(root, "supervise", descriptor)
+        except BaselineBusyError:
+            # An actual scheduler must acknowledge this generation, or the lock
+            # must become available. A retiring parent's duplicate can stay busy.
+            pass
+        time.sleep(0.05)
+    raise WorkflowError("Coordinator did not acknowledge queued work; retry the same operation")
 
 
 def _schedule(store: WorkflowStore, supervisor_descriptor: int) -> bool:
@@ -97,6 +181,11 @@ def _schedule(store: WorkflowStore, supervisor_descriptor: int) -> bool:
             except BaselineBusyError:
                 continue
         pending = bool(active) or any(job.state == "queued" for job in jobs)
+        progress = _progress(connection)
+        _save_progress(
+            connection,
+            _SupervisionProgress(schema_version=1, requested=progress.requested, observed=progress.requested),
+        )
         if not pending:
             # Release ownership while admission is still serialized. A later
             # admission cannot observe a retiring owner and strand queued work.

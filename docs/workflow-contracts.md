@@ -83,9 +83,13 @@ flowchart TD
     App --> Plan[Immutable experiment plan]
     Plan --> Jobs[Durable job and attempt metadata]
     Jobs --> Ownership[SQLite transitions and kernel ownership]
+    Jobs --> Ack[Versioned queue observation acknowledgement]
+    Ack --> Ownership
     Ownership --> Runner[Existing native runner and sweeps]
     Runner --> Store[Parquet and native checkpoints with versioned RNG extra state]
     Runner --> Exposure[Stable upstream source exposure]
+    Import[Read-only import source header] --> Exposure
+    Exposure --> Decode[Native outcome validation and bounded retention]
     Exposure --> Audit[Existing protected-access audit]
     Ownership --> Window[Assembly cutoff after evaluation ownership]
     Store --> Window

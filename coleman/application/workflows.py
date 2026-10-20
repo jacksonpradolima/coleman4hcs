@@ -692,14 +692,25 @@ class WorkflowService:
 
         Raises
         ------
-        ValueError, OSError
+        ValueError, OSError, BaselineBusyError
             Malformed evidence, exhausted bounded slots/bytes or storage failure.
+
+        Notes
+        -----
+        A valid version/source header reserves conservative exposure before native
+        outcome validation, even if later validation or retention capacity rejects.
+        Exact-payload retries reuse that attempt; different wire encodings may
+        conservatively overcount exposure while retaining the same content handle.
         """
-        from coleman.application.workflow_exports import EvidenceBundle, ImportedEvidence
+        from coleman.application.workflow_exports import EvidenceBundle, ImportedEvidence, evidence_source_plan
+        from coleman.application.workflow_exposure import reserve_import_exposure
         from coleman.results.domain import fingerprint
 
         if len(payload.encode()) > 2097152:
             raise WorkflowError("Portable workflow JSON exceeds 2 MiB")
+        plan = evidence_source_plan(payload)
+        attempt = fingerprint(["workflow.import-attempt.v1", self.owner, payload])[7:]
+        reserve_import_exposure(self.store, plan, attempt)
         bundle = EvidenceBundle.from_json(payload)
         identity = fingerprint([self.owner, bundle.fingerprint])[7:]
         with self.store.transaction() as connection:
@@ -715,9 +726,6 @@ class WorkflowService:
                     or size + len(payload.encode()) > self.store.policy.max_retained_bytes
                 ):
                     raise WorkflowError("Read-only import slots/bytes exhausted")
-                from coleman.application.workflow_exposure import mark_exposure
-
-                mark_exposure(self.store.root, bundle.plan, identity, 1, "read_only_import")
                 connection.execute("INSERT INTO imports VALUES (?,?,?)", (identity, self.owner, bundle.to_json()))
         return ImportedEvidence(schema_version=1, evidence_id=identity, digest=bundle.fingerprint)
 

@@ -28,6 +28,46 @@ class WorkflowPortableFile(PortableFile):
     name: Annotated[str, Field(max_length=512, strict=True)]
 
 
+class _EvidenceSourceHeader(WorkflowContract):
+    """Strict source/version projection; the opaque body is validated separately before retention."""
+
+    artifact_type: Literal["coleman-workflow-evidence-v1"] = "coleman-workflow-evidence-v1"
+    plan: ExperimentPlan
+
+
+def evidence_source_plan(payload: str) -> ExperimentPlan:
+    """Validate a bounded source header before any native outcome materialization.
+
+    Parameters
+    ----------
+    payload : str
+        At most 2 MiB of UTF-8 portable JSON. Other body fields remain opaque to
+        this preflight; it does not validate or admit their native measurements.
+
+    Returns
+    -------
+    ExperimentPlan
+        Strict declared source identity. Callers must reserve conservative exposure
+        before full EvidenceBundle validation and must validate the full body before
+        retention. No Parquet, checkpoint or execution is opened by this function.
+
+    Raises
+    ------
+    ValueError
+        Oversized/nonobject JSON, duplicate keys, unknown versions or invalid plan.
+        No files are written and no scientific source authenticity is granted.
+    """
+    from coleman.results.domain import decode_json
+
+    if len(payload.encode()) > 2097152:
+        raise WorkflowError("Portable workflow JSON exceeds 2 MiB")
+    raw = decode_json(payload, exact_decimals=True)
+    if not isinstance(raw, dict):
+        raise WorkflowError("Portable workflow evidence requires a JSON object")
+    header = {name: raw[name] for name in ("schema_version", "contract", "artifact_type", "plan") if name in raw}
+    return _EvidenceSourceHeader.model_validate(header).plan
+
+
 def _native_table(file: WorkflowPortableFile, maximum_decoded: int = 67108864):
     """Decode bounded original bytes using their unchanged Hive partition metadata."""
     from io import BytesIO
