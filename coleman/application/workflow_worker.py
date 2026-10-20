@@ -19,8 +19,8 @@ from coleman.application.workflow_store import JobRecord, WorkflowStore
 from coleman.artifacts import ArtifactWriter
 from coleman.results.domain import canonical_json, fingerprint
 from coleman.spec.runtime_identity import InstalledRuntime
-from coleman.workflows.contracts import ExperimentPlan, Trial, WorkflowError
-from coleman.workflows.lifecycle import PhysicalAttempt, TrialResult, WorkflowReport
+from coleman.workflows.contracts import MAX_WORKFLOW_ARTIFACT_ENTRIES, ExperimentPlan, Trial, WorkflowError
+from coleman.workflows.lifecycle import PhysicalAttempt, TrialResult, WorkflowReport, report_assumptions
 
 _COMPLETE_RECEIPT = "complete.json"
 
@@ -54,7 +54,9 @@ def _guard(store: WorkflowStore, job_id: str, plan: ExperimentPlan, deadline: fl
                 or peak * 1048576 > plan.request.limits.max_memory_bytes
                 or time.monotonic() > deadline
                 or _output_exceeds(
-                    plan.request.limits.max_output_bytes, root=store.root / "jobs" / job_id, maximum_entries=32768
+                    plan.request.limits.max_output_bytes,
+                    root=store.root / "jobs" / job_id,
+                    maximum_entries=MAX_WORKFLOW_ARTIFACT_ENTRIES,
                 )
             )
             state = _read_job(store, job_id).state
@@ -86,7 +88,11 @@ def _check_output(store: WorkflowStore, job_id: str, plan: ExperimentPlan, deadl
     """Reject cooperative deadline and publication-byte overshoot at actual phase boundaries."""
     if time.monotonic() > deadline:
         raise WorkflowError("Workflow observed wall-time allowance exhausted")
-    if _output_exceeds(plan.request.limits.max_output_bytes, root=store.root / "jobs" / job_id, maximum_entries=32768):
+    if _output_exceeds(
+        plan.request.limits.max_output_bytes,
+        root=store.root / "jobs" / job_id,
+        maximum_entries=MAX_WORKFLOW_ARTIFACT_ENTRIES,
+    ):
         raise WorkflowError("Workflow output byte/file limit exceeded")
 
 
@@ -250,7 +256,7 @@ def _produce_report(store, job, plan, progress_hook, deadline):
             fallback_configuration=fallback,
             physical_attempts=read_attempts(root / "jobs" / job_id, plan),
             interpretation="descriptive_only",
-            assumptions=plan.dataset.assumptions + ("Seeds are repetitions, not independent repositories.",),
+            assumptions=report_assumptions(plan),
         )
     return report
 

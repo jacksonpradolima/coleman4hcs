@@ -129,7 +129,9 @@ class EvidenceBundle(WorkflowContract):
         Complete abstract native specifications, producer/runtime and source identity.
         Importing retains evidence only; it does not register datasets or executable plans.
     report : WorkflowReport
-        Typed completed evidence, including original native run IDs and legacy metrics.
+        Typed completed evidence and verified native metrics. Native run IDs are
+        explicitly producer-asserted, not portably verified: their computation
+        includes private execution paths absent from the portable bundle.
     files : tuple[PortableFile, ...]
         Exact completed native Parquet bytes. Every report pin must be represented
         once; at most 1 MiB original native bytes and 64 MiB aggregate decoded
@@ -147,6 +149,17 @@ class EvidenceBundle(WorkflowContract):
     plan: ExperimentPlan
     report: WorkflowReport
     files: Annotated[tuple[WorkflowPortableFile, ...], Field(max_length=4096)]
+
+    @property
+    def native_run_ids_verified(self) -> Literal[False]:
+        """Return false: native path-derived IDs are producer claims, not byte-verified provenance.
+
+        This nonserialized trust declaration leaves existing v1 canonical bytes
+        and digests unchanged. File membership, native metrics and logical trial
+        identities are verified separately; this property never authenticates a
+        producer. Consumers must not promote these IDs to trusted provenance.
+        """
+        return False
 
     @model_validator(mode="after")
     def _membership(self) -> Self:
@@ -182,6 +195,9 @@ class ImportedEvidence(WorkflowContract):
         Caller-scoped content handle; never an executable job or plan ID.
     digest : str
         Complete canonical evidence fingerprint, not authentication.
+    native_run_ids_verified : bool
+        Always false. Original path-derived native IDs are retained as explicit
+        producer claims; portable validation does not authenticate those claims.
     read_only : bool
         Always true; importing neither grants dataset admission nor native resume.
     """
@@ -189,3 +205,4 @@ class ImportedEvidence(WorkflowContract):
     evidence_id: WorkflowId
     digest: Fingerprint
     read_only: Literal[True] = True
+    native_run_ids_verified: Literal[False] = False

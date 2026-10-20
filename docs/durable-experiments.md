@@ -374,7 +374,19 @@ Local and portable report readers require exactly one frozen learning-state
 entry for each planned seed of each selected configuration. Trial identities,
 seed values and unique checkpoint references must agree with that plan. These
 checks establish internal consistency; they do not authenticate an external
-producer. Report interpretation must also agree with the declared evaluation mode.
+producer. Report interpretation and the exact ordered source/mode-specific
+assumptions must agree with the declared plan; imports cannot remove the
+constructed-source, repetition or no-production-promotion qualifications.
+
+**Portable native run IDs are producer claims, not verified provenance.** The
+native configuration hash includes private execution paths absent from a portable
+bundle. Parquet bytes bind metrics and logical trial membership, but cannot prove
+that path-derived ID. V1 receipts retain the original field and canonical bytes;
+no migration silently upgrades its trust. `EvidenceBundle.native_run_ids_verified`
+and read-only import handles explicitly return `False`, and inspection summaries
+label `native_run_id_verification="producer_asserted_unverified"`. This also
+qualifies native run IDs carried into derived mean records. A consumer needing
+trusted producer identity must establish that trust separately.
 
 Readers reconstruct the unit evidence from unchanged native receipts through the
 same producer used during execution. Observation/revision identity, source event,
@@ -576,8 +588,8 @@ slots for the workspace lifetime. Use a new explicitly selected workspace when
 those finite slots are exhausted; keys are never silently recycled.
 
 Each default job reserves 16 MiB output and 1 GiB sampled worker memory; one
-worker invocation has 300 seconds. The allowance is four invocations and at most
-four physical invocations per logical trial, including protected continuation.
+worker invocation has 300 seconds. The default allows four invocations per job
+and at most four physical invocations per logical trial, including protected continuation.
 Worst-case build work includes retries before expansion. Queue time/job age,
 worker wall time and modeled scheduling seconds remain separate quantities.
 The output reservation includes the job's input snapshot copy, native results,
@@ -585,6 +597,13 @@ checkpoints and execution contexts. Registration's 64 MiB input limit is separat
 from this reservation. Planning rejects an input that alone fills or exceeds its
 output allowance, before expansion; increase the allowance or reduce the history.
 The remaining space still has to accommodate the actual produced artifacts.
+Planning also reserves capacity under the worker's **32,768 directory/file entry**
+ceiling, before sweep expansion. Its conservative bound is
+`128 + trials × (64 + max_attempts × (5 × builds + 16))`: shared metadata,
+per-trial directories, per-build native results/checkpoints, both stage evidence
+copies, frozen learning and transient/attempt receipts. The complete tree is
+reserved again for each possible invocation. Reduce trials, builds or retries
+when that bound is exceeded; a larger byte allowance does not raise this ceiling.
 
 Limits are sampled/cooperative local guards with possible transient overshoot,
 not an untrusted-code sandbox, hard OS memory ceiling, distributed lock or

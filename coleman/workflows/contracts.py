@@ -18,6 +18,7 @@ WorkflowId = Annotated[str, Field(strict=True, pattern=r"^[A-Za-z0-9][A-Za-z0-9_
 Seed = Annotated[int, Field(strict=True, ge=0, le=2**64 - 1)]
 Policy = Literal["Random", "UCB"]
 Objective = Literal["napfd", "apfdc"]
+MAX_WORKFLOW_ARTIFACT_ENTRIES = 32768
 
 
 class WorkflowError(ValueError):

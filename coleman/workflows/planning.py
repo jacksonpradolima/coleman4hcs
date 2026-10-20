@@ -12,7 +12,42 @@ from coleman.selection.contracts import Quantity, UnitSemantics
 from coleman.spec import RunSpec
 from coleman.spec.runtime_identity import InstalledRuntime
 from coleman.spec.sweep import SweepAxis, SweepSpec, expand_sweep
-from coleman.workflows.contracts import DatasetManifest, ExperimentPlan, PlanningRequest, Trial, WorkflowError
+from coleman.workflows.contracts import (
+    MAX_WORKFLOW_ARTIFACT_ENTRIES,
+    DatasetManifest,
+    ExperimentPlan,
+    PlanningRequest,
+    Trial,
+    WorkflowError,
+)
+
+
+def artifact_entry_bound(request: PlanningRequest, *, trials: int, builds: int) -> int:
+    """Reserve conservative directory/file capacity before expanding a native sweep.
+
+    Parameters
+    ----------
+    request : PlanningRequest
+        Declared maximum physical invocations, including interrupted attempts.
+    trials, builds : int
+        Positive resolved coordinate count and registered native build count.
+
+    Returns
+    -------
+    int
+        Entry allowance, not bytes: 128 shared entries, 64 directories/metadata
+        entries per trial, and 5 build entries plus 16 transient/receipt entries
+        per trial/invocation. Five covers native Parquet, per-build checkpoints,
+        both immutable stage copies and frozen learning checkpoints. Reserving
+        the complete tree again for every invocation conservatively covers retries.
+
+    Notes
+    -----
+    Pure metadata arithmetic; no grid allocation, outcomes, RNG or I/O. It shares
+    the worker's fixed 32,768-entry ceiling. Byte/RSS/deadline limits still require
+    runtime observation; this reservation does not predict physical artifact size.
+    """
+    return 128 + trials * (64 + request.limits.max_attempts * (5 * builds + 16))
 
 
 def _cardinality(request: PlanningRequest, dataset: DatasetManifest) -> None:
@@ -33,6 +68,8 @@ def _cardinality(request: PlanningRequest, dataset: DatasetManifest) -> None:
         raise WorkflowError("Worst-case native build work, including retries, exceeds the declared cap")
     if request.evaluation == "protected":
         protected_repetition_design(request, dataset)
+    if artifact_entry_bound(request, trials=trials, builds=len(dataset.build_ids)) > MAX_WORKFLOW_ARTIFACT_ENTRIES:
+        raise WorkflowError("Worst-case workflow artifact entries exceed the worker ceiling before expansion")
 
 
 def _protected_request(request: PlanningRequest) -> None:

@@ -24,7 +24,7 @@ from coleman.evaluation.protected import (
 from coleman.results.domain import Fingerprint, decode_json
 from coleman.workflows.contracts import ExperimentPlan, Trial, WorkflowContract, WorkflowError
 from coleman.workflows.evidence import FrozenLearningState, FrozenWorkflowConfiguration
-from coleman.workflows.lifecycle import FilePin, TrialResult, WorkflowReport
+from coleman.workflows.lifecycle import FilePin, TrialResult, WorkflowReport, report_assumptions
 from coleman.workflows.planning import protected_repetition_design
 from coleman.workflows.repetitions import native_repetition_evidence
 
@@ -415,9 +415,5 @@ def compare_continuation(
         physical_attempts=read_attempts(root, plan),
         interpretation="insufficient_evidence",
         comparison=comparison,
-        assumptions=plan.dataset.assumptions
-        + (
-            "Constructed source; no empirical source admission.",
-            "Seeds/builds are aggregated within declared repository families; no automatic production promotion.",
-        ),
+        assumptions=report_assumptions(plan),
     )

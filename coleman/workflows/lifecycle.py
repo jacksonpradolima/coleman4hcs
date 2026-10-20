@@ -12,6 +12,7 @@ from coleman.results.domain import Fingerprint, Finite, Measurement
 from coleman.selection.contracts import Immutable
 from coleman.workflows.contracts import (
     DatasetManifest,
+    ExperimentPlan,
     Trial,
     WorkflowContract,
     WorkflowError,
@@ -319,7 +320,9 @@ class TrialResult(WorkflowContract):
     stage : str
         Descriptive, tuning prefix or protected continuation.
     native_run_id : str
-        Existing native configuration identity, never a replacement workflow ID.
+        Producer-asserted native configuration identity, never a replacement
+        workflow ID or verified portable provenance. Its hash includes host paths
+        absent from portable evidence; unchanged Parquet does not bind this claim.
     rows : tuple[NativeRow, ...]
         Complete prefix/output rows for this stage; protected filtering happens
         only after real stage-bounded native execution, never post-hoc tuning.
@@ -332,10 +335,39 @@ class TrialResult(WorkflowContract):
     trial_id: Fingerprint
     plan_fingerprint: Fingerprint
     stage: Stage
-    native_run_id: Annotated[str, Field(strict=True, pattern=r"^[0-9a-f]{12}$")]
+    native_run_id: Annotated[
+        str,
+        Field(
+            strict=True,
+            pattern=r"^[0-9a-f]{12}$",
+            description="Producer-asserted native ID; private path-derived identity is not verified by portable bytes.",
+        ),
+    ]
     rows: Annotated[tuple[NativeRow, ...], Field(min_length=1, max_length=512)]
     files: Annotated[tuple[FilePin, ...], Field(min_length=1, max_length=4096)]
     semantics: NativeSemantics = NativeSemantics()
+
+
+def report_assumptions(plan: ExperimentPlan) -> tuple[str, ...]:
+    """Return the exact source qualifications and mode-specific producer limitations.
+
+    Parameters
+    ----------
+    plan : ExperimentPlan
+        Frozen source declarations and descriptive/protected interpretation mode.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Original source assumptions followed by the unchanged v1 producer caveats
+        in canonical order. No outcome is inspected and no state is modified.
+    """
+    if plan.request.evaluation == "descriptive":
+        return plan.dataset.assumptions + ("Seeds are repetitions, not independent repositories.",)
+    return plan.dataset.assumptions + (
+        "Constructed source; no empirical source admission.",
+        "Seeds/builds are aggregated within declared repository families; no automatic production promotion.",
+    )
 
 
 class WorkflowReport(WorkflowContract):
@@ -534,7 +566,11 @@ class TrialSummary(WorkflowContract):
     trial_id, receipt_digest : str
         Actual logical coordinate and complete original receipt fingerprint.
     stage, native_run_id : str
-        Completed native stage and unchanged native configuration identity.
+        Completed native stage and producer-asserted native configuration ID.
+        This claim cannot be recomputed without private host execution paths.
+    native_run_id_verification : str
+        Always producer_asserted_unverified; native bytes verify metrics and
+        membership, not the path-derived native ID or authenticity of its producer.
     rows : tuple[BuildSummary, ...]
         Finite native quantities, excluding entire testcase ranking histories.
     files_count : int
@@ -547,8 +583,16 @@ class TrialSummary(WorkflowContract):
     artifact_type: Literal["coleman-workflow-trial-summary-v1"] = "coleman-workflow-trial-summary-v1"
     trial_id: Fingerprint
     receipt_digest: Fingerprint
+    native_run_id_verification: Literal["producer_asserted_unverified"] = "producer_asserted_unverified"
     stage: Stage
-    native_run_id: Annotated[str, Field(strict=True, pattern=r"^[0-9a-f]{12}$")]
+    native_run_id: Annotated[
+        str,
+        Field(
+            strict=True,
+            pattern=r"^[0-9a-f]{12}$",
+            description="Producer-asserted native ID; private path-derived identity is not verified by portable bytes.",
+        ),
+    ]
     rows: Annotated[tuple[BuildSummary, ...], Field(min_length=1, max_length=512)]
     files_count: Annotated[int, Field(strict=True, ge=1, le=4096)]
     semantics: NativeSemantics

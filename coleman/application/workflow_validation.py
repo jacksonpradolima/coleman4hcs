@@ -7,7 +7,7 @@ from coleman.evaluation.protected import BoundedMeanProtocol, FamilyReport
 from coleman.results.domain import decode_json, fingerprint
 from coleman.workflows.contracts import ExperimentPlan, WorkflowError
 from coleman.workflows.evidence import FrozenWorkflowConfiguration
-from coleman.workflows.lifecycle import WorkflowReport
+from coleman.workflows.lifecycle import WorkflowReport, report_assumptions
 from coleman.workflows.repetitions import native_repetition_evidence
 
 
@@ -132,6 +132,8 @@ def expected_trials_for_report(plan: ExperimentPlan, report: WorkflowReport) -> 
     interpretation = "descriptive_only" if plan.request.evaluation == "descriptive" else "insufficient_evidence"
     if report.interpretation != interpretation:
         raise WorkflowError("Workflow report interpretation contradicts its declared evaluation mode")
+    if report.assumptions != report_assumptions(plan):
+        raise WorkflowError("Workflow report assumptions differ from the source and producer declarations")
     _validate_attempts(plan, report)
     _validate_choices(plan, report)
     if plan.request.evaluation == "descriptive":

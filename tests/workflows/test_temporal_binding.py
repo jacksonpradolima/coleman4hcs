@@ -302,8 +302,11 @@ def test_protected_repetition_cell_limit_is_checked_before_expansion(tmp_path, m
         with pytest.raises(ValueError, match="16,384"):
             make_plan(request, dataset, runtime)
         return
-    plan = make_plan(request, dataset, runtime)
-    assert len(plan.trials) == 128
+    # The corpus design's exact cell boundary remains valid, while this many
+    # checkpointed native trials exceeds the stricter worker entry reservation.
+    assert len(protected_repetition_design(request, dataset).builds) * len(request.seeds) == 16384
+    with pytest.raises(ValueError, match="artifact.*entries"):
+        make_plan(request, dataset, runtime)
     assert dataset.temporal_plan is not None
     design = RepetitionDesign(
         schema_version=1,
