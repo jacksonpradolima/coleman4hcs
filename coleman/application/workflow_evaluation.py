@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 from fractions import Fraction
 from pathlib import Path
 
@@ -12,8 +11,6 @@ from coleman.application.workflow_artifacts import pin_file, read_attempts, veri
 from coleman.artifacts import ArtifactWriter
 from coleman.corpus.repeated import RepeatedCorpusReport
 from coleman.corpus.repeated_contracts import (
-    BUDGET_RATIO,
-    CorpusBuild,
     CorpusRepetition,
     RepetitionDesign,
     repetition_execution_id,
@@ -28,10 +25,10 @@ from coleman.evaluation.protected import (
     freeze,
 )
 from coleman.results.domain import DomainRecord, Fingerprint, Measurement, ResultProvenance, decode_json
-from coleman.selection.contracts import Quantity, UnitSemantics
 from coleman.workflows.contracts import ExperimentPlan, Trial, WorkflowContract, WorkflowError
 from coleman.workflows.evidence import FrozenLearningState, FrozenWorkflowConfiguration
 from coleman.workflows.lifecycle import FilePin, TrialResult, WorkflowReport
+from coleman.workflows.planning import protected_repetition_design
 
 
 class EvaluationHandoff(WorkflowContract):
@@ -83,11 +80,7 @@ def choose_configuration(plan: ExperimentPlan, results: tuple[TrialResult, ...],
     if plan.request.evaluation == "protected":
         assert plan.dataset.temporal_plan is not None
         validation_steps = {
-            i
-            for i, decision in enumerate(
-                plan.dataset.temporal_plan.split(tuple(item.observation for item in plan.dataset.metadata)), 1
-            )
-            if decision.partition == "validation"
+            i for i, decision in enumerate(plan.dataset.split_by_build(), 1) if decision.partition == "validation"
         }
     for result in results:
         trial = coordinates[result.trial_id]
@@ -152,31 +145,7 @@ def prepare_evaluation(workspace: Path, root: Path, plan: ExperimentPlan) -> Eva
         + timedelta(seconds=plan.request.limits.attempt_seconds * plan.request.limits.max_attempts + 60),
     )
     analysis_plan = TemporalPlan.model_validate({**source_plan.model_dump(), "test_end": assembly_end})
-    decisions = source_plan.split(tuple(item.observation for item in plan.dataset.metadata))
-    builds = tuple(
-        CorpusBuild(
-            member_id=f"build-{item.build_id}", project_id=item.unit_id, unit_id=item.unit_id, metadata=item.observation
-        )
-        for item, decision in zip(plan.dataset.metadata, decisions, strict=True)
-        if decision.partition == "test"
-    )
-    metric = plan.request.objective
-    meaning = f"coleman.native.{metric}.binary64.v1"
-    design = RepetitionDesign(
-        schema_version=1,
-        fold_id="workflow-protected-v1",
-        data_fingerprint=plan.dataset.fingerprint,
-        evidence_basis="constructed_mechanism",
-        source_admission_fingerprint=None,
-        plan=analysis_plan,
-        warmup_end=analysis_plan.train_end,
-        budget=Quantity(value=Decimal(str(plan.request.budget.values[0])), semantics=BUDGET_RATIO),
-        seeds=plan.request.seeds,
-        builds=builds,
-        raw_metric=f"workflow_{metric}",
-        raw_semantics=UnitSemantics(unit="1", meaning=meaning),
-        cost_projection="binary32_carried_binary64_seconds_v1",
-    )
+    design = protected_repetition_design(plan.request, plan.dataset, analysis_plan=analysis_plan)
     pins = []
     by_candidate = []
     for name, config in (("challenger", challenger), ("baseline", baseline)):

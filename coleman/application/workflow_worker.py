@@ -107,10 +107,7 @@ def _require_committed_progress(root: Path, job: JobRecord, trial: Trial) -> Non
 def _prefix_steps(plan: ExperimentPlan) -> int:
     """Count the already eligible chronological train/validation frontier without reading outcomes."""
     assert plan.dataset.temporal_plan is not None
-    return sum(
-        item.partition != "test"
-        for item in plan.dataset.temporal_plan.split(tuple(item.observation for item in plan.dataset.metadata))
-    )
+    return sum(item.partition != "test" for item in plan.dataset.split_by_build())
 
 
 def _reserve_attempt(store: WorkflowStore, job: JobRecord, plan: ExperimentPlan, trial: Trial) -> str:

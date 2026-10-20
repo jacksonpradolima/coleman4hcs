@@ -348,6 +348,15 @@ requires `max_attempts` of at least two, covering the tuning worker and
 the separate evaluation worker. A one-invocation protected plan rejects before
 sweep expansion or admission. Descriptive replay can use one invocation.
 
+Temporal decisions are joined by observation **and revision** identity back to
+native build order. Alphabetical observation labels never change the learning
+sequence, validation choice or holdout membership. Protected stages must form a
+contiguous training/validation/test sequence in that native order. Before sweep
+expansion, the planner validates the same repetition design used by evaluation:
+at most **16,384 test-build/seed cells per candidate**, complete membership and
+no duplicated protected source revisions or sibling groups. Seeds remain
+repetitions; they do not create independent repository families.
+
 The fixture's host-authored metadata declares train build 1, validation build 2
 and test build 3. Native
 source filtering happens **before** eager outcome materialization. Each trial

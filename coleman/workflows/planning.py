@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import math
+from decimal import Decimal
 
+from coleman.corpus.repeated_contracts import BUDGET_RATIO, CorpusBuild, RepetitionDesign
+from coleman.evaluation.protected import TemporalPlan
 from coleman.results.domain import canonical_json, fingerprint
+from coleman.selection.contracts import Quantity, UnitSemantics
 from coleman.spec import RunSpec
 from coleman.spec.runtime_identity import InstalledRuntime
 from coleman.spec.sweep import SweepAxis, SweepSpec, expand_sweep
@@ -28,26 +32,30 @@ def _cardinality(request: PlanningRequest, dataset: DatasetManifest) -> None:
     if trials * len(dataset.build_ids) * limits.max_attempts > limits.max_build_work:
         raise WorkflowError("Worst-case native build work, including retries, exceeds the declared cap")
     if request.evaluation == "protected":
-        if limits.max_attempts < 2:
-            raise WorkflowError(
-                "Protected execution requires at least two worker invocations for tuning and evaluation"
-            )
-        if request.budget.mode.value != "ratio" or len(request.budget.values) != 1 or "UCB" not in request.policies:
-            raise WorkflowError(
-                "Protected v1 requires one ratio budget and Random/UCB; other budgets support descriptive replay"
-            )
-        _protected_eligibility(dataset)
+        protected_repetition_design(request, dataset)
+
+
+def _protected_request(request: PlanningRequest) -> None:
+    """Require executable native protected settings before interpreting a ratio budget."""
+    if request.evaluation != "protected":
+        raise WorkflowError("Protected repetition design requires a protected request")
+    if request.limits.max_attempts < 2:
+        raise WorkflowError("Protected execution requires at least two worker invocations for tuning and evaluation")
+    if request.budget.mode.value != "ratio" or len(request.budget.values) != 1 or "UCB" not in request.policies:
+        raise WorkflowError(
+            "Protected v1 requires one ratio budget and Random/UCB; other budgets support descriptive replay"
+        )
 
 
 def _protected_eligibility(dataset: DatasetManifest) -> None:
-    """Require complete declared stage/clock/cost eligibility, never fabricate source admission."""
+    """Validate source eligibility in native build order without reading outcomes."""
     if dataset.temporal_plan is None or not dataset.metadata:
         raise WorkflowError("Protected execution requires host-registered temporal/group metadata")
     if dataset.evidence != "constructed_mechanism":
         raise WorkflowError("Insufficient evidence: source registration does not grant empirical protected admission")
     if not all(item.costs_known_at_decision for item in dataset.metadata):
         raise WorkflowError("Protected execution requires declared predecision scheduling costs")
-    decisions = dataset.temporal_plan.split(tuple(item.observation for item in dataset.metadata))
+    decisions = dataset.split_by_build()
     if not all(item.eligible for item in decisions):
         raise WorkflowError("Protected execution rejects late/unavailable outcomes and overlapping groups")
     partitions = tuple(item.partition for item in decisions)
@@ -56,6 +64,78 @@ def _protected_eligibility(dataset: DatasetManifest) -> None:
     order = {"train": 0, "validation": 1, "test": 2}
     if list(partitions) != sorted(partitions, key=lambda item: order[str(item)]):
         raise WorkflowError("Native stage continuation requires chronological contiguous partitions")
+
+
+def protected_repetition_design(
+    request: PlanningRequest, dataset: DatasetManifest, *, analysis_plan: TemporalPlan | None = None
+) -> RepetitionDesign:
+    """Validate the actual protected repetition contract before expanding native trials.
+
+    Parameters
+    ----------
+    request : PlanningRequest
+        Protected request with explicit seeds, objective and one native ratio
+        budget. The existing design validates units and its per-candidate cell cap.
+    dataset : DatasetManifest
+        Complete declared build/observation identities and source split. Decisions
+        join by observation/revision identity into the original native build order.
+    analysis_plan : TemporalPlan or None
+        Optional metric assembly window. Only test_end may extend the original
+        source cutoff; source train/validation boundaries and field mappings remain
+        fixed. None uses the unchanged source temporal plan for preflight.
+
+    Returns
+    -------
+    RepetitionDesign
+        Existing authoritative corpus contract, including the 16,384 build/seed
+        cells-per-candidate bound, complete membership and sibling/revision guards.
+        Seeds remain repetitions, never additional independent repository families.
+
+    Raises
+    ------
+    ValueError
+        Ineligible source/request, shifted partitions/mappings, invalid native
+        units, ambiguous membership or excessive cells. No sweep is expanded.
+
+    Notes
+    -----
+    Pure bounded metadata validation: no outcome, file, RNG, worker or audit access.
+    The application uses this same factory when freezing its actual assembly
+    window, preventing planning/admission from accepting an unbuildable design.
+    """
+    request, dataset = PlanningRequest.model_validate(request), DatasetManifest.model_validate(dataset)
+    _protected_request(request)
+    _protected_eligibility(dataset)
+    assert dataset.temporal_plan is not None
+    source = dataset.temporal_plan
+    analysis = source if analysis_plan is None else TemporalPlan.model_validate(analysis_plan)
+    expected = TemporalPlan.model_validate({**source.model_dump(), "test_end": analysis.test_end})
+    if analysis != expected or analysis.test_end < source.test_end:
+        raise WorkflowError("Analysis window must retain source partitions and field mappings")
+    decisions = dataset.split_by_build()
+    builds = tuple(
+        CorpusBuild(
+            member_id=f"build-{item.build_id}", project_id=item.unit_id, unit_id=item.unit_id, metadata=item.observation
+        )
+        for item, decision in zip(dataset.metadata, decisions, strict=True)
+        if decision.partition == "test"
+    )
+    metric = request.objective
+    return RepetitionDesign(
+        schema_version=1,
+        fold_id="workflow-protected-v1",
+        data_fingerprint=dataset.fingerprint,
+        evidence_basis="constructed_mechanism",
+        source_admission_fingerprint=None,
+        plan=analysis,
+        warmup_end=analysis.train_end,
+        budget=Quantity(value=Decimal(str(request.budget.values[0])), semantics=BUDGET_RATIO),
+        seeds=request.seeds,
+        builds=builds,
+        raw_metric=f"workflow_{metric}",
+        raw_semantics=UnitSemantics(unit="1", meaning=f"coleman.native.{metric}.binary64.v1"),
+        cost_projection="binary32_carried_binary64_seconds_v1",
+    )
 
 
 def base_spec(request: PlanningRequest, policy: str) -> RunSpec:

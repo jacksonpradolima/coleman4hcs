@@ -63,6 +63,12 @@ availability metadata. Tuning accesses training/validation only, then freezes th
 candidate, baseline, learned-state identity, family and protocol before reserving
 holdout access in the existing persistent evaluation audit.
 
+The splitter's observation/revision sort is an audit order. The workflow joins
+those identities back to the registered native build sequence before checking
+contiguity, choosing validation rows, or constructing protected members. Planning
+and evaluation share the existing repetition-design validator, including its
+16,384 build/seed-cell cap per candidate and sibling/revision exclusions.
+
 Once an evaluation worker owns execution, it freezes a current bounded assembly
 cutoff in a separate immutable context for that invocation. Long queues and later
 recovery do not reuse an expired cutoff. Source membership and partitions,
@@ -82,7 +88,8 @@ flowchart TD
     Registry[Host-approved staged snapshots] --> Admission[Transactional quotas and immutable publication]
     Admission --> App
     App --> Plan[Immutable experiment plan]
-    Plan --> Jobs[Durable job and attempt metadata]
+    Plan --> Preflight[Native build identity order and protected repetition validation]
+    Preflight --> Jobs[Durable job and attempt metadata]
     Jobs --> Ownership[SQLite transitions and kernel ownership]
     Jobs --> Ack[Versioned queue observation acknowledgement]
     Ack --> Ownership

@@ -7,7 +7,7 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, model_validator
 
 from coleman.budget import BudgetMode
-from coleman.evaluation.protected import TemporalObservation, TemporalPlan
+from coleman.evaluation.protected import SplitDecision, TemporalObservation, TemporalPlan
 from coleman.results.domain import Fingerprint, Finite
 from coleman.results.versioned import VersionedContract
 from coleman.selection.contracts import Immutable
@@ -246,6 +246,35 @@ class DatasetManifest(WorkflowContract):
     ]
     metadata: Annotated[tuple[BuildMetadata, ...], Field(max_length=512)] = ()
     temporal_plan: TemporalPlan | None = None
+
+    def split_by_build(self) -> tuple[SplitDecision, ...]:
+        """Return source temporal decisions joined to the immutable native build sequence.
+
+        Returns
+        -------
+        tuple[SplitDecision, ...]
+            One decision per metadata/build ID, in exactly build_ids order. The
+            existing splitter sorts by observation/revision identity; that ordering
+            never determines native learning ordinals or protected membership.
+
+        Raises
+        ------
+        ValueError
+            Missing temporal declarations or invalid observation/group identity.
+
+        Notes
+        -----
+        Joins by both observation_id and revision_id, retaining distinct revisions.
+        Reads only declared metadata; no outcomes, files, runtime state or source
+        data are loaded or changed. Serialization and native build IDs are unchanged.
+        """
+        if self.temporal_plan is None or not self.metadata:
+            raise WorkflowError("Temporal build decisions require complete registered metadata")
+        decisions = self.temporal_plan.split(tuple(item.observation for item in self.metadata))
+        by_revision = {(item.observation.observation_id, item.observation.revision_id): item for item in decisions}
+        return tuple(
+            by_revision[item.observation.observation_id, item.observation.revision_id] for item in self.metadata
+        )
 
     @model_validator(mode="after")
     def _membership(self) -> Self:

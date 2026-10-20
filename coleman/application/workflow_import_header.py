@@ -38,6 +38,11 @@ def _value_end(payload: str, index: int) -> int:
         if end == index:
             raise WorkflowError("Missing portable JSON value")
         return end
+    return _container_end(payload, index)
+
+
+def _container_end(payload: str, index: int) -> int:
+    """Locate a bounded raw container end, never decoding its scalar or string values."""
     expected = [_CLOSING[payload[index]]]
     index += 1
     while expected and index < len(payload):
@@ -57,20 +62,26 @@ def _value_end(payload: str, index: int) -> int:
     return index
 
 
+def _member_name(payload: str, index: int, seen: set[str]) -> tuple[str, int]:
+    """Decode only one known top-level member name, retaining its original colon offset."""
+    if payload[index] != '"':
+        raise WorkflowError("Portable JSON requires quoted member names")
+    end = _string_end(payload, index)
+    name = decode_json(payload[index:end])
+    if name not in _MEMBERS or name in seen:
+        raise WorkflowError("Unknown or duplicate portable JSON member")
+    seen.add(name)
+    separator = _space(payload, end)
+    if separator >= len(payload) or payload[separator] != ":":
+        raise WorkflowError("Portable JSON member requires a colon")
+    return name, separator
+
+
 def _members(payload: str, index: int) -> tuple[list[str], int]:
     """Project the four header spans, inspecting only the six known top-level key names."""
     pieces, seen = [], set()
     while index < len(payload):
-        if payload[index] != '"':
-            raise WorkflowError("Portable JSON requires quoted member names")
-        end = _string_end(payload, index)
-        name = decode_json(payload[index:end])
-        if name not in _MEMBERS or name in seen:
-            raise WorkflowError("Unknown or duplicate portable JSON member")
-        seen.add(name)
-        separator = _space(payload, end)
-        if separator >= len(payload) or payload[separator] != ":":
-            raise WorkflowError("Portable JSON member requires a colon")
+        name, separator = _member_name(payload, index, seen)
         start = _space(payload, separator + 1)
         end = _value_end(payload, start)
         if name in _HEADERS:

@@ -108,7 +108,7 @@ def _planned_policies(plan, configs) -> None:
 def _grouped_native(plan, report, configs):
     """Group actual binary64 observations by candidate/family/build, retaining every seed."""
     assert plan.dataset.temporal_plan is not None
-    decisions = plan.dataset.temporal_plan.split(tuple(item.observation for item in plan.dataset.metadata))
+    decisions = plan.dataset.split_by_build()
     metadata = {
         item.build_id: item
         for item, decision in zip(plan.dataset.metadata, decisions, strict=True)

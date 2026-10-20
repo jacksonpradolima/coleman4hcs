@@ -110,8 +110,10 @@ def test_original_source_etl_output_cannot_bypass_workspace_quotas(tmp_path):
     from coleman.corpus.materialization import SourceCache
 
     service = WorkflowService(tmp_path / "workspace")
+    cache = SourceCache(tmp_path / "cache")
+    output = service.store.root / "etl"
     with pytest.raises(ValueError, match="outside the workflow workspace"):
-        register_karaf(service, SourceCache(tmp_path / "cache"), service.store.root / "etl")
+        register_karaf(service, cache, output)
 
 
 @pytest.mark.parametrize("reason", ["count", "bytes", "conflict", "manifest"])
