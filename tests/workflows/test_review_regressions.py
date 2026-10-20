@@ -480,3 +480,33 @@ def test_rejected_import_retry_retains_one_attempt_and_exposure(protected_eviden
         saved = connection.execute("SELECT payload FROM settings WHERE name='import_exposure_attempts_v1'").fetchone()
         assert connection.execute("SELECT count(*) FROM imports").fetchone()[0] == 0
     assert len(json.loads(saved[0])["identities"]) == 1
+
+
+@pytest.mark.parametrize("mode", ["canonical", "reordered", "busy"])
+def test_import_does_not_decode_outcome_json_before_exposure(protected_evidence, tmp_path, monkeypatch, mode):
+    payload = protected_evidence.to_json()
+    if mode == "reordered":
+        data = json.loads(payload)
+        payload = json.dumps(dict(reversed(tuple(data.items()))), indent=2)
+    service = WorkflowService(tmp_path)
+    original = json.JSONDecoder.raw_decode
+    decoded = []
+
+    def guarded(decoder, document, idx=0):
+        if document == payload:
+            if not list((tmp_path / "source-exposures").rglob("*.json")):
+                raise RuntimeError("Outcome-bearing JSON was decoded before its source exposure")
+            decoded.append(document)
+        return original(decoder, document, idx)
+
+    monkeypatch.setattr(json.JSONDecoder, "raw_decode", guarded)
+    if mode == "busy":
+        with (
+            source_lock(tmp_path, protected_evidence.plan.dataset.source_fingerprint),
+            pytest.raises(BaselineBusyError),
+        ):
+            service.import_evidence(payload)
+        assert not decoded
+    else:
+        assert service.import_evidence(payload).read_only
+        assert decoded

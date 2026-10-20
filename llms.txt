@@ -6421,9 +6421,10 @@ holdout outcomes or manufacture another access.
 Descriptive full-history execution and imported outcome evidence also leave
 durable source-exposure markers. Before protected access, those markers become
 development-access receipts in the existing audit, retaining their original
-operational timestamps separately. Import reserves exposure after checking the
-versioned source header and before decoding native outcomes or checking retention
-capacity. A later validation or quota failure therefore preserves conservative
+operational timestamps separately. Import structurally scans the v1 JSON envelope
+without decoding its report or file values, then validates only the source/version
+header. It reserves exposure before interpreting outcome-bearing JSON, decoding
+native Parquet or checking retention capacity. A later validation or quota failure therefore preserves conservative
 exposure. Repeating the exact payload reuses that attempt; different encodings
 can overcount accesses while retaining the same logical evidence handle.
 At most 1024 distinct import attempts are retained globally per workspace,
@@ -6456,24 +6457,28 @@ budget modes remain available for descriptive replay.
 
 ## Register a real local history
 
-Trusted host code first validates and snapshots approved native Parquet:
+Trusted host code prepares approved native Parquet in a temporary directory,
+then admits and publishes it under the workspace's transactional quotas:
 
 ```python
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from coleman.application.workflow_registry import snapshot_history
 from coleman.application.workflows import WorkflowService
 
 service = WorkflowService(Path("/tmp/my-ci-workspace"))
-manifest = snapshot_history(
-    service.store.root,
-    Path("/approved/local/ci/features-engineered.parquet"),
-    dataset_id="reviewed-ci-history",
-    source_fingerprint="sha256:" + "a" * 64,
-    projection_fingerprint="sha256:" + "b" * 64,
-    evidence="descriptive_source",
-    assumptions=("Recorded outcome replay; no empirical protected admission.",),
-)
-service.register(manifest)
+with TemporaryDirectory(prefix="coleman-host-registration-") as temporary:
+    staging = Path(temporary)
+    manifest = snapshot_history(
+        staging,
+        Path("/approved/local/ci/features-engineered.parquet"),
+        dataset_id="reviewed-ci-history",
+        source_fingerprint="sha256:" + "a" * 64,
+        projection_fingerprint="sha256:" + "b" * 64,
+        evidence="descriptive_source",
+        assumptions=("Recorded outcome replay; no empirical protected admission.",),
+    )
+    service.register(manifest, snapshot_root=staging)
 ```
 
 Replace the illustrative path and hashes with the **actual reviewed source and
@@ -6481,6 +6486,16 @@ projection fingerprints**. The API cannot verify an upstream scientific claim
 from a caller-provided label. It does verify exact native bytes, shape, finite
 seconds, binary outcomes, unique build/test membership and immutable registration.
 A friendly ID cannot later be rebound to different bytes or declarations.
+
+CLI registration uses the same temporary preparation boundary. Rejected capacity,
+identity or manifest checks leave no new snapshot in the workspace. An interrupted
+publication can leave bytes before the metadata commit; those unregistered files
+consume physical dataset slots and bytes. They cannot bypass subsequent quotas,
+and retrying the same reviewed snapshot reuses its unchanged bytes. Cleanup never
+guesses that an unregistered file is safe to delete. The older workspace-prepared
+`register(manifest)` call remains available, but `snapshot_history` itself is a
+preparation function and has no quota or admission authority. Keep original-source
+ETL output outside the workflow workspace as well.
 
 For a pinned original-source starting point, prepare the existing
 [Karaf Parquet workflow](lrts-parquet-etl.md). Its receipt conserves 6,876 original
@@ -15561,7 +15576,8 @@ its independent-unit count and its protected result is insufficient evidence.
 ```mermaid
 flowchart TD
     Client[MCP client or CLI/library] --> App[Typed application services]
-    Registry[Host-approved snapshots] --> App
+    Registry[Host-approved staged snapshots] --> Admission[Transactional quotas and immutable publication]
+    Admission --> App
     App --> Plan[Immutable experiment plan]
     Plan --> Jobs[Durable job and attempt metadata]
     Jobs --> Ownership[SQLite transitions and kernel ownership]
@@ -15570,7 +15586,7 @@ flowchart TD
     Ownership --> Runner[Existing native runner and sweeps]
     Runner --> Store[Parquet and native checkpoints with versioned RNG extra state]
     Runner --> Exposure[Stable upstream source exposure]
-    Import[Read-only import source header] --> Exposure
+    Import[Source header with opaque JSON body] --> Exposure
     Exposure --> Decode[Native outcome validation and bounded retention]
     Exposure --> Audit[Existing protected-access audit]
     Ownership --> Window[Assembly cutoff after evaluation ownership]

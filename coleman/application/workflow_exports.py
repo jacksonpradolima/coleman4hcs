@@ -9,6 +9,7 @@ from urllib.parse import unquote
 from pydantic import Field, model_validator
 
 from coleman.application.contracts import PortableFile
+from coleman.application.workflow_import_header import _source_header
 from coleman.application.workflow_validation import expected_trials_for_report
 from coleman.results.domain import Fingerprint
 from coleman.workflows.contracts import ExperimentPlan, WorkflowContract, WorkflowError, WorkflowId
@@ -57,15 +58,7 @@ def evidence_source_plan(payload: str) -> ExperimentPlan:
         Oversized/nonobject JSON, duplicate keys, unknown versions or invalid plan.
         No files are written and no scientific source authenticity is granted.
     """
-    from coleman.results.domain import decode_json
-
-    if len(payload.encode()) > 2097152:
-        raise WorkflowError("Portable workflow JSON exceeds 2 MiB")
-    raw = decode_json(payload, exact_decimals=True)
-    if not isinstance(raw, dict):
-        raise WorkflowError("Portable workflow evidence requires a JSON object")
-    header = {name: raw[name] for name in ("schema_version", "contract", "artifact_type", "plan") if name in raw}
-    return _EvidenceSourceHeader.model_validate(header).plan
+    return _EvidenceSourceHeader.from_json(_source_header(payload)).plan
 
 
 def _native_table(file: WorkflowPortableFile, maximum_decoded: int = 67108864):

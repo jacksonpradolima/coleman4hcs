@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import shutil
 import time
 from contextlib import closing
@@ -105,7 +106,7 @@ class WorkflowService:
         self._start()
         return views
 
-    def register(self, manifest: DatasetManifest) -> DatasetManifest:
+    def register(self, manifest: DatasetManifest, *, snapshot_root: Path | None = None) -> DatasetManifest:
         """Admit a host-prepared exact-byte snapshot with finite aggregate registry bounds.
 
         Parameters
@@ -113,6 +114,10 @@ class WorkflowService:
         manifest : DatasetManifest
             Trusted snapshot produced by workflow_registry, including actual source
             and projection identities. This method is intentionally absent from MCP.
+        snapshot_root : pathlib.Path or None
+            Trusted temporary preparation root, outside the workspace. Its validated
+            snapshot is copied only after transactional ID/count/byte admission.
+            None preserves the existing workspace-snapshot registration API.
 
         Returns
         -------
@@ -123,19 +128,31 @@ class WorkflowService:
         ------
         ValueError, OSError
             Conflicting ID, missing/altered snapshot or registry/byte limit exceeded.
+
+        Notes
+        -----
+        Publication and metadata admission share the registry transaction. A crash
+        after atomic byte publication but before metadata commit may leave a snapshot;
+        it consumes physical count/byte capacity, including on later retries. No
+        unregistered file is silently deleted or treated as completed registration.
         """
         from coleman.application.workflow_artifacts import pin_file
 
         manifest = DatasetManifest.model_validate(manifest)
         if len(manifest.to_json().encode()) > 262144:
             raise WorkflowError("Registered source metadata exceeds 256 KiB")
-        path = self.store.root / "datasets" / f"{manifest.sha256[7:]}.parquet"
-        pin = pin_file(self.store.root, path)
+        source_root = self.store.root if snapshot_root is None else snapshot_root.absolute()
+        path = source_root / "datasets" / f"{manifest.sha256[7:]}.parquet"
+        pin = pin_file(source_root, path)
         if (pin.sha256, pin.size_bytes) != (manifest.sha256, manifest.size_bytes):
             raise WorkflowError("Registered input bytes do not match the manifest")
-        from coleman.application.workflow_registry import inspect_history
+        from coleman.application.workflow_registry import _publish_snapshot, inspect_history
 
-        frame = inspect_history(path.read_bytes())
+        with path.open("rb") as stream:
+            payload = stream.read(67108865)
+        if ("sha256:" + hashlib.sha256(payload).hexdigest(), len(payload)) != (manifest.sha256, manifest.size_bytes):
+            raise WorkflowError("Registered input changed during validation")
+        frame = inspect_history(payload)
         dimensions = (
             tuple(sorted(frame["BuildId"].unique().to_list())),
             frame.height,
@@ -149,11 +166,13 @@ class WorkflowService:
             if existing is not None:
                 if existing != manifest:
                     raise WorkflowError("Registered dataset ID cannot be silently replaced")
+                _publish_snapshot(self.store, manifest, payload)
                 return existing
             if len(values) >= self.store.policy.max_datasets:
                 raise WorkflowError("Dataset registry is full; create another owned workspace")
             if sum(value.size_bytes for value in values) + manifest.size_bytes > self.store.policy.max_registered_bytes:
                 raise WorkflowError("Aggregate registered input byte limit exceeded")
+            _publish_snapshot(self.store, manifest, payload)
             connection.execute("INSERT INTO datasets VALUES (?,?)", (manifest.dataset_id, manifest.to_json()))
         return manifest
 

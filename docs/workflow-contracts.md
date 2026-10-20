@@ -79,7 +79,8 @@ its independent-unit count and its protected result is insufficient evidence.
 ```mermaid
 flowchart TD
     Client[MCP client or CLI/library] --> App[Typed application services]
-    Registry[Host-approved snapshots] --> App
+    Registry[Host-approved staged snapshots] --> Admission[Transactional quotas and immutable publication]
+    Admission --> App
     App --> Plan[Immutable experiment plan]
     Plan --> Jobs[Durable job and attempt metadata]
     Jobs --> Ownership[SQLite transitions and kernel ownership]
@@ -88,7 +89,7 @@ flowchart TD
     Ownership --> Runner[Existing native runner and sweeps]
     Runner --> Store[Parquet and native checkpoints with versioned RNG extra state]
     Runner --> Exposure[Stable upstream source exposure]
-    Import[Read-only import source header] --> Exposure
+    Import[Source header with opaque JSON body] --> Exposure
     Exposure --> Decode[Native outcome validation and bounded retention]
     Exposure --> Audit[Existing protected-access audit]
     Ownership --> Window[Assembly cutoff after evaluation ownership]

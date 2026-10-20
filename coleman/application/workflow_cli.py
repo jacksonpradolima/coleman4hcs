@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from coleman.application.baseline_storage import read_baseline_artifact
 from coleman.application.workflow_registry import owned_fixture, snapshot_history
@@ -73,7 +74,9 @@ def run_command(args: argparse.Namespace) -> None:
     service = WorkflowService(args.workspace)
     operation = args.operation
     if operation == "init-fixture":
-        value = service.register(owned_fixture(service.store.root))
+        with TemporaryDirectory(prefix="coleman-workflow-registration-") as temporary:
+            staging = Path(temporary)
+            value = service.register(owned_fixture(staging), snapshot_root=staging)
     elif operation in ("register", "register-karaf"):
         value = _register(args, service)
     elif operation == "discover":
@@ -135,18 +138,20 @@ def _register(args, service):
         if args.input is None or args.manifest is None:
             raise ValueError("register requires --input and --manifest from trusted host setup")
         reviewed = read_baseline_artifact(args.manifest, DatasetManifest)
-        actual = snapshot_history(
-            service.store.root,
-            args.input,
-            dataset_id=reviewed.dataset_id,
-            source_fingerprint=reviewed.source_fingerprint,
-            projection_fingerprint=reviewed.projection_fingerprint,
-            evidence=reviewed.evidence,
-            assumptions=reviewed.assumptions,
-            metadata=reviewed.metadata,
-            temporal_plan=reviewed.temporal_plan,
-        )
-        if reviewed != actual:
-            raise ValueError("Reviewed dataset manifest differs from actual snapshot bytes/dimensions")
-        value = service.register(actual)
+        with TemporaryDirectory(prefix="coleman-workflow-registration-") as temporary:
+            staging = Path(temporary)
+            actual = snapshot_history(
+                staging,
+                args.input,
+                dataset_id=reviewed.dataset_id,
+                source_fingerprint=reviewed.source_fingerprint,
+                projection_fingerprint=reviewed.projection_fingerprint,
+                evidence=reviewed.evidence,
+                assumptions=reviewed.assumptions,
+                metadata=reviewed.metadata,
+                temporal_plan=reviewed.temporal_plan,
+            )
+            if reviewed != actual:
+                raise ValueError("Reviewed dataset manifest differs from actual snapshot bytes/dimensions")
+            value = service.register(actual, snapshot_root=staging)
     return value

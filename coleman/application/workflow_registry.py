@@ -6,7 +6,7 @@ import hashlib
 import io
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import polars as pl
 import pyarrow.parquet as pq
@@ -16,9 +16,38 @@ from coleman.artifacts import ArtifactWriter
 from coleman.corpus.materialization import validate_source_storage
 from coleman.evaluation.protected import TemporalObservation, TemporalPlan
 from coleman.results.domain import fingerprint
-from coleman.workflows.contracts import BuildMetadata, DatasetManifest
+from coleman.workflows.contracts import BuildMetadata, DatasetManifest, WorkflowError
+
+if TYPE_CHECKING:
+    from coleman.application.workflow_store import WorkflowStore
 
 _REQUIRED = {"BuildId", "Name", "Duration", "Verdict", "CalcPrio", "LastRun"}
+
+
+def _publish_snapshot(store: WorkflowStore, manifest: DatasetManifest, payload: bytes) -> None:
+    """Publish validated bytes under the caller's registry transaction, counting orphan files.
+
+    Existing exact bytes are reusable without another physical reservation. Every
+    flat snapshot-directory entry, including publication debris, consumes one
+    physical dataset slot and its encoded byte size. The immutable host policy
+    bounds both before a new write. Capacity/storage failures propagate without
+    deleting shared files or claiming metadata admission. Call only after logical
+    ID/count/byte checks while holding WorkflowStore.transaction().
+    """
+    directory = store.root / "datasets"
+    target = directory / f"{manifest.sha256[7:]}.parquet"
+    validate_source_storage(directory)
+    if not target.exists():
+        entries = tuple(directory.iterdir()) if directory.exists() else ()
+        for entry in entries:
+            validate_source_storage(entry)
+        if any(not entry.is_file() for entry in entries):
+            raise WorkflowError("Snapshot directory contains unsupported entries")
+        if len(entries) >= store.policy.max_datasets:
+            raise WorkflowError("Physical snapshot slots exhausted, including unregistered files")
+        if sum(entry.stat().st_size for entry in entries) + len(payload) > store.policy.max_registered_bytes:
+            raise WorkflowError("Physical snapshot byte limit exceeded, including unregistered files")
+    ArtifactWriter(store.root).write_immutable_stream(target, (payload,), maximum_bytes=len(payload))
 
 
 def inspect_history(payload: bytes) -> pl.DataFrame:
@@ -94,7 +123,10 @@ def snapshot_history(
     Parameters
     ----------
     root : pathlib.Path
-        Trusted workspace root; completed bytes publish immutably below datasets/.
+        Trusted preparation root; completed bytes publish immutably below datasets/.
+        Prefer a temporary root outside the workspace, then pass snapshot_root to
+        WorkflowService.register. This preparation function has no host quota or
+        admission authority and deliberately performs no registry mutation.
     path : pathlib.Path
         Trusted host input, read once with a 64 MiB cap; tools cannot supply it.
     dataset_id : str
