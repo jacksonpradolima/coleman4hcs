@@ -1,8 +1,10 @@
 """Actual native global-RNG checkpoint extension, legacy rejection and mathematical continuation."""
 
 import json
+import pickle
 import subprocess
 import sys
+from dataclasses import replace
 
 import numpy as np
 import pytest
@@ -117,20 +119,31 @@ def test_descriptive_resume_cannot_reset_a_previously_committed_native_checkpoin
     root = tmp_path / "jobs" / job.job_id
     marker = next((root / "native").rglob("progress_ex1.json"))
     retained = marker.read_bytes()
+    checkpoint = marker.parent / "ckpt_ex1_step2.pkl"
+    original_checkpoint = checkpoint.read_bytes()
+    payload = LocalCheckpointStore(str(marker.parent.parent)).load(marker.parent.name, 1)
+    assert payload is not None
+    checkpoint.write_bytes(pickle.dumps(replace(payload, step=1)))
+    service.resume(job.job_id)
+    incompatible = wait(service, job.job_id, "failed")
+    assert incompatible.attempts == 2
+    assert incompatible.invocations == 2
+    assert incompatible.checkpoint_step == 2
+    checkpoint.write_bytes(original_checkpoint)
     native_bytes = {path: path.read_bytes() for path in (root / "native").rglob("*.parquet")}
     marker.unlink()
     service.resume(job.job_id)
     rejected = wait(service, job.job_id, "failed")
-    assert rejected.attempts == 1
-    assert rejected.invocations == 2
+    assert rejected.attempts == 2
+    assert rejected.invocations == 3
     assert rejected.error is not None
     assert "implicit reset" in rejected.error
     assert all(path.read_bytes() == value for path, value in native_bytes.items())
     marker.write_bytes(retained)
     service.resume(job.job_id)
     final = wait(service, job.job_id)
-    assert final.attempts == 2
-    assert final.invocations == 3
+    assert final.attempts == 3
+    assert final.invocations == 4
     reference = service.execute(ExecutePlan(schema_version=1, request_id="fresh-reference", plan_id=preview.plan_id))
     wait(service, reference.job_id)
     assert mathematics(service.report(job.job_id)) == mathematics(service.report(reference.job_id))

@@ -141,7 +141,8 @@ class PlanningRequest(WorkflowContract):
         retain their declared correspondence; constants are held fixed.
     objective : {'napfd', 'apfdc'}
         Legacy native quality column to maximize, both dimensionless; APFDc is
-        not seconds, runtime or money. The tie policy prefers Random, then ID.
+        not seconds, runtime or money. Ties prefer Random, then smaller UCB c,
+        then canonical configuration identity.
     evaluation : {'descriptive', 'protected'}
         Full-history descriptive replay or a separate eligible temporal workflow.
     limits : WorkflowLimits

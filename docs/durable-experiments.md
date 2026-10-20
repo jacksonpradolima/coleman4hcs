@@ -310,6 +310,8 @@ beginning. Once durable job metadata acknowledges a native commit, a missing
 checkpoint marker rejects continuation before another native invocation; it does
 not silently reset learning. Restoring the exact original private files permits
 compatible continuation. Portable evidence cannot supply those executable files.
+An unsuccessful restoration retains that acknowledged frontier as well: a later
+retry cannot erase the obligation to continue the original learned state.
 
 Native checkpoints also retain the global Random policy generator through the
 existing `CheckpointPayload.extra` extension, with a versioned PCG64 codec and

@@ -145,7 +145,7 @@ def _reserve_attempt(store: WorkflowStore, job: JobRecord, plan: ExperimentPlan,
                     **current.model_dump(),
                     "attempts": current.attempts + 1,
                     "current_trial": trial.trial_id,
-                    "checkpoint_step": 0,
+                    "checkpoint_step": job.checkpoint_step if job.current_trial == trial.trial_id else 0,
                     "changed": time.time(),
                 }
             ),
