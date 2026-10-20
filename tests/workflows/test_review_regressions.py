@@ -7,9 +7,8 @@ from dataclasses import replace
 
 import pytest
 
-from coleman.application.baseline_storage import read_baseline_artifact
 from coleman.application.workflow_checkpoint import WorkflowCheckpointStore
-from coleman.application.workflow_evaluation import EvaluationHandoff
+from coleman.application.workflow_evaluation import prepare_evaluation
 from coleman.application.workflow_exports import EvidenceBundle
 from coleman.checkpoint.checkpoint_store import LocalCheckpointStore
 from coleman.checkpoint.state import CheckpointPayload
@@ -120,7 +119,7 @@ def test_native_payload_must_match_its_marker_before_restoring_global_rng(tmp_pa
     assert policy_base._rng.bit_generator.state == before
 
 
-def test_pending_source_exposure_cannot_overfill_protected_audit_capacity(tmp_path, monkeypatch):
+def test_pending_source_exposure_cannot_overfill_protected_audit_capacity(tmp_path):
     service, descriptive = setup_workflow(tmp_path, seeds=(42,), ucb_exploration=(1.0,))
     job = service.execute(ExecutePlan(schema_version=1, request_id="prior-outcomes", plan_id=descriptive.plan_id))
     wait(service, job.job_id)
@@ -135,15 +134,14 @@ def test_pending_source_exposure_cannot_overfill_protected_audit_capacity(tmp_pa
     )
     job = service.execute(ExecutePlan(schema_version=1, request_id="scope-capacity", plan_id=protected.plan_id))
     wait(service, job.job_id, "awaiting_evaluation")
-    with monkeypatch.context() as patch:
-        patch.setattr(service, "_start", lambda: None)
-        service.evaluate(job.job_id)
     root = tmp_path / "jobs" / job.job_id
-    handoff = read_baseline_artifact(root / "evaluation-handoff.json", EvaluationHandoff)
+    # Freeze without queueing so a retained coordinator cannot admit protected
+    # work before the prior ledger is complete. Admission uses the real service.
+    handoff = prepare_evaluation(tmp_path, root, service.saved_plan(protected.plan_id))
     audit = EvaluationAudit(tmp_path / "audit")
     for _ in range(511):
         audit.access(handoff.frozen, partition="test", purpose="development", actor="capacity-regression")
-    service.reconnect()
+    service.evaluate(job.job_id)
     rejected = wait(service, job.job_id, "failed")
     assert rejected.result_digest is None
     assert rejected.attempts == 2
