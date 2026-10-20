@@ -31,9 +31,9 @@ def _read_job(store: WorkflowStore, job_id: str) -> JobRecord:
         return next(job for job in store.jobs(connection) if job.job_id == job_id)
 
 
-def _transition(store: WorkflowStore, job_id: str, **changes) -> JobRecord:
+def _transition(store: WorkflowStore, job_id: str, *, deadline: float | None = None, **changes) -> JobRecord:
     """Serialize one worker transition; cancellation wins after its transaction commits."""
-    with store.transaction() as connection:
+    with store.transaction(deadline=deadline) as connection:
         job = next(job for job in store.jobs(connection) if job.job_id == job_id)
         if job.state != "running":
             raise InterruptedError("Workflow is no longer running")
@@ -116,10 +116,12 @@ def _prefix_steps(plan: ExperimentPlan) -> int:
     return sum(item.partition != "test" for item in plan.dataset.split_by_build())
 
 
-def _reserve_attempt(store: WorkflowStore, job: JobRecord, plan: ExperimentPlan, trial: Trial) -> str:
+def _reserve_attempt(
+    store: WorkflowStore, job: JobRecord, plan: ExperimentPlan, trial: Trial, *, deadline: float | None = None
+) -> str:
     """Reserve one bounded physical invocation before native work; cancellation wins transactionally."""
     root = store.root / "jobs" / job.job_id
-    with store.transaction() as connection:
+    with store.transaction(deadline=deadline) as connection:
         current = next(item for item in store.jobs(connection) if item.job_id == job.job_id)
         if current.state != "running":
             raise InterruptedError("Workflow cancelled before native invocation")
@@ -165,11 +167,11 @@ def _execute_trial(store, job, plan, trial, steps, progress_hook, deadline) -> T
         from coleman.application.workflow_evaluation import require_continuation
 
         require_continuation(root, trial, _prefix_steps(plan))
-    attempt_id = _reserve_attempt(store, job, plan, trial)
+    attempt_id = _reserve_attempt(store, job, plan, trial, deadline=deadline)
 
     def progress(step: int) -> None:
         """Record only a real native commit before invoking the trusted interruption hook."""
-        _transition(store, job.job_id, checkpoint_step=step)
+        _transition(store, job.job_id, deadline=deadline, checkpoint_step=step)
         _check_output(store, job.job_id, plan, deadline)
         if progress_hook is not None:
             progress_hook(trial.trial_id, step)
@@ -203,7 +205,7 @@ def _trials(
         else:
             result = _execute_trial(store, job, plan, trial, steps, progress_hook, deadline)
         receipts.append(result)
-        _transition(store, job.job_id, completed_trials=len(receipts), current_trial=None)
+        _transition(store, job.job_id, deadline=deadline, completed_trials=len(receipts), current_trial=None)
     return tuple(receipts)
 
 
@@ -227,7 +229,7 @@ def _produce_report(store, job, plan, progress_hook, deadline):
             from coleman.evaluation.protected import EvaluationAudit
 
             EvaluationAudit(root / "audit").save_report(report.comparison)
-        _transition(store, job_id, completed_trials=len(report.trials), current_trial=None)
+        _transition(store, job_id, deadline=deadline, completed_trials=len(report.trials), current_trial=None)
     elif job.stage == "evaluation":
         handoff = read_baseline_artifact(root / "jobs" / job_id / "evaluation-handoff.json", EvaluationHandoff)
         handoff = prepare_evaluation_attempt(root, root / "jobs" / job_id, plan, handoff, job.invocations)
@@ -264,7 +266,7 @@ def _produce_report(store, job, plan, progress_hook, deadline):
 def _publish_completion(store, job_id, plan, report, deadline) -> None:
     """Publish complete bytes before the serialized completion transition; prior cancellation wins."""
     root = store.root
-    with store.transaction() as connection:
+    with store.transaction(deadline=deadline) as connection:
         current = next(item for item in store.jobs(connection) if item.job_id == job_id)
         if current.state != "running":
             raise InterruptedError("Cancellation won before report publication")
@@ -325,7 +327,7 @@ def run_job(root: Path, job_id: str, *, progress_hook: Callable[[str, int], None
             raise WorkflowError("Saved producer/runtime does not match this executable")
         if plan.native_threads != pl.thread_pool_size():
             raise WorkflowError("Native Polars thread profile differs from the frozen plan")
-        _transition(store, job_id, attempts=len(read_attempts(root / "jobs" / job_id, plan)))
+        _transition(store, job_id, deadline=deadline, attempts=len(read_attempts(root / "jobs" / job_id, plan)))
         _input(store, root / "jobs" / job_id, plan)
         if job.stage == "descriptive" and not (root / "jobs" / job_id / _COMPLETE_RECEIPT).exists():
             from coleman.application.workflow_exposure import mark_exposure
@@ -333,7 +335,7 @@ def run_job(root: Path, job_id: str, *, progress_hook: Callable[[str, int], None
             mark_exposure(root, plan, job_id, job.invocations, "descriptive_replay")
         report = _produce_report(store, job, plan, progress_hook, deadline)
         if job.stage == "tuning":
-            _transition(store, job_id, state="awaiting_evaluation")
+            _transition(store, job_id, deadline=deadline, state="awaiting_evaluation")
         else:
             _publish_completion(store, job_id, plan, report, deadline)
     except Exception as error:  # boundary retains a stable bounded failure, not a false result
@@ -341,10 +343,11 @@ def run_job(root: Path, job_id: str, *, progress_hook: Callable[[str, int], None
             root / "jobs" / job_id / f"failure-{job.invocations:04d}.json",
             canonical_json({"exception": type(error).__name__, "detail": str(error)[:1000]}),
         )
-        with suppress(InterruptedError):
+        with suppress(InterruptedError, WorkflowError, sqlite3.Error):
             _transition(
                 store,
                 job_id,
+                deadline=deadline if time.monotonic() < deadline else None,
                 state="interrupted" if isinstance(error, InterruptedError) else "failed",
                 error=str(error)[:128]
                 if isinstance(error, WorkflowError)

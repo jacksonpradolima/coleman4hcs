@@ -44,7 +44,12 @@ Multiple coordinators may inspect a workspace; conflicting starts must serialize
 or fail deterministically. The owning coordinator retains its lock and retries
 transient SQLite write contention during startup/polling; failed polls do not
 acknowledge work or consume native attempts. Other storage/schema failures are
-not swallowed. Supported local hosts are Linux and macOS.
+not swallowed. Workers use the same numeric contention classification, bounded
+by their remaining attempt deadline, for reservations, checkpoint progress and
+completion. Transaction bodies and immutable side effects execute once. Existing
+WAL workspace validation uses a consistent read snapshot without a writer lock.
+Terminal failure cleanup keeps its bounded fail-fast behavior after expiry.
+Supported local hosts are Linux and macOS.
 
 Closing an MCP transport does not delete durable state or cancel an owned worker.
 Explicit cancellation retains checkpoint and attempt evidence. Resume is an
@@ -99,6 +104,9 @@ flowchart TD
     Ownership -->|Transient SQLite contention| Retry[Keep ownership and retry polling]
     Retry --> Ownership
     Ownership --> Runner[Existing native runner and sweeps]
+    Runner --> Metadata[Attempt-deadline metadata commits]
+    Metadata -->|Retry numeric BUSY or LOCKED| Metadata
+    Metadata --> Jobs
     Runner --> Store[Parquet and native checkpoints with versioned RNG extra state]
     Runner --> Exposure[Stable upstream source exposure]
     Import[Source header with opaque JSON body] --> Exposure

@@ -15,7 +15,7 @@ from pydantic import Field, model_validator
 
 from coleman.application.baseline_lock import BaselineBusyError, baseline_lock
 from coleman.application.workflow_ownership import worker_active
-from coleman.application.workflow_store import JobRecord, WorkflowStore
+from coleman.application.workflow_store import JobRecord, WorkflowStore, _sqlite_contended
 from coleman.workflows.contracts import WorkflowContract, WorkflowError
 
 _ACK_WAIT_SECONDS = 10.0
@@ -230,7 +230,7 @@ def _supervise(root: Path, descriptor: int) -> None:
             if not _schedule(store, descriptor):
                 return
         except sqlite3.OperationalError as error:
-            if getattr(error, "sqlite_errorcode", 0) & 0xFF not in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+            if not _sqlite_contended(error):
                 raise
         time.sleep(0.05)
 

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import math
 import os
 import sqlite3
-from collections.abc import Iterator
+import time
+from collections.abc import Callable, Iterator
 from contextlib import closing, contextmanager
 from pathlib import Path
 from typing import Annotated
@@ -13,7 +15,7 @@ from pydantic import Field
 
 from coleman.corpus.materialization import validate_source_storage
 from coleman.results.domain import Fingerprint, Finite
-from coleman.workflows.contracts import DatasetManifest, ExperimentPlan, WorkflowContract, WorkflowId
+from coleman.workflows.contracts import DatasetManifest, ExperimentPlan, WorkflowContract, WorkflowError, WorkflowId
 from coleman.workflows.lifecycle import HostPolicy, Stage, State
 
 
@@ -66,6 +68,97 @@ class JobRecord(WorkflowContract):
     result_digest: Fingerprint | None = None
 
 
+def _sqlite_contended(error: sqlite3.OperationalError) -> bool:
+    """Classify only numeric primary/extended BUSY or LOCKED; messages do not establish retryability."""
+    return getattr(error, "sqlite_errorcode", 0) & 0xFF in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
+
+
+def _busy_timeout(deadline: float | None) -> float:
+    """Bound a connection's C-level wait by remaining monotonic seconds; reject nonfinite/expired deadlines."""
+    if deadline is None:
+        return 1.0
+    if not math.isfinite(deadline):
+        raise ValueError("Metadata deadline must be finite monotonic seconds")
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise WorkflowError("Workflow observed wall-time allowance exhausted during metadata contention")
+    return min(1.0, remaining)
+
+
+def _sqlite_command(connection: sqlite3.Connection, command: Callable[[], object], *, deadline: float | None) -> None:
+    """Retry a metadata command without replaying the transaction body or its immutable side effects.
+
+    Each numeric BUSY/LOCKED retry resets SQLite's C-level busy timeout to the
+    current remaining monotonic allowance. None preserves the original one-second
+    fail-fast operation. Other errors propagate. No work starts after expiry.
+    """
+    while True:
+        if deadline is not None:
+            milliseconds = int(_busy_timeout(deadline) * 1000)
+            connection.execute(f"PRAGMA busy_timeout={milliseconds}")
+        try:
+            command()
+            return
+        except sqlite3.OperationalError as error:
+            if deadline is None or not _sqlite_contended(error):
+                raise
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise WorkflowError(
+                    "Workflow observed wall-time allowance exhausted during metadata contention"
+                ) from error
+            time.sleep(min(0.05, remaining))
+
+
+def _schema_version(connection: sqlite3.Connection) -> int:
+    """Validate the unchanged complete v1 schema in the caller's consistent read/write transaction."""
+    version = connection.execute("PRAGMA user_version").fetchone()[0]
+    tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    expected = {"settings", "datasets", "plans", "jobs", "imports"}
+    if version not in (0, 1) or (version == 0 and tables) or (version == 1 and tables != expected):
+        raise ValueError("Unknown/corrupt workflow workspace schema; no implicit migration")
+    return version
+
+
+def _retained_policy(connection: sqlite3.Connection, requested: HostPolicy | None) -> HostPolicy:
+    """Read the immutable host policy without upgrading, repairing or writing existing metadata."""
+    row = connection.execute("SELECT payload FROM settings WHERE name='policy'").fetchone()
+    if row is None:
+        raise ValueError("Workspace is missing its immutable policy")
+    current = HostPolicy.from_json(row[0])
+    if requested is not None and current != HostPolicy.model_validate(requested):
+        raise ValueError("Existing workspace policy cannot be silently replaced")
+    return current
+
+
+def _initialize_schema(connection: sqlite3.Connection, requested: HostPolicy | None) -> HostPolicy:
+    """Serialize fresh initialization or WAL restoration, rechecking schema after obtaining write ownership."""
+    connection.execute("PRAGMA journal_mode=WAL")
+    connection.execute("BEGIN IMMEDIATE")
+    version = _schema_version(connection)
+    connection.execute("CREATE TABLE IF NOT EXISTS settings (name TEXT PRIMARY KEY, payload TEXT NOT NULL)")
+    connection.execute("CREATE TABLE IF NOT EXISTS datasets (id TEXT PRIMARY KEY, payload TEXT NOT NULL)")
+    connection.execute(
+        "CREATE TABLE IF NOT EXISTS plans (id TEXT NOT NULL, owner TEXT NOT NULL, "
+        "payload TEXT NOT NULL, PRIMARY KEY(id,owner))"
+    )
+    connection.execute(
+        "CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, owner TEXT NOT NULL, "
+        "request TEXT NOT NULL, plan TEXT NOT NULL, payload TEXT NOT NULL, UNIQUE(owner,request))"
+    )
+    connection.execute(
+        "CREATE TABLE IF NOT EXISTS imports (id TEXT PRIMARY KEY, owner TEXT NOT NULL, payload TEXT NOT NULL)"
+    )
+    if version == 0:
+        current = HostPolicy.model_validate(requested or HostPolicy(schema_version=1))
+        connection.execute("INSERT INTO settings VALUES ('policy',?)", (current.to_json(),))
+    else:
+        current = _retained_policy(connection, requested)
+    connection.execute("PRAGMA user_version=1")
+    connection.commit()
+    return current
+
+
 class WorkflowStore:
     """Versioned SQLite metadata; kernel ownership/artifact publication remain separate.
 
@@ -83,7 +176,11 @@ class WorkflowStore:
     one-second SQLite lock waits. Transactions serialize admissions/transitions
     across threads and processes. This is not distributed storage, a hostile-path
     sandbox or a guarantee against arbitrary disk/power loss. Unknown database
-    versions fail without migration. Operational I/O/SQLite errors propagate.
+    versions fail without migration. Reopening a valid existing WAL workspace
+    validates one consistent read snapshot without competing for its writer lock.
+    Optional worker transaction deadlines permit numeric contention retries;
+    default host operations retain their one-second fail-fast wait. Operational
+    I/O/SQLite errors otherwise propagate.
     """
 
     def __init__(self, root: Path, policy: HostPolicy | None = None):
@@ -94,57 +191,58 @@ class WorkflowStore:
         self.path = self.root / "workspace.sqlite3"
         validate_source_storage(self.path)
         with closing(self.connect()) as connection:
-            connection.execute("PRAGMA journal_mode=WAL")
-            connection.execute("BEGIN IMMEDIATE")
-            version = connection.execute("PRAGMA user_version").fetchone()[0]
-            tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            expected = {"settings", "datasets", "plans", "jobs", "imports"}
-            if version not in (0, 1) or (version == 0 and tables) or (version == 1 and tables != expected):
-                raise ValueError("Unknown/corrupt workflow workspace schema; no implicit migration")
-            connection.execute("CREATE TABLE IF NOT EXISTS settings (name TEXT PRIMARY KEY, payload TEXT NOT NULL)")
-            connection.execute("CREATE TABLE IF NOT EXISTS datasets (id TEXT PRIMARY KEY, payload TEXT NOT NULL)")
-            connection.execute(
-                "CREATE TABLE IF NOT EXISTS plans (id TEXT NOT NULL, owner TEXT NOT NULL, "
-                "payload TEXT NOT NULL, PRIMARY KEY(id,owner))"
-            )
-            connection.execute(
-                "CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, owner TEXT NOT NULL, "
-                "request TEXT NOT NULL, plan TEXT NOT NULL, payload TEXT NOT NULL, UNIQUE(owner,request))"
-            )
-            connection.execute(
-                "CREATE TABLE IF NOT EXISTS imports (id TEXT PRIMARY KEY, owner TEXT NOT NULL, payload TEXT NOT NULL)"
-            )
-            existing = connection.execute("SELECT payload FROM settings WHERE name='policy'").fetchone()
-            if existing is None:
-                if version == 1:
-                    raise ValueError("Workspace is missing its immutable policy")
-                self.policy = HostPolicy.model_validate(policy or HostPolicy(schema_version=1))
-                connection.execute("INSERT INTO settings VALUES ('policy',?)", (self.policy.to_json(),))
+            connection.execute("BEGIN")
+            version = _schema_version(connection)
+            journal = connection.execute("PRAGMA journal_mode").fetchone()[0]
+            if version == 1 and journal == "wal":
+                self.policy = _retained_policy(connection, policy)
             else:
-                self.policy = HostPolicy.from_json(existing[0])
-                if policy is not None and self.policy != HostPolicy.model_validate(policy):
-                    raise ValueError("Existing workspace policy cannot be silently replaced")
-            connection.execute("PRAGMA user_version=1")
-            connection.commit()
+                connection.rollback()
+                self.policy = _initialize_schema(connection, policy)
         os.chmod(self.path, 0o600)
 
-    def connect(self) -> sqlite3.Connection:
+    def connect(self, *, deadline: float | None = None) -> sqlite3.Connection:
         """Open a short-lived private metadata connection; no native checkpoint is loaded.
+
+        Parameters
+        ----------
+        deadline : float or None
+            Optional absolute time.monotonic deadline, in seconds, for the owning
+            worker attempt. None retains the existing one-second fail-fast wait.
 
         Returns
         -------
         sqlite3.Connection
-            Caller-owned connection with a one-second busy timeout and FULL sync.
+            Caller-owned FULL-sync connection; each SQLite wait is at most one
+            second and no greater than the remaining declared deadline.
+
+        Raises
+        ------
+        ValueError
+            Nonfinite deadline or unsafe storage. An expired deadline raises
+            WorkflowError; other SQLite/storage errors propagate.
         """
         validate_source_storage(self.path)
-        connection = sqlite3.connect(self.path, timeout=1, isolation_level=None)
+        connection = sqlite3.connect(self.path, timeout=_busy_timeout(deadline), isolation_level=None)
         connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA synchronous=FULL")
+        try:
+            _sqlite_command(connection, lambda: connection.execute("PRAGMA synchronous=FULL"), deadline=deadline)
+        except BaseException:
+            connection.close()
+            raise
         return connection
 
     @contextmanager
-    def transaction(self) -> Iterator[sqlite3.Connection]:
+    def transaction(self, *, deadline: float | None = None) -> Iterator[sqlite3.Connection]:
         """Serialize one bounded metadata operation and roll back on any failure.
+
+        Parameters
+        ----------
+        deadline : float or None
+            Optional absolute time.monotonic deadline in seconds. Retry only
+            numeric BUSY/LOCKED at BEGIN/COMMIT within this attempt's remaining
+            allowance. The body is entered once and never replayed; None keeps
+            the original one-second fail-fast behavior for host operations.
 
         Yields
         ------
@@ -156,12 +254,16 @@ class WorkflowStore:
         ------
         sqlite3.Error, OSError, ValueError
             Lock, storage or validation failure; no partial transition is committed.
+            Deadline exhaustion raises WorkflowError. Rollback/close always run;
+            retries do not repeat immutable artifact writes or attempt reservations.
         """
-        connection = self.connect()
+        connection = self.connect() if deadline is None else self.connect(deadline=deadline)
         try:
-            connection.execute("BEGIN IMMEDIATE")
+            _sqlite_command(connection, lambda: connection.execute("BEGIN IMMEDIATE"), deadline=deadline)
+            if deadline is not None:
+                _busy_timeout(deadline)
             yield connection
-            connection.commit()
+            _sqlite_command(connection, connection.commit, deadline=deadline)
         except BaseException:
             connection.rollback()
             raise

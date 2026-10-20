@@ -328,6 +328,17 @@ may hold the write transaction longer than a connection's one-second wait; this
 must not abandon an acknowledged queue. Other storage/schema failures remain
 explicit failures. These retries do not create jobs or consume native attempts.
 
+Opening an existing valid WAL workspace checks one consistent read snapshot,
+without taking its writer lock. During execution, checkpoint progress, attempt
+reservation and completion transactions retry numeric contention only within
+the current attempt's remaining monotonic deadline. Each SQLite wait is shortened
+to that remaining allowance. Only BEGIN/COMMIT commands retry: the body runs once,
+so native reservations and immutable artifact writes are not repeated. Cancellation
+is rechecked after acquiring the write lock. Exhausted attempts stop native work;
+terminal failure bookkeeping retains its original bounded, one-second fail-fast
+cleanup when no retry allowance remains. None of these operational waits changes
+source clocks or the declared count of independent scientific observations.
+
 An attempt interrupted before its first committed checkpoint can retry from the
 beginning. Once durable job metadata acknowledges a native commit, a missing
 checkpoint marker rejects continuation before another native invocation; it does
