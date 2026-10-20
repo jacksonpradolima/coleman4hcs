@@ -720,6 +720,8 @@ class WorkflowService:
         outcome validation, even if later validation or retention capacity rejects.
         Exact-payload retries reuse that attempt; different wire encodings may
         conservatively overcount exposure while retaining the same content handle.
+        Retention charges canonical UTF-8 bytes, including restored defaults,
+        across all callers; retrying an existing handle consumes no extra space.
         """
         from coleman.application.workflow_exports import EvidenceBundle, ImportedEvidence, evidence_source_plan
         from coleman.application.workflow_exposure import reserve_import_exposure
@@ -731,6 +733,8 @@ class WorkflowService:
         attempt = fingerprint(["workflow.import-attempt.v1", self.owner, payload])[7:]
         reserve_import_exposure(self.store, plan, attempt)
         bundle = EvidenceBundle.from_json(payload)
+        canonical = bundle.to_json()
+        retained_size = len(canonical.encode("utf-8"))
         identity = fingerprint([self.owner, bundle.fingerprint])[7:]
         with self.store.transaction() as connection:
             existing = connection.execute(
@@ -740,12 +744,9 @@ class WorkflowService:
                 count, size = connection.execute(
                     "SELECT count(*),coalesce(sum(length(CAST(payload AS BLOB))),0) FROM imports"
                 ).fetchone()
-                if (
-                    count >= self.store.policy.max_jobs
-                    or size + len(payload.encode()) > self.store.policy.max_retained_bytes
-                ):
+                if count >= self.store.policy.max_jobs or size + retained_size > self.store.policy.max_retained_bytes:
                     raise WorkflowError("Read-only import slots/bytes exhausted")
-                connection.execute("INSERT INTO imports VALUES (?,?,?)", (identity, self.owner, bundle.to_json()))
+                connection.execute("INSERT INTO imports VALUES (?,?,?)", (identity, self.owner, canonical))
         return ImportedEvidence(schema_version=1, evidence_id=identity, digest=bundle.fingerprint)
 
     def imported_evidence(self, evidence_id: str):

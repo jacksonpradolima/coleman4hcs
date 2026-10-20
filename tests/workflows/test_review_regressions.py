@@ -416,6 +416,37 @@ def test_capacity_rejected_import_still_preserves_outcome_exposure(
     assert result.access.prior_test_accesses == 2
 
 
+@pytest.mark.parametrize("allowance", [-1, 0, 1])
+def test_import_quota_charges_canonical_bytes_across_owners(protected_evidence, tmp_path, allowance):
+    compact = protected_evidence.model_dump_json(exclude_defaults=True)
+    canonical = protected_evidence.to_json()
+    size = len(canonical.encode("utf-8"))
+    assert len(compact.encode("utf-8")) < size - 1
+    policy = HostPolicy(schema_version=1, max_retained_bytes=2 * size + allowance)
+    first = WorkflowService(tmp_path, owner="first", policy=policy)
+    retained = first.import_evidence(compact)
+    assert first.import_evidence(canonical) == retained
+    second = WorkflowService(tmp_path, owner="second")
+    if allowance < 0:
+        with pytest.raises(ValueError, match="slots/bytes exhausted"):
+            second.import_evidence(compact)
+        expected = 1
+    else:
+        other = second.import_evidence(compact)
+        assert second.import_evidence(canonical) == other
+        assert other.evidence_id != retained.evidence_id
+        expected = 2
+    with closing(first.store.connect()) as connection:
+        count, stored_size = connection.execute(
+            "SELECT count(*),sum(length(CAST(payload AS BLOB))) FROM imports"
+        ).fetchone()
+    assert count == expected
+    assert stored_size == expected * size
+    assert stored_size <= policy.max_retained_bytes
+    assert first.import_evidence(compact) == retained
+    assert first.imported_evidence(retained.evidence_id).to_json() == canonical
+
+
 def test_import_reserves_exposure_before_native_outcome_materialization(protected_evidence, tmp_path, monkeypatch):
     import coleman.application.workflow_exports as exports
 
