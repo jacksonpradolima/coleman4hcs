@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sqlite3
 import subprocess
 import sys
 import time
@@ -212,9 +213,25 @@ def _reconcile_ownership(store, connection, jobs, active) -> None:
 
 
 def _supervise(root: Path, descriptor: int) -> None:
-    """Poll bounded metadata while work exists; exiting is safe because workers own separate locks."""
-    store = WorkflowStore(root)
-    while _schedule(store, descriptor):
+    """Keep inherited ownership while retrying transient SQLite write contention.
+
+    Startup and later polling retain the same coordinator lock across numeric
+    SQLITE_BUSY/SQLITE_LOCKED errors, including their extended codes. A trusted
+    registry publication can exceed the one-second connection timeout without
+    stranding acknowledged queued jobs. Retry polling uses the existing 50 ms
+    pause; no job, invocation or acknowledgement is invented by a failed poll.
+    Other SQLite, storage and contract errors propagate instead of being hidden.
+    """
+    store = None
+    while True:
+        try:
+            if store is None:
+                store = WorkflowStore(root)
+            if not _schedule(store, descriptor):
+                return
+        except sqlite3.OperationalError as error:
+            if getattr(error, "sqlite_errorcode", 0) & 0xFF not in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+                raise
         time.sleep(0.05)
 
 

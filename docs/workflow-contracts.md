@@ -41,7 +41,10 @@ job/idempotency metadata, while existing immutable artifacts retain plans,
 attempt events, results and complete-last receipts. POSIX kernel locks establish
 actual worker ownership; a PID alone never proves that an attempt is alive.
 Multiple coordinators may inspect a workspace; conflicting starts must serialize
-or fail deterministically. Supported local hosts are Linux and macOS.
+or fail deterministically. The owning coordinator retains its lock and retries
+transient SQLite write contention during startup/polling; failed polls do not
+acknowledge work or consume native attempts. Other storage/schema failures are
+not swallowed. Supported local hosts are Linux and macOS.
 
 Closing an MCP transport does not delete durable state or cancel an owned worker.
 Explicit cancellation retains checkpoint and attempt evidence. Resume is an
@@ -93,6 +96,8 @@ flowchart TD
     Jobs --> Ownership[SQLite transitions and kernel ownership]
     Jobs --> Ack[Versioned queue observation acknowledgement]
     Ack --> Ownership
+    Ownership -->|Transient SQLite contention| Retry[Keep ownership and retry polling]
+    Retry --> Ownership
     Ownership --> Runner[Existing native runner and sweeps]
     Runner --> Store[Parquet and native checkpoints with versioned RNG extra state]
     Runner --> Exposure[Stable upstream source exposure]

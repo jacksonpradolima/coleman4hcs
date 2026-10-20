@@ -322,6 +322,12 @@ durably admitted; retry the same request and idempotency key instead of creating
 a second experiment. The versioned, bounded coordination counters are operational
 metadata, not independent scientific observations.
 
+The same coordinator keeps its kernel lock and retries transient SQLite
+`BUSY`/`LOCKED` errors during startup and polling. A host's snapshot publication
+may hold the write transaction longer than a connection's one-second wait; this
+must not abandon an acknowledged queue. Other storage/schema failures remain
+explicit failures. These retries do not create jobs or consume native attempts.
+
 An attempt interrupted before its first committed checkpoint can retry from the
 beginning. Once durable job metadata acknowledges a native commit, a missing
 checkpoint marker rejects continuation before another native invocation; it does
