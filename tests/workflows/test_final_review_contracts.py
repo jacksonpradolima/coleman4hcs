@@ -63,8 +63,9 @@ def test_checkpoint_entries_reject_before_sweep_expansion(monkeypatch):
         seeds=tuple(range(32)),
         limits=WorkflowLimits(max_trials=128, max_attempts=1),
     )
+    runtime = recorded_runtime()
     with pytest.raises(ValueError, match="artifact.*entries"):
-        make_plan(request, data, recorded_runtime())
+        make_plan(request, data, runtime)
 
 
 @pytest.mark.parametrize("builds,accepted", [(35, True), (36, False)])
@@ -80,8 +81,9 @@ def test_entry_reservation_exact_boundary(builds, accepted):
         assert artifact_entry_bound(request, trials=128, builds=builds) == 32768
         assert len(make_plan(request, data, recorded_runtime()).trials) == 128
     else:
+        runtime = recorded_runtime()
         with pytest.raises(ValueError, match="artifact.*entries"):
-            make_plan(request, data, recorded_runtime())
+            make_plan(request, data, runtime)
 
 
 def test_entry_reservation_grows_with_retries_and_native_work():
